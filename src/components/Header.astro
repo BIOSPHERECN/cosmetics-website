@@ -1,0 +1,72 @@
+---
+import { locales, type Locale } from '../i18n/utils';
+
+export interface Props {
+  t: Record<string, any>;
+  locale: Locale;
+}
+
+const { t, locale } = Astro.props;
+const navItems = [
+  { key: 'home', href: `/${locale}/` },
+  { key: 'about', href: `/${locale}/about` },
+  { key: 'products', href: `/${locale}/products` },
+  { key: 'services', href: `/${locale}/services` },
+  { key: 'contact', href: `/${locale}/contact` },
+];
+
+const currentPath = Astro.url.pathname;
+---
+
+<header class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
+  <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16 md:h-20">
+      <a href={`/${locale}/`} class="flex items-center space-x-2 text-xl font-serif font-bold text-brand-dark">
+        <span class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white text-xs font-sans font-bold">C</span>
+        <span>Cosmo<span class="text-primary-600">Care</span></span>
+      </a>
+
+      <div class="hidden md:flex items-center space-x-8">
+        {navItems.map((item) => (
+          <a
+            href={item.href}
+            class={`text-sm font-medium transition-colors duration-200 ${
+              currentPath === item.href
+                ? 'text-primary-600'
+                : 'text-gray-600 hover:text-primary-600'
+            }`}
+          >
+            {t.nav[item.key]}
+          </a>
+        ))}
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <div class="relative group">
+          <button class="flex items-center space-x-1 text-sm text-gray-600 hover:text-primary-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-50">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M3 12h18M3 19h6" />
+            </svg>
+            <span>{locales.find(l => l.code === locale)?.label}</span>
+          </button>
+          <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+            {locales.map((l) => (
+              <a
+                href={currentPath.replace(`/${locale}`, `/${l.code}`)}
+                class={`block px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
+                  l.code === locale ? 'text-primary-600 font-medium' : 'text-gray-700'
+                }`}
+              >
+                {l.label}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <a href={`/${locale}/contact`} class="hidden md:inline-flex btn-primary text-sm">
+          {t.hero.cta}
+        </a>
+      </div>
+    </div>
+  </nav>
+</header>

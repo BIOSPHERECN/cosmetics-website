@@ -1,0 +1,51 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { useTranslations } from '../../i18n/utils';
+const locale = 'id';
+const t = useTranslations(locale);
+---
+
+<Layout title={`${t.nav.about} - CosmoCare`} description={t.about.subtitle} locale={locale}>
+  <Header {t} {locale} />
+  <main class="pt-20">
+    <section class="py-16 md:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+          <span class="inline-block px-4 py-1.5 bg-primary-100 text-primary-700 text-sm font-medium rounded-full mb-4">{t.nav.about}</span>
+          <h1 class="section-title">{t.about.title}</h1>
+          <p class="section-subtitle">{t.about.subtitle}</p>
+        </div>
+        <div class="grid md:grid-cols-2 gap-12 items-center mb-16">
+          <div class="bg-gradient-to-br from-primary-100 to-primary-200 rounded-2xl aspect-square flex items-center justify-center">
+            <div class="text-center p-8">
+              <svg class="w-20 h-20 mx-auto text-primary-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+              <p class="text-2xl font-serif font-bold text-primary-800">14+ Tahun</p>
+              <p class="text-primary-600 mt-2">Keunggulan Manufaktur</p>
+            </div>
+          </div>
+          <div class="space-y-6">
+            <div><h3 class="text-xl font-semibold text-brand-dark mb-3">Misi Kami</h3><p class="text-gray-600 leading-relaxed">{t.about.mission}</p></div>
+            <div><h3 class="text-xl font-semibold text-brand-dark mb-3">Visi Kami</h3><p class="text-gray-600 leading-relaxed">{t.about.vision}</p></div>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-3 gap-8">
+          <div class="bg-brand-cream rounded-2xl p-8 text-center">
+            <div class="w-14 h-14 bg-primary-100 rounded-xl flex items-center justify-center mx-auto mb-4"><svg class="w-7 h-7 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+            <h3 class="text-lg font-semibold text-brand-dark mb-2">{t.about.experience}</h3><p class="text-gray-600 text-sm">{t.about.experienceDesc}</p>
+          </div>
+          <div class="bg-brand-cream rounded-2xl p-8 text-center">
+            <div class="w-14 h-14 bg-primary-100 rounded-xl flex items-center justify-center mx-auto mb-4"><svg class="w-7 h-7 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
+            <h3 class="text-lg font-semibold text-brand-dark mb-2">{t.about.quality}</h3><p class="text-gray-600 text-sm">{t.about.qualityDesc}</p>
+          </div>
+          <div class="bg-brand-cream rounded-2xl p-8 text-center">
+            <div class="w-14 h-14 bg-primary-100 rounded-xl flex items-center justify-center mx-auto mb-4"><svg class="w-7 h-7 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg></div>
+            <h3 class="text-lg font-semibold text-brand-dark mb-2">{t.about.innovation}</h3><p class="text-gray-600 text-sm">{t.about.innovationDesc}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <Footer {t} {locale} />
+</Layout>

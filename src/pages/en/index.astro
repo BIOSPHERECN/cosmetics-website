@@ -1,0 +1,67 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Hero from '../../components/Hero.astro';
+import WhyUs from '../../components/WhyUs.astro';
+import { useTranslations } from '../../i18n/utils';
+
+const locale = 'en';
+const t = useTranslations(locale);
+---
+
+<Layout title="CosmoCare - Your Trusted OEM/ODM Partner for Premium Cosmetics" description={t.hero.subtitle} locale={locale}>
+  <Header {t} {locale} />
+  <main>
+    <Hero {t} {locale} />
+    <WhyUs {t} />
+
+    <!-- Products Preview -->
+    <section class="py-16 md:py-24 bg-brand-cream">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+          <h2 class="section-title">{t.products.title}</h2>
+          <p class="section-subtitle">{t.products.subtitle}</p>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[
+            { name: t.products.skincare, desc: t.products.skincareDesc, emoji: '✨' },
+            { name: t.products.haircare, desc: t.products.haircareDesc, emoji: '💇' },
+            { name: t.products.bodycare, desc: t.products.bodycareDesc, emoji: '🧴' },
+            { name: t.products.makeup, desc: t.products.makeupDesc, emoji: '💄' },
+            { name: t.products.sunscreen, desc: t.products.sunscreenDesc, emoji: '☀️' },
+            { name: t.products.personal, desc: t.products.personalDesc, emoji: '🧼' },
+          ].map((cat) => (
+            <div class="bg-white rounded-xl p-6 hover:shadow-lg transition-shadow duration-300">
+              <div class="text-3xl mb-4">{cat.emoji}</div>
+              <h3 class="text-lg font-semibold text-brand-dark mb-2">{cat.name}</h3>
+              <p class="text-gray-600 text-sm">{cat.desc}</p>
+            </div>
+          ))}
+        </div>
+        <div class="text-center mt-10">
+          <a href={`/${locale}/products`} class="btn-outline">
+            {t.hero.learnMore}
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-16 md:py-24 bg-primary-600">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-3xl md:text-4xl font-serif font-bold text-white mb-6">
+          Ready to Bring Your Cosmetic Brand to Life?
+        </h2>
+        <p class="text-primary-100 text-lg mb-8 max-w-2xl mx-auto">
+          Partner with us and leverage our 14+ years of manufacturing expertise.
+          From concept to delivery, we are here to help you succeed.
+        </p>
+        <a href={`/${locale}/contact`} class="inline-flex items-center justify-center px-8 py-4 bg-white text-primary-700 font-semibold rounded-lg hover:bg-primary-50 transition-colors duration-200 text-lg">
+          {t.hero.cta}
+        </a>
+      </div>
+    </section>
+  </main>
+  <Footer {t} {locale} />
+</Layout>

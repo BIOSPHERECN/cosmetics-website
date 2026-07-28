@@ -1,0 +1,27 @@
+---
+import '../styles/global.css';
+
+export interface Props {
+  title: string;
+  description: string;
+  locale: string;
+}
+
+const { title, description, locale } = Astro.props;
+const htmlLang = locale;
+const dir = locale === 'id' ? 'ltr' : 'ltr';
+---
+
+<!doctype html>
+<html lang={htmlLang} dir={dir}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+  </head>
+  <body class="bg-white">
+    <slot />
+  </body>
+</html>

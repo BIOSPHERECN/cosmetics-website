@@ -1,0 +1,83 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { useTranslations } from '../../i18n/utils';
+
+const locale = 'en';
+const t = useTranslations(locale);
+
+const steps = [
+  { title: t.services.step1, desc: t.services.step1Desc, num: '01' },
+  { title: t.services.step2, desc: t.services.step2Desc, num: '02' },
+  { title: t.services.step3, desc: t.services.step3Desc, num: '03' },
+  { title: t.services.step4, desc: t.services.step4Desc, num: '04' },
+  { title: t.services.step5, desc: t.services.step5Desc, num: '05' },
+  { title: t.services.step6, desc: t.services.step6Desc, num: '06' },
+];
+
+const capabilities = [
+  t.services.cap1, t.services.cap2, t.services.cap3,
+  t.services.cap4, t.services.cap5, t.services.cap6,
+];
+---
+
+<Layout title={`${t.nav.services} - CosmoCare`} description={t.services.subtitle} locale={locale}>
+  <Header {t} {locale} />
+  <main class="pt-20">
+    <section class="py-16 md:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+          <span class="inline-block px-4 py-1.5 bg-primary-100 text-primary-700 text-sm font-medium rounded-full mb-4">{t.nav.services}</span>
+          <h1 class="section-title">{t.services.title}</h1>
+          <p class="section-subtitle">{t.services.subtitle}</p>
+        </div>
+
+        <div class="relative">
+          <div class="absolute left-8 top-0 bottom-0 w-0.5 bg-primary-200 hidden md:block"></div>
+          <div class="space-y-12">
+            {steps.map((step, i) => (
+              <div class={`relative flex items-start gap-8 ${i % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'}`}>
+                <div class="hidden md:flex w-16 h-16 bg-primary-600 rounded-full items-center justify-center flex-shrink-0 relative z-10">
+                  <span class="text-white font-bold">{step.num}</span>
+                </div>
+                <div class="flex-1 bg-white border border-gray-100 rounded-2xl p-6 md:p-8 hover:shadow-lg transition-shadow">
+                  <span class="text-primary-600 text-sm font-semibold mb-2 block md:hidden">Step {step.num}</span>
+                  <h3 class="text-xl font-semibold text-brand-dark mb-3">{step.title}</h3>
+                  <p class="text-gray-600 leading-relaxed">{step.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 md:py-24 bg-brand-cream">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+          <h2 class="section-title">{t.services.capabilities}</h2>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+          {capabilities.map((cap) => (
+            <div class="flex items-center space-x-3 bg-white rounded-xl p-4">
+              <svg class="w-5 h-5 text-primary-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+              </svg>
+              <span class="text-gray-700">{cap}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 md:py-24 bg-primary-600 text-center">
+      <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-3xl md:text-4xl font-serif font-bold text-white mb-6">Start Your Project Today</h2>
+        <p class="text-primary-100 text-lg mb-8">Contact us for a free consultation and discover how we can bring your cosmetic vision to life.</p>
+        <a href={`/${locale}/contact`} class="inline-flex items-center justify-center px-8 py-4 bg-white text-primary-700 font-semibold rounded-lg hover:bg-primary-50 transition-colors text-lg">{t.hero.cta}</a>
+      </div>
+    </section>
+  </main>
+  <Footer {t} {locale} />
+</Layout>

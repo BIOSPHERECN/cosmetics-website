@@ -1,0 +1,61 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import { useTranslations } from '../../i18n/utils';
+
+const locale = 'en';
+const t = useTranslations(locale);
+
+const categories = [
+  { name: t.products.skincare, desc: t.products.skincareDesc, emoji: '✨', items: ['Face Serums', 'Moisturizers', 'Cleansers', 'Toners', 'Eye Creams', 'Face Masks'] },
+  { name: t.products.haircare, desc: t.products.haircareDesc, emoji: '💇', items: ['Shampoos', 'Conditioners', 'Hair Masks', 'Hair Oils', 'Styling Gels', 'Hair Sprays'] },
+  { name: t.products.bodycare, desc: t.products.bodycareDesc, emoji: '🧴', items: ['Body Lotions', 'Body Scrubs', 'Body Butters', 'Hand Creams', 'Body Washes', 'Shower Gels'] },
+  { name: t.products.makeup, desc: t.products.makeupDesc, emoji: '💄', items: ['Foundations', 'Lipsticks', 'Eyeshadows', 'Blushes', 'Mascaras', 'Setting Sprays'] },
+  { name: t.products.sunscreen, desc: t.products.sunscreenDesc, emoji: '☀️', items: ['Sun Creams', 'Sun Sprays', 'After-Sun Gels', 'BB Creams SPF', 'Lip Balms SPF', 'Sun Sticks'] },
+  { name: t.products.personal, desc: t.products.personalDesc, emoji: '🧼', items: ['Deodorants', 'Hand Sanitizers', 'Wet Wipes', 'Hand Soaps', 'Foot Creams', 'Lip Balms'] },
+];
+---
+
+<Layout title={`${t.nav.products} - CosmoCare`} description={t.products.subtitle} locale={locale}>
+  <Header {t} {locale} />
+  <main class="pt-20">
+    <section class="py-16 md:py-24">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+          <span class="inline-block px-4 py-1.5 bg-primary-100 text-primary-700 text-sm font-medium rounded-full mb-4">{t.nav.products}</span>
+          <h1 class="section-title">{t.products.title}</h1>
+          <p class="section-subtitle">{t.products.subtitle}</p>
+        </div>
+
+        <div class="space-y-12">
+          {categories.map((cat) => (
+            <div class="bg-white rounded-2xl border border-gray-100 p-8 hover:shadow-md transition-shadow">
+              <div class="flex items-start gap-6">
+                <div class="text-4xl">{cat.emoji}</div>
+                <div class="flex-1">
+                  <h2 class="text-2xl font-semibold text-brand-dark mb-2">{cat.name}</h2>
+                  <p class="text-gray-600 mb-4">{cat.desc}</p>
+                  <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {cat.items.map((item) => (
+                      <span class="inline-flex items-center px-3 py-1.5 bg-brand-cream text-gray-700 text-sm rounded-lg">{item}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 md:py-24 bg-brand-cream">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-3xl font-serif font-bold text-brand-dark mb-6">{t.products.oem}</h2>
+        <p class="text-gray-600 text-lg mb-8">{t.products.oemDesc}</p>
+        <a href={`/${locale}/services`} class="btn-primary text-lg px-8 py-4">{t.hero.learnMore}</a>
+      </div>
+    </section>
+  </main>
+  <Footer {t} {locale} />
+</Layout>
