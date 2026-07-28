@@ -20,18 +20,18 @@ nav:
 
 hero:
   en:
-    title: Your Trusted OEM/ODM Partner for Premium Cosmetics
-    subtitle: 14+ years of excellence in cosmetic manufacturing with deep expertise in the Indonesian market
+    title: Your Trusted Halal-Certified OEM/ODM Partner for Premium Cosmetics
+    subtitle: 14+ years of excellence in Halal-certified cosmetic manufacturing with deep expertise in the Indonesian and global Muslim markets
     cta: Request a Quote
     learnMore: Learn More
   id:
-    title: Mitra OEM/ODM Terpercaya untuk Kosmetik Premium
-    subtitle: 14+ tahun pengalaman di manufaktur kosmetik dengan keahlian mendalam di pasar Indonesia
+    title: Mitra OEM/ODM Bersertifikat Halal Terpercaya untuk Kosmetik Premium
+    subtitle: 14+ tahun pengalaman di manufaktur kosmetik bersertifikat Halal dengan keahlian mendalam di pasar Indonesia dan Muslim global
     cta: Minta Penawaran
     learnMore: Pelajari Lebih Lanjut
   zh:
-    title: 您值得信赖的高端化妆品OEM/ODM合作伙伴
-    subtitle: 14年以上化妆品制造经验，深耕印尼市场，助力您的品牌成功
+    title: 您值得信赖的清真认证化妆品OEM/ODM合作伙伴
+    subtitle: 14年以上清真认证化妆品制造经验，深耕印尼及全球穆斯林市场
     cta: 获取报价
     learnMore: 了解更多
 
@@ -41,16 +41,19 @@ stats:
     products: Products Manufactured
     clients: Global Clients
     countries: Countries Exported
+    halal: Halal Certifications
   id:
     years: Tahun Pengalaman
     products: Produk Diproduksi
     clients: Klien Global
     countries: Negara Tujuan Ekspor
+    halal: Sertifikasi Halal
   zh:
     years: 年行业经验
     products: 款产品制造
     clients: 全球客户
     countries: 出口国家
+    halal: 清真认证
 
 about:
   en:
@@ -64,6 +67,8 @@ about:
     qualityDesc: Strict quality control at every production stage
     innovation: Innovation Driven
     innovationDesc: Continuous R&D to bring you market-leading products
+    halalExpert: Halal Certification Expertise
+    halalExpertDesc: Fully Halal-certified facility with strict adherence to Islamic guidelines, from raw materials to finished products
   id:
     title: Tentang Pabrik Kami
     subtitle: Dengan lebih dari 14 tahun spesialisasi di manufaktur OEM/ODM, kami adalah mitra tepercaya di belakang banyak merek kosmetik sukses di Indonesia dan sekitarnya.
@@ -75,6 +80,8 @@ about:
     qualityDesc: Kontrol kualitas ketat di setiap tahap produksi
     innovation: Didorong Inovasi
     innovationDesc: R&D berkelanjutan untuk menghadirkan produk terdepan di pasar
+    halalExpert: Keahlian Sertifikasi Halal
+    halalExpertDesc: Fasilitas bersertifikat Halal penuh dengan kepatuhan ketat pada pedoman Islam, dari bahan baku hingga produk jadi
   zh:
     title: 关于我们
     subtitle: 拥有超过14年OEM/ODM制造经验，我们是印尼及众多成功化妆品品牌背后的 trusted 合作伙伴。
@@ -86,6 +93,8 @@ about:
     qualityDesc: 每个生产阶段严格把控质量
     innovation: 创新驱动
     innovationDesc: 持续研发，为您带来市场领先产品
+    halalExpert: 清真认证专长
+    halalExpertDesc: 清真认证工厂，从原料到成品严格遵守伊斯兰准则
 
 footer:
   en:
@@ -200,8 +209,8 @@ services:
       - title: Logistics & Delivery
         desc: We handle packaging, labeling, and shipping to your destination.
     capabilities:
+      - Halal-certified manufacturing (MUI/BPJPH)
       - Custom formulation development
-      - Halal-certified manufacturing
       - GMP, ISO 22716 certified facilities
       - Flexible MOQ to suit startups and established brands
       - Private labeling and custom packaging
@@ -224,8 +233,8 @@ services:
       - title: Logistik & Pengiriman
         desc: Kami menangani pengemasan, pelabelan, dan pengiriman ke tujuan Anda.
     capabilities:
+      - Manufaktur bersertifikat Halal (MUI/BPJPH)
       - Pengembangan formulasi khusus
-      - Manufaktur bersertifikat Halal
       - Fasilitas bersertifikat GMP, ISO 22716
       - MOQ fleksibel untuk startup dan merek mapan
       - Pelabelan pribadi dan kemasan khusus
@@ -248,8 +257,8 @@ services:
       - title: 物流与交付
         desc: 我们处理包装、贴标和运输到目的地的所有环节。
     capabilities:
+      - 清真认证生产（MUI/BPJPH认证）
       - 定制配方开发
-      - 清真认证生产
       - GMP、ISO 22716认证工厂
       - 灵活起订量，适合初创和成熟品牌
       - 私标定制与定制包装
@@ -317,6 +326,8 @@ whyUs:
     flexibleDesc: Whether you are a startup or an established brand, we offer flexible minimum order quantities
     rnd: R&D Innovation
     rndDesc: In-house research and development team dedicated to creating unique, effective formulations
+    halal: Halal Assurance
+    halalDesc: Fully Halal-certified supply chain with MUI/BPJPH certification, alcohol-free formulations, and separate Halal production lines
   id:
     title: Mengapa Memilih Kami
     subtitle: Apa yang membedakan kami sebagai mitra manufaktur pilihan Anda
@@ -328,6 +339,8 @@ whyUs:
     flexibleDesc: Baik Anda startup atau merek mapan, kami menawarkan jumlah pesanan minimum yang fleksibel
     rnd: Inovasi R&D
     rndDesc: Tim riset dan pengembangan internal yang berdedikasi menciptakan formulasi unik dan efektif
+    halal: Jaminan Halal
+    halalDesc: Rantai pasok bersertifikat Halal penuh dengan sertifikasi MUI/BPJPH, formulasi bebas alkohol, dan lini produksi Halal terpisah
   zh:
     title: 为什么选择我们
     subtitle: 让我们成为您首选制造合作伙伴的优势
@@ -339,3 +352,5 @@ whyUs:
     flexibleDesc: 无论您是初创公司还是成熟品牌，我们提供灵活的起订量
     rnd: 研发创新
     rndDesc: 内部研发团队致力于创造独特、有效的配方
+    halal: 清真保障
+    halalDesc: MUI/BPJPH全链路清真认证，无酒精配方，独立清真生产线

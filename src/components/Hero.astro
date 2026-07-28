@@ -9,6 +9,7 @@ const stats = [
   { value: '500+', key: t.stats.products },
   { value: '200+', key: t.stats.clients },
   { value: '15+', key: t.stats.countries },
+  { value: 'Halal', key: t.stats.halal },
 ];
 ---
 
@@ -21,9 +22,15 @@ const stats = [
   <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
     <div class="grid lg:grid-cols-2 gap-12 items-center min-h-[70vh]">
       <div class="text-center lg:text-left" data-reveal>
-        <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-white/80 backdrop-blur-sm text-primary-700 text-sm font-medium rounded-full mb-6 shadow-sm border border-primary-100">
-          <span class="w-2 h-2 bg-primary-500 rounded-full animate-pulse"></span>
-          14+ Years of Excellence
+        <div class="flex flex-wrap gap-2 mb-6">
+          <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-white/80 backdrop-blur-sm text-primary-700 text-sm font-medium rounded-full shadow-sm border border-primary-100">
+            <span class="w-2 h-2 bg-primary-500 rounded-full animate-pulse"></span>
+            14+ Years of Excellence
+          </div>
+          <div class="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-50/90 backdrop-blur-sm text-emerald-700 text-sm font-medium rounded-full shadow-sm border border-emerald-200">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            <span>Halal Certified</span>
+          </div>
         </div>
 
         <h1 class="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-brand-dark leading-tight">
@@ -50,13 +57,13 @@ const stats = [
           <div class="w-96 h-96 rounded-full bg-gradient-to-br from-primary-400/30 via-primary-200/20 to-brand-gold/10 animate-float flex items-center justify-center">
             <div class="w-72 h-72 rounded-full bg-gradient-to-br from-primary-500/20 to-primary-300/10 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-2xl">
               <div class="text-center p-8">
-                <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-primary-600/90 flex items-center justify-center shadow-lg">
-                  <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-emerald-600/90 flex items-center justify-center shadow-lg">
+                  <svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
                   </svg>
                 </div>
-                <p class="text-2xl font-serif font-bold text-primary-800">Premium Quality</p>
-                <p class="mt-2 text-primary-600/80">Cosmetics Manufacturing</p>
+                <p class="text-2xl font-serif font-bold text-emerald-800">Halal Certified</p>
+                <p class="mt-2 text-emerald-600/80">Cosmetics Manufacturing</p>
               </div>
             </div>
           </div>
@@ -69,12 +76,13 @@ const stats = [
 
   <div class="relative z-10 bg-white/80 backdrop-blur-sm border-t border-gray-100" data-reveal>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-8 text-center">
         {stats.map((s, i) => (
           <div class="group" data-reveal data-reveal-delay={i * 100}>
-            <div class="text-3xl md:text-4xl font-bold text-primary-600 group-hover:scale-110 transition-transform duration-300">
-              <span data-count={parseInt(s.value)} data-count-suffix={s.value.includes('+') ? '+' : ''}>{s.value}</span>
-            </div>
+            {s.value === 'Halal'
+              ? <div class="text-3xl md:text-4xl font-bold text-emerald-600 group-hover:scale-110 transition-transform duration-300 flex items-center justify-center gap-1"><svg class="w-8 h-8" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg><span class="text-sm font-bold tracking-wider">✓</span></div>
+              : <div class="text-3xl md:text-4xl font-bold text-primary-600 group-hover:scale-110 transition-transform duration-300"><span data-count={parseInt(s.value)} data-count-suffix={s.value.includes('+') ? '+' : ''}>{s.value}</span></div>
+            }
             <div class="text-sm text-gray-500 mt-1">{s.key}</div>
           </div>
         ))}
