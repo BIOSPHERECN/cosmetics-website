@@ -14,7 +14,7 @@ async function verifyAuth(request) {
     const payloadStr = atob(parts[0]);
     const sigStr = atob(parts[1]);
     const sig = Uint8Array.from(sigStr, c => c.charCodeAt(0));
-    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(SECRET_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(SECRET_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
     const expected = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payloadStr)));
     if (sig.length !== expected.length) return false;
     for (let i = 0; i < sig.length; i++) { if (sig[i] !== expected[i]) return false; }
