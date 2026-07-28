@@ -1,24 +1,32 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Admin Dashboard - CosmoCare</title>
+  <title>后台管理 - CosmoCare</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; background: #f5f5f7; min-height: 100vh; }
-    .header { background: white; border-bottom: 1px solid #e5e7eb; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    body { font-family: 'Inter', sans-serif; background: #f0fdf4; min-height: 100vh; }
+    .header { background: white; border-bottom: 1px solid #e5e7eb; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 16px; }
     .header h1 { font-family: serif; font-size: 18px; color: #1a1a2e; }
-    .header h1 span { color: #CE2D58; }
-    .header .btn-logout { padding: 8px 16px; background: none; border: 1px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 13px; color: #666; transition: all 0.2s; }
-    .header .btn-logout:hover { background: #fee2e2; border-color: #fecaca; color: #dc2626; }
-    .container { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
-    .tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 16px; margin-bottom: 24px; border-bottom: 1px solid #e5e7eb; }
-    .tab { padding: 10px 20px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 500; color: #6b7280; border-radius: 8px; transition: all 0.2s; white-space: nowrap; }
+    .header h1 span { color: #16a34a; }
+    .header .badge { font-size: 11px; background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; border: none; }
+    .btn-ghost { background: none; border: 1px solid #e5e7eb; color: #666; }
+    .btn-ghost:hover { background: #f9fafb; }
+    .btn-primary { background: #16a34a; color: white; }
+    .btn-primary:hover { background: #15803d; }
+    .btn-danger { background: none; border: 1px solid #e5e7eb; color: #666; }
+    .btn-danger:hover { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px 16px 80px; }
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; margin-bottom: 24px; }
+    .tab { padding: 10px 20px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 500; color: #6b7280; border-radius: 8px 8px 0 0; transition: all 0.2s; border-bottom: 2px solid transparent; margin-bottom: -1px; }
     .tab:hover { background: #f3f4f6; color: #374151; }
-    .tab.active { background: #CE2D58; color: white; }
+    .tab.active { color: #16a34a; border-bottom-color: #16a34a; background: #f0fdf4; }
     .section { display: none; }
     .section.active { display: block; }
     .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
@@ -26,42 +34,69 @@
     .field { margin-bottom: 16px; }
     .field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
     .field input, .field textarea { width: 100%; padding: 10px 14px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: 'Inter', sans-serif; transition: all 0.2s; outline: none; }
-    .field input:focus, .field textarea:focus { border-color: #CE2D58; box-shadow: 0 0 0 3px rgba(206,45,88,0.1); }
+    .field input:focus, .field textarea:focus { border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,0.1); }
     .field textarea { resize: vertical; min-height: 80px; }
     .lang-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
     .lang-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 4px; }
+    .code-editor { width: 100%; min-height: 500px; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; padding: 16px; border: 1.5px solid #e5e7eb; border-radius: 8px; outline: none; resize: vertical; tab-size: 2; }
+    .code-editor:focus { border-color: #16a34a; }
     .save-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e5e7eb; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; z-index: 100; }
     .save-bar .status { font-size: 13px; color: #6b7280; }
     .save-bar .status.success { color: #16a34a; }
     .save-bar .status.error { color: #dc2626; }
-    .btn-save { padding: 10px 32px; background: linear-gradient(135deg, #CE2D58, #ad1e47); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-    .btn-save:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(206,45,88,0.3); }
+    .btn-save { padding: 10px 32px; background: linear-gradient(135deg, #16a34a, #15803d); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .btn-save:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(22,163,74,0.3); }
     .btn-save:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     .loading { text-align: center; padding: 60px 20px; color: #6b7280; }
-    .loading .spinner { width: 36px; height: 36px; border: 3px solid #f3f4f6; border-top-color: #CE2D58; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    .loading .spinner { width: 36px; height: 36px; border: 3px solid #f3f4f6; border-top-color: #16a34a; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .visual-intro { text-align: center; padding: 40px 20px; }
+    .visual-intro .big-icon { width: 80px; height: 80px; background: #dcfce7; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+    .visual-intro h3 { font-size: 18px; color: #1a1a2e; margin-bottom: 8px; }
+    .visual-intro p { color: #6b7280; font-size: 14px; max-width: 500px; margin: 0 auto 24px; line-height: 1.6; }
+    .visual-intro .steps { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+    .visual-intro .step { background: #f9fafb; border-radius: 12px; padding: 20px; width: 200px; text-align: center; }
+    .visual-intro .step-num { width: 28px; height: 28px; background: #16a34a; color: white; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .visual-intro .step-title { font-size: 14px; font-weight: 600; color: #1a1a2e; margin-bottom: 4px; }
+    .visual-intro .step-desc { font-size: 12px; color: #6b7280; line-height: 1.5; }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>Cosmo<span>Care</span> Admin</h1>
-    <button class="btn-logout" onclick="logout()">Sign Out</button>
+    <div class="header-left">
+      <h1>Cosmo<span>Care</span></h1>
+      <span class="badge">后台管理</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" onclick="openVisualEditor()">✎ 可视化编辑</button>
+      <button class="btn btn-danger" onclick="logout()">退出登录</button>
+    </div>
   </div>
   <div class="container" id="app">
     <div class="loading" id="loading">
       <div class="spinner"></div>
-      <p>Loading content...</p>
+      <p>加载内容中...</p>
     </div>
   </div>
   <div class="save-bar" id="saveBar" style="display:none">
     <span class="status" id="status"></span>
-    <button class="btn-save" id="saveBtn" onclick="saveContent()">Save Changes</button>
+    <div>
+      <button class="btn btn-ghost" onclick="resetForm()" style="margin-right:8px">重置</button>
+      <button class="btn-save" id="saveBtn" onclick="saveContent()">保存更改</button>
+    </div>
   </div>
 
   <script>
     let contentData = {};
     let originalData = {};
     const sections = ['nav', 'hero', 'about', 'whyUs', 'contact', 'footer'];
+    const locales = ['en', 'id', 'zh'];
+    const localeLabels = { en: '英文', id: '印尼文', zh: '中文' };
+
+    const sectionNames = {
+      nav: '导航菜单', hero: '首页横幅', about: '关于我们',
+      whyUs: '为什么选择我们', contact: '联系我们', footer: '页脚'
+    };
 
     async function init() {
       try {
@@ -76,22 +111,21 @@
     async function loadContent() {
       try {
         const res = await fetch('/api/bohuiadmin/content?action=load', { credentials: 'same-origin' });
-        if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.error || 'Load failed'); }
+        if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.error || '加载失败'); }
         const yaml = await res.text();
         contentData = parseYaml(yaml);
         originalData = JSON.parse(JSON.stringify(contentData));
         renderDashboard();
         document.getElementById('saveBar').style.display = 'flex';
-        document.getElementById('status').textContent = 'Loaded';
+        document.getElementById('status').textContent = '已加载';
       } catch (e) {
-        document.getElementById('loading').innerHTML = '<p style="color:#dc2626">Failed to load content.</p><p style="font-size:13px;color:#666;margin-top:8px">Make sure the <b>GITHUB_TOKEN</b> environment variable is set in Cloudflare Pages dashboard.</p><p style="margin-top:12px"><a href="javascript:location.reload()" style="color:#CE2D58">Retry</a></p>';
+        document.getElementById('loading').innerHTML = '<p style="color:#dc2626">加载失败：' + e.message + '</p><p style="font-size:13px;color:#666;margin-top:8px">请确认已在 Cloudflare 后台设置 <b>GITHUB_TOKEN</b> 环境变量并重新部署。</p><p style="margin-top:12px"><a href="javascript:location.reload()" style="color:#16a34a">重试</a></p>';
       }
     }
 
     function parseYaml(yaml) {
       const data = {};
       const lines = yaml.split('\n');
-      let currentSection = null, currentLocale = null, currentKey = null;
       const stack = [];
       for (const line of lines) {
         const trimmed = line.trimEnd();
@@ -105,19 +139,14 @@
         } else {
           let obj = data;
           for (const s of stack) obj = s.data;
-          if (key === 'en' || key === 'id' || key === 'zh') {
-            if (!obj[key]) obj[key] = {};
-          } else {
-            obj[key] = value;
-          }
+          obj[key] = value;
         }
       }
       return data;
     }
 
     function getVal(section, locale, key) {
-      try { return contentData[section]?.[locale]?.[key] || ''; }
-      catch { return ''; }
+      try { return contentData[section]?.[locale]?.[key] || ''; } catch { return ''; }
     }
 
     function setVal(section, locale, key, value) {
@@ -126,34 +155,103 @@
       contentData[section][locale][key] = value;
     }
 
+    let activeTab = 'form';
+
     function renderDashboard() {
+      document.getElementById('loading').style.display = 'none';
       const app = document.getElementById('app');
       app.innerHTML = `
-        <div class="tabs" id="tabs">
-          ${sections.map(s => `<button class="tab ${s === 'nav' ? 'active' : ''}" onclick="switchTab('${s}')">${s.charAt(0).toUpperCase() + s.slice(1)}</button>`).join('')}
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('form')">表单编辑</button>
+          <button class="tab" onclick="switchTab('code')">代码编辑</button>
+          <button class="tab" onclick="switchTab('visual')">可视化编辑说明</button>
         </div>
-        ${sections.map(s => renderSection(s)).join('')}
+        <div class="section active" id="section-form">
+          <div class="tabs" style="margin-bottom:16px;border-bottom:1px solid #e5e7eb">
+            ${sections.map(s => `<button class="tab ${s === 'nav' ? 'active' : ''}" onclick="switchSection('${s}')">${sectionNames[s]}</button>`).join('')}
+          </div>
+          ${sections.map(s => renderSection(s)).join('')}
+        </div>
+        <div class="section" id="section-code">
+          <div class="card">
+            <h2>YAML 代码编辑</h2>
+            <p style="font-size:13px;color:#6b7280;margin-bottom:12px">直接编辑 content/site.yaml 源文件，适用于高级操作（如修改产品列表等复杂结构）</p>
+            <textarea class="code-editor" id="yamlEditor">加载中...</textarea>
+          </div>
+        </div>
+        <div class="section" id="section-visual">
+          <div class="card">
+            <div class="visual-intro">
+              <div class="big-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.5"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+              </div>
+              <h3>可视化编辑模式</h3>
+              <p>点击下方按钮打开网站前台，在页面中直接点击文字即可修改，修改完成后点击浮动保存栏保存。</p>
+              <div class="steps">
+                <div class="step">
+                  <div class="step-num">1</div>
+                  <div class="step-title">打开前台</div>
+                  <div class="step-desc">点击下方按钮，网站前台会在新标签页打开</div>
+                </div>
+                <div class="step">
+                  <div class="step-num">2</div>
+                  <div class="step-title">点击文字</div>
+                  <div class="step-desc">任意文本段落点击即可进入编辑状态</div>
+                </div>
+                <div class="step">
+                  <div class="step-num">3</div>
+                  <div class="step-title">保存修改</div>
+                  <div class="step-desc">修改完成后点击浮动栏的「保存」按钮</div>
+                </div>
+              </div>
+              <br />
+              <button class="btn btn-primary" onclick="openVisualEditor()" style="font-size:15px;padding:12px 32px">✎ 打开可视化编辑</button>
+            </div>
+          </div>
+        </div>
       `;
+    }
+
+    function openVisualEditor() {
+      window.open('https://cosmetics-website-5t8.pages.dev/en/?edit=true', '_blank');
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll('.tabs:first-of-type .tab').forEach((t, i) => {
+        t.classList.toggle('active', (i === 0 && tab === 'form') || (i === 1 && tab === 'code') || (i === 2 && tab === 'visual'));
+      });
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById('section-' + tab).classList.add('active');
+      if (tab === 'code') rebuildYamlEditor();
+    }
+
+    function switchSection(section) {
+      document.querySelectorAll('#section-form .tabs .tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`.tab[onclick*="'${section}'"]`).classList.add('active');
+      document.querySelectorAll('#section-form .card.section').forEach(s => s.classList.remove('active'));
+      document.getElementById(`section-${section}`).classList.add('active');
     }
 
     function renderSection(section) {
       if (section === 'nav') return renderNav();
-      if (section === 'hero') return renderGeneric(section, ['title', 'subtitle', 'cta', 'learnMore']);
-      if (section === 'about') return renderGeneric(section, ['title', 'subtitle', 'mission', 'vision']);
-      if (section === 'whyUs') return renderGeneric(section, ['title', 'subtitle', 'indonesia', 'indonesiaDesc', 'quality', 'qualityDesc', 'flexible', 'flexibleDesc', 'rnd', 'rndDesc']);
-      if (section === 'contact') return renderGeneric(section, ['title', 'subtitle', 'addressValue']);
-      if (section === 'footer') return renderGeneric(section, ['rights']);
+      if (section === 'hero') return renderGeneric(section, ['title', 'subtitle', 'cta', 'learnMore'], ['标题', '副标题', '按钮文字', '了解更多']);
+      if (section === 'about') return renderGeneric(section, ['title', 'subtitle', 'mission', 'vision'], ['标题', '副标题', '使命', '愿景']);
+      if (section === 'whyUs') return renderGeneric(section, ['title', 'subtitle', 'indonesia', 'indonesiaDesc', 'quality', 'qualityDesc', 'flexible', 'flexibleDesc', 'rnd', 'rndDesc', 'halal', 'halalDesc'], ['标题', '副标题', '印尼市场', '印尼市场描述', '认证质量', '认证质量描述', '灵活起订量', '灵活起订量描述', '研发创新', '研发创新描述', '清真保障', '清真保障描述']);
+      if (section === 'contact') return renderGeneric(section, ['title', 'subtitle', 'addressValue'], ['标题', '副标题', '地址']);
+      if (section === 'footer') return renderGeneric(section, ['rights'], ['版权信息']);
       return '';
     }
 
     function renderNav() {
       const keys = ['home', 'about', 'products', 'services', 'contact'];
-      let html = `<div class="card section" id="section-nav"><h2>Navigation</h2>`;
-      for (const key of keys) {
-        html += `<div class="field"><label>${key}</label><div class="lang-row">`;
-        for (const loc of ['en', 'id', 'zh']) {
-          const val = getVal('nav', loc, key);
-          html += `<div><div class="lang-label">${loc}</div><input type="text" value="${esc(val)}" onchange="setVal('nav','${loc}','${key}',this.value)" /></div>`;
+      const labels = ['首页', '关于我们', '产品中心', 'OEM/ODM', '联系我们'];
+      let html = `<div class="card section active" id="section-nav"><h2>导航菜单</h2>`;
+      for (let i = 0; i < keys.length; i++) {
+        html += `<div class="field"><label>${labels[i]}</label><div class="lang-row">`;
+        for (const loc of locales) {
+          const val = getVal('nav', loc, keys[i]);
+          html += `<div><div class="lang-label">${localeLabels[loc]}</div><input type="text" value="${esc(val)}" onchange="setVal('nav','${loc}','${keys[i]}',this.value)" /></div>`;
         }
         html += `</div></div>`;
       }
@@ -161,17 +259,19 @@
       return html;
     }
 
-    function renderGeneric(section, keys) {
-      let html = `<div class="card section" id="section-${section}"><h2>${section.charAt(0).toUpperCase() + section.slice(1)}</h2>`;
-      for (const key of keys) {
-        const isLong = key.endsWith('Desc') || key === 'subtitle' || key === 'mission' || key === 'vision';
-        html += `<div class="field"><label>${key}</label><div class="lang-row">`;
-        for (const loc of ['en', 'id', 'zh']) {
+    function renderGeneric(section, keys, labels) {
+      let html = `<div class="card section" id="section-${section}" style="display:none"><h2>${sectionNames[section]}</h2>`;
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        const label = labels && labels[i] ? labels[i] : key;
+        const isLong = key.endsWith('Desc') || key === 'subtitle' || key === 'mission' || key === 'vision' || key === 'halalDesc';
+        html += `<div class="field"><label>${label}</label><div class="lang-row">`;
+        for (const loc of locales) {
           const val = getVal(section, loc, key);
           if (isLong) {
-            html += `<div><div class="lang-label">${loc}</div><textarea onchange="setVal('${section}','${loc}','${key}',this.value)">${esc(val)}</textarea></div>`;
+            html += `<div><div class="lang-label">${localeLabels[loc]}</div><textarea onchange="setVal('${section}','${loc}','${key}',this.value)">${esc(val)}</textarea></div>`;
           } else {
-            html += `<div><div class="lang-label">${loc}</div><input type="text" value="${esc(val)}" onchange="setVal('${section}','${loc}','${key}',this.value)" /></div>`;
+            html += `<div><div class="lang-label">${localeLabels[loc]}</div><input type="text" value="${esc(val)}" onchange="setVal('${section}','${loc}','${key}',this.value)" /></div>`;
           }
         }
         html += `</div></div>`;
@@ -182,35 +282,46 @@
 
     function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    function switchTab(section) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      document.querySelector(`.tab[onclick*="'${section}'"]`).classList.add('active');
-      document.getElementById(`section-${section}`).classList.add('active');
+    function rebuildYamlEditor() {
+      const yaml = buildYaml(contentData);
+      document.getElementById('yamlEditor').value = yaml;
+    }
+
+    function resetForm() {
+      if (!confirm('确认重置所有未保存的修改？')) return;
+      contentData = JSON.parse(JSON.stringify(originalData));
+      renderDashboard();
+      if (activeTab === 'code') rebuildYamlEditor();
+      document.getElementById('status').textContent = '已重置';
     }
 
     async function saveContent() {
       const btn = document.getElementById('saveBtn');
       const status = document.getElementById('status');
-      btn.disabled = true; status.textContent = 'Saving...'; status.className = 'status';
+      btn.disabled = true; status.textContent = '保存中...'; status.className = 'status';
       try {
-        const yaml = buildYaml(contentData);
+        let yaml;
+        if (activeTab === 'code') {
+          yaml = document.getElementById('yamlEditor').value;
+        } else {
+          yaml = buildYaml(contentData);
+        }
         const res = await fetch('/api/bohuiadmin/content?action=save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
           body: JSON.stringify({ content: yaml }),
         });
-        if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Save failed'); }
-        originalData = JSON.parse(JSON.stringify(contentData));
-        status.textContent = 'Saved successfully!';
+        if (!res.ok) { const err = await res.json(); throw new Error(err.error || '保存失败'); }
+        if (activeTab !== 'code') originalData = JSON.parse(JSON.stringify(contentData));
+        status.textContent = '✓ 保存成功！页面将自动重新部署';
         status.className = 'status success';
       } catch (e) {
-        status.textContent = 'Error: ' + e.message;
+        status.textContent = '✗ 错误：' + e.message;
         status.className = 'status error';
       }
       btn.disabled = false;
-      setTimeout(() => { if (status.className === 'status success') status.textContent = ''; }, 3000);
+      setTimeout(() => { if (status.className === 'status success') status.textContent = ''; }, 5000);
     }
 
     function buildYaml(data) {
@@ -218,7 +329,7 @@
       for (const section of sections) {
         if (!data[section]) continue;
         out += `${section}:\n`;
-        for (const loc of ['en', 'id', 'zh']) {
+        for (const loc of locales) {
           if (!data[section][loc]) continue;
           out += `  ${loc}:\n`;
           for (const [key, val] of Object.entries(data[section][loc])) {

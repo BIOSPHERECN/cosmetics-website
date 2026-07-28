@@ -22,7 +22,7 @@ const currentPath = Astro.url.pathname;
     <div class="flex items-center justify-between h-16 md:h-20">
       <a href={`/${locale}/`} class="flex items-center space-x-2 text-xl font-serif font-bold text-brand-dark group">
         <span class="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center text-white text-xs font-sans font-bold group-hover:scale-110 transition-transform duration-300">C</span>
-        <span>Cosmo<span class="text-primary-600">Care</span></span>
+        <span data-i18n="brandName">Cosmo<span class="text-primary-600">Care</span></span>
         <span class="ml-1.5 px-1.5 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-sans font-semibold rounded border border-emerald-200 tracking-wider">HALAL</span>
       </a>
 
@@ -36,7 +36,7 @@ const currentPath = Astro.url.pathname;
                 : 'text-gray-600 hover:text-primary-600 hover:bg-gray-50'
             }`}
           >
-            {t.nav[item.key]}
+            <span data-i18n={t.nav[item.key]}>{t.nav[item.key]}</span>
           </a>
         ))}
       </div>

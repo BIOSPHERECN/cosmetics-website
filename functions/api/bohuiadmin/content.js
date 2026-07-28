@@ -48,6 +48,10 @@ export async function onRequest(context) {
     return saveContent(context, GITHUB_TOKEN);
   }
 
+  if (context.request.method === 'POST' && action === 'edit') {
+    return editContent(context, GITHUB_TOKEN);
+  }
+
   return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
 }
 
@@ -77,6 +81,45 @@ async function saveContent(context, GITHUB_TOKEN) {
     body: JSON.stringify({
       message: 'Update site content via admin panel',
       content: btoa(content),
+      sha: fileData.sha,
+      branch: GITHUB_BRANCH,
+    }),
+  });
+
+  if (!updateRes.ok) {
+    const err = await updateRes.text();
+    return new Response(JSON.stringify({ error: 'Save failed', detail: err }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
+
+  return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+}
+
+async function editContent(context, GITHUB_TOKEN) {
+  const { locale, updates } = await context.request.json();
+
+  const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/content/site.yaml?ref=${GITHUB_BRANCH}`, {
+    headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json' },
+  });
+  if (!res.ok) return new Response(JSON.stringify({ error: 'Failed to load content' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  const fileData = await res.json();
+  let yaml = atob(fileData.content.replace(/\n/g, ''));
+
+  for (const [key, val] of Object.entries(updates)) {
+    const parts = key.split('.');
+    if (parts.length >= 2) {
+      const section = parts[0];
+      const fieldKey = parts.slice(1).join('.');
+      const regex = new RegExp(`(${section}:\\n(?:[ ]{2}\\w+:\\n)*(?:[ ]{4}${locale}:\\n)(?:[ ]{6}\\w+: [^\\n]*\\n)*[ ]{6}${fieldKey}: ).*`, 'm');
+      yaml = yaml.replace(regex, '$1' + val);
+    }
+  }
+
+  const updateRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/content/site.yaml`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: 'Visual edit via admin panel',
+      content: btoa(yaml),
       sha: fileData.sha,
       branch: GITHUB_BRANCH,
     }),

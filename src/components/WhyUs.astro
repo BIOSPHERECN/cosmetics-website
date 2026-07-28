@@ -24,8 +24,8 @@ const icons: Record<string, string> = {
 <section class="py-16 md:py-24 bg-white overflow-hidden">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="text-center mb-16" data-reveal>
-      <h2 class="section-title">{t.whyUs.title}</h2>
-      <p class="section-subtitle">{t.whyUs.subtitle}</p>
+      <h2 class="section-title" data-i18n="whyUs.title">{t.whyUs.title}</h2>
+      <p class="section-subtitle" data-i18n="whyUs.subtitle">{t.whyUs.subtitle}</p>
     </div>
 
     <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-6" data-stagger data-reveal>
@@ -36,8 +36,8 @@ const icons: Record<string, string> = {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={icons[f.icon]} />
             </svg>
           </div>
-          <h3 class="text-lg font-semibold text-brand-dark mb-3 group-hover:text-primary-700 transition-colors">{f.title}</h3>
-          <p class="text-gray-600 text-sm leading-relaxed">{f.desc}</p>
+          <h3 class="text-lg font-semibold text-brand-dark mb-3 group-hover:text-primary-700 transition-colors" data-i18n={f.title}>{f.title}</h3>
+          <p class="text-gray-600 text-sm leading-relaxed" data-i18n={f.desc}>{f.desc}</p>
         </div>
       ))}
     </div>
