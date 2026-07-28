@@ -65,7 +65,7 @@
 
     async function init() {
       try {
-        const res = await fetch('/api/bohuiadmin/verify');
+        const res = await fetch('/api/bohuiadmin/verify', { credentials: 'same-origin' });
         if (!res.ok) { window.location.href = '/bohuiadmin/'; return; }
         const data = await res.json();
         if (!data.valid) { window.location.href = '/bohuiadmin/'; return; }
@@ -75,7 +75,7 @@
 
     async function loadContent() {
       try {
-        const res = await fetch('/api/bohuiadmin/content?action=load');
+        const res = await fetch('/api/bohuiadmin/content?action=load', { credentials: 'same-origin' });
         if (!res.ok) throw new Error('Load failed');
         const yaml = await res.text();
         contentData = parseYaml(yaml);
@@ -198,6 +198,7 @@
         const res = await fetch('/api/bohuiadmin/content?action=save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
           body: JSON.stringify({ content: yaml }),
         });
         if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Save failed'); }

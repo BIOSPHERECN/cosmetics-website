@@ -28,7 +28,7 @@ export async function onRequest(context) {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Set-Cookie': `bohui_session=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`,
+        'Set-Cookie': `bohui_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
       },
     });
   } catch {

@@ -41,19 +41,19 @@ stats:
     products: Products Manufactured
     clients: Global Clients
     countries: Countries Exported
-    halal: Halal Certifications
+    halal: Years Halal Certified
   id:
     years: Tahun Pengalaman
     products: Produk Diproduksi
     clients: Klien Global
     countries: Negara Tujuan Ekspor
-    halal: Sertifikasi Halal
+    halal: Tahun Bersertifikat Halal
   zh:
     years: 年行业经验
     products: 款产品制造
     clients: 全球客户
     countries: 出口国家
-    halal: 清真认证
+    halal: 年清真认证经验
 
 about:
   en:
@@ -68,7 +68,7 @@ about:
     innovation: Innovation Driven
     innovationDesc: Continuous R&D to bring you market-leading products
     halalExpert: Halal Certification Expertise
-    halalExpertDesc: Fully Halal-certified facility with strict adherence to Islamic guidelines, from raw materials to finished products
+    halalExpertDesc: 4+ years of Halal-certified manufacturing with MUI/BPJPH compliance, ensuring every product meets strict Islamic standards
   id:
     title: Tentang Pabrik Kami
     subtitle: Dengan lebih dari 14 tahun spesialisasi di manufaktur OEM/ODM, kami adalah mitra tepercaya di belakang banyak merek kosmetik sukses di Indonesia dan sekitarnya.
@@ -81,7 +81,7 @@ about:
     innovation: Didorong Inovasi
     innovationDesc: R&D berkelanjutan untuk menghadirkan produk terdepan di pasar
     halalExpert: Keahlian Sertifikasi Halal
-    halalExpertDesc: Fasilitas bersertifikat Halal penuh dengan kepatuhan ketat pada pedoman Islam, dari bahan baku hingga produk jadi
+    halalExpertDesc: 4+ tahun manufaktur bersertifikat Halal dengan kepatuhan MUI/BPJPH, memastikan setiap produk memenuhi standar Islam yang ketat
   zh:
     title: 关于我们
     subtitle: 拥有超过14年OEM/ODM制造经验，我们是印尼及众多成功化妆品品牌背后的 trusted 合作伙伴。
@@ -94,7 +94,7 @@ about:
     innovation: 创新驱动
     innovationDesc: 持续研发，为您带来市场领先产品
     halalExpert: 清真认证专长
-    halalExpertDesc: 清真认证工厂，从原料到成品严格遵守伊斯兰准则
+    halalExpertDesc: 4年以上清真认证制造经验，符合MUI/BPJPH标准，确保每款产品符合严格的伊斯兰准则
 
 footer:
   en:
@@ -209,7 +209,7 @@ services:
       - title: Logistics & Delivery
         desc: We handle packaging, labeling, and shipping to your destination.
     capabilities:
-      - Halal-certified manufacturing (MUI/BPJPH)
+      - 4+ years Halal-certified manufacturing (MUI/BPJPH)
       - Custom formulation development
       - GMP, ISO 22716 certified facilities
       - Flexible MOQ to suit startups and established brands
@@ -233,7 +233,7 @@ services:
       - title: Logistik & Pengiriman
         desc: Kami menangani pengemasan, pelabelan, dan pengiriman ke tujuan Anda.
     capabilities:
-      - Manufaktur bersertifikat Halal (MUI/BPJPH)
+      - 4+ tahun manufaktur bersertifikat Halal (MUI/BPJPH)
       - Pengembangan formulasi khusus
       - Fasilitas bersertifikat GMP, ISO 22716
       - MOQ fleksibel untuk startup dan merek mapan
@@ -257,7 +257,7 @@ services:
       - title: 物流与交付
         desc: 我们处理包装、贴标和运输到目的地的所有环节。
     capabilities:
-      - 清真认证生产（MUI/BPJPH认证）
+      - 4年以上清真认证生产（MUI/BPJPH认证）
       - 定制配方开发
       - GMP、ISO 22716认证工厂
       - 灵活起订量，适合初创和成熟品牌
@@ -327,7 +327,7 @@ whyUs:
     rnd: R&D Innovation
     rndDesc: In-house research and development team dedicated to creating unique, effective formulations
     halal: Halal Assurance
-    halalDesc: Fully Halal-certified supply chain with MUI/BPJPH certification, alcohol-free formulations, and separate Halal production lines
+    halalDesc: 4+ years of Halal-certified manufacturing with MUI/BPJPH compliance, alcohol-free formulations, and dedicated Halal production lines
   id:
     title: Mengapa Memilih Kami
     subtitle: Apa yang membedakan kami sebagai mitra manufaktur pilihan Anda
@@ -340,7 +340,7 @@ whyUs:
     rnd: Inovasi R&D
     rndDesc: Tim riset dan pengembangan internal yang berdedikasi menciptakan formulasi unik dan efektif
     halal: Jaminan Halal
-    halalDesc: Rantai pasok bersertifikat Halal penuh dengan sertifikasi MUI/BPJPH, formulasi bebas alkohol, dan lini produksi Halal terpisah
+    halalDesc: 4+ tahun manufaktur bersertifikat Halal dengan kepatuhan MUI/BPJPH, formulasi bebas alkohol, dan lini produksi Halal khusus
   zh:
     title: 为什么选择我们
     subtitle: 让我们成为您首选制造合作伙伴的优势
@@ -353,4 +353,4 @@ whyUs:
     rnd: 研发创新
     rndDesc: 内部研发团队致力于创造独特、有效的配方
     halal: 清真保障
-    halalDesc: MUI/BPJPH全链路清真认证，无酒精配方，独立清真生产线
+    halalDesc: 4年以上清真认证制造经验，符合MUI/BPJPH标准，无酒精配方，独立清真生产线

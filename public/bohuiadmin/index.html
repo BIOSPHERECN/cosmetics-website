@@ -55,9 +55,10 @@
         const res = await fetch('/api/bohuiadmin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
           body: JSON.stringify({ username: document.getElementById('username').value, password: document.getElementById('password').value }),
         });
-        if (!res.ok) { err.style.display = 'block'; return; }
+        if (!res.ok) { const e = await res.json().catch(()=>({})); err.textContent = e.error || 'Login failed'; err.style.display = 'block'; return; }
         window.location.href = '/bohuiadmin/dashboard';
       } catch { err.textContent = 'Network error'; err.style.display = 'block'; }
       finally { btn.disabled = false; btn.textContent = 'Sign In'; }
