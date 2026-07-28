@@ -76,7 +76,7 @@
     async function loadContent() {
       try {
         const res = await fetch('/api/bohuiadmin/content?action=load', { credentials: 'same-origin' });
-        if (!res.ok) throw new Error('Load failed');
+        if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.error || 'Load failed'); }
         const yaml = await res.text();
         contentData = parseYaml(yaml);
         originalData = JSON.parse(JSON.stringify(contentData));
@@ -84,7 +84,7 @@
         document.getElementById('saveBar').style.display = 'flex';
         document.getElementById('status').textContent = 'Loaded';
       } catch (e) {
-        document.getElementById('loading').innerHTML = '<p>Failed to load content. <a href="javascript:location.reload()">Retry</a></p>';
+        document.getElementById('loading').innerHTML = '<p style="color:#dc2626">Failed to load content.</p><p style="font-size:13px;color:#666;margin-top:8px">Make sure the <b>GITHUB_TOKEN</b> environment variable is set in Cloudflare Pages dashboard.</p><p style="margin-top:12px"><a href="javascript:location.reload()" style="color:#CE2D58">Retry</a></p>';
       }
     }
 
