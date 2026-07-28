@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Admin Dashboard - CosmoCare</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #f5f5f7; min-height: 100vh; }
+    .header { background: white; border-bottom: 1px solid #e5e7eb; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .header h1 { font-family: serif; font-size: 18px; color: #1a1a2e; }
+    .header h1 span { color: #CE2D58; }
+    .header .btn-logout { padding: 8px 16px; background: none; border: 1px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 13px; color: #666; transition: all 0.2s; }
+    .header .btn-logout:hover { background: #fee2e2; border-color: #fecaca; color: #dc2626; }
+    .container { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+    .tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 16px; margin-bottom: 24px; border-bottom: 1px solid #e5e7eb; }
+    .tab { padding: 10px 20px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 500; color: #6b7280; border-radius: 8px; transition: all 0.2s; white-space: nowrap; }
+    .tab:hover { background: #f3f4f6; color: #374151; }
+    .tab.active { background: #CE2D58; color: white; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .card h2 { font-size: 16px; font-weight: 600; color: #1a1a2e; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f3f4f6; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .field input, .field textarea { width: 100%; padding: 10px 14px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: 'Inter', sans-serif; transition: all 0.2s; outline: none; }
+    .field input:focus, .field textarea:focus { border-color: #CE2D58; box-shadow: 0 0 0 3px rgba(206,45,88,0.1); }
+    .field textarea { resize: vertical; min-height: 80px; }
+    .lang-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .lang-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 4px; }
+    .save-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e5e7eb; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; z-index: 100; }
+    .save-bar .status { font-size: 13px; color: #6b7280; }
+    .save-bar .status.success { color: #16a34a; }
+    .save-bar .status.error { color: #dc2626; }
+    .btn-save { padding: 10px 32px; background: linear-gradient(135deg, #CE2D58, #ad1e47); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .btn-save:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(206,45,88,0.3); }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .loading { text-align: center; padding: 60px 20px; color: #6b7280; }
+    .loading .spinner { width: 36px; height: 36px; border: 3px solid #f3f4f6; border-top-color: #CE2D58; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Cosmo<span>Care</span> Admin</h1>
+    <button class="btn-logout" onclick="logout()">Sign Out</button>
+  </div>
+  <div class="container" id="app">
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p>Loading content...</p>
+    </div>
+  </div>
+  <div class="save-bar" id="saveBar" style="display:none">
+    <span class="status" id="status"></span>
+    <button class="btn-save" id="saveBtn" onclick="saveContent()">Save Changes</button>
+  </div>
+
+  <script>
+    let contentData = {};
+    let originalData = {};
+    const sections = ['nav', 'hero', 'about', 'whyUs', 'contact', 'footer'];
+
+    async function init() {
+      try {
+        const res = await fetch('/api/bohuiadmin/verify');
+        if (!res.ok) { window.location.href = '/bohuiadmin/'; return; }
+        const data = await res.json();
+        if (!data.valid) { window.location.href = '/bohuiadmin/'; return; }
+      } catch { window.location.href = '/bohuiadmin/'; return; }
+      await loadContent();
+    }
+
+    async function loadContent() {
+      try {
+        const res = await fetch('/api/bohuiadmin/content?action=load');
+        if (!res.ok) throw new Error('Load failed');
+        const yaml = await res.text();
+        contentData = parseYaml(yaml);
+        originalData = JSON.parse(JSON.stringify(contentData));
+        renderDashboard();
+        document.getElementById('saveBar').style.display = 'flex';
+        document.getElementById('status').textContent = 'Loaded';
+      } catch (e) {
+        document.getElementById('loading').innerHTML = '<p>Failed to load content. <a href="javascript:location.reload()">Retry</a></p>';
+      }
+    }
+
+    function parseYaml(yaml) {
+      const data = {};
+      const lines = yaml.split('\n');
+      let currentSection = null, currentLocale = null, currentKey = null;
+      const stack = [];
+      for (const line of lines) {
+        const trimmed = line.trimEnd();
+        const indent = line.length - trimmed.length;
+        if (trimmed === '' || trimmed.startsWith('#')) continue;
+        const match = trimmed.match(/^(\w[\w-]*):\s*(.*)$/);
+        if (!match) continue;
+        const key = match[1], value = match[2].trim();
+        if (value === '') {
+          stack.push({ key, indent, data: {} });
+        } else {
+          let obj = data;
+          for (const s of stack) obj = s.data;
+          if (key === 'en' || key === 'id' || key === 'zh') {
+            if (!obj[key]) obj[key] = {};
+          } else {
+            obj[key] = value;
+          }
+        }
+      }
+      return data;
+    }
+
+    function getVal(section, locale, key) {
+      try { return contentData[section]?.[locale]?.[key] || ''; }
+      catch { return ''; }
+    }
+
+    function setVal(section, locale, key, value) {
+      if (!contentData[section]) contentData[section] = {};
+      if (!contentData[section][locale]) contentData[section][locale] = {};
+      contentData[section][locale][key] = value;
+    }
+
+    function renderDashboard() {
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="tabs" id="tabs">
+          ${sections.map(s => `<button class="tab ${s === 'nav' ? 'active' : ''}" onclick="switchTab('${s}')">${s.charAt(0).toUpperCase() + s.slice(1)}</button>`).join('')}
+        </div>
+        ${sections.map(s => renderSection(s)).join('')}
+      `;
+    }
+
+    function renderSection(section) {
+      if (section === 'nav') return renderNav();
+      if (section === 'hero') return renderGeneric(section, ['title', 'subtitle', 'cta', 'learnMore']);
+      if (section === 'about') return renderGeneric(section, ['title', 'subtitle', 'mission', 'vision']);
+      if (section === 'whyUs') return renderGeneric(section, ['title', 'subtitle', 'indonesia', 'indonesiaDesc', 'quality', 'qualityDesc', 'flexible', 'flexibleDesc', 'rnd', 'rndDesc']);
+      if (section === 'contact') return renderGeneric(section, ['title', 'subtitle', 'addressValue']);
+      if (section === 'footer') return renderGeneric(section, ['rights']);
+      return '';
+    }
+
+    function renderNav() {
+      const keys = ['home', 'about', 'products', 'services', 'contact'];
+      let html = `<div class="card section" id="section-nav"><h2>Navigation</h2>`;
+      for (const key of keys) {
+        html += `<div class="field"><label>${key}</label><div class="lang-row">`;
+        for (const loc of ['en', 'id', 'zh']) {
+          const val = getVal('nav', loc, key);
+          html += `<div><div class="lang-label">${loc}</div><input type="text" value="${esc(val)}" onchange="setVal('nav','${loc}','${key}',this.value)" /></div>`;
+        }
+        html += `</div></div>`;
+      }
+      html += `</div>`;
+      return html;
+    }
+
+    function renderGeneric(section, keys) {
+      let html = `<div class="card section" id="section-${section}"><h2>${section.charAt(0).toUpperCase() + section.slice(1)}</h2>`;
+      for (const key of keys) {
+        const isLong = key.endsWith('Desc') || key === 'subtitle' || key === 'mission' || key === 'vision';
+        html += `<div class="field"><label>${key}</label><div class="lang-row">`;
+        for (const loc of ['en', 'id', 'zh']) {
+          const val = getVal(section, loc, key);
+          if (isLong) {
+            html += `<div><div class="lang-label">${loc}</div><textarea onchange="setVal('${section}','${loc}','${key}',this.value)">${esc(val)}</textarea></div>`;
+          } else {
+            html += `<div><div class="lang-label">${loc}</div><input type="text" value="${esc(val)}" onchange="setVal('${section}','${loc}','${key}',this.value)" /></div>`;
+          }
+        }
+        html += `</div></div>`;
+      }
+      html += `</div>`;
+      return html;
+    }
+
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function switchTab(section) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelector(`.tab[onclick*="'${section}'"]`).classList.add('active');
+      document.getElementById(`section-${section}`).classList.add('active');
+    }
+
+    async function saveContent() {
+      const btn = document.getElementById('saveBtn');
+      const status = document.getElementById('status');
+      btn.disabled = true; status.textContent = 'Saving...'; status.className = 'status';
+      try {
+        const yaml = buildYaml(contentData);
+        const res = await fetch('/api/bohuiadmin/content?action=save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: yaml }),
+        });
+        if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Save failed'); }
+        originalData = JSON.parse(JSON.stringify(contentData));
+        status.textContent = 'Saved successfully!';
+        status.className = 'status success';
+      } catch (e) {
+        status.textContent = 'Error: ' + e.message;
+        status.className = 'status error';
+      }
+      btn.disabled = false;
+      setTimeout(() => { if (status.className === 'status success') status.textContent = ''; }, 3000);
+    }
+
+    function buildYaml(data) {
+      let out = '';
+      for (const section of sections) {
+        if (!data[section]) continue;
+        out += `${section}:\n`;
+        for (const loc of ['en', 'id', 'zh']) {
+          if (!data[section][loc]) continue;
+          out += `  ${loc}:\n`;
+          for (const [key, val] of Object.entries(data[section][loc])) {
+            if (typeof val === 'string') {
+              if (val.includes('\n') || val.length > 80) {
+                out += `    ${key}: |\n      ${val.replace(/\n/g, '\n      ')}\n`;
+              } else {
+                out += `    ${key}: ${val}\n`;
+              }
+            }
+          }
+        }
+      }
+      return out;
+    }
+
+    function logout() {
+      document.cookie = 'bohui_session=; Path=/; Max-Age=0';
+      window.location.href = '/bohuiadmin/';
+    }
+
+    init();
+  </script>
+</body>
+</html>
