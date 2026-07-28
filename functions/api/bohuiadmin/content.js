@@ -32,11 +32,11 @@ export async function onRequest(context) {
     const url = new URL(context.request.url);
     const action = url.searchParams.get('action');
 
-    const { env } = context;
-    const GITHUB_TOKEN = env.GITHUB_TOKEN || '';
+    const token = context.env && context.env.GITHUB_TOKEN;
+    const GITHUB_TOKEN = token || '';
 
     if (!GITHUB_TOKEN) {
-      return new Response(JSON.stringify({ error: 'GitHub token not configured' }), {
+      return new Response(JSON.stringify({ error: 'GitHub token not configured', hasEnv: !!context.env, tokenType: typeof token }), {
         status: 500, headers: { 'Content-Type': 'application/json' },
       });
     }
@@ -55,7 +55,7 @@ export async function onRequest(context) {
 
     return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
   } catch (e) {
-    return new Response(JSON.stringify({ error: 'Internal error: ' + e.message, stack: e.stack }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'Internal error: ' + e.message, stack: e && e.stack }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 }
 
