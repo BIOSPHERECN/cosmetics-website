@@ -24,35 +24,39 @@ async function verifyAuth(request) {
 }
 
 export async function onRequest(context) {
-  if (!await verifyAuth(context.request)) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  try {
+    if (!await verifyAuth(context.request)) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    const url = new URL(context.request.url);
+    const action = url.searchParams.get('action');
+
+    const { env } = context;
+    const GITHUB_TOKEN = env.GITHUB_TOKEN || '';
+
+    if (!GITHUB_TOKEN) {
+      return new Response(JSON.stringify({ error: 'GitHub token not configured' }), {
+        status: 500, headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (context.request.method === 'GET' && action === 'load') {
+      return loadContent(GITHUB_TOKEN);
+    }
+
+    if (context.request.method === 'POST' && action === 'save') {
+      return saveContent(context, GITHUB_TOKEN);
+    }
+
+    if (context.request.method === 'POST' && action === 'edit') {
+      return editContent(context, GITHUB_TOKEN);
+    }
+
+    return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: 'Internal error: ' + e.message, stack: e.stack }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
-
-  const url = new URL(context.request.url);
-  const action = url.searchParams.get('action');
-
-  const { env } = context;
-  const GITHUB_TOKEN = env.GITHUB_TOKEN || '';
-
-  if (!GITHUB_TOKEN) {
-    return new Response(JSON.stringify({ error: 'GitHub token not configured' }), {
-      status: 500, headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  if (context.request.method === 'GET' && action === 'load') {
-    return loadContent(GITHUB_TOKEN);
-  }
-
-  if (context.request.method === 'POST' && action === 'save') {
-    return saveContent(context, GITHUB_TOKEN);
-  }
-
-  if (context.request.method === 'POST' && action === 'edit') {
-    return editContent(context, GITHUB_TOKEN);
-  }
-
-  return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
 }
 
 async function loadContent(GITHUB_TOKEN) {
