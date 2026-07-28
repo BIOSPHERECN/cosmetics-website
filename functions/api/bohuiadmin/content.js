@@ -3,6 +3,14 @@ const ADMIN_USER = 'bohuiadmin';
 const GITHUB_REPO = 'BIOSPHERECN/cosmetics-website';
 const GITHUB_BRANCH = 'main';
 
+function makeHeaders(token) {
+  return {
+    'User-Agent': 'CosmoCare-Admin/1.0',
+    'Accept': 'application/vnd.github.v3+json',
+    'Authorization': 'Bearer ' + token,
+  };
+}
+
 async function verifyAuth(request) {
   const cookie = request.headers.get('Cookie') || '';
   const match = cookie.match(/bohui_session=([^;]+)/);
@@ -22,38 +30,34 @@ async function verifyAuth(request) {
   } catch { return false; }
 }
 
-const GH_HEADERS = {
-  'User-Agent': 'CosmoCare-Admin/1.0',
-  'Accept': 'application/vnd.github.v3+json',
-};
-
 export async function onRequest(context) {
   try {
     if (!await verifyAuth(context.request)) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }
 
-    const url = new URL(context.request.url);
-    const action = url.searchParams.get('action');
     const token = (context.env && context.env.GITHUB_TOKEN) || '';
-
     if (!token) {
       return new Response(JSON.stringify({ error: 'GitHub token not configured' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 
-    const authHeaders = { Authorization: 'Bearer ' + token, ...GH_HEADERS };
+    const url = new URL(context.request.url);
+    const action = url.searchParams.get('action');
+    const headers = makeHeaders(token);
 
     if (context.request.method === 'GET' && action === 'load') {
-      return loadContent(authHeaders);
+      return loadContent(headers);
     }
-
     if (context.request.method === 'POST' && action === 'save') {
-      return saveContent(context, authHeaders);
+      return saveContent(context, headers);
+    }
+    if (context.request.method === 'POST' && action === 'edit') {
+      return editContent(context, headers);
     }
 
     return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e), stack: String(e && e.stack || '') }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 }
 
@@ -61,7 +65,7 @@ async function loadContent(headers) {
   const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/content/site.yaml?ref=${GITHUB_BRANCH}`, { headers });
   if (!res.ok) {
     const errText = await res.text();
-    return new Response(JSON.stringify({ error: 'GitHub API error: ' + res.status, detail: errText }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'GitHub API error: ' + res.status, detail: errText.slice(0, 500) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
   const data = await res.json();
   const content = atob(data.content.replace(/\n/g, ''));
@@ -69,9 +73,7 @@ async function loadContent(headers) {
 }
 
 async function saveContent(context, headers) {
-  const body = await context.request.json();
-  const { content } = body;
-
+  const { content } = await context.request.json();
   const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/content/site.yaml?ref=${GITHUB_BRANCH}`, { headers });
   if (!res.ok) return new Response(JSON.stringify({ error: 'Failed to get file info' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   const fileData = await res.json();
@@ -79,18 +81,43 @@ async function saveContent(context, headers) {
   const updateRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/content/site.yaml`, {
     method: 'PUT',
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message: 'Update site content via admin panel',
-      content: btoa(content),
-      sha: fileData.sha,
-      branch: GITHUB_BRANCH,
-    }),
+    body: JSON.stringify({ message: 'Update content via admin', content: btoa(content), sha: fileData.sha, branch: GITHUB_BRANCH }),
   });
 
   if (!updateRes.ok) {
     const err = await updateRes.text();
-    return new Response(JSON.stringify({ error: 'Save failed', detail: err }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: 'Save failed', detail: err.slice(0, 500) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
+  return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+}
+
+async function editContent(context, headers) {
+  const { locale, updates } = await context.request.json();
+
+  const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/content/site.yaml?ref=${GITHUB_BRANCH}`, { headers });
+  if (!res.ok) return new Response(JSON.stringify({ error: 'Failed to load content' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  const fileData = await res.json();
+  let yaml = atob(fileData.content.replace(/\n/g, ''));
+
+  for (const [key, val] of Object.entries(updates)) {
+    const parts = key.split('.');
+    if (parts.length >= 2) {
+      const section = parts[0];
+      const fieldKey = parts.slice(1).join('.');
+      const regex = new RegExp(`(${section}:\\n(?:[ ]{2}\\w+:\\n)*(?:[ ]{4}${locale}:\\n)(?:[ ]{6}\\w+: [^\\n]*\\n)*[ ]{6}${fieldKey}: ).*`, 'm');
+      yaml = yaml.replace(regex, '$1' + val);
+    }
   }
 
+  const updateRes = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/content/site.yaml`, {
+    method: 'PUT',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'Visual edit via admin', content: btoa(yaml), sha: fileData.sha, branch: GITHUB_BRANCH }),
+  });
+
+  if (!updateRes.ok) {
+    const err = await updateRes.text();
+    return new Response(JSON.stringify({ error: 'Save failed', detail: err.slice(0, 500) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
   return new Response(JSON.stringify({ success: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 }
