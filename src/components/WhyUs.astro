@@ -5,26 +5,10 @@ export interface Props {
 const { t } = Astro.props;
 
 const features = [
-  {
-    icon: 'globe',
-    title: t.whyUs.indonesia,
-    desc: t.whyUs.indonesiaDesc,
-  },
-  {
-    icon: 'shield',
-    title: t.whyUs.quality,
-    desc: t.whyUs.qualityDesc,
-  },
-  {
-    icon: 'flexible',
-    title: t.whyUs.flexible,
-    desc: t.whyUs.flexibleDesc,
-  },
-  {
-    icon: 'flask',
-    title: t.whyUs.rnd,
-    desc: t.whyUs.rndDesc,
-  },
+  { icon: 'globe', title: t.whyUs.indonesia, desc: t.whyUs.indonesiaDesc },
+  { icon: 'shield', title: t.whyUs.quality, desc: t.whyUs.qualityDesc },
+  { icon: 'flexible', title: t.whyUs.flexible, desc: t.whyUs.flexibleDesc },
+  { icon: 'flask', title: t.whyUs.rnd, desc: t.whyUs.rndDesc },
 ];
 
 const icons: Record<string, string> = {
@@ -35,22 +19,22 @@ const icons: Record<string, string> = {
 };
 ---
 
-<section class="py-16 md:py-24 bg-white">
+<section class="py-16 md:py-24 bg-white overflow-hidden">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="text-center mb-16">
+    <div class="text-center mb-16" data-reveal>
       <h2 class="section-title">{t.whyUs.title}</h2>
       <p class="section-subtitle">{t.whyUs.subtitle}</p>
     </div>
 
-    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8" data-stagger data-reveal>
       {features.map((f) => (
-        <div class="bg-brand-cream rounded-2xl p-8 text-center hover:shadow-lg transition-shadow duration-300">
-          <div class="w-14 h-14 bg-primary-100 rounded-xl flex items-center justify-center mx-auto mb-6">
+        <div class="group bg-gradient-to-br from-brand-cream to-white rounded-2xl p-8 text-center hover:shadow-2xl hover:shadow-primary-600/10 transition-all duration-500 hover:-translate-y-1 border border-transparent hover:border-primary-100">
+          <div class="w-14 h-14 bg-gradient-to-br from-primary-100 to-primary-50 rounded-xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 group-hover:from-primary-200 group-hover:to-primary-100 transition-all duration-300">
             <svg class="w-7 h-7 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d={icons[f.icon]} />
             </svg>
           </div>
-          <h3 class="text-lg font-semibold text-brand-dark mb-3">{f.title}</h3>
+          <h3 class="text-lg font-semibold text-brand-dark mb-3 group-hover:text-primary-700 transition-colors">{f.title}</h3>
           <p class="text-gray-600 text-sm leading-relaxed">{f.desc}</p>
         </div>
       ))}

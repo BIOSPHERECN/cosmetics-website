@@ -4,70 +4,80 @@ export interface Props {
   locale: string;
 }
 const { t, locale } = Astro.props;
+const stats = [
+  { value: '14+', key: t.stats.years },
+  { value: '500+', key: t.stats.products },
+  { value: '200+', key: t.stats.clients },
+  { value: '15+', key: t.stats.countries },
+];
 ---
 
-<section class="relative min-h-screen bg-gradient-to-br from-brand-cream via-white to-primary-50 pt-20">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24">
-    <div class="grid lg:grid-cols-2 gap-12 items-center">
-      <div class="text-center lg:text-left">
-        <span class="inline-block px-4 py-1.5 bg-primary-100 text-primary-700 text-sm font-medium rounded-full mb-6">
+<section class="relative min-h-screen hero-gradient overflow-hidden pt-20">
+  <canvas id="hero-particles" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+
+  <div class="absolute top-20 right-[-10%] w-96 h-96 bg-primary-300/20 rounded-full blur-3xl animate-float"></div>
+  <div class="absolute bottom-20 left-[-5%] w-80 h-80 bg-brand-gold/10 rounded-full blur-3xl" style="animation: float 6s ease-in-out infinite reverse;"></div>
+
+  <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
+    <div class="grid lg:grid-cols-2 gap-12 items-center min-h-[70vh]">
+      <div class="text-center lg:text-left" data-reveal>
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-white/80 backdrop-blur-sm text-primary-700 text-sm font-medium rounded-full mb-6 shadow-sm border border-primary-100">
+          <span class="w-2 h-2 bg-primary-500 rounded-full animate-pulse"></span>
           14+ Years of Excellence
-        </span>
+        </div>
+
         <h1 class="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-brand-dark leading-tight">
           {t.hero.title}
         </h1>
-        <p class="mt-6 text-lg md:text-xl text-gray-600 leading-relaxed">
+
+        <p class="mt-6 text-lg md:text-xl text-gray-600 leading-relaxed max-w-xl lg:mx-0" data-reveal data-reveal-delay="150">
           {t.hero.subtitle}
         </p>
-        <div class="mt-8 flex flex-wrap gap-4 justify-center lg:justify-start">
-          <a href={`/${locale}/contact`} class="btn-primary text-base px-8 py-4">
-            {t.hero.cta}
+
+        <div class="mt-10 flex flex-wrap gap-4 justify-center lg:justify-start" data-reveal data-reveal-delay="300">
+          <a href={`/${locale}/contact`} class="btn-primary text-base px-8 py-4 shadow-lg shadow-primary-600/25 hover:shadow-primary-600/40 animate-glow">
+            <span class="relative z-10">{t.hero.cta}</span>
           </a>
-          <a href={`/${locale}/about`} class="btn-outline text-base px-8 py-4">
-            {t.hero.learnMore}
+          <a href={`/${locale}/about`} class="btn-outline text-base px-8 py-4 group">
+            <span>{t.hero.learnMore}</span>
+            <svg class="w-4 h-4 ml-2 inline group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </a>
         </div>
       </div>
 
-      <div class="hidden lg:block">
+      <div class="hidden lg:flex items-center justify-center" data-reveal="scale" data-reveal-delay="200">
         <div class="relative">
-          <div class="w-full aspect-square bg-gradient-to-br from-primary-200 to-primary-400 rounded-2xl overflow-hidden shadow-2xl">
-            <div class="absolute inset-0 flex items-center justify-center">
-              <div class="text-center text-white p-8">
-                <svg class="w-24 h-24 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
-                </svg>
-                <p class="text-2xl font-serif font-bold">Premium Quality</p>
-                <p class="mt-2 opacity-80">Cosmetics Manufacturing</p>
+          <div class="w-96 h-96 rounded-full bg-gradient-to-br from-primary-400/30 via-primary-200/20 to-brand-gold/10 animate-float flex items-center justify-center">
+            <div class="w-72 h-72 rounded-full bg-gradient-to-br from-primary-500/20 to-primary-300/10 backdrop-blur-sm border border-white/30 flex items-center justify-center shadow-2xl">
+              <div class="text-center p-8">
+                <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-primary-600/90 flex items-center justify-center shadow-lg">
+                  <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                  </svg>
+                </div>
+                <p class="text-2xl font-serif font-bold text-primary-800">Premium Quality</p>
+                <p class="mt-2 text-primary-600/80">Cosmetics Manufacturing</p>
               </div>
             </div>
           </div>
-          <div class="absolute -bottom-6 -right-6 w-32 h-32 bg-brand-gold rounded-full opacity-20"></div>
-          <div class="absolute -top-6 -left-6 w-24 h-24 bg-primary-300 rounded-full opacity-20"></div>
+          <div class="absolute -bottom-4 -right-4 w-28 h-28 bg-brand-gold/20 rounded-full blur-xl"></div>
+          <div class="absolute -top-4 -left-4 w-20 h-20 bg-primary-300/30 rounded-full blur-xl"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="relative bg-white border-y border-gray-100">
+  <div class="relative z-10 bg-white/80 backdrop-blur-sm border-t border-gray-100" data-reveal>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-        <div>
-          <div class="text-3xl md:text-4xl font-bold text-primary-600">14+</div>
-          <div class="text-sm text-gray-500 mt-1">{t.stats.years}</div>
-        </div>
-        <div>
-          <div class="text-3xl md:text-4xl font-bold text-primary-600">500+</div>
-          <div class="text-sm text-gray-500 mt-1">{t.stats.products}</div>
-        </div>
-        <div>
-          <div class="text-3xl md:text-4xl font-bold text-primary-600">200+</div>
-          <div class="text-sm text-gray-500 mt-1">{t.stats.clients}</div>
-        </div>
-        <div>
-          <div class="text-3xl md:text-4xl font-bold text-primary-600">15+</div>
-          <div class="text-sm text-gray-500 mt-1">{t.stats.countries}</div>
-        </div>
+        {stats.map((s, i) => (
+          <div class="group" data-reveal data-reveal-delay={i * 100}>
+            <div class="text-3xl md:text-4xl font-bold text-primary-600 group-hover:scale-110 transition-transform duration-300">
+              <span data-count={parseInt(s.value)} data-count-suffix={s.value.includes('+') ? '+' : ''}>{s.value}</span>
+            </div>
+            <div class="text-sm text-gray-500 mt-1">{s.key}</div>
+          </div>
+        ))}
       </div>
     </div>
   </div>

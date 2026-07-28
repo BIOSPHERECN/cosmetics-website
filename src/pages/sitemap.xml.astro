@@ -1,0 +1,22 @@
+---
+const siteUrl = 'https://cosmetics-website-5t8.pages.dev';
+const locales = ['en', 'id', 'zh'];
+const pages = ['', 'about', 'products', 'services', 'contact'];
+
+const urls = locales.flatMap((locale) =>
+  pages.map((page) => {
+    const path = page ? `/${locale}/${page}` : `/${locale}/`;
+    return `
+  <url>
+    <loc>${siteUrl}${path}</loc>
+    <changefreq>monthly</changefreq>
+    <priority>${page === '' ? '1.0' : '0.8'}</priority>
+  </url>`;
+  })
+);
+---
+
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+{urls.map((u) => u)}
+</urlset>

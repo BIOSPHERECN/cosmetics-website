@@ -1,0 +1,341 @@
+nav:
+  en:
+    home: Home
+    about: About Us
+    products: Products
+    services: OEM/ODM
+    contact: Contact
+  id:
+    home: Beranda
+    about: Tentang Kami
+    products: Produk
+    services: OEM/ODM
+    contact: Kontak
+  zh:
+    home: 首页
+    about: 关于我们
+    products: 产品中心
+    services: OEM/ODM
+    contact: 联系我们
+
+hero:
+  en:
+    title: Your Trusted OEM/ODM Partner for Premium Cosmetics
+    subtitle: 14+ years of excellence in cosmetic manufacturing with deep expertise in the Indonesian market
+    cta: Request a Quote
+    learnMore: Learn More
+  id:
+    title: Mitra OEM/ODM Terpercaya untuk Kosmetik Premium
+    subtitle: 14+ tahun pengalaman di manufaktur kosmetik dengan keahlian mendalam di pasar Indonesia
+    cta: Minta Penawaran
+    learnMore: Pelajari Lebih Lanjut
+  zh:
+    title: 您值得信赖的高端化妆品OEM/ODM合作伙伴
+    subtitle: 14年以上化妆品制造经验，深耕印尼市场，助力您的品牌成功
+    cta: 获取报价
+    learnMore: 了解更多
+
+stats:
+  en:
+    years: Years of Experience
+    products: Products Manufactured
+    clients: Global Clients
+    countries: Countries Exported
+  id:
+    years: Tahun Pengalaman
+    products: Produk Diproduksi
+    clients: Klien Global
+    countries: Negara Tujuan Ekspor
+  zh:
+    years: 年行业经验
+    products: 款产品制造
+    clients: 全球客户
+    countries: 出口国家
+
+about:
+  en:
+    title: About Our Factory
+    subtitle: With over 14 years of specialization in OEM/ODM manufacturing, we are the trusted partner behind many successful cosmetic brands in Indonesia and beyond.
+    mission: Empowering brands with high-quality, innovative cosmetic manufacturing solutions that bring their vision to life.
+    vision: To be the leading cosmetic OEM/ODM manufacturer recognized globally for quality, innovation, and reliability.
+    experience: 14+ Years
+    experienceDesc: Deep industry expertise and proven track record
+    quality: Quality First
+    qualityDesc: Strict quality control at every production stage
+    innovation: Innovation Driven
+    innovationDesc: Continuous R&D to bring you market-leading products
+  id:
+    title: Tentang Pabrik Kami
+    subtitle: Dengan lebih dari 14 tahun spesialisasi di manufaktur OEM/ODM, kami adalah mitra tepercaya di belakang banyak merek kosmetik sukses di Indonesia dan sekitarnya.
+    mission: Memberdayakan merek dengan solusi manufaktur kosmetik berkualitas tinggi dan inovatif yang mewujudkan visi mereka.
+    vision: Menjadi produsen OEM/ODM kosmetik terkemuka yang diakui secara global untuk kualitas, inovasi, dan keandalan.
+    experience: 14+ Tahun
+    experienceDesc: Keahlian industri yang mendalam dan rekam jejak terbukti
+    quality: Utamakan Kualitas
+    qualityDesc: Kontrol kualitas ketat di setiap tahap produksi
+    innovation: Didorong Inovasi
+    innovationDesc: R&D berkelanjutan untuk menghadirkan produk terdepan di pasar
+  zh:
+    title: 关于我们
+    subtitle: 拥有超过14年OEM/ODM制造经验，我们是印尼及众多成功化妆品品牌背后的 trusted 合作伙伴。
+    mission: 以高品质、创新的化妆品制造解决方案赋能品牌，将您的愿景变为现实。
+    vision: 成为全球公认的化妆品OEM/ODM制造商，以质量、创新和可靠性著称。
+    experience: 14+年
+    experienceDesc: 深厚的行业专业知识和 proven track record
+    quality: 质量为先
+    qualityDesc: 每个生产阶段严格把控质量
+    innovation: 创新驱动
+    innovationDesc: 持续研发，为您带来市场领先产品
+
+footer:
+  en:
+    rights: All rights reserved.
+    quickLinks: Quick Links
+    contactUs: Contact Us
+    privacy: Privacy Policy
+    terms: Terms of Service
+  id:
+    rights: Hak cipta dilindungi.
+    quickLinks: Tautan Cepat
+    contactUs: Hubungi Kami
+    privacy: Kebijakan Privasi
+    terms: Ketentuan Layanan
+  zh:
+    rights: 保留所有权利。
+    quickLinks: 快速链接
+    contactUs: 联系我们
+    privacy: 隐私政策
+    terms: 服务条款
+
+products:
+  en:
+    title: Our Products
+    subtitle: Comprehensive range of cosmetic products across multiple categories
+    oem: OEM/ODM Services
+    oemDesc: End-to-end manufacturing solutions tailored to your brand
+    categories:
+      - key: skincare
+        name: Skincare
+        desc: Serums, moisturizers, cleansers, toners, and specialized treatments
+      - key: haircare
+        name: Hair Care
+        desc: Shampoos, conditioners, hair masks, and styling products
+      - key: bodycare
+        name: Body Care
+        desc: Body lotions, scrubs, creams, and body washes
+      - key: makeup
+        name: Makeup
+        desc: Foundations, lipsticks, eyeshadows, and more
+      - key: sunscreen
+        name: Sunscreen
+        desc: Sun protection creams, sprays, and after-sun care
+      - key: personal
+        name: Personal Care
+        desc: Deodorants, hand sanitizers, and personal hygiene products
+  id:
+    title: Produk Kami
+    subtitle: Rangkaian produk kosmetik lengkap di berbagai kategori
+    oem: Layanan OEM/ODM
+    oemDesc: Solusi manufaktur menyeluruh yang disesuaikan dengan merek Anda
+    categories:
+      - key: skincare
+        name: Perawatan Kulit
+        desc: Serum, pelembab, pembersih, toner, dan perawatan khusus
+      - key: haircare
+        name: Perawatan Rambut
+        desc: Sampo, kondisioner, masker rambut, dan produk styling
+      - key: bodycare
+        name: Perawatan Tubuh
+        desc: Lotion tubuh, scrub, krim, dan sabun mandi
+      - key: makeup
+        name: Rias
+        desc: Foundation, lipstik, eyeshadow, dan lainnya
+      - key: sunscreen
+        name: Tabir Surya
+        desc: Krim pelindung matahari, semprot, dan perawatan setelah matahari
+      - key: personal
+        name: Perawatan Pribadi
+        desc: Deodoran, hand sanitizer, dan produk kebersihan pribadi
+  zh:
+    title: 产品中心
+    subtitle: 涵盖多类别的全方位化妆品产品
+    oem: OEM/ODM服务
+    oemDesc: 为您的品牌量身定制的一站式制造解决方案
+    categories:
+      - key: skincare
+        name: 护肤
+        desc: 精华液、保湿霜、洁面乳、爽肤水及专业护理
+      - key: haircare
+        name: 护发
+        desc: 洗发水、护发素、发膜及造型产品
+      - key: bodycare
+        name: 身体护理
+        desc: 身体乳、磨砂膏、面霜及沐浴露
+      - key: makeup
+        name: 彩妆
+        desc: 粉底、口红、眼影等
+      - key: sunscreen
+        name: 防晒
+        desc: 防晒霜、防晒喷雾及晒后护理
+      - key: personal
+        name: 个人护理
+        desc: 除臭剂、免洗洗手液及个人卫生用品
+
+services:
+  en:
+    title: OEM / ODM Services
+    subtitle: From concept to finished product — we handle every step of the manufacturing process
+    capabilitiesTitle: Our Capabilities
+    process:
+      - title: Consultation & Briefing
+        desc: We discuss your vision, requirements, budget, and timeline to develop a clear project roadmap.
+      - title: Formula Development
+        desc: Our R&D team creates custom formulations tailored to your specifications and market needs.
+      - title: Sample Production
+        desc: We produce samples for your approval, ensuring every detail meets your expectations.
+      - title: Packaging Design
+        desc: We help you design and source packaging that reflects your brand identity.
+      - title: Mass Production
+        desc: Large-scale manufacturing with rigorous quality control at every stage.
+      - title: Logistics & Delivery
+        desc: We handle packaging, labeling, and shipping to your destination.
+    capabilities:
+      - Custom formulation development
+      - Halal-certified manufacturing
+      - GMP, ISO 22716 certified facilities
+      - Flexible MOQ to suit startups and established brands
+      - Private labeling and custom packaging
+      - Regulatory compliance support (BPOM, etc.)
+  id:
+    title: Layanan OEM / ODM
+    subtitle: Dari konsep hingga produk jadi — kami menangani setiap langkah proses manufaktur
+    capabilitiesTitle: Kapabilitas Kami
+    process:
+      - title: Konsultasi & Briefing
+        desc: Kami membahas visi, kebutuhan, anggaran, dan jadwal Anda untuk mengembangkan peta jalan proyek yang jelas.
+      - title: Pengembangan Formula
+        desc: Tim R&D kami menciptakan formulasi khusus yang disesuaikan dengan spesifikasi dan kebutuhan pasar Anda.
+      - title: Produksi Sampel
+        desc: Kami memproduksi sampel untuk persetujuan Anda, memastikan setiap detail memenuhi harapan Anda.
+      - title: Desain Kemasan
+        desc: Kami membantu Anda mendesain dan mencari kemasan yang mencerminkan identitas merek Anda.
+      - title: Produksi Massal
+        desc: Manufaktur skala besar dengan kontrol kualitas ketat di setiap tahap.
+      - title: Logistik & Pengiriman
+        desc: Kami menangani pengemasan, pelabelan, dan pengiriman ke tujuan Anda.
+    capabilities:
+      - Pengembangan formulasi khusus
+      - Manufaktur bersertifikat Halal
+      - Fasilitas bersertifikat GMP, ISO 22716
+      - MOQ fleksibel untuk startup dan merek mapan
+      - Pelabelan pribadi dan kemasan khusus
+      - Dukungan kepatuhan regulasi (BPOM, dll.)
+  zh:
+    title: OEM / ODM 服务
+    subtitle: 从概念到成品 — 我们处理制造过程的每一个环节
+    capabilitiesTitle: 我们的能力
+    process:
+      - title: 咨询与简报
+        desc: 我们与您讨论愿景、需求、预算和时间表，制定清晰的项目路线图。
+      - title: 配方开发
+        desc: 我们的研发团队根据您的规格和市场需求定制配方。
+      - title: 样品生产
+        desc: 我们生产样品供您确认，确保每个细节符合您的期望。
+      - title: 包装设计
+        desc: 我们帮助您设计和采购反映品牌形象的包装。
+      - title: 批量生产
+        desc: 大规模生产，每个环节都有严格的质量控制。
+      - title: 物流与交付
+        desc: 我们处理包装、贴标和运输到目的地的所有环节。
+    capabilities:
+      - 定制配方开发
+      - 清真认证生产
+      - GMP、ISO 22716认证工厂
+      - 灵活起订量，适合初创和成熟品牌
+      - 私标定制与定制包装
+      - 法规合规支持（BPOM等）
+
+contact:
+  en:
+    title: Get In Touch
+    subtitle: Ready to start your project? Contact us for a free consultation and quote.
+    formTitle: Send Us a Message
+    name: Your Name
+    email: Email Address
+    phone: Phone Number
+    message: Your Message
+    submit: Send Message
+    info: Contact Information
+    address: Factory Address
+    addressValue: Your Factory Address Here
+    emailUs: Email Us
+    callUs: Call Us
+    whatsapp: WhatsApp
+    followUs: Follow Us
+  id:
+    title: Hubungi Kami
+    subtitle: Siap memulai proyek Anda? Hubungi kami untuk konsultasi gratis dan penawaran.
+    formTitle: Kirim Pesan
+    name: Nama Anda
+    email: Alamat Email
+    phone: Nomor Telepon
+    message: Pesan Anda
+    submit: Kirim Pesan
+    info: Informasi Kontak
+    address: Alamat Pabrik
+    addressValue: Alamat Pabrik Anda di Sini
+    emailUs: Email Kami
+    callUs: Telepon Kami
+    whatsapp: WhatsApp
+    followUs: Ikuti Kami
+  zh:
+    title: 联系我们
+    subtitle: 准备好开始您的项目了吗？联系我们获取免费咨询和报价。
+    formTitle: 给我们留言
+    name: 您的姓名
+    email: 邮箱地址
+    phone: 电话号码
+    message: 您的留言
+    submit: 发送留言
+    info: 联系信息
+    address: 工厂地址
+    addressValue: 您的工厂地址
+    emailUs: 给我们发邮件
+    callUs: 给我们打电话
+    whatsapp: WhatsApp
+    followUs: 关注我们
+
+whyUs:
+  en:
+    title: Why Choose Us
+    subtitle: What sets us apart as your preferred manufacturing partner
+    indonesia: Indonesia Market Expertise
+    indonesiaDesc: Years of experience working with Indonesian brands, understanding local regulations, trends, and consumer preferences
+    quality: Certified Quality
+    qualityDesc: GMP, ISO 22716, and Halal certified facilities ensuring world-class standards
+    flexible: Flexible MOQ
+    flexibleDesc: Whether you are a startup or an established brand, we offer flexible minimum order quantities
+    rnd: R&D Innovation
+    rndDesc: In-house research and development team dedicated to creating unique, effective formulations
+  id:
+    title: Mengapa Memilih Kami
+    subtitle: Apa yang membedakan kami sebagai mitra manufaktur pilihan Anda
+    indonesia: Keahlian Pasar Indonesia
+    indonesiaDesc: Bertahun-tahun pengalaman bekerja dengan merek Indonesia, memahami regulasi lokal, tren, dan preferensi konsumen
+    quality: Kualitas Bersertifikat
+    qualityDesc: Fasilitas bersertifikat GMP, ISO 22716, dan Halal yang menjamin standar kelas dunia
+    flexible: MOQ Fleksibel
+    flexibleDesc: Baik Anda startup atau merek mapan, kami menawarkan jumlah pesanan minimum yang fleksibel
+    rnd: Inovasi R&D
+    rndDesc: Tim riset dan pengembangan internal yang berdedikasi menciptakan formulasi unik dan efektif
+  zh:
+    title: 为什么选择我们
+    subtitle: 让我们成为您首选制造合作伙伴的优势
+    indonesia: 印尼市场专长
+    indonesiaDesc: 多年与印尼品牌合作经验，了解当地法规、趋势和消费者偏好
+    quality: 认证质量
+    qualityDesc: GMP、ISO 22716和清真认证设施，确保世界级标准
+    flexible: 灵活起订量
+    flexibleDesc: 无论您是初创公司还是成熟品牌，我们提供灵活的起订量
+    rnd: 研发创新
+    rndDesc: 内部研发团队致力于创造独特、有效的配方

@@ -5,23 +5,79 @@ export interface Props {
   title: string;
   description: string;
   locale: string;
+  ogImage?: string;
+  canonical?: string;
 }
 
-const { title, description, locale } = Astro.props;
-const htmlLang = locale;
-const dir = locale === 'id' ? 'ltr' : 'ltr';
+const { title, description, locale, ogImage } = Astro.props;
+
+const siteUrl = 'https://cosmetics-website-5t8.pages.dev';
+const defaultOgImage = ogImage || `${siteUrl}/images/og-default.jpg`;
+
+const locales = [
+  { code: 'en', label: 'English' },
+  { code: 'id', label: 'Bahasa Indonesia' },
+  { code: 'zh', label: '中文' },
+];
+
+const currentPath = Astro.url.pathname;
+const canonical = Astro.props.canonical || `${siteUrl}${currentPath}`;
+
+function altUrl(loc: string): string {
+  return `${siteUrl}/${loc}${currentPath.replace(new RegExp(`^/${locale}`), '')}`;
+}
 ---
 
 <!doctype html>
-<html lang={htmlLang} dir={dir}>
+<html lang={locale} dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content={description} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={defaultOgImage} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content="CosmoCare" />
+    <meta property="og:locale" content={locale === 'zh' ? 'zh_CN' : locale === 'id' ? 'id_ID' : 'en_US'} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={defaultOgImage} />
+
+    {locales.map((l) => (
+      <link rel="alternate" hrefLang={l.code} href={altUrl(l.code)} />
+    ))}
+    <link rel="alternate" hrefLang="x-default" href={`${siteUrl}/en/`} />
+
+    <script type="application/ld+json">
+      {JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "CosmoCare",
+        "description": "Premium OEM/ODM cosmetics manufacturer with 14+ years of experience",
+        "url": siteUrl,
+        "logo": `${siteUrl}/favicon.svg`,
+        "address": { "@type": "PostalAddress", "addressCountry": "ID" },
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "telephone": "+62-xxx-xxxx-xxxx",
+          "contactType": "customer service",
+          "availableLanguage": ["English", "Indonesian", "Chinese"]
+        },
+        "sameAs": ["#", "#", "#"]
+      })}
+    </script>
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   </head>
   <body class="bg-white">
     <slot />
+    <script is:inline src="/scripts/animations.js"></script>
   </body>
 </html>

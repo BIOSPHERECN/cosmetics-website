@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://cosmetics-website-5t8.pages.dev/sitemap.xml
