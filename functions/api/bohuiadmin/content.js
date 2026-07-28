@@ -63,10 +63,18 @@ async function loadContent(GITHUB_TOKEN) {
   const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/content/site.yaml?ref=${GITHUB_BRANCH}`, {
     headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3+json' },
   });
-  if (!res.ok) return new Response(JSON.stringify({ error: 'Failed to load content' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  if (!res.ok) {
+    const errText = await res.text();
+    return new Response(JSON.stringify({ error: 'GitHub API error: ' + res.status, detail: errText }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
   const data = await res.json();
-  const content = atob(data.content.replace(/\n/g, ''));
-  return new Response(content, { status: 200, headers: { 'Content-Type': 'text/plain' } });
+  if (!data.content) return new Response(JSON.stringify({ error: 'GitHub response missing content', data: JSON.stringify(data).slice(0,200) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  try {
+    const content = atob(data.content.replace(/\n/g, ''));
+    return new Response(content, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: 'Base64 decode failed', msg: e.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  }
 }
 
 async function saveContent(context, GITHUB_TOKEN) {
