@@ -1,0 +1,33 @@
+/**
+ * 设计令牌(基座默认值)—— 高端化妆品基调:中性奶油色系、衬线标题、大留白。
+ * 令牌分层思路借鉴 Indivar/astro-fleet (MIT) 的 packages/config tokens 设计,
+ * 此处改为纯 CSS 变量实现:品牌皮肤用 [data-brand="…"] 选择器覆盖(特异性高于 :root,
+ * 与打包后的 CSS 顺序无关,覆盖稳定)。
+ * 字体一律系统字体栈,不外链任何字体服务。
+ */
+:root {
+  /* —— 色板(默认:奶油 + 墨色 + 古铜点缀)—— */
+  --ck-bg: #faf7f1;            /* 页面底色:奶油 */
+  --ck-surface: #ffffff;       /* 卡片/表单面 */
+  --ck-surface-warm: #f3ede2;  /* 暖调分区带 */
+  --ck-ink: #221d16;           /* 主文字 */
+  --ck-ink-soft: #5c544a;      /* 次级文字 */
+  --ck-line: #e6ddce;          /* 细线/分隔 */
+  --ck-accent: #8a6b4d;        /* 品牌点缀(古铜) */
+  --ck-accent-deep: #6f5439;   /* 点缀 hover 深一档 */
+  --ck-on-accent: #ffffff;     /* 点缀色上的文字 */
+
+  /* —— 字体(系统栈,含中日回退)—— */
+  --ck-font-serif: Georgia, 'Times New Roman', 'Songti SC', SimSun,
+    'Noto Serif CJK SC', PMingLiU, 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  --ck-font-sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans', 'Microsoft YaHei', Meiryo, Roboto, sans-serif;
+
+  /* —— 版式节奏 —— */
+  --ck-maxw: 72rem;            /* 内容最大宽 */
+  --ck-radius: 0.375rem;       /* 统一圆角(克制) */
+
+  /* —— 动效(仅 CSS 淡入/轻位移)—— */
+  --ck-dur: 0.7s;
+  --ck-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}

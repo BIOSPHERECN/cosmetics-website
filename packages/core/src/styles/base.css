@@ -1,0 +1,59 @@
+/**
+ * 基座基础样式:排版基调 + 克制动效(仅 CSS 淡入/轻位移)。
+ * 动效姿势借鉴 arthelokyo/astrowind (MIT) 的 motion-safe 淡入思路,
+ * 此处收敛为零 JS 的加载期动画,并尊重 prefers-reduced-motion。
+ */
+
+html {
+  background-color: var(--ck-bg);
+  color: var(--ck-ink);
+  font-family: var(--ck-font-sans);
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background-color: var(--ck-accent);
+  color: var(--ck-on-accent);
+}
+
+/* 键盘可达性:统一焦点环 */
+:focus-visible {
+  outline: 2px solid var(--ck-accent);
+  outline-offset: 2px;
+}
+
+/* 跳转主内容链接(屏幕阅读器/键盘用户) */
+.ck-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  background: var(--ck-surface);
+  color: var(--ck-ink);
+  border: 1px solid var(--ck-line);
+}
+.ck-skip-link:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+}
+
+/* —— 克制动效:加载期淡入 + 轻位移(零 JS)—— */
+@media (prefers-reduced-motion: no-preference) {
+  .ck-fade-up {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: ck-fade-up var(--ck-dur) var(--ck-ease) forwards;
+  }
+  .ck-delay-1 { animation-delay: 0.12s; }
+  .ck-delay-2 { animation-delay: 0.24s; }
+  .ck-delay-3 { animation-delay: 0.36s; }
+
+  @keyframes ck-fade-up {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

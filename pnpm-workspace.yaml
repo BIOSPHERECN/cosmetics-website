@@ -1,0 +1,12 @@
+# monorepo 三层分离(结构借鉴 Indivar/astro-fleet, MIT):
+#   packages/* = 共享基座(组件/令牌/i18n)
+#   sites/*    = 每站品牌皮肤 + 页面组装
+#   content/   = 内容 JSON(不是包,由站点按品牌名读取)
+packages:
+  - packages/*
+  - sites/*
+
+# pnpm v10+ 默认拦截依赖的 postinstall 构建脚本,显式放行这两个(Astro 工具链需要)
+onlyBuiltDependencies:
+  - esbuild
+  - sharp

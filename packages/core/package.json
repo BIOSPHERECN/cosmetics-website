@@ -1,0 +1,17 @@
+{
+  "name": "@cosmetic/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "共享基座:设计令牌 / 共享组件 / i18n 字典工具(5 站复用,皮肤只做覆盖)",
+  "exports": {
+    "./components/*": "./src/components/*",
+    "./layouts/*": "./src/layouts/*",
+    "./styles/*": "./src/styles/*",
+    "./i18n": "./src/i18n/index.ts",
+    "./types": "./src/types.ts"
+  },
+  "peerDependencies": {
+    "astro": "^7.0.0"
+  }
+}
