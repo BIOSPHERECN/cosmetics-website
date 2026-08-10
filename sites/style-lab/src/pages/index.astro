@@ -1,0 +1,244 @@
+---
+/**
+ * 风格实验室 · 画廊索引 —— 创始人挑风格的主界面。
+ * 把 5 个域名 × 4 套候选风格的**真实页面**用 iframe 并排缩略展示,点开即全页。
+ * 缩略图不是截图,是活的页面 —— 所见即最终效果。
+ *
+ * 本页不对外收录(registry 里 style-lab.indexable=false,且 BaseLayout 默认 noindex)。
+ */
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import { SITES, STYLE_LAB, SCHOOLS } from '@cosmetic/core/registry';
+
+const SCHOOL_ZH = new Map(SCHOOLS.map((s) => [s.id, s.zh]));
+const total = SITES.reduce((n, s) => n + s.variants.length, 0);
+---
+
+<BaseLayout
+  locale="zh-cn"
+  school="factory-b2b"
+  variant="v1"
+  brand="style-lab"
+  siteName={STYLE_LAB.name}
+  siteUrl={STYLE_LAB.url}
+  path="/"
+  title={`帛卉集团 · ${total} 套候选风格并排评审`}
+  description="五个域名各 4 套候选风格的真实页面并排预览,供挑选定调。"
+  indexable={false}
+>
+  <header class="top">
+    <div class="ck-wrap">
+      <p class="ck-eyebrow">BOHUI GROUP · STYLE LAB</p>
+      <h1>{total} 套候选风格,并排挑</h1>
+      <p class="lead">
+        下面每一格都是<strong>活的真实页面</strong>(不是截图),用的是与 5 个真站完全相同的模板和内容 ——
+        所以格与格之间的差异,100% 来自风格本身。点「打开全页」可看完整效果。
+      </p>
+      <p class="warn">
+        ⚠ 页面里的产能数字、研发人数、认证清单全部是<strong>占位样例</strong>,尚未经你核实,
+        仅用于验证版式与风格。所有预览页与真站当前一律 noindex,不会被搜索引擎收录。
+      </p>
+    </div>
+  </header>
+
+  <main id="main">
+    {SITES.map((site) => (
+      <section class="brand ck-section">
+        <div class="ck-wrap">
+          <header class="bhead">
+            <span class="swatch" style={`background:${site.brandColor}`} aria-hidden="true"></span>
+            <div>
+              <h2>{site.name}</h2>
+              <p class="bmeta">
+                <span class="dom">{site.domain}</span>
+                <span class="sep">·</span>
+                <span>{site.nameZh}</span>
+              </p>
+            </div>
+          </header>
+
+          <ul class="grid">
+            {site.variants.map((v) => (
+              <li class="card">
+                <a class="shot" href={`/lab/${site.id}/${v.id}/`} title={`打开全页:${site.name} ${v.name}`}>
+                  <iframe
+                    src={`/lab/${site.id}/${v.id}/`}
+                    title={`${site.name} ${v.name} 预览`}
+                    loading="lazy"
+                    scrolling="no"
+                    tabindex="-1"
+                  ></iframe>
+                </a>
+                <div class="meta">
+                  <p class="vname">
+                    <span class="vid">{v.id.toUpperCase()}</span>
+                    {v.name}
+                    <span class="ven">{v.nameEn}</span>
+                  </p>
+                  <p class="school">流派:{SCHOOL_ZH.get(v.school) ?? v.school}</p>
+                  <p class="ref">对标:{v.ref}</p>
+                  <p class="note">{v.note}</p>
+                  <a class="open" href={`/lab/${site.id}/${v.id}/`}>打开全页 →</a>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    ))}
+  </main>
+
+  <footer class="ft">
+    <div class="ck-wrap">
+      <p>挑定后告诉我「站点 + 编号」(例:MEDIERBA 用 v2),我改 registry.ts 一处,该站即整体换装。</p>
+      <p class="dim">帛卉集团 BOHUI GROUP · 风格实验室 · 内部评审用,不对外</p>
+    </div>
+  </footer>
+</BaseLayout>
+
+<style>
+  .top {
+    background: var(--ck-hero-bg);
+    padding-block: 3.5rem 2.75rem;
+    border-bottom: 1px solid var(--ck-line);
+  }
+  .lead {
+    margin-top: 1rem;
+    max-width: 56rem;
+    color: var(--ck-ink-soft);
+  }
+  .warn {
+    margin-top: 1.25rem;
+    max-width: 56rem;
+    padding: 0.875rem 1.125rem;
+    border: 1px dashed var(--ck-accent);
+    border-radius: var(--ck-radius);
+    color: var(--ck-ink-soft);
+    font-size: var(--ck-small);
+  }
+  .warn strong { color: var(--ck-accent); }
+
+  .brand + .brand { border-top: 1px solid var(--ck-line); }
+  .bhead {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .swatch {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--ck-radius);
+    flex: none;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  }
+  .bmeta {
+    margin-top: 0.3125rem;
+    color: var(--ck-ink-faint);
+    font-size: var(--ck-small);
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .dom { font-family: var(--ck-font-mono); color: var(--ck-accent); }
+
+  .grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 420px);
+    justify-content: start;
+    gap: 1.75rem;
+  }
+  .card {
+    background: var(--ck-surface);
+    border: 1px solid var(--ck-line);
+    border-radius: var(--ck-radius-lg);
+    overflow: hidden;
+    transition: border-color var(--ck-dur) var(--ck-ease);
+  }
+  .card:hover { border-color: var(--ck-accent); }
+
+  /* 缩略图:真实页面按 0.3 缩放嵌入,不可交互(点击整块跳全页) */
+  .shot {
+    --s: 0.3;
+    display: block;
+    position: relative;
+    width: 420px;
+    height: 380px;
+    overflow: hidden;
+    background: #fff;
+    border-bottom: 1px solid var(--ck-line);
+  }
+  .shot iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1400px;
+    height: calc(380px / var(--s));
+    border: 0;
+    transform: scale(var(--s));
+    transform-origin: 0 0;
+    pointer-events: none;
+  }
+
+  .meta { padding: 1.125rem 1.25rem 1.375rem; }
+  .vname {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    font-family: var(--ck-font-head);
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--ck-ink);
+  }
+  .vid {
+    font-family: var(--ck-font-mono);
+    font-size: 0.6875rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: 3px;
+    background: var(--ck-accent-soft);
+    color: var(--ck-accent);
+    letter-spacing: 0.06em;
+  }
+  .ven {
+    font-weight: 400;
+    font-size: 0.75rem;
+    color: var(--ck-ink-faint);
+    letter-spacing: 0.04em;
+  }
+  .school, .ref {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--ck-ink-faint);
+  }
+  .note {
+    margin-top: 0.75rem;
+    font-size: var(--ck-small);
+    color: var(--ck-ink-soft);
+    line-height: 1.6;
+  }
+  .open {
+    display: inline-block;
+    margin-top: 1rem;
+    font-size: var(--ck-small);
+    color: var(--ck-accent);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .open:hover { text-decoration: underline; }
+
+  .ft {
+    border-top: 1px solid var(--ck-line);
+    padding-block: 2.25rem;
+    font-size: var(--ck-small);
+    color: var(--ck-ink-soft);
+  }
+  .dim { margin-top: 0.5rem; color: var(--ck-ink-faint); font-size: 0.75rem; }
+
+  @media (max-width: 480px) {
+    .grid { grid-template-columns: 1fr; }
+    .shot { width: 100%; height: 300px; }
+  }
+</style>

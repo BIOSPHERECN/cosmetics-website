@@ -2,7 +2,7 @@
  * BIOSPHERE-AI 品牌层覆盖(三层叠加最末层,特异性最高)
  * 品牌主色 #3b4a8c 取自帛卉集团品牌视觉图。
  * 这里只放「跨所有候选风格都成立」的品牌恒定项;
- * 各风格提案之间的差异放 packages/core/src/styles/variants/biosphere-ai.css。
+ * 各风格提案之间的差异放 packages/core/src/styles/variants.css 的 [data-brand][data-variant] 块。
  */
 [data-brand='biosphere-ai'] {
   --ck-brand: #3b4a8c;

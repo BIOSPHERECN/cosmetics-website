@@ -41,6 +41,17 @@ const {
 const base = siteUrl.replace(/\/$/, '');
 const canonical = `${base}${path}`;
 const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`;
+
+/**
+ * 收录闸门(默认关闭 —— 安全侧默认值)
+ * ────────────────────────────────────────────────────────────
+ * 只有构建时显式设置 PUBLIC_LIVE=1 才允许被搜索引擎收录。
+ * 原因:现阶段站内产能数字、认证清单均为占位样例,尚未经创始人核实;
+ * 未核实的功效/产能宣称一旦被收录,撤回成本极高且有合规风险。
+ * 正式域名接入、内容核实完毕后,在部署环境加 PUBLIC_LIVE=1 即全线开放收录。
+ */
+const liveIndexing = import.meta.env.PUBLIC_LIVE === '1';
+const allowIndex = indexable && liveIndexing;
 ---
 
 <!doctype html>
@@ -56,7 +67,7 @@ const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`;
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    {!indexable && <meta name="robots" content="noindex,nofollow" />}
+    {!allowIndex && <meta name="robots" content="noindex,nofollow" />}
 
     {/* hreflang:四语互指 + x-default 指向默认语言,与 sitemap 用同一张表 */}
     {LOCALES.map((l) => (

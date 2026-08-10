@@ -32,9 +32,14 @@ import sitemap from '@astrojs/sitemap';
 export default defineConfig({
   site: '${s.url}',
   trailingSlash: 'always',
-  build: { format: 'directory' },
+  build: { format: 'directory' },${
+    s.id === 'style-lab'
+      ? `
+  // 风格实验室的根路径就是画廊索引本身,不做语言重定向`
+      : `
   // 根路径落到默认语言(静态输出下 Astro 生成 meta-refresh 页,零运行时)
-  redirects: { '/': '/zh-cn/' },
+  redirects: { '/': '/zh-cn/' },`
+  }
   integrations: [${
     s.indexable
       ? `
@@ -57,20 +62,25 @@ const tsconfig = () => `{
 }
 `;
 
-const siteTs = (s) => `/**
- * ${s.name} 站点元信息 —— 由 tools/scaffold-sites.mjs 从 registry.ts 生成,手改会被覆盖。
- * 换风格只需在 registry.ts 改 defaultVariant,再跑一次生成器。
+/**
+ * site.ts 只做「从注册表取本站定义」的一行转发,不复制数据 ——
+ * 避免注册表改了、各站副本没跟上的经典不一致。
  */
-export const site = ${JSON.stringify(s, null, 2).replace(/"([a-zA-Z]\w*)":/g, '$1:')} as const;
+const siteTs = (s) => `/**
+ * ${s.name} 站点元信息 —— 由 tools/scaffold-sites.mjs 生成,手改会被覆盖。
+ * 只是从 registry.ts(唯一真源)取本站定义,不复制任何字段。
+ * 换风格:改 registry.ts 里本站的 defaultVariant 一处即可,无需重跑生成器。
+ */
+import { ${s.id === 'style-lab' ? 'STYLE_LAB' : 'getSite'} } from '@cosmetic/core/registry';
 
-export type SiteMeta = typeof site;
+export const site = ${s.id === 'style-lab' ? 'STYLE_LAB' : `getSite('${s.id}')`};
 `;
 
 const brandCss = (s) => `/**
  * ${s.name} 品牌层覆盖(三层叠加最末层,特异性最高)
  * 品牌主色 ${s.brandColor} 取自帛卉集团品牌视觉图。
  * 这里只放「跨所有候选风格都成立」的品牌恒定项;
- * 各风格提案之间的差异放 packages/core/src/styles/variants/${s.id}.css。
+ * 各风格提案之间的差异放 packages/core/src/styles/variants.css 的 [data-brand][data-variant] 块。
  */
 [data-brand='${s.id}'] {
   --ck-brand: ${s.brandColor};

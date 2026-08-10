@@ -1,0 +1,37 @@
+---
+/**
+ * 风格预览全页 —— 20 套候选风格,每套一个真实整页(不是截图、不是示意图)。
+ * 路由:/lab/<brand>/<variant>/   例:/lab/medierba/v2/ = MEDIERBA「墨玉东方」
+ *
+ * 渲染的是与 5 个真站**完全同一个** HomePage 模板与同一份内容,
+ * 所以并排比较时,差异 100% 来自风格本身,没有内容或版式的干扰变量。
+ *
+ * embedded 模式:关语言切换、导航指向 #、noindex —— 预览页不该被点出去、更不该被收录。
+ */
+import HomePage from '@cosmetic/core/layouts/HomePage.astro';
+import { ALL_VARIANTS, getSite, type SiteDef } from '@cosmetic/core/registry';
+import { getHome, EMAIL } from '@cosmetic/core/content';
+import type { Locale } from '@cosmetic/core/i18n';
+
+export function getStaticPaths() {
+  return ALL_VARIANTS.map(({ site, variant }) => ({
+    params: { brand: site.id, variant: variant.id },
+  }));
+}
+
+const { brand, variant } = Astro.params as { brand: string; variant: string };
+const site: SiteDef = getSite(brand);
+/** 预览统一用简体中文 —— 创始人评审语言;四语效果在真站上验 */
+const locale: Locale = 'zh-cn';
+---
+
+<HomePage
+  site={site}
+  variantId={variant}
+  locale={locale}
+  content={getHome(site.id, locale)}
+  email={EMAIL[site.id]}
+  embedded={true}
+  siteUrlOverride="http://localhost:4321"
+  pathOverride={`/lab/${brand}/${variant}/`}
+/>

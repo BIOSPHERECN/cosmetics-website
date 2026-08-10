@@ -5,7 +5,7 @@
  * 四个平台品牌互为生态。5 站互链既服务真实客户动线,也是矩阵站的自然内链结构。
  * 纪律:互链只指向本集团自有域名,不外链任何第三方。
  */
-import { LOCALES, LOCALE_LABELS, switchLocalePath, t, type Locale } from '../i18n/index.ts';
+import { LOCALES, LOCALE_LABELS, HREFLANG, switchLocalePath, t, type Locale } from '../i18n/index.ts';
 import type { SiteDef } from '../registry.ts';
 
 export interface Props {
@@ -18,12 +18,17 @@ export interface Props {
   /** 互链是否可点(实验室内嵌预览时置 false,避免跳出画廊) */
   linkSiblings?: boolean;
   showLocaleSwitch?: boolean;
+  /** 惰性模式:风格实验室的预览页用。站内导航指向 # 而非真实路径,避免点出 404 */
+  inert?: boolean;
 }
 
-const { locale, path, site, siblings, email, linkSiblings = true, showLocaleSwitch = true } = Astro.props;
+const {
+  locale, path, site, siblings, email,
+  linkSiblings = true, showLocaleSwitch = true, inert = false,
+} = Astro.props;
 const tr = t(locale);
 const year = 2026;
-const L = (p: string) => `/${locale}${p}`;
+const L = (p: string) => (inert ? '#' : `/${locale}${p}`);
 
 const nav: { key: Parameters<typeof tr>[0]; href: string }[] = [
   { key: 'nav.home', href: '/' },
@@ -85,7 +90,7 @@ const nav: { key: Parameters<typeof tr>[0]; href: string }[] = [
     {showLocaleSwitch && (
       <nav class="langs" aria-label={tr('lang.label')}>
         {LOCALES.map((l) => (
-          <a class:list={['lang', l === locale && 'on']} href={switchLocalePath(path, l)} hreflang={l}>
+          <a class:list={['lang', l === locale && 'on']} href={switchLocalePath(path, l)} hreflang={HREFLANG[l]}>
             {LOCALE_LABELS[l]}
           </a>
         ))}

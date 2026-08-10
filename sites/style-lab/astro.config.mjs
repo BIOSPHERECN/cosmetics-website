@@ -11,7 +11,6 @@ export default defineConfig({
   site: 'http://localhost:4321',
   trailingSlash: 'always',
   build: { format: 'directory' },
-  // 根路径落到默认语言(静态输出下 Astro 生成 meta-refresh 页,零运行时)
-  redirects: { '/': '/zh-cn/' },
+  // 风格实验室的根路径就是画廊索引本身,不做语言重定向
   integrations: [/* 风格实验室不对外收录,不产 sitemap */],
 });

@@ -5,7 +5,7 @@
  * 创始人提供正式 logo 后,只需替换 <Wordmark> 内的 SVG,不动任何版式。
  * 语言切换:纯静态四语互链,零 JS。
  */
-import { LOCALES, LOCALE_SHORT, LOCALE_LABELS, switchLocalePath, t, type Locale } from '../i18n/index.ts';
+import { LOCALES, LOCALE_SHORT, LOCALE_LABELS, HREFLANG, switchLocalePath, t, type Locale } from '../i18n/index.ts';
 
 export interface Props {
   locale: Locale;
@@ -17,9 +17,11 @@ export interface Props {
   siteNameZh: string;
   /** 语言切换是否可用(风格实验室内嵌预览时关掉,避免跳出画廊) */
   showLocaleSwitch?: boolean;
+  /** 惰性模式:风格实验室的预览页用。导航指向 # 而非真实路径,避免点出 404 */
+  inert?: boolean;
 }
 
-const { locale, path, siteName, siteNameZh, showLocaleSwitch = true } = Astro.props;
+const { locale, path, siteName, siteNameZh, showLocaleSwitch = true, inert = false } = Astro.props;
 const tr = t(locale);
 
 const nav: { key: Parameters<typeof tr>[0]; href: string }[] = [
@@ -27,7 +29,7 @@ const nav: { key: Parameters<typeof tr>[0]; href: string }[] = [
   { key: 'nav.brand', href: '/brand/' },
   { key: 'nav.contact', href: '/contact/' },
 ];
-const L = (p: string) => `/${locale}${p}`;
+const L = (p: string) => (inert ? '#' : `/${locale}${p}`);
 ---
 
 <header class="hdr">
@@ -58,7 +60,7 @@ const L = (p: string) => `/${locale}${p}`;
             <a
               class:list={['lang', l === locale && 'on']}
               href={switchLocalePath(path, l)}
-              hreflang={l}
+              hreflang={HREFLANG[l]}
               title={LOCALE_LABELS[l]}
               aria-current={l === locale ? 'true' : undefined}
             >{LOCALE_SHORT[l]}</a>

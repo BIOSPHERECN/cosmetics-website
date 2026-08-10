@@ -1,8 +1,6 @@
 ---
 /**
- * BEAUTY2OEM 首页 —— 薄壳:只负责「铺四语路由 + 把本站参数交给共享模板」。
- * 版式与版块全部在 @cosmetic/core/layouts/HomePage.astro,5 站共用同一份。
- * 换风格:改 registry.ts 里本站的 defaultVariant,不动本文件。
+ * SKIN2OEM 首页 —— 薄壳,见 beauty2oem 同名文件的说明。
  */
 import HomePage from '@cosmetic/core/layouts/HomePage.astro';
 import { LOCALES, type Locale } from '@cosmetic/core/i18n';
@@ -15,7 +13,7 @@ export function getStaticPaths() {
 }
 
 const locale = Astro.params.locale as Locale;
-const site = getSite('beauty2oem');
+const site = getSite('skin2oem');
 ---
 
 <HomePage site={site} locale={locale} content={getHome(site.id, locale)} email={EMAIL[site.id]} />
