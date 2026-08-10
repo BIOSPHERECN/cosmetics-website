@@ -1,0 +1,84 @@
+name: 构建并部署 6 站到 Cloudflare Pages
+
+# 触发:推到 bohui-monorepo 分支即自动上线;也可在 Actions 页手动触发。
+# 手动触发时可勾选 live=true 开放搜索引擎收录(仅在正式域名接入、内容核实完毕后使用)。
+on:
+  push:
+    branches: [bohui-monorepo]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+    inputs:
+      live:
+        description: '开放搜索引擎收录(内容核实完毕后才勾选)'
+        type: boolean
+        default: false
+
+# 同一分支只跑一条,后来的取消先前的,避免两次部署互相覆盖
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    strategy:
+      # 一个站失败不拖垮其余站 —— 其它站照常上线,失败的单独重跑
+      fail-fast: false
+      matrix:
+        site:
+          - style-lab
+          - beauty2oem
+          - skin2oem
+          - biosphere-ai
+          - medierba
+          - biosphere-oralcare
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 构建 ${{ matrix.site }}
+        env:
+          # 收录闸门:默认空 → BaseLayout 与 robots.txt 一律 noindex/Disallow。
+          # 只有手动触发且勾选 live 时才置 1。
+          PUBLIC_LIVE: ${{ github.event.inputs.live == 'true' && '1' || '' }}
+        run: pnpm --filter ${{ matrix.site }} build
+
+      - name: 校验构建产物
+        run: |
+          d=sites/${{ matrix.site }}/dist
+          test -f "$d/robots.txt" || { echo "::error::缺 robots.txt"; exit 1; }
+          test -f "$d/404.html"   || { echo "::error::缺 404 页"; exit 1; }
+          js=$(find "$d" -name '*.js' -type f | wc -l)
+          echo "JS 文件数=$js(纪律要求 0)"
+          test "$js" -eq 0 || { echo "::error::出现 JS 产物,违反零 JS 纪律"; exit 1; }
+          if [ "${{ github.event.inputs.live }}" != "true" ]; then
+            grep -q 'Disallow: /' "$d/robots.txt" || { echo "::error::预览态 robots 未禁抓"; exit 1; }
+          fi
+
+      - name: 发布到 Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: >-
+            pages deploy sites/${{ matrix.site }}/dist
+            --project-name bohui-${{ matrix.site }}
+            --branch main
