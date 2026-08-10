@@ -11,7 +11,8 @@
     "./i18n": "./src/i18n/index.ts",
     "./types": "./src/types.ts",
     "./registry": "./src/registry.ts",
-    "./content": "./src/content/index.ts"
+    "./content": "./src/content/index.ts",
+    "./robots": "./src/robots.ts"
   },
   "peerDependencies": {
     "astro": "^7.0.0"

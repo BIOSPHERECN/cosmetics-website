@@ -1,0 +1,14 @@
+---
+/**
+ * BEAUTY2OEM 404 页 —— 由 tools/scaffold-sites.mjs 生成,手改会被覆盖。
+ * 版式在 @cosmetic/core/layouts/NotFound.astro,6 个站共用。
+ */
+import NotFound from '@cosmetic/core/layouts/NotFound.astro';
+import { getSite } from '@cosmetic/core/registry';
+import { EMAIL } from '@cosmetic/core/content';
+import '../styles/brand.css';
+
+const site = getSite('beauty2oem');
+---
+
+<NotFound site={site} email={EMAIL[site.id] ?? 'contact@bohui.group'} />

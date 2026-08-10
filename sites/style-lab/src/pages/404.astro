@@ -1,0 +1,14 @@
+---
+/**
+ * 风格实验室 404 页 —— 由 tools/scaffold-sites.mjs 生成,手改会被覆盖。
+ * 版式在 @cosmetic/core/layouts/NotFound.astro,6 个站共用。
+ */
+import NotFound from '@cosmetic/core/layouts/NotFound.astro';
+import { STYLE_LAB } from '@cosmetic/core/registry';
+import { EMAIL } from '@cosmetic/core/content';
+import '../styles/brand.css';
+
+const site = STYLE_LAB;
+---
+
+<NotFound site={site} email={EMAIL[site.id] ?? 'contact@bohui.group'} />

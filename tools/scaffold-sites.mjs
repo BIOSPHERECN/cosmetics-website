@@ -87,12 +87,52 @@ const brandCss = (s) => `/**
 }
 `;
 
+/** 404 页 —— 静态站没有服务端路由,没这一页访客会看到 Cloudflare 的默认英文错误页 */
+const notFound = (s) => `---
+/**
+ * ${s.name} 404 页 —— 由 tools/scaffold-sites.mjs 生成,手改会被覆盖。
+ * 版式在 @cosmetic/core/layouts/NotFound.astro,6 个站共用。
+ */
+import NotFound from '@cosmetic/core/layouts/NotFound.astro';
+import { ${s.id === 'style-lab' ? 'STYLE_LAB' : 'getSite'} } from '@cosmetic/core/registry';
+import { EMAIL } from '@cosmetic/core/content';
+import '../styles/brand.css';
+
+const site = ${s.id === 'style-lab' ? 'STYLE_LAB' : `getSite('${s.id}')`};
+---
+
+<NotFound site={site} email={EMAIL[site.id] ?? 'contact@bohui.group'} />
+`;
+
+/** robots.txt —— 与 BaseLayout 的收录闸门同判据,抓取前就拦住(双层防护) */
+const robotsTxt = (s) => `import type { APIRoute } from 'astro';
+import { robotsBody } from '@cosmetic/core/robots';
+import { ${s.id === 'style-lab' ? 'STYLE_LAB' : 'getSite'} } from '@cosmetic/core/registry';
+
+/**
+ * ${s.name} robots.txt —— 由 tools/scaffold-sites.mjs 生成,手改会被覆盖。
+ * 默认(预览态)全站 Disallow;构建时设 PUBLIC_LIVE=1 才开放抓取。
+ */
+const site = ${s.id === 'style-lab' ? 'STYLE_LAB' : `getSite('${s.id}')`};
+
+export const GET: APIRoute = () =>
+  new Response(
+    robotsBody(site.url, {
+      indexable: site.indexable,
+      live: import.meta.env.PUBLIC_LIVE === '1',
+    }),
+    { headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
+  );
+`;
+
 const written = [];
 for (const s of ALL) {
   written.push(w(`sites/${s.id}/astro.config.mjs`, astroConfig(s)));
   written.push(w(`sites/${s.id}/tsconfig.json`, tsconfig()));
   written.push(w(`sites/${s.id}/src/site.ts`, siteTs(s)));
   written.push(w(`sites/${s.id}/src/styles/brand.css`, brandCss(s)));
+  written.push(w(`sites/${s.id}/src/pages/404.astro`, notFound(s)));
+  written.push(w(`sites/${s.id}/src/pages/robots.txt.ts`, robotsTxt(s)));
   const page = `sites/${s.id}/src/pages/[locale]/index.astro`;
   if (!existsSync(join(ROOT, page))) console.log(`  ⚠ 缺页面(需手写): ${page}`);
 }

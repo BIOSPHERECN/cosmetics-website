@@ -1,0 +1,117 @@
+---
+/**
+ * 404 页 —— 5 站 + 实验室共用。
+ * 静态站没有服务端路由,任何拼错的路径都会落到这里;
+ * 没有这一页,访客看到的是 Cloudflare 的默认英文错误页,与品牌完全脱节。
+ *
+ * 语言:静态输出下 404 只有一份,用默认语言(简体中文)并同时给出四语入口,
+ * 让任何语言的访客都能一键回到自己的版本。
+ */
+import BaseLayout from './BaseLayout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import { LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, localePath, t } from '../i18n/index.ts';
+import { SITES, getVariant, type SiteDef } from '../registry.ts';
+
+export interface Props {
+  site: SiteDef;
+  email: string;
+}
+
+const { site, email } = Astro.props;
+const locale = DEFAULT_LOCALE;
+const tr = t(locale);
+const variant = getVariant(site);
+const siblings = SITES.filter((s) => s.id !== site.id);
+---
+
+<BaseLayout
+  locale={locale}
+  school={variant.school}
+  variant={variant.id}
+  brand={site.id}
+  siteName={site.name}
+  siteUrl={site.url}
+  path="/404/"
+  title={tr('notfound.title')}
+  description={tr('notfound.body')}
+  indexable={false}
+  brandColor={site.brandColor}
+>
+  <a class="ck-skip-link" href="#main">{tr('a11y.skip')}</a>
+  <SiteHeader
+    locale={locale}
+    path={localePath(locale, '/')}
+    siteName={site.name}
+    siteNameZh={site.nameZh}
+  />
+
+  <main id="main" class="nf">
+    <div class="ck-wrap">
+      <p class="code" aria-hidden="true">404</p>
+      <h1>{tr('notfound.title')}</h1>
+      <p class="body">{tr('notfound.body')}</p>
+
+      <p class="back">
+        <a class="cta" href={localePath(locale, '/')}>{tr('notfound.back')}</a>
+      </p>
+
+      <nav class="langs" aria-label={tr('lang.label')}>
+        <span class="lbl">{tr('lang.label')}:</span>
+        {LOCALES.map((l) => (
+          <a href={localePath(l, '/')} hreflang={l}>{LOCALE_LABELS[l]}</a>
+        ))}
+      </nav>
+    </div>
+  </main>
+
+  <SiteFooter locale={locale} path={localePath(locale, '/')} site={site} siblings={siblings} email={email} />
+</BaseLayout>
+
+<style>
+  .nf {
+    padding-block: clamp(4rem, 12vh, 8rem);
+    background: var(--ck-bg);
+  }
+  .code {
+    font-family: var(--ck-font-mono);
+    font-size: clamp(3rem, 2rem + 6vw, 6rem);
+    font-weight: 700;
+    line-height: 1;
+    color: var(--ck-accent);
+    opacity: 0.28;
+    letter-spacing: -0.04em;
+  }
+  h1 { margin-top: 1rem; }
+  .body {
+    margin-top: 1rem;
+    max-width: var(--ck-maxw-prose);
+    color: var(--ck-ink-soft);
+  }
+  .back { margin-top: 2rem; }
+  .cta {
+    display: inline-block;
+    padding: 0.875rem 1.75rem;
+    background: var(--ck-accent);
+    color: var(--ck-on-accent);
+    border-radius: var(--ck-cta-radius);
+    text-decoration: none;
+    font-weight: var(--ck-cta-weight);
+    letter-spacing: var(--ck-cta-tracking);
+    text-transform: var(--ck-cta-transform);
+  }
+  .cta:hover { background: var(--ck-accent-deep); }
+
+  .langs {
+    margin-top: 2.5rem;
+    padding-top: 1.25rem;
+    border-top: var(--ck-border-w) solid var(--ck-line);
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    font-size: var(--ck-small);
+  }
+  .lbl { color: var(--ck-ink-faint); }
+  .langs a { color: var(--ck-ink-soft); text-decoration: none; }
+  .langs a:hover { color: var(--ck-accent); }
+</style>
