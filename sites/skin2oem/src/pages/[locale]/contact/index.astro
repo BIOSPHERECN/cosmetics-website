@@ -1,0 +1,20 @@
+---
+/**
+ * SKIN2OEM 询盘页 —— 由 tools/scaffold-sites.mjs 生成,手改会被覆盖。
+ * 版式在 @cosmetic/core/layouts/ContactPage.astro,5 个真站共用。
+ */
+import ContactPage from '@cosmetic/core/layouts/ContactPage.astro';
+import { LOCALES, type Locale } from '@cosmetic/core/i18n';
+import { getSite } from '@cosmetic/core/registry';
+import { EMAIL } from '@cosmetic/core/content';
+import '../../../styles/brand.css';
+
+export function getStaticPaths() {
+  return LOCALES.map((locale) => ({ params: { locale } }));
+}
+
+const locale = Astro.params.locale as Locale;
+const site = getSite('skin2oem');
+---
+
+<ContactPage site={site} locale={locale} email={EMAIL[site.id]} />

@@ -59,7 +59,8 @@ const siblings = SITES.filter((s) => s.id !== site.id);
 
 /** 预览模式下所有站内导航指向 #(实验室里点了不会掉进 404) */
 const contactHref = embedded ? '#' : localePath(locale, '/contact/');
-const productsHref = embedded ? '#' : localePath(locale, '/products/');
+/** 产品目录页未开工,Hero 的次要按钮暂不给链接(HomePage 会因此不渲染它) */
+const productsHref = undefined;
 
 /** 数字墙形态:深底流派走反白大字,浅底流派走同底细线 —— 由流派决定,不由内容决定 */
 const statTone: 'band' | 'plain' =

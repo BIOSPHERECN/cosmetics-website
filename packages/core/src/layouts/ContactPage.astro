@@ -1,0 +1,210 @@
+---
+/**
+ * 询盘页 —— 全线唯一的转化目标(B 端询盘,不是成交)。
+ * 首页每一个「发起询盘」按钮、页头 CTA、页脚都指向这里,所以它必须存在且好用。
+ *
+ * 零后端设计:静态站没有服务端,接第三方表单服务又会违反零外链纪律,
+ * 因此改用「邮件预填模板」——点按钮唤起邮件客户端,主题与正文清单已填好。
+ * B 端采购本就习惯邮件往来,且邮件天然留痕、可转发给同事,比表单更贴合真实动线。
+ */
+import BaseLayout from './BaseLayout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import { localePath, t, type Locale } from '../i18n/index.ts';
+import { SITES, getVariant, type SiteDef } from '../registry.ts';
+import { CONTACT } from '../content/shared.ts';
+
+export interface Props {
+  site: SiteDef;
+  locale: Locale;
+  email: string;
+}
+
+const { site, locale, email } = Astro.props;
+const tr = t(locale);
+const variant = getVariant(site);
+const c = CONTACT[locale];
+const path = localePath(locale, '/contact/');
+const siblings = SITES.filter((s) => s.id !== site.id);
+
+/** 预填邮件:主题带品牌名,正文把清单逐条列成待填项 —— 采购只需在冒号后补内容 */
+const mailBody = [
+  `${c.checklistTitle}:`,
+  '',
+  ...c.checklist.map((x) => `- ${x}: `),
+  '',
+  '—',
+  `${site.name} · ${site.domain}`,
+].join('\n');
+const mailto = `mailto:${email}?subject=${encodeURIComponent(`[${site.name}] ${c.mailSubject}`)}&body=${encodeURIComponent(mailBody)}`;
+---
+
+<BaseLayout
+  locale={locale}
+  school={variant.school}
+  variant={variant.id}
+  brand={site.id}
+  siteName={site.name}
+  siteUrl={site.url}
+  path={path}
+  title={c.title}
+  description={c.intro}
+  indexable={site.indexable}
+  brandColor={site.brandColor}
+>
+  <a class="ck-skip-link" href="#main">{tr('a11y.skip')}</a>
+  <SiteHeader locale={locale} path={path} siteName={site.name} siteNameZh={site.nameZh} />
+
+  <main id="main">
+    <section class="head">
+      <div class="ck-wrap">
+        <p class="ck-eyebrow">{site.name}</p>
+        <h1>{c.title}</h1>
+        <p class="intro">{c.intro}</p>
+      </div>
+    </section>
+
+    <section class="body ck-section">
+      <div class="ck-wrap cols">
+        <div class="col-main">
+          <h2>{c.checklistTitle}</h2>
+          <ol class="list">
+            {c.checklist.map((item, i) => (
+              <li>
+                <span class="n" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ol>
+          <p class="act">
+            <a class="cta" href={mailto}>{c.mailButton}</a>
+          </p>
+          <p class="hint">{c.note}</p>
+        </div>
+
+        <aside class="col-side">
+          <h2 class="sh">{c.directTitle}</h2>
+          <dl class="facts">
+            <div>
+              <dt>{c.emailLabel}</dt>
+              <dd><a class="mail" href={`mailto:${email}`}>{email}</a></dd>
+            </div>
+            <div>
+              <dt>{c.responseLabel}</dt>
+              <dd>{c.responseValue}</dd>
+            </div>
+            <div>
+              <dt>{c.langLabel}</dt>
+              <dd>{c.langValue}</dd>
+            </div>
+          </dl>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <SiteFooter locale={locale} path={path} site={site} siblings={siblings} email={email} />
+</BaseLayout>
+
+<style>
+  .head {
+    background: var(--ck-hero-bg);
+    color: var(--ck-hero-ink);
+    padding-block: clamp(3rem, 8vh, 5rem);
+  }
+  h1 { margin-top: 0.75rem; }
+  .intro {
+    margin-top: 1.125rem;
+    max-width: var(--ck-maxw-prose);
+    color: color-mix(in srgb, currentColor 76%, transparent);
+  }
+
+  .body { background: var(--ck-bg); }
+  .cols {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: start;
+  }
+
+  .list {
+    list-style: none;
+    margin: 1.75rem 0 0;
+    padding: 0;
+    border-top: var(--ck-rule-w) solid var(--ck-line-strong);
+  }
+  .list li {
+    display: flex;
+    gap: 1rem;
+    padding: 0.9375rem 0;
+    border-bottom: var(--ck-border-w) solid var(--ck-line);
+    color: var(--ck-ink-soft);
+  }
+  .n {
+    flex: none;
+    font-family: var(--ck-font-mono);
+    font-size: 0.75rem;
+    color: var(--ck-accent);
+    padding-top: 0.25rem;
+  }
+
+  .act { margin-top: 2rem; }
+  .cta {
+    display: inline-block;
+    padding: 0.9375rem 2rem;
+    background: var(--ck-accent);
+    color: var(--ck-on-accent);
+    border-radius: var(--ck-cta-radius);
+    text-decoration: none;
+    font-weight: var(--ck-cta-weight);
+    letter-spacing: var(--ck-cta-tracking);
+    text-transform: var(--ck-cta-transform);
+    transition: background var(--ck-dur) var(--ck-ease);
+  }
+  .cta:hover { background: var(--ck-accent-deep); }
+  .hint {
+    margin-top: 1.25rem;
+    font-size: var(--ck-small);
+    color: var(--ck-ink-faint);
+    max-width: var(--ck-maxw-prose);
+  }
+
+  .col-side {
+    padding: 1.75rem;
+    background: var(--ck-surface-alt);
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-top: var(--ck-rule-w) solid var(--ck-accent);
+    border-radius: var(--ck-radius-lg);
+  }
+  .sh {
+    font-size: var(--ck-h3);
+  }
+  .facts {
+    margin: 1.25rem 0 0;
+    display: grid;
+    gap: 1.125rem;
+  }
+  .facts dt {
+    font-size: 0.6875rem;
+    letter-spacing: var(--ck-tracking-eyebrow);
+    text-transform: var(--ck-eyebrow-transform);
+    color: var(--ck-ink-faint);
+    font-weight: 700;
+  }
+  .facts dd {
+    margin: 0.375rem 0 0;
+    font-size: var(--ck-small);
+    color: var(--ck-ink-soft);
+  }
+  .mail {
+    font-family: var(--ck-font-mono);
+    color: var(--ck-accent);
+    text-decoration: none;
+    word-break: break-all;
+  }
+  .mail:hover { text-decoration: underline; }
+
+  @media (max-width: 52rem) {
+    .cols { grid-template-columns: 1fr; }
+  }
+</style>

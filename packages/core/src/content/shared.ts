@@ -81,6 +81,119 @@ export const EMAIL: Record<string, string> = {
   'biosphere-oralcare': 'inquiry@biosphere-oralcare.com',
 };
 
+/**
+ * 询盘页文案(5 站共用结构,只有邮箱与品牌名不同)
+ * ───────────────────────────────────────────────────────────
+ * 零后端方案:不做表单 POST(静态站没有服务端,接第三方表单服务会违反零外链纪律),
+ * 改用「邮件预填模板」—— 点按钮直接唤起邮件客户端,主题与正文清单已填好。
+ * 这对 B 端采购反而更顺手:他们本来就习惯用邮件,且邮件天然留痕、可转发给同事。
+ * 后台落地后若需表单入库,再加一条服务端路由即可,本页版式不动。
+ */
+export const CONTACT: Record<Locale, {
+  title: string;
+  intro: string;
+  checklistTitle: string;
+  checklist: string[];
+  mailButton: string;
+  mailSubject: string;
+  directTitle: string;
+  emailLabel: string;
+  responseLabel: string;
+  responseValue: string;
+  langLabel: string;
+  langValue: string;
+  note: string;
+}> = {
+  'zh-cn': {
+    title: '发起询盘',
+    intro: '把需求写清楚,我们的回复才有价值。下面这几项信息填得越具体,我们第一封回信就能给到可执行的方案,而不是一句「请提供更多信息」。',
+    checklistTitle: '邮件里请包含',
+    checklist: [
+      '产品品类与剂型(例:精华 / 面霜 / 牙膏)',
+      '目标市场与销售渠道(决定合规路径与标签规则)',
+      '预估首单数量与年用量',
+      '期望上市时间',
+      '是否已有配方、包材或竞品参照',
+      '预算区间(可给范围,便于我们匹配方案)',
+    ],
+    mailButton: '用邮件发起询盘',
+    mailSubject: '询盘 · 产品开发需求',
+    directTitle: '直接联系',
+    emailLabel: '邮箱',
+    responseLabel: '回复时效',
+    responseValue: '两个工作日内书面回复',
+    langLabel: '沟通语言',
+    langValue: '中文 / English / 日本語',
+    note: '我们不做消费者零售,不设线上购物车;本站所有入口都指向 B 端询盘。',
+  },
+  'zh-tw': {
+    title: '發起詢價',
+    intro: '把需求寫清楚,我們的回覆才有價值。下列資訊填得越具體,我們第一封回信就能給出可執行的方案,而非一句「請提供更多資訊」。',
+    checklistTitle: '郵件中請包含',
+    checklist: [
+      '產品品類與劑型(例:精華 / 面霜 / 牙膏)',
+      '目標市場與銷售通路(決定法規路徑與標籤規則)',
+      '預估首單數量與年用量',
+      '期望上市時間',
+      '是否已有配方、包材或競品參照',
+      '預算區間(可給範圍,便於我們匹配方案)',
+    ],
+    mailButton: '用郵件發起詢價',
+    mailSubject: '詢價 · 產品開發需求',
+    directTitle: '直接聯絡',
+    emailLabel: '信箱',
+    responseLabel: '回覆時效',
+    responseValue: '兩個工作日內書面回覆',
+    langLabel: '溝通語言',
+    langValue: '中文 / English / 日本語',
+    note: '我們不做消費者零售,不設線上購物車;本站所有入口皆指向 B 端詢價。',
+  },
+  en: {
+    title: 'Start an inquiry',
+    intro: 'A clear brief earns a useful reply. The more specific the items below, the more our first response can be an actionable plan rather than a request for more information.',
+    checklistTitle: 'Please include in your email',
+    checklist: [
+      'Product category and format (e.g. serum, cream, toothpaste)',
+      'Target market and sales channel — these determine the regulatory path and labelling rules',
+      'Estimated first order quantity and annual volume',
+      'Intended launch date',
+      'Whether you already have a formula, packaging or a reference product',
+      'Budget range — a range is fine and helps us match the right approach',
+    ],
+    mailButton: 'Send an inquiry by email',
+    mailSubject: 'Inquiry · Product development brief',
+    directTitle: 'Direct contact',
+    emailLabel: 'Email',
+    responseLabel: 'Response time',
+    responseValue: 'Written reply within two working days',
+    langLabel: 'Working languages',
+    langValue: 'English / 中文 / 日本語',
+    note: 'We do not sell to consumers and run no online cart; every route on this site leads to a B2B inquiry.',
+  },
+  ja: {
+    title: 'お問い合わせ',
+    intro: 'ご要望が明確なほど、返信の価値も高まります。以下の項目を具体的にお書きいただけると、最初のご返信から実行可能な提案をお出しできます。',
+    checklistTitle: 'メールにご記載ください',
+    checklist: [
+      '製品カテゴリーと剤形(例:美容液 / クリーム / 歯みがき)',
+      '対象市場と販売チャネル(法規経路と表示ルールを左右します)',
+      '初回発注予定数量と年間数量',
+      '希望する発売時期',
+      '既存の処方・容器・参考製品の有無',
+      'ご予算帯(範囲で結構です。ご提案の精度が上がります)',
+    ],
+    mailButton: 'メールで問い合わせる',
+    mailSubject: 'お問い合わせ・製品開発のご相談',
+    directTitle: '直接のご連絡',
+    emailLabel: 'メール',
+    responseLabel: '回答期限',
+    responseValue: '2 営業日以内に書面でご回答',
+    langLabel: '対応言語',
+    langValue: '日本語 / 中文 / English',
+    note: '当社は一般消費者向けの販売を行わず、オンラインカートも設けていません。本サイトの導線はすべて法人様のお問い合わせに向かいます。',
+  },
+};
+
 /** 询盘带文案(B 端口吻,零促销件) */
 export const INQUIRY: Record<Locale, { title: string; body: string; button: string }> = {
   'zh-cn': {

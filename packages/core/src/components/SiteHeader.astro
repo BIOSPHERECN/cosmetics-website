@@ -24,9 +24,12 @@ export interface Props {
 const { locale, path, siteName, siteNameZh, showLocaleSwitch = true, inert = false } = Astro.props;
 const tr = t(locale);
 
+/**
+ * 导航只列**已建成**的页面。
+ * 产品目录与品牌故事页尚未开工(缺产品数据与实拍图),故暂不出现在导航里 ——
+ * 宁可导航少一项,也不要放一个点进去 404 的链接。页面建好后在此加回。
+ */
 const nav: { key: Parameters<typeof tr>[0]; href: string }[] = [
-  { key: 'nav.products', href: '/products/' },
-  { key: 'nav.brand', href: '/brand/' },
   { key: 'nav.contact', href: '/contact/' },
 ];
 const L = (p: string) => (inert ? '#' : `/${locale}${p}`);

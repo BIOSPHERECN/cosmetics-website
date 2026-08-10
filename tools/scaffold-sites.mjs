@@ -125,6 +125,29 @@ export const GET: APIRoute = () =>
   );
 `;
 
+/** 询盘页 —— 全线唯一转化目标,每站四语一份 */
+const contactPage = (s) => `---
+/**
+ * ${s.name} 询盘页 —— 由 tools/scaffold-sites.mjs 生成,手改会被覆盖。
+ * 版式在 @cosmetic/core/layouts/ContactPage.astro,5 个真站共用。
+ */
+import ContactPage from '@cosmetic/core/layouts/ContactPage.astro';
+import { LOCALES, type Locale } from '@cosmetic/core/i18n';
+import { getSite } from '@cosmetic/core/registry';
+import { EMAIL } from '@cosmetic/core/content';
+import '../../../styles/brand.css';
+
+export function getStaticPaths() {
+  return LOCALES.map((locale) => ({ params: { locale } }));
+}
+
+const locale = Astro.params.locale as Locale;
+const site = getSite('${s.id}');
+---
+
+<ContactPage site={site} locale={locale} email={EMAIL[site.id]} />
+`;
+
 const written = [];
 for (const s of ALL) {
   written.push(w(`sites/${s.id}/astro.config.mjs`, astroConfig(s)));
@@ -133,6 +156,10 @@ for (const s of ALL) {
   written.push(w(`sites/${s.id}/src/styles/brand.css`, brandCss(s)));
   written.push(w(`sites/${s.id}/src/pages/404.astro`, notFound(s)));
   written.push(w(`sites/${s.id}/src/pages/robots.txt.ts`, robotsTxt(s)));
+  // 风格实验室不是真站,不需要询盘页
+  if (s.id !== 'style-lab') {
+    written.push(w(`sites/${s.id}/src/pages/[locale]/contact/index.astro`, contactPage(s)));
+  }
   const page = `sites/${s.id}/src/pages/[locale]/index.astro`;
   if (!existsSync(join(ROOT, page))) console.log(`  ⚠ 缺页面(需手写): ${page}`);
 }

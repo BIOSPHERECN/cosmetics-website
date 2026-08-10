@@ -30,10 +30,9 @@ const tr = t(locale);
 const year = 2026;
 const L = (p: string) => (inert ? '#' : `/${locale}${p}`);
 
+/** 同 SiteHeader:只列已建成的页面,不放死链。产品目录与品牌故事页建好后加回。 */
 const nav: { key: Parameters<typeof tr>[0]; href: string }[] = [
   { key: 'nav.home', href: '/' },
-  { key: 'nav.products', href: '/products/' },
-  { key: 'nav.brand', href: '/brand/' },
   { key: 'nav.contact', href: '/contact/' },
 ];
 ---
