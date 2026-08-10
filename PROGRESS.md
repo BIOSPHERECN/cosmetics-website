@@ -42,18 +42,50 @@ tokens.css       schools.css                variants.css
 
 ---
 
-## 三、进度总账
+## 三、进度总账(2026-08-11 深夜施工完毕)
 
 | # | 球 | 状态 |
 |---|---|---|
-| 1 | 注册表升级:20 套风格定义(每套自带流派) | ✅ 完成 |
-| 2 | `variants.css`:20 套风格令牌覆盖层 | ✅ 完成 |
-| 3 | 信息架构组件(页头/Hero/品类矩阵/流程/证据/询盘带/页脚) | ✅ 完成 |
-| 4 | 5 站四语内容数据 | ⬜ **进行中,下一步就是它** |
-| 5 | 共享首页模板 + 5 站页面接通 | 🟡 模板已写完,5 站页面待接 |
-| 6 | 风格实验室:20 套真实全页 + 画廊索引 | ⬜ 未开始 |
-| 7 | 全量构建 + 实测真数字 + 本地预览 | ⬜ 未开始 |
-| 8 | 后台 CMS 选型调研(创始人新增要求) | 🟡 GitHub 真实数据已拿到,见第六节 |
+| 1 | 注册表升级:20 套风格定义(每套自带流派) | ✅ |
+| 2 | `variants.css`:20 套风格令牌覆盖层 | ✅ |
+| 3 | 信息架构组件(页头/Hero/品类矩阵/流程/证据/询盘带/页脚) | ✅ |
+| 4 | 5 站四语内容数据 | ✅ |
+| 5 | 共享首页模板 + 5 站页面接通 | ✅ |
+| 6 | 风格实验室:20 套真实全页 + 画廊索引 | ✅ |
+| 7 | 全量构建 + 实测真数字 | ✅ |
+| 8 | 后台 CMS 选型调研 | 🟡 真实数据已拿到,A/B 两案见第六节,**待创始人拍板** |
+| 9 | ship-gate 上线审计 + 修复 | ✅ 三项 FAIL 已清零 |
+| 10 | GitHub Actions 自动部署流水线 | 🟡 已写好推上去,**待创始人补两个 repo Secret** |
+| 11 | 询盘页 + 清零导航死链 | ✅ |
+| 12 | 产品目录页 `/products/` | ⬜ 缺产品数据与实拍图,已从导航移除 |
+| 13 | 品牌故事页 `/brand/` | ⬜ 未开工,已从导航移除 |
+
+### 已上线地址(全部 noindex,免费 pages.dev)
+
+| 站点 | 地址 |
+|---|---|
+| **风格实验室(先看这个)** | https://bohui-style-lab.pages.dev |
+| BEAUTY2OEM | https://bohui-beauty2oem.pages.dev |
+| SKIN2OEM | https://bohui-skin2oem.pages.dev |
+| BIOSPHERE-AI | https://bohui-biosphere-ai.pages.dev |
+| MEDIERBA | https://bohui-medierba.pages.dev |
+| BIOSPHERE-ORALCARE | https://bohui-biosphere-oralcare.pages.dev |
+
+代码在 `BIOSPHERECN/cosmetics-website` 的 **`bohui-monorepo` 分支**
+(创始人 7 月的旧版原型在 `master`/`main`,一字未动)。
+
+### 实测数字(全部亲测,非 build 自报)
+
+| 指标 | 实测值 |
+|---|---|
+| 首页 JS | **0 字节 / 0 个文件**(目标 ≤50KB) |
+| CSS(含全部 20 套风格) | 31.7 KB 未压缩 |
+| 四语路由 | 5 站 × 4 语,全生成 |
+| hreflang | 四语互指 + x-default,齐 |
+| 站内死链 | **0**(全站每个链接都验过有对应文件) |
+| 依赖漏洞 | 0 |
+| 外链请求 | 0(无图床/字体/CDN/统计) |
+| 收录闸门 | meta noindex + robots Disallow 双层 |
 
 ---
 
@@ -84,32 +116,65 @@ tools/scaffold-sites.mjs   从 registry 生成各站 astro.config/site.ts/brand.
 .env.example               凭据模板
 ```
 
-### 待做 ⬜
+### 后续新增(本轮已完成)✅
 ```
-packages/core/src/content/<siteId>.ts   5 站 × 4 语 HomeContent 数据  ← 下一步
-sites/<id>/src/pages/[locale]/index.astro   5 站首页薄壳(目前只有 beauty2oem 有旧版页面,需改写)
-sites/style-lab/src/pages/...           20 个预览全页 + 画廊索引
-.github/workflows/deploy.yml            CI 部署
+packages/core/src/
+  content/shared.ts        5 站共享:认证清单 / 询盘页文案 / 询盘带文案 / 邮箱
+  content/<siteId>.ts      5 站 × 4 语 HomeContent(★ 数字与认证为占位样例,待核实)
+  content/index.ts         内容索引 getHome(siteId, locale)
+  robots.ts                robots.txt 正文生成(与收录闸门同判据)
+  layouts/ContactPage.astro  询盘页(零后端:邮件预填模板)
+  layouts/NotFound.astro     404 页(6 站共用,含四语入口)
+sites/<id>/src/pages/
+  [locale]/index.astro           首页薄壳(20 行)
+  [locale]/contact/index.astro   询盘页薄壳(脚手架生成)
+  404.astro / robots.txt.ts      脚手架生成
+sites/style-lab/src/pages/
+  index.astro                          画廊索引(iframe 并排 20 格)
+  lab/[brand]/[variant]/index.astro    20 个真实全页预览
+.github/workflows/deploy.yml     CI:矩阵并行 6 站 + 产物校验闸门
+.gitattributes                   统一 LF,消除提交时刷屏的 CRLF 警告
 ```
 
-⚠️ **注意**:`sites/beauty2oem/src/pages/[locale]/index.astro` 是升级前的旧版页面
-(自己写死 hero,没用 HomePage 模板),接通时要**改写**它。
+### 仍缺 ⬜
+```
+sites/<id>/src/pages/[locale]/products/   产品目录页(缺产品数据与实拍图)
+sites/<id>/src/pages/[locale]/brand/      品牌故事页(缺工厂实景与团队信息)
+```
+这两项已从页头页脚导航移除 —— **宁可导航少一项,也不要放点进去 404 的链接**。
+建好后把 `nav` 数组里的两行加回 `SiteHeader.astro` 与 `SiteFooter.astro`。
 
 ---
 
 ## 五、下一步该干什么(按序)
 
-1. **写内容数据** `packages/core/src/content/{beauty2oem,skin2oem,biosphere-ai,medierba,biosphere-oralcare}.ts`
-   每个导出 `Record<Locale, HomeContent>`。内容取自创始人品牌视觉图的定位与四项能力。
-   ⚠️ **数字与认证一律是占位样例**,文件顶部必须写明 `TODO(创始人核实)`;
-   预览部署一律 noindex,防止未核实的产能数字被搜索引擎收录。
-2. **接通 5 站首页**:每站 `[locale]/index.astro` 改成薄壳,`getStaticPaths` 铺四语,
-   渲染 `<HomePage site={site} locale={locale} content={CONTENT[locale]} email=… />`。
-3. **建风格实验室**:`sites/style-lab/src/pages/lab/[brand]/[variant]/index.astro`
-   用 `ALL_VARIANTS` 铺 20 个真实全页(`embedded` 模式:关语言切换、关跨站外链、noindex);
-   再做索引页用 `<iframe>` 缩略图并排 20 格,创始人点开即看。
-4. **全量构建实测**:6 个站 `pnpm build`,量四语路由数 / hreflang / 首页 JS 体积 / CSS 体积。
-5. **部署**:见第七节。
+### 等创始人拍板的(不许自作主张)
+
+1. **挑风格** —— 去 https://bohui-style-lab.pages.dev 看 20 套,告诉我「站点 + 编号」。
+   落地方式:改 `registry.ts` 里该站的 `defaultVariant` 一处 → 重新构建部署即整站换装。
+2. **后台选型** —— A 案 Directus(推荐)/ B 案 Keystatic,详见第六节。**没拍板不开工。**
+3. **核实占位数据** —— 产能、研发人数、交付国家数、认证清单全部待替换,
+   替换完成前不得设 `PUBLIC_LIVE=1`。
+
+### 不需要拍板、可以直接干的
+
+4. **建 `/products/` 产品目录页** —— 需要创始人先提供产品清单与实拍图;
+   数据结构已在 `types.ts` 定义好(`ProductsFile` / `Product`)。建完后把导航项加回
+   `SiteHeader.astro` 与 `SiteFooter.astro` 的 `nav` 数组。
+5. **建 `/brand/` 品牌故事页** —— 契约 `BrandPage` 已定义;需要创始人提供工厂实景与团队信息。
+6. **CSS 瘦身(可选)** —— 目前每个真站都打包了全部 20 套风格的令牌(31.7KB)。
+   实际只需自己那一套。可在 `BaseLayout` 改为按站条件引入,预计降到 ~12KB。
+   优先级低:gzip 后差异约 4KB,不值得为此增加构建复杂度。
+
+### 创始人醒来后要点两下的两件事
+
+- **让 CI 跑起来**:GitHub → `BIOSPHERECN/cosmetics-website` → Settings → Secrets and
+  variables → Actions → New repository secret,加两条:
+  `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`(值在本地 `.env` 里)。
+  加完后推代码即自动构建部署 6 站。
+  (当前 PAT 无 Secrets 写权限,我写不进去;在此之前用本地 wrangler 部署,照常可用。)
+- **可选**:若希望仓库转私有,GitHub → Settings → General → 最下方 Change visibility。
+  当前是公开仓,代码里无任何凭据,但内容策略由创始人定。
 
 ---
 

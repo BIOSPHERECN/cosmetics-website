@@ -1,0 +1,14 @@
+# 统一换行:仓库内一律 LF,检出到 Windows 工作区时由 git 自行处理。
+# 没有这一行,每次提交都刷一屏 "LF will be replaced by CRLF" 警告,真正的告警会被淹掉。
+* text=auto eol=lf
+
+# 二进制文件不做换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
