@@ -1,33 +1,82 @@
 /**
- * 设计令牌(基座默认值)—— 高端化妆品基调:中性奶油色系、衬线标题、大留白。
- * 令牌分层思路借鉴 Indivar/astro-fleet (MIT) 的 packages/config tokens 设计,
- * 此处改为纯 CSS 变量实现:品牌皮肤用 [data-brand="…"] 选择器覆盖(特异性高于 :root,
- * 与打包后的 CSS 顺序无关,覆盖稳定)。
- * 字体一律系统字体栈,不外链任何字体服务。
+ * 设计令牌 · 唯一契约(Single Source of Truth)
+ * ───────────────────────────────────────────────────────────────
+ * 架构:所有页面/组件只准读 --ck-* 变量,绝不写死颜色字号。
+ *   :root                → 中性默认值(任何 school 未覆盖的项都回退到这里)
+ *   [data-school="…"]    → 8 大风格流派覆盖(themes/*.css),来自《100家独立站风格调研》
+ *   [data-brand="…"]     → 单站品牌色覆盖(sites/<id>/src/styles/brand.css),特异性最高
+ * 三层叠加顺序 = 中性 → 流派 → 品牌,后者只覆盖需要改的几项。
+ * 字体一律系统字体栈,不外链任何字体服务(自主可控 + 零外部请求)。
  */
 :root {
-  /* —— 色板(默认:奶油 + 墨色 + 古铜点缀)—— */
-  --ck-bg: #faf7f1;            /* 页面底色:奶油 */
+  /* ── 表面与文字 ───────────────────────────── */
+  --ck-bg: #ffffff;            /* 页面底色 */
   --ck-surface: #ffffff;       /* 卡片/表单面 */
-  --ck-surface-warm: #f3ede2;  /* 暖调分区带 */
-  --ck-ink: #221d16;           /* 主文字 */
-  --ck-ink-soft: #5c544a;      /* 次级文字 */
-  --ck-line: #e6ddce;          /* 细线/分隔 */
-  --ck-accent: #8a6b4d;        /* 品牌点缀(古铜) */
-  --ck-accent-deep: #6f5439;   /* 点缀 hover 深一档 */
-  --ck-on-accent: #ffffff;     /* 点缀色上的文字 */
+  --ck-surface-alt: #f6f6f4;   /* 次级面(斑马纹/嵌套卡) */
+  --ck-band-bg: #f2f2ef;       /* 分区带(数字墙/认证墙背景) */
+  --ck-band-ink: #16181d;      /* 分区带上的文字色 —— 深底流派须覆盖为浅色,否则白字白底 */
+  --ck-ink: #16181d;           /* 主文字 */
+  --ck-ink-soft: #5a6070;      /* 次级文字 */
+  --ck-ink-faint: #8b91a1;     /* 三级文字(标注/表头) */
 
-  /* —— 字体(系统栈,含中日回退)—— */
+  /* ── 线条 ─────────────────────────────────── */
+  --ck-line: #e4e6ea;          /* 细线/分隔 */
+  --ck-line-strong: #c8ccd4;   /* 强调边框(表格/输入框) */
+  --ck-border-w: 1px;
+
+  /* ── 强调色 ───────────────────────────────── */
+  --ck-accent: #1f4e79;
+  --ck-accent-deep: #163a5a;   /* hover 深一档 */
+  --ck-accent-soft: #eaf1f8;   /* 强调色浅底(徽标/tag) */
+  --ck-on-accent: #ffffff;     /* 强调色上的文字 */
+
+  /* ── Hero 区(各流派差异最大的一块)────────── */
+  --ck-hero-bg: #f6f6f4;
+  --ck-hero-ink: var(--ck-ink);
+  --ck-hero-minh: 26rem;
+  /* Hero 装饰层:各风格用纯 CSS 渐变/网格制造质感,零图片零外链。默认无装饰。 */
+  --ck-hero-deco: none;
+  --ck-hero-deco-size: auto;
+
+  /* ── 字体栈(系统字体,含中日回退)──────────── */
+  --ck-font-head: system-ui, -apple-system, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans', 'Microsoft YaHei', Meiryo, Roboto, sans-serif;
+  --ck-font-body: system-ui, -apple-system, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans', 'Microsoft YaHei', Meiryo, Roboto, sans-serif;
   --ck-font-serif: Georgia, 'Times New Roman', 'Songti SC', SimSun,
     'Noto Serif CJK SC', PMingLiU, 'Hiragino Mincho ProN', 'Yu Mincho', serif;
-  --ck-font-sans: system-ui, -apple-system, 'Segoe UI', 'PingFang SC',
-    'Hiragino Sans', 'Microsoft YaHei', Meiryo, Roboto, sans-serif;
+  --ck-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Consolas,
+    'Liberation Mono', Menlo, monospace;
 
-  /* —— 版式节奏 —— */
-  --ck-maxw: 72rem;            /* 内容最大宽 */
-  --ck-radius: 0.375rem;       /* 统一圆角(克制) */
+  /* ── 字号与字重(clamp 自适应,不用 JS)────── */
+  --ck-h1: clamp(2rem, 1.2rem + 3.2vw, 3.5rem);
+  --ck-h2: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem);
+  --ck-h3: clamp(1.125rem, 1rem + 0.5vw, 1.375rem);
+  --ck-body: 1rem;
+  --ck-small: 0.875rem;
+  --ck-weight-head: 650;
+  --ck-weight-body: 400;
+  --ck-lh-head: 1.15;
+  --ck-lh-body: 1.7;
+  --ck-tracking-head: -0.015em;
+  --ck-tracking-eyebrow: 0.14em;
+  --ck-eyebrow-transform: uppercase;
 
-  /* —— 动效(仅 CSS 淡入/轻位移)—— */
-  --ck-dur: 0.7s;
+  /* ── 版式节奏 ─────────────────────────────── */
+  --ck-maxw: 75rem;            /* 内容最大宽 */
+  --ck-maxw-prose: 40rem;      /* 正文可读宽 */
+  --ck-gap: 1.5rem;            /* 网格间距 */
+  --ck-section-py: 4.5rem;     /* 分区上下留白 */
+  --ck-radius: 4px;
+  --ck-radius-lg: 8px;
+  --ck-shadow: none;           /* 多数流派克制,不用阴影 */
+  --ck-rule-w: 1px;            /* 分隔规则线宽(奢华系用极细,工厂系用较粗) */
+  --ck-cta-radius: var(--ck-radius);
+  --ck-cta-weight: 600;
+  --ck-cta-tracking: 0.01em;
+  --ck-cta-transform: none;
+
+  /* ── 动效(仅 CSS,尊重 prefers-reduced-motion)── */
+  --ck-dur: 0.5s;
   --ck-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 }

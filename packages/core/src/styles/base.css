@@ -4,12 +4,72 @@
  * 此处收敛为零 JS 的加载期动画,并尊重 prefers-reduced-motion。
  */
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 html {
   background-color: var(--ck-bg);
   color: var(--ck-ink);
-  font-family: var(--ck-font-sans);
+  font-family: var(--ck-font-body);
+  font-size: var(--ck-body);
+  line-height: var(--ck-lh-body);
   -webkit-font-smoothing: antialiased;
   scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--ck-font-head);
+  font-weight: var(--ck-weight-head);
+  line-height: var(--ck-lh-head);
+  letter-spacing: var(--ck-tracking-head);
+  margin: 0;
+}
+h1 { font-size: var(--ck-h1); }
+h2 { font-size: var(--ck-h2); }
+h3 { font-size: var(--ck-h3); }
+
+p { margin: 0; }
+
+img,
+svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+a {
+  color: inherit;
+}
+
+/* 内容宽度容器(所有分区共用,保证栅格严整) */
+.ck-wrap {
+  width: 100%;
+  max-width: var(--ck-maxw);
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 4vw, 2.5rem);
+}
+
+/* 分区上下留白 —— 留白量是各流派差异最大的一项,一律走令牌 */
+.ck-section {
+  padding-block: var(--ck-section-py);
+}
+
+/* 眉标(eyebrow):流派间字距与大小写差异明显 */
+.ck-eyebrow {
+  font-size: var(--ck-small);
+  letter-spacing: var(--ck-tracking-eyebrow);
+  text-transform: var(--ck-eyebrow-transform);
+  color: var(--ck-ink-faint);
+  font-weight: 600;
 }
 
 ::selection {

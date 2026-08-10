@@ -1,0 +1,138 @@
+---
+/**
+ * 共享首页模板 —— 「1 套模板撑 20 套风格」的关键件。
+ * ───────────────────────────────────────────────────────────────
+ * 5 个真站的首页、风格实验室里的 20 个预览页,渲染的都是本文件。
+ * 唯一差别是传进来的 site / variant / content 三个参数:
+ *   → 版式与内容完全一致,只有风格在变 ⇒ 创始人并排比较时看到的是纯粹的风格差异。
+ *
+ * 版块顺序即 PDF 钦定的 B 端落地页信息架构:
+ *   Hero → 数字墙 → 品类矩阵 → 服务流程 → 认证墙 →(可选)证据陈列 → 询盘带
+ * 纪律:零 JS、零外链、无购物车/支付/促销件。
+ */
+import BaseLayout from './BaseLayout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Hero from '../components/Hero.astro';
+import StatWall from '../components/StatWall.astro';
+import CategoryMatrix from '../components/CategoryMatrix.astro';
+import ProcessSteps from '../components/ProcessSteps.astro';
+import CertWall from '../components/CertWall.astro';
+import EvidenceGrid from '../components/EvidenceGrid.astro';
+import InquiryBand from '../components/InquiryBand.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import { localePath, t, type Locale } from '../i18n/index.ts';
+import { SITES, getVariant, type SiteDef } from '../registry.ts';
+import type { HomeContent } from '../types.ts';
+
+export interface Props {
+  site: SiteDef;
+  /** 指定风格;缺省用该站 defaultVariant。实验室按 URL 传入 v1..v4 */
+  variantId?: string;
+  locale: Locale;
+  content: HomeContent;
+  /** 询盘直连邮箱 */
+  email: string;
+  /**
+   * 内嵌预览模式(风格实验室的 iframe 用):
+   * 关掉语言切换与跨站外链,避免点着点着跳出画廊;并对搜索引擎 noindex。
+   */
+  embedded?: boolean;
+  /** 覆盖 canonical/hreflang 的基地址(实验室预览用本地地址) */
+  siteUrlOverride?: string;
+  /** 覆盖路径(实验室预览页的真实 URL) */
+  pathOverride?: string;
+}
+
+const {
+  site, variantId, locale, content, email,
+  embedded = false, siteUrlOverride, pathOverride,
+} = Astro.props;
+
+const variant = getVariant(site, variantId);
+const tr = t(locale);
+
+const path = pathOverride ?? localePath(locale, '/');
+const siteUrl = siteUrlOverride ?? site.url;
+
+/** 集团其余四站(页脚生态互链);内嵌预览时不可点 */
+const siblings = SITES.filter((s) => s.id !== site.id);
+
+const contactHref = localePath(locale, '/contact/');
+const productsHref = localePath(locale, '/products/');
+
+/** 数字墙形态:深底流派走反白大字,浅底流派走同底细线 —— 由流派决定,不由内容决定 */
+const statTone: 'band' | 'plain' =
+  variant.school === 'factory-b2b' || variant.school === 'tech-spec' ? 'band' : 'plain';
+
+/** 证据缺出处时的多语提示(合规:不让无出处功效宣称静默上线) */
+const PENDING: Record<Locale, string> = {
+  'zh-cn': '出处待补充',
+  'zh-tw': '出處待補充',
+  en: 'source pending',
+  ja: '出典未記載',
+};
+---
+
+<BaseLayout
+  locale={locale}
+  school={variant.school}
+  variant={variant.id}
+  brand={site.id}
+  siteName={site.name}
+  siteUrl={siteUrl}
+  path={path}
+  title={content.seo.title}
+  description={content.seo.description}
+  indexable={site.indexable && !embedded}
+>
+  <a class="ck-skip-link" href="#main">{tr('a11y.skip')}</a>
+
+  <SiteHeader
+    locale={locale}
+    path={path}
+    siteName={site.name}
+    siteNameZh={site.nameZh}
+    showLocaleSwitch={!embedded}
+  />
+
+  <main id="main">
+    <Hero hero={content.hero} ctaHref={contactHref} ctaSecondaryHref={productsHref} />
+
+    <StatWall title={content.stats.title} items={content.stats.items} tone={statTone} />
+
+    <CategoryMatrix
+      title={content.matrix.title}
+      intro={content.matrix.intro}
+      items={content.matrix.items}
+    />
+
+    <ProcessSteps
+      title={content.process.title}
+      intro={content.process.intro}
+      steps={content.process.steps}
+    />
+
+    <CertWall title={content.certs.title} note={content.certs.note} items={content.certs.items} />
+
+    {content.evidence && (
+      <EvidenceGrid
+        title={content.evidence.title}
+        intro={content.evidence.intro}
+        items={content.evidence.items}
+        pendingLabel={PENDING[locale]}
+      />
+    )}
+
+    <InquiryBand inquiry={content.inquiry} href={contactHref} email={email} />
+  </main>
+
+  <SiteFooter
+    locale={locale}
+    path={path}
+    site={site}
+    siblings={siblings}
+    email={email}
+    linkSiblings={!embedded}
+    showLocaleSwitch={!embedded}
+  />
+</BaseLayout>

@@ -1,0 +1,103 @@
+---
+/**
+ * 品类能力矩阵 —— PDF 钦定本厂信息架构第三件套(数字墙 / 认证墙 / 品类矩阵)。
+ * 对标 KDC-One 的「品类能力矩阵页」:B 端采购最想一眼看到「你到底能做哪些品类、做到什么程度」。
+ * 每格 = 一个能力域 + 该域下的具体条目;条目用细线分隔,不用图标(避免图标风格绑架流派)。
+ */
+import type { MatrixItem } from '../types.ts';
+
+export interface Props {
+  title: string;
+  intro?: string;
+  items: MatrixItem[];
+}
+
+const { title, intro, items } = Astro.props;
+---
+
+<section class="matrix ck-section" aria-label={title}>
+  <div class="ck-wrap">
+    <header class="head">
+      <h2>{title}</h2>
+      {intro && <p class="intro">{intro}</p>}
+    </header>
+
+    <ul class="grid">
+      {items.map((m, i) => (
+        <li class="cell">
+          <span class="no" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+          <h3 class="t">{m.title}</h3>
+          <p class="d">{m.desc}</p>
+          {m.bullets && m.bullets.length > 0 && (
+            <ul class="bullets">
+              {m.bullets.map((b) => <li>{b}</li>)}
+            </ul>
+          )}
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .matrix { background: var(--ck-bg); }
+  .head { max-width: var(--ck-maxw-prose); }
+  .intro {
+    margin-top: 0.875rem;
+    color: var(--ck-ink-soft);
+  }
+  .grid {
+    list-style: none;
+    margin: 3rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--ck-gap);
+  }
+  .cell {
+    padding: 1.75rem 1.625rem 1.875rem;
+    background: var(--ck-surface);
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-radius: var(--ck-radius-lg);
+    box-shadow: var(--ck-shadow);
+    /* 顶部强调条:栅格严整感的来源,厚度随流派变(--ck-rule-w) */
+    border-top: var(--ck-rule-w) solid var(--ck-accent);
+    transition: border-color var(--ck-dur) var(--ck-ease);
+  }
+  .cell:hover { border-color: var(--ck-line-strong); border-top-color: var(--ck-accent); }
+  .no {
+    display: block;
+    font-family: var(--ck-font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    color: var(--ck-accent);
+  }
+  .t {
+    margin-top: 0.75rem;
+  }
+  .d {
+    margin-top: 0.625rem;
+    color: var(--ck-ink-soft);
+    font-size: var(--ck-small);
+  }
+  .bullets {
+    list-style: none;
+    margin: 1.125rem 0 0;
+    padding: 0;
+    border-top: var(--ck-border-w) solid var(--ck-line);
+  }
+  .bullets li {
+    padding: 0.5rem 0;
+    border-bottom: var(--ck-border-w) solid var(--ck-line);
+    font-size: var(--ck-small);
+    color: var(--ck-ink-soft);
+    display: flex;
+    gap: 0.5rem;
+  }
+  .bullets li:last-child { border-bottom: 0; padding-bottom: 0; }
+  .bullets li::before {
+    content: '—';
+    color: var(--ck-ink-faint);
+    flex: none;
+  }
+</style>

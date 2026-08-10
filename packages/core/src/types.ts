@@ -114,6 +114,64 @@ export interface HomePage {
   inquiry: InquiryCta;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   以下为「PDF 钦定信息架构」的内容契约:数字墙 / 认证墙 / 品类矩阵
+   + 参数表(科技参数流派)+ 证据陈列(口腔功效证明)。
+   依据《100家独立站风格调研与复刻方案-v1.pdf》对本厂的结论:
+   「本厂落地页信息架构首选:数字墙+认证墙+品类矩阵」
+   ══════════════════════════════════════════════════════════════ */
+
+/** 数字墙单项:产能/研发/交付等硬数字,是 B 端信任的第一层 */
+export interface StatItem {
+  value: string;
+  label: string;
+  note?: string;
+}
+
+/** 品类能力矩阵单项(对标 KDC-One 的品类能力矩阵页) */
+export interface MatrixItem {
+  id: string;
+  title: string;
+  desc: string;
+  bullets?: string[];
+}
+
+/** 代工服务流程单步(B 端最关心「怎么合作」,PDF 工厂实力流派的标配版块) */
+export interface ProcessStep {
+  /** 步骤序号,如 01 */
+  no: string;
+  title: string;
+  desc: string;
+}
+
+/** 证据陈列单项:一句主张 + 一份支撑(对标临床极简流派的功效证明页) */
+export interface EvidenceItem {
+  claim: string;
+  proof: string;
+  source?: string;
+}
+
+/** 首页完整内容契约(WordPress 导出脚本须产出此形状) */
+export interface HomeContent {
+  seo: SeoBlock;
+  hero: {
+    eyebrow?: string;
+    title: string;
+    lead: string;
+    ctaPrimary: string;
+    ctaSecondary?: string;
+  };
+  stats: { title?: string; items: StatItem[] };
+  matrix: { title: string; intro?: string; items: MatrixItem[] };
+  process: { title: string; intro?: string; steps: ProcessStep[] };
+  certs: { title: string; note?: string; items: Certification[] };
+  /** 可选:仅证据导向的站点(口腔/功效)使用 */
+  evidence?: { title: string; intro?: string; items: EvidenceItem[] };
+  /** 可选:仅科技参数流派使用 */
+  specs?: { title: string; rows: ProductSpec[] };
+  inquiry: InquiryCta;
+}
+
 export interface StorySection {
   heading: string;
   body: string;

@@ -1,0 +1,102 @@
+---
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import { LOCALES, t, localePath, type Locale } from '@cosmetic/core/i18n';
+import { site } from '../../site.ts';
+
+export function getStaticPaths() {
+  return LOCALES.map((locale) => ({ params: { locale } }));
+}
+
+const locale = Astro.params.locale as Locale;
+const tr = t(locale);
+
+const copy: Record<Locale, { title: string; desc: string; eyebrow: string; h1: string; lead: string }> = {
+  'zh-cn': {
+    title: '全球美妆智能制造平台',
+    desc: '全品类美妆制造 · 品牌孵化与定制 · 供应链整合 · 全球交付服务。帛卉集团旗下美妆智造平台。',
+    eyebrow: '智造之美',
+    h1: '从配方到成品,一站式美妆智能制造',
+    lead: '全品类美妆制造、品牌孵化与定制、供应链整合与全球交付 —— 以研发实力与产能规模,支撑品牌从 0 到量产。',
+  },
+  'zh-tw': {
+    title: '全球美妝智能製造平台',
+    desc: '全品類美妝製造 · 品牌孵化與定制 · 供應鏈整合 · 全球交付服務。帛卉集團旗下美妝智造平台。',
+    eyebrow: '智造之美',
+    h1: '從配方到成品,一站式美妝智能製造',
+    lead: '全品類美妝製造、品牌孵化與定制、供應鏈整合與全球交付 —— 以研發實力與產能規模,支撐品牌從 0 到量產。',
+  },
+  en: {
+    title: 'Global Intelligent Beauty Manufacturing',
+    desc: 'Full-category beauty manufacturing, brand incubation and customization, supply-chain integration and global delivery.',
+    eyebrow: 'Intelligent Manufacturing',
+    h1: 'From formula to finished product — one manufacturing partner',
+    lead: 'Full-category beauty manufacturing, brand incubation, supply-chain integration and global delivery — R&D depth and capacity to take a brand from zero to scale.',
+  },
+  ja: {
+    title: 'グローバル美容スマート製造プラットフォーム',
+    desc: '全カテゴリー化粧品製造・ブランド育成とカスタマイズ・サプライチェーン統合・グローバル納品。',
+    eyebrow: 'スマート製造',
+    h1: '処方から完成品まで、一貫したスマート製造',
+    lead: '全カテゴリー製造、ブランド育成とカスタマイズ、サプライチェーン統合とグローバル納品 —— 研究開発力と生産能力でブランドをゼロから量産へ。',
+  },
+};
+
+const c = copy[locale];
+const path = localePath(locale, '/');
+---
+
+<BaseLayout
+  locale={locale}
+  school={site.school}
+  variant={site.defaultVariant}
+  brand={site.id}
+  siteName={site.name}
+  siteUrl={site.url}
+  path={path}
+  title={c.title}
+  description={c.desc}
+>
+  <a class="ck-skip-link" href="#main">{tr('a11y.skip')}</a>
+  <main id="main">
+    <section class="hero">
+      <div class="ck-wrap">
+        <p class="ck-eyebrow ck-fade-up">{c.eyebrow}</p>
+        <h1 class="ck-fade-up ck-delay-1">{c.h1}</h1>
+        <p class="lead ck-fade-up ck-delay-2">{c.lead}</p>
+        <p class="ck-fade-up ck-delay-3">
+          <a class="cta" href={localePath(locale, '/contact/')}>{tr('cta.inquiry')}</a>
+        </p>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<style>
+  .hero {
+    background: var(--ck-hero-bg);
+    color: var(--ck-hero-ink);
+    min-height: var(--ck-hero-minh);
+    display: grid;
+    align-items: center;
+    padding-block: var(--ck-section-py);
+  }
+  .lead {
+    max-width: var(--ck-maxw-prose);
+    margin-block: 1.25rem 2rem;
+    color: color-mix(in srgb, currentColor 75%, transparent);
+    font-size: 1.0625rem;
+  }
+  h1 { margin-top: 0.75rem; }
+  .cta {
+    display: inline-block;
+    padding: 0.875rem 1.75rem;
+    background: var(--ck-accent);
+    color: var(--ck-on-accent);
+    border-radius: var(--ck-radius);
+    text-decoration: none;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transition: background var(--ck-dur) var(--ck-ease);
+  }
+  .cta:hover { background: var(--ck-accent-deep); }
+</style>

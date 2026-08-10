@@ -1,0 +1,93 @@
+---
+/**
+ * 认证墙 —— PDF 钦定本厂信息架构第二件套。
+ * 对标 Kolmar Korea(PDF:「认证墙陈列方式」)与 Cosmax 的技术史+认证体系。
+ * 徽标一律站内绘制(纯 CSS/文字),不外链任何图床或第三方徽标服务。
+ */
+import type { Certification } from '../types.ts';
+
+export interface Props {
+  title: string;
+  note?: string;
+  items: Certification[];
+}
+
+const { title, note, items } = Astro.props;
+---
+
+<section class="certwall ck-section" aria-label={title}>
+  <div class="ck-wrap">
+    <h2>{title}</h2>
+    {note && <p class="note">{note}</p>}
+    <ul class="grid">
+      {items.map((c) => (
+        <li class="cert">
+          <span class="mark" aria-hidden="true">{c.label.slice(0, 2).toUpperCase()}</span>
+          <span class="body">
+            <strong class="label">{c.label}</strong>
+            {c.note && <span class="sub">{c.note}</span>}
+          </span>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .certwall {
+    background: var(--ck-bg);
+  }
+  .note {
+    margin-top: 0.875rem;
+    max-width: var(--ck-maxw-prose);
+    color: var(--ck-ink-soft);
+    font-size: var(--ck-small);
+  }
+  .grid {
+    list-style: none;
+    margin: 2.5rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    gap: var(--ck-gap);
+  }
+  .cert {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 1rem 1.125rem;
+    background: var(--ck-surface);
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-radius: var(--ck-radius);
+    box-shadow: var(--ck-shadow);
+  }
+  /* 站内绘制的徽标占位:取认证名首两字母,方框 + 强调色 —— 零外部请求 */
+  .mark {
+    flex: none;
+    width: 2.75rem;
+    height: 2.75rem;
+    display: grid;
+    place-items: center;
+    background: var(--ck-accent-soft);
+    color: var(--ck-accent);
+    border-radius: var(--ck-radius);
+    font-family: var(--ck-font-head);
+    font-weight: 700;
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+  }
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1875rem;
+    min-width: 0;
+  }
+  .label {
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+  .sub {
+    font-size: var(--ck-small);
+    color: var(--ck-ink-faint);
+  }
+</style>

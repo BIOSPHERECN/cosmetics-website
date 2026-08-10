@@ -1,0 +1,14 @@
+{
+  "name": "beauty2oem",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "BEAUTY2OEM 全球美妆智能制造平台 · 流派=工厂实力B2B",
+  "scripts": { "dev": "astro dev", "build": "astro build", "preview": "astro preview" },
+  "dependencies": { "@cosmetic/core": "workspace:*", "astro": "^7.2.0" },
+  "devDependencies": {
+    "@astrojs/sitemap": "^3.7.3",
+    "sharp": "^0.35.3",
+    "typescript": "^7.0.2"
+  }
+}

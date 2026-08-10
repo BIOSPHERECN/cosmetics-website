@@ -1,0 +1,512 @@
+/**
+ * 风格提案 · 令牌覆盖层(三层叠加的第三层)
+ * ───────────────────────────────────────────────────────────────
+ * 叠加顺序: :root 中性  →  [data-school] 流派  →  [data-brand][data-variant] 本层
+ * 本层特异性 (0,2,0) 高于流派 (0,1,0),所以每套风格可以在流派底子上任意改写。
+ *
+ * 5 个域名 × 4 套 = 20 套候选风格,创始人在风格实验室并排挑选;
+ * 挑定后只需改 registry.ts 的 defaultVariant 一处,该站即整体换装。
+ *
+ * 依据:《100家独立站风格调研与复刻方案-v1.pdf》流派表
+ *     + Beauty of Joseon 真站实测(暖白 #FCFBF9 / 正文 Inter 14px / 衬线标题 / 圆角 2px / 阴影极淡)
+ * 纪律:只学风格与版式;无购物车、无支付、无促销倒计时、无外链图床与字体。
+ */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ① BEAUTY2OEM · 全球美妆智能制造平台   品牌色 #a8823c 香槟金
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* v1 工业蓝钢 —— 底子 factory-b2b。对标 Intercos / Cosmax / KDC-One
+   PDF 钦定「本厂落地页视觉语言首选」。金色只做细节点缀,主调仍是可信的工业蓝。 */
+[data-brand='beauty2oem'][data-variant='v1'] {
+  --ck-accent: #1f4e79;
+  --ck-accent-deep: #143753;
+  --ck-accent-soft: #e8eff6;
+  --ck-hero-bg: #10263b;
+  --ck-hero-ink: #ffffff;
+  --ck-hero-deco: linear-gradient(115deg, rgba(168, 130, 60, 0.22), transparent 42%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 6.25rem);
+  --ck-rule-w: 2px;
+  --ck-cta-transform: none;
+}
+
+/* v2 香槟金典 —— 底子 luxe,但改为「浅金」而非默认深色:代工厂不宜通体黑,
+   米金底更像高端定制伙伴。对标 Quadpack / 花西子 / Aesop 的留白与衬线。 */
+[data-brand='beauty2oem'][data-variant='v2'] {
+  --ck-bg: #faf7f0;
+  --ck-surface: #ffffff;
+  --ck-surface-alt: #f3ecdd;
+  --ck-band-bg: #2a2318;
+  --ck-band-ink: #f4ecdc;
+  --ck-ink: #2a2318;
+  --ck-ink-soft: #6b5c44;
+  --ck-ink-faint: #9c8a6c;
+  --ck-line: #e5dbc6;
+  --ck-line-strong: #c9b78f;
+  --ck-accent: #a8823c;
+  --ck-accent-deep: #8a6929;
+  --ck-accent-soft: #f2e8d4;
+  --ck-on-accent: #ffffff;
+  --ck-hero-bg: #f4ecdc;
+  --ck-hero-ink: #2a2318;
+  --ck-hero-minh: 36rem;
+  --ck-hero-deco: radial-gradient(70% 120% at 78% 12%, rgba(168, 130, 60, 0.2), transparent 62%);
+  --ck-font-head: var(--ck-font-serif);
+  --ck-h1: clamp(2.375rem, 1.2rem + 4.4vw, 4.25rem);
+  --ck-weight-head: 400;
+  --ck-lh-head: 1.12;
+  --ck-tracking-head: 0.004em;
+  --ck-tracking-eyebrow: 0.24em;
+  --ck-section-py: 7.5rem;
+  --ck-gap: 2.25rem;
+  --ck-radius: 0;
+  --ck-radius-lg: 0;
+  --ck-cta-radius: 0;
+  --ck-cta-weight: 500;
+  --ck-cta-tracking: 0.16em;
+  --ck-cta-transform: uppercase;
+  --ck-rule-w: 1px;
+}
+
+/* v3 白皮书 —— 底子 clinical。对标 The Ordinary 的克制 + KDC-One 能力矩阵页的信息密度。
+   卖点:信息密度压倒装饰,像一份可以直接发给采购的技术文件。 */
+[data-brand='beauty2oem'][data-variant='v3'] {
+  --ck-accent: #7a5f2b;
+  --ck-accent-deep: #5c4720;
+  --ck-accent-soft: #f5f1e6;
+  --ck-band-bg: #f7f5f0;
+  --ck-band-ink: #0a0a0a;
+  --ck-hero-bg: #ffffff;
+  --ck-hero-ink: #0a0a0a;
+  --ck-hero-minh: 18rem;
+  --ck-hero-deco: none;
+  --ck-line-strong: #0a0a0a;
+  --ck-section-py: 3.25rem;
+  --ck-gap: 0.875rem;
+  --ck-maxw: 68rem;
+}
+
+/* v4 墨色智造 —— 底子 tech-spec,改冷蓝为金。对标 Anker 暗色版 / Olaplex 深色页。
+   用途:展会大屏与夜色质感;把"智能制造"讲成科技资产。 */
+[data-brand='beauty2oem'][data-variant='v4'] {
+  --ck-bg: #0c0c0e;
+  --ck-surface: #16161a;
+  --ck-surface-alt: #1e1e23;
+  --ck-band-bg: #060607;
+  --ck-band-ink: #f0ece2;
+  --ck-ink: #f0ece2;
+  --ck-ink-soft: #a89f8c;
+  --ck-ink-faint: #7d7563;
+  --ck-line: #262622;
+  --ck-line-strong: #3d3a31;
+  --ck-accent: #c9a24a;
+  --ck-accent-deep: #e0bb63;
+  --ck-accent-soft: #1f1b12;
+  --ck-on-accent: #0c0c0e;
+  --ck-hero-bg: #060607;
+  --ck-hero-ink: #f0ece2;
+  --ck-hero-minh: 34rem;
+  --ck-hero-deco: radial-gradient(56% 110% at 22% 0%, rgba(201, 162, 74, 0.16), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.028) 0 1px, transparent 1px 3rem);
+  --ck-radius: 3px;
+  --ck-radius-lg: 4px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ② SKIN2OEM · 全球护肤智能制造平台   品牌色 #2e7c8c 青
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* v1 实验室青 —— 底子 factory-b2b 换青色系。对标 Cosmax / Kolmar Korea。
+   与 BEAUTY2OEM v1 同族不同色:集团矩阵感一致,但一眼能分辨是哪个平台。 */
+[data-brand='skin2oem'][data-variant='v1'] {
+  --ck-band-bg: #0d3b45;
+  --ck-band-ink: #ffffff;
+  --ck-ink: #0f333b;
+  --ck-ink-soft: #48666d;
+  --ck-line: #dbe6e8;
+  --ck-line-strong: #a9c2c7;
+  --ck-accent: #2e7c8c;
+  --ck-accent-deep: #1f5f6d;
+  --ck-accent-soft: #e6f2f4;
+  --ck-surface-alt: #f2f8f9;
+  --ck-hero-bg: #0d3b45;
+  --ck-hero-ink: #ffffff;
+  --ck-hero-deco: linear-gradient(120deg, rgba(63, 182, 201, 0.24), transparent 46%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 6.25rem);
+  --ck-rule-w: 2px;
+}
+
+/* v2 水感清透 —— 底子 clean-natural 换青色系。对标 Osea / Beauty of Joseon。
+   弱化工厂味,做温和可信的软性沟通;圆润大留白。 */
+[data-brand='skin2oem'][data-variant='v2'] {
+  --ck-bg: #f5fafa;
+  --ck-surface: #ffffff;
+  --ck-surface-alt: #e9f4f5;
+  --ck-band-bg: #e2f0f2;
+  --ck-band-ink: #123b43;
+  --ck-ink: #17383f;
+  --ck-ink-soft: #4f6f76;
+  --ck-ink-faint: #85a2a8;
+  --ck-line: #d8e8ea;
+  --ck-line-strong: #b6d2d6;
+  --ck-accent: #2e7c8c;
+  --ck-accent-deep: #206273;
+  --ck-accent-soft: #e0f1f3;
+  --ck-hero-bg: #e8f4f5;
+  --ck-hero-ink: #17383f;
+  --ck-hero-minh: 33rem;
+  --ck-hero-deco: radial-gradient(60% 100% at 82% 18%, rgba(46, 124, 140, 0.16), transparent 64%);
+  --ck-radius: 14px;
+  --ck-radius-lg: 22px;
+  --ck-cta-radius: 999px;
+  --ck-section-py: 6rem;
+  --ck-gap: 1.75rem;
+}
+
+/* v3 功效证据 —— 底子 clinical 换青强调。对标 The Ordinary / Inkey List。
+   「功效配方定制」的最强表达:成分与数据表格化,零修辞。 */
+[data-brand='skin2oem'][data-variant='v3'] {
+  --ck-accent: #17616f;
+  --ck-accent-deep: #0f4a55;
+  --ck-accent-soft: #e8f3f5;
+  --ck-band-bg: #f2f7f8;
+  --ck-band-ink: #0a0a0a;
+  --ck-line-strong: #17616f;
+  --ck-hero-bg: #ffffff;
+  --ck-hero-minh: 19rem;
+  --ck-maxw: 70rem;
+}
+
+/* v4 深海科技 —— 底子 tech-spec 换青色系。对标 Foreo / K18。
+   配品牌图的蜂窝分子符号最贴;高端护肤方案的科技侧。 */
+[data-brand='skin2oem'][data-variant='v4'] {
+  --ck-bg: #05161b;
+  --ck-surface: #0b2229;
+  --ck-surface-alt: #103038;
+  --ck-band-bg: #030f13;
+  --ck-band-ink: #e6f6f8;
+  --ck-ink: #e6f6f8;
+  --ck-ink-soft: #93b9c0;
+  --ck-ink-faint: #6c9099;
+  --ck-line: #16323a;
+  --ck-line-strong: #245560;
+  --ck-accent: #3fb6c9;
+  --ck-accent-deep: #62cddd;
+  --ck-accent-soft: #0c2932;
+  --ck-on-accent: #04161b;
+  --ck-hero-bg: #030f13;
+  --ck-hero-ink: #e6f6f8;
+  --ck-hero-deco: radial-gradient(50% 100% at 78% 6%, rgba(63, 182, 201, 0.2), transparent 62%),
+    repeating-linear-gradient(60deg, rgba(63, 182, 201, 0.05) 0 1px, transparent 1px 2.75rem);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ③ BIOSPHERE-AI · 全球生命美妆 AI 科技平台   品牌色 #3b4a8c 靛蓝
+   创始人补充定位:在线产品共创工作台(非纯展示站)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* v1 深空数据 —— 底子 tech-spec 原味。对标 Olaplex / K18 / Anker。
+   最直白的「AI 大脑」表达:等宽数字 + 参数表 + 高数据密度。 */
+[data-brand='biosphere-ai'][data-variant='v1'] {
+  --ck-accent: #4d7cff;
+  --ck-accent-deep: #7099ff;
+  --ck-hero-deco: radial-gradient(48% 92% at 76% 4%, rgba(77, 124, 255, 0.24), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 2.5rem),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 2.5rem);
+}
+
+/* v2 白室 —— 底子 clinical 换靛蓝。对标 Anker 白版 / CeraVe。
+   反其道而行:AI 不靠黑底炫技,靠极简与秩序显专业。 */
+[data-brand='biosphere-ai'][data-variant='v2'] {
+  --ck-accent: #3b4a8c;
+  --ck-accent-deep: #2b376b;
+  --ck-accent-soft: #eceef8;
+  --ck-band-bg: #f3f4fa;
+  --ck-band-ink: #0a0a0a;
+  --ck-line-strong: #3b4a8c;
+  --ck-hero-bg: #ffffff;
+  --ck-hero-ink: #0a0a0a;
+  --ck-hero-minh: 22rem;
+  --ck-hero-deco: linear-gradient(180deg, #f3f4fa, transparent 70%);
+  --ck-section-py: 4rem;
+  --ck-maxw: 70rem;
+}
+
+/* v3 靛蓝矩阵 —— 底子 tech-spec 换靛蓝主色 + 细网格。品牌色最忠实的一版,
+   介于「深空」与「白室」之间。 */
+[data-brand='biosphere-ai'][data-variant='v3'] {
+  --ck-bg: #0e1330;
+  --ck-surface: #171d45;
+  --ck-surface-alt: #1e2657;
+  --ck-band-bg: #090d24;
+  --ck-band-ink: #e9ecff;
+  --ck-ink: #e9ecff;
+  --ck-ink-soft: #a2abdf;
+  --ck-ink-faint: #7580b8;
+  --ck-line: #232b5e;
+  --ck-line-strong: #39428a;
+  --ck-accent: #8b9cff;
+  --ck-accent-deep: #a9b6ff;
+  --ck-accent-soft: #1a2154;
+  --ck-on-accent: #0b1030;
+  --ck-hero-bg: #090d24;
+  --ck-hero-ink: #e9ecff;
+  --ck-hero-minh: 34rem;
+  --ck-hero-deco: radial-gradient(46% 90% at 20% 0%, rgba(139, 156, 255, 0.24), transparent 58%),
+    repeating-linear-gradient(0deg, rgba(139, 156, 255, 0.07) 0 1px, transparent 1px 1.75rem),
+    repeating-linear-gradient(90deg, rgba(139, 156, 255, 0.07) 0 1px, transparent 1px 1.75rem);
+  --ck-radius: 8px;
+  --ck-radius-lg: 14px;
+}
+
+/* v4 共创工作台 —— 底子 performance,只取「明快配色 + 应用型入口」。
+   对标 PDF 第 100 号 Quadpack 在线选型器;呼应创始人「在线产品共创」定位。
+   纪律:不做倒计时、不做促销角标、不做购物车。 */
+[data-brand='biosphere-ai'][data-variant='v4'] {
+  --ck-accent: #5b3bff;
+  --ck-accent-deep: #4526e0;
+  --ck-accent-soft: #eee9ff;
+  --ck-band-bg: #14103a;
+  --ck-band-ink: #ffffff;
+  --ck-ink: #14103a;
+  --ck-ink-soft: #514c7c;
+  --ck-line: #e4e1f5;
+  --ck-hero-bg: #efecff;
+  --ck-hero-ink: #14103a;
+  --ck-hero-minh: 27rem;
+  --ck-hero-deco: radial-gradient(58% 110% at 88% 10%, rgba(91, 59, 255, 0.18), transparent 62%);
+  --ck-radius: 12px;
+  --ck-radius-lg: 18px;
+  --ck-cta-radius: 999px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ④ MEDIERBA · 高端草本医学美容品牌   品牌色 #3e6b47 草本绿
+   PDF 结论:中草药线出海,Beauty of Joseon 是最佳对标
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* v1 玉竹米白 —— 底子 clean-natural。Beauty of Joseon 真站实测值忠实落地:
+   暖白底 #FCFBF9、正文近黑 #212121、衬线标题、圆角仅 2px、阴影极淡、页脚柔色带。 */
+[data-brand='medierba'][data-variant='v1'] {
+  --ck-bg: #fcfbf9;
+  --ck-surface: #ffffff;
+  --ck-surface-alt: #f5f2ec;
+  --ck-band-bg: #eef1e8;
+  --ck-band-ink: #212121;
+  --ck-ink: #212121;
+  --ck-ink-soft: #5a5f55;
+  --ck-ink-faint: #8b9083;
+  --ck-line: #e6e1d6;
+  --ck-line-strong: #cdc7b6;
+  --ck-accent: #3e6b47;
+  --ck-accent-deep: #2c5034;
+  --ck-accent-soft: #e9efe7;
+  --ck-hero-bg: #f3f1e9;
+  --ck-hero-ink: #212121;
+  --ck-hero-minh: 34rem;
+  --ck-hero-deco: radial-gradient(64% 110% at 80% 16%, rgba(62, 107, 71, 0.13), transparent 64%);
+  --ck-font-head: var(--ck-font-serif);
+  --ck-weight-head: 400;
+  --ck-lh-head: 1.2;
+  --ck-radius: 2px;          /* BOJ 实测:近乎零圆角是其高级感骨架之一 */
+  --ck-radius-lg: 2px;
+  --ck-cta-radius: 2px;
+  --ck-section-py: 6.5rem;
+}
+
+/* v2 墨玉东方 —— 底子 luxe 换墨绿 + 金线。对标雪花秀 Sulwhasoo / 花西子。
+   最贵的一版:把草本讲成东方奢华,适合高客单医美渠道。 */
+[data-brand='medierba'][data-variant='v2'] {
+  --ck-bg: #101810;
+  --ck-surface: #182117;
+  --ck-surface-alt: #1f2a1e;
+  --ck-band-bg: #0a100a;
+  --ck-band-ink: #ece7d8;
+  --ck-ink: #ece7d8;
+  --ck-ink-soft: #a9ac97;
+  --ck-ink-faint: #7d8271;
+  --ck-line: #263025;
+  --ck-line-strong: #3d4a3a;
+  --ck-accent: #b8974a;
+  --ck-accent-deep: #d0ae5f;
+  --ck-accent-soft: #1c2317;
+  --ck-on-accent: #101810;
+  --ck-hero-bg: #0a100a;
+  --ck-hero-ink: #ece7d8;
+  --ck-hero-minh: 40rem;
+  --ck-hero-deco: radial-gradient(58% 108% at 74% 8%, rgba(184, 151, 74, 0.2), transparent 60%),
+    linear-gradient(180deg, transparent 82%, rgba(184, 151, 74, 0.14));
+  --ck-font-head: var(--ck-font-serif);
+  --ck-h1: clamp(2.5rem, 1.2rem + 5vw, 4.75rem);
+  --ck-weight-head: 400;
+  --ck-tracking-eyebrow: 0.26em;
+  --ck-section-py: 8rem;
+  --ck-radius: 0;
+  --ck-radius-lg: 0;
+  --ck-cta-radius: 0;
+  --ck-cta-transform: uppercase;
+  --ck-cta-tracking: 0.18em;
+  --ck-cta-weight: 500;
+}
+
+/* v3 本草纸本 —— 底子 clean-natural 改宣纸米色 + 中文衬线。
+   古籍质感,承接本厂中草药古方 IP —— 20 套里独此一家,竞品无法复制。 */
+[data-brand='medierba'][data-variant='v3'] {
+  --ck-bg: #f6f1e4;
+  --ck-surface: #fdfaf2;
+  --ck-surface-alt: #eee7d6;
+  --ck-band-bg: #e7dfc9;
+  --ck-band-ink: #2f2a1e;
+  --ck-ink: #2f2a1e;
+  --ck-ink-soft: #63594a;
+  --ck-ink-faint: #8f8471;
+  --ck-line: #ded3ba;
+  --ck-line-strong: #b9a882;
+  --ck-accent: #5c6b3e;
+  --ck-accent-deep: #45512e;
+  --ck-accent-soft: #eae5d0;
+  --ck-hero-bg: #efe7d4;
+  --ck-hero-ink: #2f2a1e;
+  --ck-hero-minh: 33rem;
+  --ck-hero-deco: radial-gradient(70% 120% at 18% 90%, rgba(92, 107, 62, 0.12), transparent 60%);
+  --ck-font-head: var(--ck-font-serif);
+  --ck-font-body: var(--ck-font-serif);
+  --ck-weight-head: 400;
+  --ck-lh-body: 1.9;
+  --ck-tracking-eyebrow: 0.3em;
+  --ck-section-py: 7rem;
+  --ck-radius: 0;
+  --ck-radius-lg: 0;
+  --ck-cta-radius: 0;
+}
+
+/* v4 医研白 —— 底子 clinical 换草绿。对标 CeraVe / La Roche-Posay。
+   压住「医学美容」里的医学侧,主打专业可信。 */
+[data-brand='medierba'][data-variant='v4'] {
+  --ck-accent: #2f7d4f;
+  --ck-accent-deep: #21603b;
+  --ck-accent-soft: #e8f4ec;
+  --ck-band-bg: #f1f7f3;
+  --ck-band-ink: #0a0a0a;
+  --ck-line-strong: #2f7d4f;
+  --ck-hero-bg: #ffffff;
+  --ck-hero-minh: 20rem;
+  --ck-maxw: 70rem;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⑤ BIOSPHERE-ORALCARE · AI 口腔生命科技平台   品牌色 #6b4c9a 紫
+   PDF 结论:牙膏功效证明页对标 Boka / Quip / NOBS
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* v1 临床白 —— 底子 clinical 换紫强调。对标 Boka / Quip / NOBS。
+   PDF 钦定:白底 + 单一强调色 + 功效证明表格,口腔品类的默认可信语言。 */
+[data-brand='biosphere-oralcare'][data-variant='v1'] {
+  --ck-accent: #6b4c9a;
+  --ck-accent-deep: #533878;
+  --ck-accent-soft: #f0eaf8;
+  --ck-band-bg: #f5f2fa;
+  --ck-band-ink: #0a0a0a;
+  --ck-line-strong: #6b4c9a;
+  --ck-hero-bg: #ffffff;
+  --ck-hero-minh: 20rem;
+  --ck-maxw: 70rem;
+}
+
+/* v2 薄荷微生态 —— 底子 clean-natural,薄荷绿主 + 品牌紫辅。对标 Boka 自然版 / Bite。
+   把「益生菌口腔护理」讲成温和日常,弱化药感。 */
+[data-brand='biosphere-oralcare'][data-variant='v2'] {
+  --ck-bg: #f5faf7;
+  --ck-surface: #ffffff;
+  --ck-surface-alt: #e9f4ee;
+  --ck-band-bg: #e5f2ea;
+  --ck-band-ink: #17352a;
+  --ck-ink: #1b3b2f;
+  --ck-ink-soft: #52705f;
+  --ck-ink-faint: #85a191;
+  --ck-line: #d9e9e0;
+  --ck-line-strong: #b4d3c2;
+  --ck-accent: #3fa07a;
+  --ck-accent-deep: #2d8163;
+  --ck-accent-soft: #e2f2ea;
+  --ck-hero-bg: #e8f5ee;
+  --ck-hero-ink: #1b3b2f;
+  --ck-hero-minh: 31rem;
+  --ck-hero-deco: radial-gradient(60% 104% at 84% 16%, rgba(107, 76, 154, 0.14), transparent 62%);
+  --ck-radius: 16px;
+  --ck-radius-lg: 24px;
+  --ck-cta-radius: 999px;
+  --ck-section-py: 6rem;
+}
+
+/* v3 紫夜科技 —— 底子 tech-spec 换紫。呼应品牌图的行星轨道符号;
+   主打「智能口腔方案」与全生命周期数据。 */
+[data-brand='biosphere-oralcare'][data-variant='v3'] {
+  --ck-bg: #0d0817;
+  --ck-surface: #171029;
+  --ck-surface-alt: #1f1637;
+  --ck-band-bg: #080411;
+  --ck-band-ink: #efe9fb;
+  --ck-ink: #efe9fb;
+  --ck-ink-soft: #ac9fca;
+  --ck-ink-faint: #8175a0;
+  --ck-line: #241b3d;
+  --ck-line-strong: #3c2f63;
+  --ck-accent: #a97cff;
+  --ck-accent-deep: #bf9bff;
+  --ck-accent-soft: #1c1333;
+  --ck-on-accent: #0d0817;
+  --ck-hero-bg: #080411;
+  --ck-hero-ink: #efe9fb;
+  --ck-hero-minh: 34rem;
+  --ck-hero-deco: radial-gradient(46% 88% at 74% 6%, rgba(169, 124, 255, 0.24), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(169, 124, 255, 0.05) 0 1px, transparent 1px 2.5rem);
+  --ck-radius: 10px;
+  --ck-radius-lg: 16px;
+}
+
+/* v4 证据密度 —— 底子 performance。PDF:「若做洁牙片自有品牌,转化页照 Hismile 结构搭」。
+   只取明快配色 + 证据密度(前后对比、数据);倒计时与促销角标一律不做。 */
+[data-brand='biosphere-oralcare'][data-variant='v4'] {
+  --ck-accent: #7b2ff7;
+  --ck-accent-deep: #6420d4;
+  --ck-accent-soft: #f1e9ff;
+  --ck-band-bg: #1c0f3d;
+  --ck-band-ink: #ffffff;
+  --ck-ink: #1c0f3d;
+  --ck-ink-soft: #574a78;
+  --ck-line: #e7e0f5;
+  --ck-hero-bg: #f2ecff;
+  --ck-hero-ink: #1c0f3d;
+  --ck-hero-minh: 26rem;
+  --ck-hero-deco: radial-gradient(56% 108% at 86% 12%, rgba(123, 47, 247, 0.18), transparent 60%);
+  --ck-radius: 10px;
+  --ck-radius-lg: 16px;
+  --ck-cta-radius: 999px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   风格实验室自身外壳(不参与评选,仅为画廊索引页提供中性底)
+   ══════════════════════════════════════════════════════════════════════════ */
+[data-brand='style-lab'][data-variant='v1'] {
+  --ck-bg: #16171b;
+  --ck-surface: #1e2026;
+  --ck-surface-alt: #262930;
+  --ck-band-bg: #101115;
+  --ck-band-ink: #f2f0ea;
+  --ck-ink: #f2f0ea;
+  --ck-ink-soft: #a7a69f;
+  --ck-ink-faint: #7c7b75;
+  --ck-line: #2e3138;
+  --ck-line-strong: #454952;
+  --ck-accent: #b8974a;
+  --ck-accent-deep: #d0ae5f;
+  --ck-accent-soft: #221d12;
+  --ck-on-accent: #16171b;
+  --ck-hero-bg: #101115;
+  --ck-hero-ink: #f2f0ea;
+  --ck-hero-minh: 14rem;
+  --ck-radius: 6px;
+  --ck-radius-lg: 10px;
+  --ck-section-py: 3rem;
+}

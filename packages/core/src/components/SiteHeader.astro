@@ -1,0 +1,189 @@
+---
+/**
+ * 站点页头 —— 5 站共用一具外壳,风格差异全部由令牌承担。
+ * 品牌标识:当前用「字标 + 站内绘制几何符号」占位(零外链、零图片依赖);
+ * 创始人提供正式 logo 后,只需替换 <Wordmark> 内的 SVG,不动任何版式。
+ * 语言切换:纯静态四语互链,零 JS。
+ */
+import { LOCALES, LOCALE_SHORT, LOCALE_LABELS, switchLocalePath, t, type Locale } from '../i18n/index.ts';
+
+export interface Props {
+  locale: Locale;
+  /** 当前路径(含语言前缀),语言切换器据此生成同页他语链接 */
+  path: string;
+  /** 拉丁品牌名(字标) */
+  siteName: string;
+  /** 中文定位(字标下的小字) */
+  siteNameZh: string;
+  /** 语言切换是否可用(风格实验室内嵌预览时关掉,避免跳出画廊) */
+  showLocaleSwitch?: boolean;
+}
+
+const { locale, path, siteName, siteNameZh, showLocaleSwitch = true } = Astro.props;
+const tr = t(locale);
+
+const nav: { key: Parameters<typeof tr>[0]; href: string }[] = [
+  { key: 'nav.products', href: '/products/' },
+  { key: 'nav.brand', href: '/brand/' },
+  { key: 'nav.contact', href: '/contact/' },
+];
+const L = (p: string) => `/${locale}${p}`;
+---
+
+<header class="hdr">
+  <div class="ck-wrap bar">
+    <a class="mark" href={L('/')} aria-label={siteName}>
+      {/* 站内绘制的几何标记:同心方 + 斜线,任何流派下都成立;正式 logo 到位后替换 */}
+      <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <rect x="1.5" y="1.5" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.5" />
+        <path d="M6 18 L18 6" stroke="currentColor" stroke-width="1.5" />
+        <circle cx="12" cy="12" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5" />
+      </svg>
+      <span class="words">
+        <strong class="name">{siteName}</strong>
+        <span class="zh">{siteNameZh}</span>
+      </span>
+    </a>
+
+    <nav class="nav" aria-label={tr('footer.nav')}>
+      {nav.map((n) => (
+        <a class="link" href={L(n.href)}>{tr(n.key)}</a>
+      ))}
+    </nav>
+
+    <div class="right">
+      {showLocaleSwitch && (
+        <nav class="langs" aria-label={tr('lang.label')}>
+          {LOCALES.map((l) => (
+            <a
+              class:list={['lang', l === locale && 'on']}
+              href={switchLocalePath(path, l)}
+              hreflang={l}
+              title={LOCALE_LABELS[l]}
+              aria-current={l === locale ? 'true' : undefined}
+            >{LOCALE_SHORT[l]}</a>
+          ))}
+        </nav>
+      )}
+      <a class="cta" href={L('/contact/')}>{tr('cta.inquiry')}</a>
+    </div>
+  </div>
+</header>
+
+<style>
+  .hdr {
+    background: var(--ck-bg);
+    border-bottom: var(--ck-border-w) solid var(--ck-line);
+    position: relative;
+    z-index: 5;
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: clamp(1rem, 3vw, 2.5rem);
+    min-height: 4.5rem;
+    flex-wrap: wrap;
+  }
+
+  /* ── 字标 ─────────────────────────────── */
+  .mark {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: var(--ck-ink);
+    margin-right: auto;
+  }
+  .glyph {
+    width: 1.75rem;
+    height: 1.75rem;
+    flex: none;
+    color: var(--ck-accent);
+  }
+  .words {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+  .name {
+    font-family: var(--ck-font-head);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+  .zh {
+    font-size: 0.6875rem;
+    color: var(--ck-ink-faint);
+    letter-spacing: 0.04em;
+    margin-top: 0.125rem;
+  }
+
+  /* ── 主导航 ───────────────────────────── */
+  .nav {
+    display: flex;
+    gap: clamp(1rem, 2.2vw, 2rem);
+  }
+  .link {
+    font-size: var(--ck-small);
+    text-decoration: none;
+    color: var(--ck-ink-soft);
+    padding-block: 0.5rem;
+    border-bottom: 2px solid transparent;
+    transition: color var(--ck-dur) var(--ck-ease), border-color var(--ck-dur) var(--ck-ease);
+  }
+  .link:hover {
+    color: var(--ck-ink);
+    border-bottom-color: var(--ck-accent);
+  }
+
+  .right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  /* ── 语言切换(纯静态互链)──────────────── */
+  .langs {
+    display: flex;
+    align-items: center;
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-radius: var(--ck-radius);
+    overflow: hidden;
+  }
+  .lang {
+    padding: 0.3125rem 0.5625rem;
+    font-size: 0.75rem;
+    text-decoration: none;
+    color: var(--ck-ink-faint);
+    border-right: var(--ck-border-w) solid var(--ck-line);
+  }
+  .lang:last-child { border-right: 0; }
+  .lang:hover { color: var(--ck-ink); background: var(--ck-surface-alt); }
+  .lang.on {
+    background: var(--ck-accent);
+    color: var(--ck-on-accent);
+  }
+
+  .cta {
+    display: inline-block;
+    padding: 0.5625rem 1.125rem;
+    background: var(--ck-accent);
+    color: var(--ck-on-accent);
+    border-radius: var(--ck-cta-radius);
+    text-decoration: none;
+    font-size: var(--ck-small);
+    font-weight: var(--ck-cta-weight);
+    letter-spacing: var(--ck-cta-tracking);
+    text-transform: var(--ck-cta-transform);
+    white-space: nowrap;
+    transition: background var(--ck-dur) var(--ck-ease);
+  }
+  .cta:hover { background: var(--ck-accent-deep); }
+
+  /* 窄屏:导航换行到第二排,不做汉堡菜单(零 JS 纪律) */
+  @media (max-width: 52rem) {
+    .bar { padding-block: 0.875rem; }
+    .nav { order: 3; width: 100%; border-top: var(--ck-border-w) solid var(--ck-line); padding-top: 0.5rem; }
+    .zh { display: none; }
+  }
+</style>

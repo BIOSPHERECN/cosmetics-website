@@ -1,0 +1,89 @@
+---
+/**
+ * 数字墙 —— PDF 钦定本厂信息架构第一件套。
+ * 对标 Cosmax / Intercos:用硬数字(产能、研发人数、交付国家数)建立 B 端信任。
+ * 视觉随流派变:factory-b2b 走深底反白大字;clinical 走白底细线表格感;
+ * 差异全部由 --ck-band-bg / --ck-hero-ink 等令牌承担,本组件不写死颜色。
+ */
+import type { StatItem } from '../types.ts';
+
+export interface Props {
+  title?: string;
+  items: StatItem[];
+  /** 深底反白(factory-b2b / tech-spec 用)还是同底细线(clinical / clean-natural 用) */
+  tone?: 'band' | 'plain';
+}
+
+const { title, items, tone = 'band' } = Astro.props;
+---
+
+<section class:list={['statwall', `tone-${tone}`]} aria-label={title}>
+  <div class="ck-wrap">
+    {title && <h2 class="title">{title}</h2>}
+    <dl class="grid">
+      {items.map((s) => (
+        <div class="cell">
+          <dt class="val">{s.value}</dt>
+          <dd class="lab">
+            {s.label}
+            {s.note && <span class="note">{s.note}</span>}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  </div>
+</section>
+
+<style>
+  .statwall {
+    padding-block: var(--ck-section-py);
+  }
+  /* 深底反白:数字墙最有力的形态(Cosmax / Intercos 系) */
+  .tone-band {
+    background: var(--ck-band-bg);
+    color: var(--ck-band-ink);
+  }
+  .tone-plain {
+    background: var(--ck-surface-alt);
+    color: var(--ck-ink);
+    border-block: var(--ck-border-w) solid var(--ck-line);
+  }
+  .title {
+    margin-bottom: 2.5rem;
+    font-size: var(--ck-h3);
+    letter-spacing: var(--ck-tracking-eyebrow);
+    text-transform: var(--ck-eyebrow-transform);
+    opacity: 0.7;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: var(--ck-gap);
+    margin: 0;
+  }
+  /* 栅格严整:分隔线让「数字墙」真的像一面墙 */
+  .cell {
+    padding: 0.25rem 0 0.25rem 1.25rem;
+    border-left: var(--ck-border-w) solid currentColor;
+    opacity: 0.999; /* 建立层叠上下文,避免 border 透明度继承异常 */
+  }
+  .val {
+    font-family: var(--ck-font-head);
+    font-size: clamp(2rem, 1.2rem + 2.6vw, 3.25rem);
+    font-weight: var(--ck-weight-head);
+    line-height: 1.05;
+    letter-spacing: var(--ck-tracking-head);
+    font-variant-numeric: tabular-nums;
+  }
+  .lab {
+    margin: 0.625rem 0 0;
+    font-size: var(--ck-small);
+    line-height: 1.5;
+    opacity: 0.75;
+  }
+  .note {
+    display: block;
+    margin-top: 0.25rem;
+    opacity: 0.7;
+  }
+</style>

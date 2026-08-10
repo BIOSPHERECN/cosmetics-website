@@ -1,0 +1,14 @@
+{
+  "name": "style-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "风格实验室:同一组内容 × 8 流派并排预览,供创始人挑选",
+  "scripts": { "dev": "astro dev", "build": "astro build", "preview": "astro preview" },
+  "dependencies": { "@cosmetic/core": "workspace:*", "astro": "^7.2.0" },
+  "devDependencies": {
+    "@astrojs/sitemap": "^3.7.3",
+    "sharp": "^0.35.3",
+    "typescript": "^7.0.2"
+  }
+}

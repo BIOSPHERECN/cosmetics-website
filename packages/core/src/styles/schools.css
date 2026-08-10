@@ -1,0 +1,246 @@
+/**
+ * 八大风格流派 · 令牌覆盖层
+ * ───────────────────────────────────────────────────────────────
+ * 来源:创始人《100家独立站风格调研与复刻方案-v1.pdf》「流派 / 配色 / 字体与排版」表。
+ * 每个 [data-school] 块 = 该流派的视觉语言,只覆盖 tokens.css 里需要改的项。
+ * 只学风格与版式;不含购物车/支付/促销倒计时等 To C 转化件(5 站零成交,B 端询盘导向)。
+ * Shopify Dawn 等闭源主题:只做视觉参照,不抄任何代码。
+ */
+
+/* ═══ 1. 临床极简 ═══ 对标 The Ordinary / Inkey List / CeraVe / Quip
+   PDF:白底+单一强调色,药感 / 无衬线,小字号高密度,表格化信息
+   用于:BIOSPHERE-ORALCARE(口腔功效证明) */
+[data-school='clinical'] {
+  --ck-bg: #ffffff;
+  --ck-surface: #ffffff;
+  --ck-surface-alt: #fafafa;
+  --ck-band-bg: #f4f4f5;
+  --ck-ink: #0a0a0a;
+  --ck-ink-soft: #52525b;
+  --ck-ink-faint: #8a8a93;
+  --ck-line: #e4e4e7;
+  --ck-line-strong: #18181b;
+  --ck-accent: #18181b;
+  --ck-accent-deep: #000000;
+  --ck-accent-soft: #f4f4f5;
+  --ck-hero-bg: #ffffff;
+  --ck-hero-minh: 20rem;
+  --ck-h1: clamp(1.75rem, 1.2rem + 2.2vw, 2.75rem);
+  --ck-body: 0.9375rem;        /* 小字号高密度 */
+  --ck-small: 0.8125rem;
+  --ck-lh-body: 1.6;
+  --ck-weight-head: 600;
+  --ck-tracking-head: -0.02em;
+  --ck-section-py: 3.5rem;     /* 密,不铺张 */
+  --ck-gap: 1rem;
+  --ck-radius: 2px;
+  --ck-radius-lg: 2px;
+  --ck-shadow: none;
+}
+
+/* ═══ 2. 工厂实力 B2B ═══ 对标 Intercos / Cosmax / KDC-One / Quadpack
+   PDF:企业蓝灰+白,克制 / 大标题+数字墙,栅格严整
+   PDF 结论:「本厂落地页视觉语言首选,与『工厂+研发』定位天然匹配」
+   用于:BEAUTY2OEM(主)、SKIN2OEM */
+[data-school='factory-b2b'] {
+  --ck-bg: #ffffff;
+  --ck-surface: #ffffff;
+  --ck-surface-alt: #f4f6f8;
+  --ck-band-bg: #10263b;       /* 数字墙深蓝底,白字反白 */
+  --ck-band-ink: #ffffff;
+  --ck-ink: #10263b;
+  --ck-ink-soft: #4a5b6e;
+  --ck-ink-faint: #7d8b9c;
+  --ck-line: #dfe4ea;
+  --ck-line-strong: #b3bdc8;
+  --ck-accent: #1f4e79;
+  --ck-accent-deep: #143753;
+  --ck-accent-soft: #e8eff6;
+  --ck-hero-bg: #10263b;
+  --ck-hero-ink: #ffffff;
+  --ck-hero-minh: 30rem;
+  --ck-h1: clamp(2.25rem, 1.3rem + 3.6vw, 4rem);   /* 大标题 */
+  --ck-weight-head: 700;
+  --ck-tracking-head: -0.025em;
+  --ck-section-py: 5rem;
+  --ck-gap: 1.25rem;           /* 栅格严整,间距一致 */
+  --ck-radius: 2px;
+  --ck-radius-lg: 3px;
+}
+
+/* ═══ 3. 清洁自然 ═══ 对标 Beauty of Joseon / Osea / Bite / Boka
+   PDF:米白+植物绿/大地色 / 衬线或圆润无衬线,留白多
+   PDF 结论:「本厂中草药古方产品线出海时,BOJ 是最佳对标」
+   用于:MEDIERBA(高端草本医学美容) */
+[data-school='clean-natural'] {
+  --ck-bg: #faf8f3;
+  --ck-surface: #ffffff;
+  --ck-surface-alt: #f3efe6;
+  --ck-band-bg: #eef0e7;
+  --ck-ink: #2b2f26;
+  --ck-ink-soft: #5f6656;
+  --ck-ink-faint: #8d9382;
+  --ck-line: #e3ded1;
+  --ck-line-strong: #c9c3b1;
+  --ck-accent: #3e6b47;        /* 植物绿 */
+  --ck-accent-deep: #2d5034;
+  --ck-accent-soft: #e9efe6;
+  --ck-hero-bg: #f1efe4;
+  --ck-hero-minh: 32rem;
+  --ck-font-head: var(--ck-font-serif);
+  --ck-h1: clamp(2.125rem, 1.3rem + 3.2vw, 3.5rem);
+  --ck-weight-head: 500;
+  --ck-lh-head: 1.22;
+  --ck-tracking-head: -0.005em;
+  --ck-lh-body: 1.8;
+  --ck-section-py: 6.5rem;     /* 留白多 */
+  --ck-gap: 2rem;
+  --ck-radius: 10px;
+  --ck-radius-lg: 16px;
+}
+
+/* ═══ 4. 奢华质感 ═══ 对标 Aesop / Sulwhasoo / Davids / 花西子
+   PDF:深色底或米金,单色系 / 大号衬线,超大留白
+   PDF 结论:「二期若做高端中草药线再启用,当前不用」——建好备用,不分配给任何站 */
+[data-school='luxe'] {
+  --ck-bg: #14120f;
+  --ck-surface: #1c1a16;
+  --ck-surface-alt: #232019;
+  --ck-band-bg: #0e0c0a;
+  --ck-band-ink: #f2ece1;
+  --ck-ink: #f2ece1;
+  --ck-ink-soft: #b6ab98;
+  --ck-ink-faint: #8a8070;
+  --ck-line: #302b23;
+  --ck-line-strong: #4a4238;
+  --ck-accent: #b8974a;        /* 集团香槟金 */
+  --ck-accent-deep: #d4b269;
+  --ck-accent-soft: #241f16;
+  --ck-on-accent: #14120f;
+  --ck-hero-bg: #0e0c0a;
+  --ck-hero-ink: #f2ece1;
+  --ck-hero-minh: 38rem;
+  --ck-font-head: var(--ck-font-serif);
+  --ck-h1: clamp(2.5rem, 1.2rem + 5vw, 4.75rem);   /* 大号衬线 */
+  --ck-weight-head: 400;
+  --ck-lh-head: 1.1;
+  --ck-tracking-head: 0.005em;
+  --ck-tracking-eyebrow: 0.22em;
+  --ck-section-py: 8rem;       /* 超大留白 */
+  --ck-gap: 2.5rem;
+  --ck-radius: 0;
+  --ck-radius-lg: 0;
+}
+
+/* ═══ 5. 多巴胺 Z 世代 ═══ 对标 Starface / Bubble / ColourPop
+   PDF:高饱和撞色,糖果色 / 圆润字体,贴纸/表情元素
+   PDF 结论:「本厂彩妆车间接年轻品牌代工时作趋势参考」——备用,不分配给任何站 */
+[data-school='dopamine'] {
+  --ck-bg: #fff9f2;
+  --ck-surface: #ffffff;
+  --ck-surface-alt: #ffeef5;
+  --ck-band-bg: #ffe14d;
+  --ck-ink: #1b1240;
+  --ck-ink-soft: #5a4a8a;
+  --ck-ink-faint: #8a7ab5;
+  --ck-line: #ffd6e6;
+  --ck-line-strong: #1b1240;
+  --ck-accent: #ff4d8d;
+  --ck-accent-deep: #e0306f;
+  --ck-accent-soft: #ffe6ef;
+  --ck-hero-bg: #b8e6ff;
+  --ck-hero-minh: 28rem;
+  --ck-h1: clamp(2.25rem, 1.2rem + 4vw, 4rem);
+  --ck-weight-head: 800;
+  --ck-tracking-head: -0.03em;
+  --ck-section-py: 4rem;
+  --ck-gap: 1.5rem;
+  --ck-radius: 20px;           /* 圆润 */
+  --ck-radius-lg: 28px;
+  --ck-shadow: 0 4px 0 var(--ck-line-strong);   /* 贴纸式硬阴影 */
+}
+
+/* ═══ 6. 明星/叙事 ═══ 对标 Rare Beauty / Rhode / Fenty
+   PDF 结论:「不适用:本厂无名人 IP,不复刻」
+   —— 仅保留令牌占位以保证 style-lab 八格完整,不分配给任何站、不做专属版式。 */
+[data-school='narrative'] {
+  --ck-bg: #f7f5f4;
+  --ck-surface: #ffffff;
+  --ck-surface-alt: #efebe9;
+  --ck-band-bg: #2a2523;
+  --ck-band-ink: #f7f5f4;
+  --ck-ink: #211d1b;
+  --ck-ink-soft: #5d554f;
+  --ck-line: #e2dcd8;
+  --ck-accent: #8c6f63;
+  --ck-accent-deep: #6d554b;
+  --ck-accent-soft: #f0e9e5;
+  --ck-hero-bg: #2a2523;
+  --ck-hero-ink: #f7f5f4;
+  --ck-hero-minh: 40rem;       /* 人物大片主导 */
+  --ck-font-head: var(--ck-font-serif);
+  --ck-h1: clamp(2.25rem, 1.2rem + 4vw, 4rem);
+  --ck-weight-head: 400;
+  --ck-section-py: 6rem;
+  --ck-radius: 3px;
+}
+
+/* ═══ 7. 科技参数 ═══ 对标 Olaplex / K18 / Foreo(+ Anker 中国品牌出海范本)
+   PDF:黑蓝/银白科技感 / 参数表,对比图
+   用于:BIOSPHERE-AI(生命美妆 AI 科技平台) */
+[data-school='tech-spec'] {
+  --ck-bg: #0b0e17;
+  --ck-surface: #131829;
+  --ck-surface-alt: #1a2036;
+  --ck-band-bg: #080b12;
+  --ck-band-ink: #eef1f8;
+  --ck-ink: #eef1f8;
+  --ck-ink-soft: #9aa4c0;
+  --ck-ink-faint: #6b7695;
+  --ck-line: #232a42;
+  --ck-line-strong: #37405f;
+  --ck-accent: #4d7cff;
+  --ck-accent-deep: #6b93ff;
+  --ck-accent-soft: #16203c;
+  --ck-on-accent: #ffffff;
+  --ck-hero-bg: #080b12;
+  --ck-hero-ink: #eef1f8;
+  --ck-hero-minh: 32rem;
+  --ck-h1: clamp(2rem, 1.2rem + 3.4vw, 3.5rem);
+  --ck-weight-head: 650;
+  --ck-tracking-head: -0.02em;
+  --ck-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, monospace;
+  --ck-section-py: 5rem;
+  --ck-gap: 1.25rem;
+  --ck-radius: 6px;
+  --ck-radius-lg: 10px;
+}
+
+/* ═══ 8. 流量效率 ═══ 对标 Hismile / e.l.f. / SHEIN
+   PDF:明快促销色 / 促销位,倒计时,评价数
+   PDF 结论:「若做洁牙片自有品牌,转化页照 Hismile 结构搭」
+   —— 只取「明快配色 + 证据密度(评价数/前后对比)」;倒计时与促销角标一律不做。 */
+[data-school='performance'] {
+  --ck-bg: #ffffff;
+  --ck-surface: #ffffff;
+  --ck-surface-alt: #f5f7ff;
+  --ck-band-bg: #101a3d;
+  --ck-band-ink: #ffffff;
+  --ck-ink: #101a3d;
+  --ck-ink-soft: #4e5878;
+  --ck-ink-faint: #838ca8;
+  --ck-line: #e2e6f2;
+  --ck-line-strong: #101a3d;
+  --ck-accent: #6d3bff;
+  --ck-accent-deep: #5327db;
+  --ck-accent-soft: #efe9ff;
+  --ck-hero-bg: #f0edff;
+  --ck-hero-minh: 26rem;
+  --ck-h1: clamp(2.125rem, 1.2rem + 3.8vw, 3.75rem);
+  --ck-weight-head: 750;
+  --ck-tracking-head: -0.03em;
+  --ck-section-py: 4rem;
+  --ck-gap: 1.25rem;
+  --ck-radius: 8px;
+  --ck-radius-lg: 14px;
+}

@@ -1,0 +1,78 @@
+---
+/**
+ * 代工服务流程 —— B 端客户在「你能做什么」之后必问「怎么合作、多久交付」。
+ * 对标 Intercos / Cosmax / Quadpack 的 capabilities → process 版式:横向步骤条,
+ * 步骤号用等宽字体,连线用一条贯穿的细线(纯 CSS,无图片)。
+ */
+import type { ProcessStep } from '../types.ts';
+
+export interface Props {
+  title: string;
+  intro?: string;
+  steps: ProcessStep[];
+}
+
+const { title, intro, steps } = Astro.props;
+---
+
+<section class="proc ck-section" aria-label={title}>
+  <div class="ck-wrap">
+    <header class="head">
+      <h2>{title}</h2>
+      {intro && <p class="intro">{intro}</p>}
+    </header>
+
+    <ol class="rail">
+      {steps.map((s) => (
+        <li class="step">
+          <span class="no">{s.no}</span>
+          <h3 class="t">{s.title}</h3>
+          <p class="d">{s.desc}</p>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .proc {
+    background: var(--ck-surface-alt);
+    border-block: var(--ck-border-w) solid var(--ck-line);
+  }
+  .head { max-width: var(--ck-maxw-prose); }
+  .intro { margin-top: 0.875rem; color: var(--ck-ink-soft); }
+
+  .rail {
+    list-style: none;
+    margin: 3rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: var(--ck-gap);
+  }
+  .step {
+    position: relative;
+    padding-top: 2.25rem;
+    /* 贯穿细线:每格顶部一条,视觉上连成一条流程轨 */
+    border-top: var(--ck-rule-w) solid var(--ck-line-strong);
+  }
+  .no {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: translateY(-50%);
+    background: var(--ck-surface-alt);
+    padding-right: 0.625rem;
+    font-family: var(--ck-font-mono);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--ck-accent);
+  }
+  .t { font-size: var(--ck-h3); }
+  .d {
+    margin-top: 0.5625rem;
+    color: var(--ck-ink-soft);
+    font-size: var(--ck-small);
+  }
+</style>

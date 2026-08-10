@@ -1,0 +1,105 @@
+---
+/**
+ * 首屏 Hero —— 20 套风格差异最大的一块。
+ * 差异全部由令牌承担:--ck-hero-bg / --ck-hero-ink / --ck-hero-minh / --ck-hero-deco。
+ * --ck-hero-deco 是纯 CSS 渐变与网格,不引入任何图片:
+ *   工厂系 = 细竖线栅格;科技系 = 网格 + 辉光;奢华系 = 单点柔光;临床系 = 无装饰。
+ * 产品实拍图到位后,在此加一列图片位即可,版式不必重排。
+ */
+import type { HomeContent } from '../types.ts';
+
+export interface Props {
+  hero: HomeContent['hero'];
+  /** 询盘页链接(已含语言前缀) */
+  ctaHref: string;
+  /** 次要按钮链接(通常指向产品目录) */
+  ctaSecondaryHref?: string;
+}
+
+const { hero, ctaHref, ctaSecondaryHref } = Astro.props;
+---
+
+<section class="hero">
+  <div class="deco" aria-hidden="true"></div>
+  <div class="ck-wrap inner">
+    {hero.eyebrow && <p class="ck-eyebrow ck-fade-up">{hero.eyebrow}</p>}
+    <h1 class="ck-fade-up ck-delay-1">{hero.title}</h1>
+    <p class="lead ck-fade-up ck-delay-2">{hero.lead}</p>
+    <p class="actions ck-fade-up ck-delay-3">
+      <a class="cta" href={ctaHref}>{hero.ctaPrimary}</a>
+      {hero.ctaSecondary && ctaSecondaryHref && (
+        <a class="ghost" href={ctaSecondaryHref}>{hero.ctaSecondary}</a>
+      )}
+    </p>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    background: var(--ck-hero-bg);
+    color: var(--ck-hero-ink);
+    min-height: var(--ck-hero-minh);
+    display: grid;
+    align-items: center;
+    padding-block: var(--ck-section-py);
+    overflow: hidden;
+  }
+  /* 装饰层单独一层,保证文字始终在其上、对比度不受影响 */
+  .deco {
+    position: absolute;
+    inset: 0;
+    background: var(--ck-hero-deco);
+    background-size: var(--ck-hero-deco-size);
+    pointer-events: none;
+  }
+  .inner {
+    position: relative;
+  }
+  h1 {
+    margin-top: 0.875rem;
+    max-width: 22ch;
+  }
+  .lead {
+    max-width: var(--ck-maxw-prose);
+    margin-block: 1.375rem 2.25rem;
+    color: color-mix(in srgb, currentColor 74%, transparent);
+    font-size: 1.0625rem;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.875rem;
+  }
+  .cta {
+    display: inline-block;
+    padding: 0.9375rem 1.875rem;
+    background: var(--ck-accent);
+    color: var(--ck-on-accent);
+    border-radius: var(--ck-cta-radius);
+    text-decoration: none;
+    font-weight: var(--ck-cta-weight);
+    letter-spacing: var(--ck-cta-tracking);
+    text-transform: var(--ck-cta-transform);
+    transition: background var(--ck-dur) var(--ck-ease);
+  }
+  .cta:hover { background: var(--ck-accent-deep); }
+
+  /* 次要按钮:描边式,继承 Hero 前景色,深浅底都成立 */
+  .ghost {
+    display: inline-block;
+    padding: 0.9375rem 1.875rem;
+    border: var(--ck-border-w) solid color-mix(in srgb, currentColor 38%, transparent);
+    border-radius: var(--ck-cta-radius);
+    color: inherit;
+    text-decoration: none;
+    font-weight: var(--ck-cta-weight);
+    letter-spacing: var(--ck-cta-tracking);
+    text-transform: var(--ck-cta-transform);
+    transition: border-color var(--ck-dur) var(--ck-ease), background var(--ck-dur) var(--ck-ease);
+  }
+  .ghost:hover {
+    border-color: currentColor;
+    background: color-mix(in srgb, currentColor 8%, transparent);
+  }
+</style>

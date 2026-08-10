@@ -1,0 +1,194 @@
+---
+/**
+ * 站点页脚 —— 含「集团品牌生态互链」。
+ * 依据创始人品牌视觉图的《品牌生态架构》:以 BIOSPHERE-AI 为科技大脑,
+ * 四个平台品牌互为生态。5 站互链既服务真实客户动线,也是矩阵站的自然内链结构。
+ * 纪律:互链只指向本集团自有域名,不外链任何第三方。
+ */
+import { LOCALES, LOCALE_LABELS, switchLocalePath, t, type Locale } from '../i18n/index.ts';
+import type { SiteDef } from '../registry.ts';
+
+export interface Props {
+  locale: Locale;
+  path: string;
+  site: SiteDef;
+  /** 集团其余站点(互链用);实验室预览时传空数组即可 */
+  siblings: SiteDef[];
+  email: string;
+  /** 互链是否可点(实验室内嵌预览时置 false,避免跳出画廊) */
+  linkSiblings?: boolean;
+  showLocaleSwitch?: boolean;
+}
+
+const { locale, path, site, siblings, email, linkSiblings = true, showLocaleSwitch = true } = Astro.props;
+const tr = t(locale);
+const year = 2026;
+const L = (p: string) => `/${locale}${p}`;
+
+const nav: { key: Parameters<typeof tr>[0]; href: string }[] = [
+  { key: 'nav.home', href: '/' },
+  { key: 'nav.products', href: '/products/' },
+  { key: 'nav.brand', href: '/brand/' },
+  { key: 'nav.contact', href: '/contact/' },
+];
+---
+
+<footer class="ft">
+  <div class="ck-wrap top">
+    <div class="col brandcol">
+      <strong class="name">{site.name}</strong>
+      <p class="zh">{site.nameZh}</p>
+      <p class="group">帛卉集团 BOHUI GROUP · AI驱动 · 草本科技 · 智造美丽未来</p>
+    </div>
+
+    <nav class="col" aria-label={tr('footer.nav')}>
+      <h2 class="ch">{tr('footer.nav')}</h2>
+      <ul class="list">
+        {nav.map((n) => <li><a href={L(n.href)}>{tr(n.key)}</a></li>)}
+      </ul>
+    </nav>
+
+    <div class="col">
+      <h2 class="ch">{tr('footer.contact')}</h2>
+      <ul class="list">
+        <li><a href={`mailto:${email}`}>{email}</a></li>
+        <li class="plain">{site.domain}</li>
+      </ul>
+    </div>
+
+    {siblings.length > 0 && (
+      <div class="col wide">
+        <h2 class="ch">集团品牌生态 / Brand Ecosystem</h2>
+        <ul class="sibs">
+          {siblings.map((s) => (
+            <li>
+              {linkSiblings ? (
+                <a class="sib" href={s.url} rel="noopener">
+                  <span class="sn">{s.name}</span>
+                  <span class="sd">{s.nameZh}</span>
+                </a>
+              ) : (
+                <span class="sib">
+                  <span class="sn">{s.name}</span>
+                  <span class="sd">{s.nameZh}</span>
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+  </div>
+
+  <div class="ck-wrap bottom">
+    <p class="rights">© {year} {site.name}. {tr('footer.rights')}</p>
+    {showLocaleSwitch && (
+      <nav class="langs" aria-label={tr('lang.label')}>
+        {LOCALES.map((l) => (
+          <a class:list={['lang', l === locale && 'on']} href={switchLocalePath(path, l)} hreflang={l}>
+            {LOCALE_LABELS[l]}
+          </a>
+        ))}
+      </nav>
+    )}
+  </div>
+</footer>
+
+<style>
+  .ft {
+    background: var(--ck-surface-alt);
+    border-top: var(--ck-border-w) solid var(--ck-line);
+    color: var(--ck-ink-soft);
+    font-size: var(--ck-small);
+  }
+  .top {
+    display: grid;
+    grid-template-columns: 1.4fr 0.8fr 1fr;
+    gap: 2.5rem var(--ck-gap);
+    padding-block: 3.5rem 2.5rem;
+  }
+  .col.wide { grid-column: 1 / -1; }
+
+  .name {
+    font-family: var(--ck-font-head);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--ck-ink);
+  }
+  .zh { margin-top: 0.375rem; }
+  .group {
+    margin-top: 0.875rem;
+    color: var(--ck-ink-faint);
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    max-width: 26rem;
+  }
+
+  .ch {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: var(--ck-tracking-eyebrow);
+    text-transform: var(--ck-eyebrow-transform);
+    color: var(--ck-ink-faint);
+    margin-bottom: 1rem;
+  }
+  .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+  .list a { text-decoration: none; }
+  .list a:hover { color: var(--ck-ink); }
+  .plain { color: var(--ck-ink-faint); font-family: var(--ck-font-mono); font-size: 0.75rem; }
+
+  /* 品牌生态互链:四格并排,悬停时强调色顶条亮起 */
+  .sibs {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 0.75rem;
+  }
+  .sib {
+    display: block;
+    padding: 0.875rem 1rem;
+    background: var(--ck-surface);
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-top: var(--ck-rule-w) solid var(--ck-line-strong);
+    border-radius: var(--ck-radius);
+    text-decoration: none;
+    transition: border-top-color var(--ck-dur) var(--ck-ease);
+  }
+  a.sib:hover { border-top-color: var(--ck-accent); }
+  .sn {
+    display: block;
+    font-family: var(--ck-font-head);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--ck-ink);
+  }
+  .sd { display: block; margin-top: 0.25rem; font-size: 0.75rem; color: var(--ck-ink-faint); }
+
+  .bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-block: 1.125rem;
+    border-top: var(--ck-border-w) solid var(--ck-line);
+    font-size: 0.75rem;
+    color: var(--ck-ink-faint);
+  }
+  .rights { margin: 0; }
+  .langs { display: flex; gap: 1rem; }
+  .lang { text-decoration: none; }
+  .lang:hover { color: var(--ck-ink); }
+  .lang.on { color: var(--ck-accent); font-weight: 600; }
+
+  @media (max-width: 52rem) {
+    .top { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 34rem) {
+    .top { grid-template-columns: 1fr; }
+  }
+</style>

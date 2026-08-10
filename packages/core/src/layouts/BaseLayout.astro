@@ -1,0 +1,83 @@
+---
+/**
+ * 基座布局 —— 5 站唯一 HTML 外壳。
+ * 风格三层叠加全部落在 <html> 的属性上:
+ *   data-school  → 八大流派(schools.css)
+ *   data-variant → 该域名下的第 N 套风格提案(variants/<siteId>.css)
+ *   data-brand   → 品牌色微调(sites/<id>/src/styles/brand.css)
+ * 所以「换风格」= 换一个属性值,不动任何页面代码。这是 5 域名 × 4 风格能在一套模板里跑的原因。
+ */
+import { HREFLANG, OG_LOCALE, LOCALES, switchLocalePath, type Locale } from '../i18n/index.ts';
+import '../styles/tokens.css';
+import '../styles/schools.css';
+import '../styles/variants.css';
+import '../styles/base.css';
+
+export interface Props {
+  locale: Locale;
+  /** 八大流派之一 */
+  school: string;
+  /** 该域名下的风格提案编号,如 'v1' */
+  variant?: string;
+  /** 品牌 id,用于 brand.css 的 [data-brand] 选择器 */
+  brand: string;
+  title: string;
+  description: string;
+  /** 站点名,追加到 <title> 后缀 */
+  siteName: string;
+  /** 生产环境站点根地址,用于 canonical / hreflang 绝对地址 */
+  siteUrl: string;
+  /** 当前页面路径(含语言前缀),如 /en/products/ */
+  path: string;
+  /** 是否让搜索引擎收录(风格画廊等内部页设 false) */
+  indexable?: boolean;
+}
+
+const {
+  locale, school, variant, brand, title, description,
+  siteName, siteUrl, path, indexable = true,
+} = Astro.props;
+
+const base = siteUrl.replace(/\/$/, '');
+const canonical = `${base}${path}`;
+const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`;
+---
+
+<!doctype html>
+<html
+  lang={HREFLANG[locale]}
+  data-school={school}
+  data-variant={variant}
+  data-brand={brand}
+>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {!indexable && <meta name="robots" content="noindex,nofollow" />}
+
+    {/* hreflang:四语互指 + x-default 指向默认语言,与 sitemap 用同一张表 */}
+    {LOCALES.map((l) => (
+      <link
+        rel="alternate"
+        hreflang={HREFLANG[l]}
+        href={`${base}${switchLocalePath(path, l)}`}
+      />
+    ))}
+    <link rel="alternate" hreflang="x-default" href={`${base}${switchLocalePath(path, 'zh-cn')}`} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:locale" content={OG_LOCALE[locale]} />
+
+    <slot name="head" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
