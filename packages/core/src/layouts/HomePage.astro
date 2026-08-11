@@ -13,11 +13,13 @@
 import BaseLayout from './BaseLayout.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Hero from '../components/Hero.astro';
-import StatWall from '../components/StatWall.astro';
+import WorkshopProof from '../components/WorkshopProof.astro';
 import CategoryMatrix from '../components/CategoryMatrix.astro';
 import ProcessSteps from '../components/ProcessSteps.astro';
 import CertWall from '../components/CertWall.astro';
 import EvidenceGrid from '../components/EvidenceGrid.astro';
+import SocialProof from '../components/SocialProof.astro';
+import InquiryForm from '../components/InquiryForm.astro';
 import InquiryBand from '../components/InquiryBand.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import { localePath, t, type Locale } from '../i18n/index.ts';
@@ -62,16 +64,20 @@ const contactHref = embedded ? '#' : localePath(locale, '/contact/');
 /** 产品目录页未开工,Hero 的次要按钮暂不给链接(HomePage 会因此不渲染它) */
 const productsHref = undefined;
 
-/** 数字墙形态:深底流派走反白大字,浅底流派走同底细线 —— 由流派决定,不由内容决定 */
-const statTone: 'band' | 'plain' =
-  variant.school === 'factory-b2b' || variant.school === 'tech-spec' ? 'band' : 'plain';
-
 /** 证据缺出处时的多语提示(合规:不让无出处功效宣称静默上线) */
 const PENDING: Record<Locale, string> = {
   'zh-cn': '出处待补充',
   'zh-tw': '出處待補充',
   en: 'source pending',
   ja: '出典未記載',
+};
+
+/** 车间实拍未到位时的多语占位提示(PDF 禁用素材库摆拍图,宁可空着) */
+const SHOT_PENDING: Record<Locale, string> = {
+  'zh-cn': '车间实拍待补',
+  'zh-tw': '車間實拍待補',
+  en: 'footage pending',
+  ja: '現場映像は準備中',
 };
 ---
 
@@ -99,25 +105,54 @@ const PENDING: Record<Locale, string> = {
     inert={embedded}
   />
 
+  {/*
+    版块顺序 = PDF《100家独立站风格调研与复刻方案》第 6 页「落地页逐屏结构(共 7 屏)」定案:
+      ① 首屏定位(一句话 + 三个核心数字 + 行动按钮)   参照 Intercos 首页数字墙 + The Ordinary 留白
+      ② 车间实证(乳化/灌装/包装实拍)                 参照 Cosmax 工厂展示
+      ③ 认证墙(体系证书 + 检测能力)                  参照 Kolmar 认证陈列
+      ④ 品类能力矩阵(三列 + 起订量区间)              参照 KDC-One 能力矩阵页
+      ⑤ 打样流程(4 步 + 各步时长)                    参照 Quadpack 选型引导
+      ⑥ 合作证明(服务品牌数/出口国家数/匿名评价)
+      ⑦ 询盘表单(姓名/公司/邮箱/国家/需求)
+    ②⑥⑦ 为代工站专属;自有品牌站(MEDIERBA)不传这三块内容,自动跳过。
+  */}
   <main id="main">
-    <Hero hero={content.hero} ctaHref={contactHref} ctaSecondaryHref={productsHref} />
+    {/* ① 首屏:核心数字直接进首屏,不再单独占一屏 */}
+    <Hero
+      hero={content.hero}
+      ctaHref={contactHref}
+      ctaSecondaryHref={productsHref}
+      highlights={content.stats.items}
+    />
 
-    <StatWall title={content.stats.title} items={content.stats.items} tone={statTone} />
+    {/* ② 车间实证 */}
+    {content.workshop && (
+      <WorkshopProof
+        title={content.workshop.title}
+        intro={content.workshop.intro}
+        clips={content.workshop.clips}
+        pendingLabel={SHOT_PENDING[locale]}
+      />
+    )}
 
+    {/* ③ 认证墙 */}
+    <CertWall title={content.certs.title} note={content.certs.note} items={content.certs.items} />
+
+    {/* ④ 品类能力矩阵 */}
     <CategoryMatrix
       title={content.matrix.title}
       intro={content.matrix.intro}
       items={content.matrix.items}
     />
 
+    {/* ⑤ 打样流程 */}
     <ProcessSteps
       title={content.process.title}
       intro={content.process.intro}
       steps={content.process.steps}
     />
 
-    <CertWall title={content.certs.title} note={content.certs.note} items={content.certs.items} />
-
+    {/* 证据陈列:仅功效导向站(护肤/口腔/自有品牌)使用,不在 7 屏定案内但同源于 PDF 的临床极简流派 */}
     {content.evidence && (
       <EvidenceGrid
         title={content.evidence.title}
@@ -127,7 +162,28 @@ const PENDING: Record<Locale, string> = {
       />
     )}
 
-    <InquiryBand inquiry={content.inquiry} href={contactHref} email={email} />
+    {/* ⑥ 合作证明 */}
+    {content.proof && (
+      <SocialProof
+        title={content.proof.title}
+        intro={content.proof.intro}
+        stats={content.proof.stats}
+        testimonials={content.proof.testimonials}
+      />
+    )}
+
+    {/* ⑦ 询盘表单;自有品牌站没有表单内容时退回询盘转化带 */}
+    {content.form ? (
+      <InquiryForm
+        title={content.form.title}
+        intro={content.form.intro}
+        labels={content.form.labels}
+        email={email}
+        subject={`[${site.name}] ${content.form.title}`}
+      />
+    ) : (
+      <InquiryBand inquiry={content.inquiry} href={contactHref} email={email} />
+    )}
   </main>
 
   <SiteFooter

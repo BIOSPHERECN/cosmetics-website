@@ -6,7 +6,7 @@
  *   工厂系 = 细竖线栅格;科技系 = 网格 + 辉光;奢华系 = 单点柔光;临床系 = 无装饰。
  * 产品实拍图到位后,在此加一列图片位即可,版式不必重排。
  */
-import type { HomeContent } from '../types.ts';
+import type { HomeContent, StatItem } from '../types.ts';
 
 export interface Props {
   hero: HomeContent['hero'];
@@ -14,9 +14,15 @@ export interface Props {
   ctaHref: string;
   /** 次要按钮链接(通常指向产品目录) */
   ctaSecondaryHref?: string;
+  /**
+   * 首屏核心数字 —— PDF 定案第 1 屏:「一句话 + 三个核心数字 + 一个行动按钮」。
+   * 参照 Intercos 首页数字墙:访客三秒内就该知道这家厂有多大产能。
+   * 传超过 3 条也能排,但按定案建议只给 3 条,多了反而稀释。
+   */
+  highlights?: StatItem[];
 }
 
-const { hero, ctaHref, ctaSecondaryHref } = Astro.props;
+const { hero, ctaHref, ctaSecondaryHref, highlights = [] } = Astro.props;
 ---
 
 <section class="hero">
@@ -31,6 +37,17 @@ const { hero, ctaHref, ctaSecondaryHref } = Astro.props;
         <a class="ghost" href={ctaSecondaryHref}>{hero.ctaSecondary}</a>
       )}
     </p>
+
+    {highlights.length > 0 && (
+      <dl class="hl ck-fade-up ck-delay-3">
+        {highlights.map((h) => (
+          <div class="hcell">
+            <dt class="hv">{h.value}</dt>
+            <dd class="hl-lab">{h.label}</dd>
+          </div>
+        ))}
+      </dl>
+    )}
   </div>
 </section>
 
@@ -101,5 +118,31 @@ const { hero, ctaHref, ctaSecondaryHref } = Astro.props;
   .ghost:hover {
     border-color: currentColor;
     background: color-mix(in srgb, currentColor 8%, transparent);
+  }
+
+  /* 首屏数字墙:超大字号 + 小标签(PDF 版式规范),继承 Hero 前景色,深浅底都成立 */
+  .hl {
+    margin: clamp(2.5rem, 6vh, 4rem) 0 0;
+    padding-top: 1.75rem;
+    border-top: var(--ck-border-w) solid color-mix(in srgb, currentColor 22%, transparent);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: var(--ck-gap);
+    max-width: 46rem;
+  }
+  .hcell { min-width: 0; }
+  .hv {
+    font-family: var(--ck-font-head);
+    font-size: clamp(1.625rem, 1rem + 2vw, 2.5rem);
+    font-weight: var(--ck-weight-head);
+    line-height: 1.05;
+    letter-spacing: var(--ck-tracking-head);
+    font-variant-numeric: tabular-nums;
+  }
+  .hl-lab {
+    margin: 0.4375rem 0 0;
+    font-size: var(--ck-small);
+    line-height: 1.45;
+    color: color-mix(in srgb, currentColor 68%, transparent);
   }
 </style>

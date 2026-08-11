@@ -1,0 +1,113 @@
+---
+/**
+ * 合作证明 —— PDF 定案落地页第 6 屏。
+ * 原文:「服务品牌数/出口国家数/客户评价(可匿名),**不用绝对化用语**」,参照 B2B 通用社会证明。
+ *
+ * 两条自律,写死在组件里:
+ * 1. 客户一律匿名到「地区 + 品类 + 角色」粒度。未经授权披露客户关系,在代工行业是大忌 ——
+ *    品牌方通常合同里就禁止代工厂声张,说漏一次就丢一个客户。
+ * 2. 不用 first / biggest / only 等绝对化用语(PDF 红线,也是多国广告法的雷区)。
+ */
+import type { StatItem, Testimonial } from '../types.ts';
+
+export interface Props {
+  title: string;
+  intro?: string;
+  stats: StatItem[];
+  testimonials: Testimonial[];
+}
+
+const { title, intro, stats, testimonials } = Astro.props;
+---
+
+<section class="proof ck-section" aria-label={title}>
+  <div class="ck-wrap">
+    <header class="head">
+      <h2>{title}</h2>
+      {intro && <p class="intro">{intro}</p>}
+    </header>
+
+    <dl class="nums">
+      {stats.map((s) => (
+        <div class="num">
+          <dt class="v">{s.value}</dt>
+          <dd class="l">
+            {s.label}
+            {s.note && <span class="n">{s.note}</span>}
+          </dd>
+        </div>
+      ))}
+    </dl>
+
+    <ul class="quotes">
+      {testimonials.map((t) => (
+        <li class="q">
+          <blockquote class="text">{t.quote}</blockquote>
+          <p class="from">{t.attribution}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .proof { background: var(--ck-bg); }
+  .head { max-width: var(--ck-maxw-prose); }
+  .intro { margin-top: 0.875rem; color: var(--ck-ink-soft); }
+
+  .nums {
+    margin: 2.5rem 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: var(--ck-gap);
+    padding-bottom: 2.5rem;
+    border-bottom: var(--ck-border-w) solid var(--ck-line);
+  }
+  .num {
+    padding-left: 1.125rem;
+    border-left: var(--ck-rule-w) solid var(--ck-accent);
+  }
+  .v {
+    font-family: var(--ck-font-head);
+    font-size: clamp(1.75rem, 1.1rem + 2.2vw, 2.75rem);
+    font-weight: var(--ck-weight-head);
+    line-height: 1.05;
+    letter-spacing: var(--ck-tracking-head);
+    font-variant-numeric: tabular-nums;
+    color: var(--ck-ink);
+  }
+  .l {
+    margin: 0.5rem 0 0;
+    font-size: var(--ck-small);
+    color: var(--ck-ink-soft);
+  }
+  .n { display: block; margin-top: 0.1875rem; color: var(--ck-ink-faint); }
+
+  .quotes {
+    list-style: none;
+    margin: 2.5rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: var(--ck-gap);
+  }
+  .q {
+    padding: 1.625rem 1.5rem;
+    background: var(--ck-surface);
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-radius: var(--ck-radius-lg);
+  }
+  .text {
+    margin: 0;
+    color: var(--ck-ink);
+    /* 正文行宽 ≤72 字符(PDF 版式规范) */
+    max-width: 72ch;
+  }
+  .text::before { content: '“'; color: var(--ck-accent); margin-right: 0.125rem; }
+  .text::after { content: '”'; color: var(--ck-accent); }
+  .from {
+    margin-top: 0.875rem;
+    font-size: var(--ck-small);
+    color: var(--ck-ink-faint);
+  }
+</style>

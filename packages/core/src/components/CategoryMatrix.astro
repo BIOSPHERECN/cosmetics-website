@@ -33,6 +33,13 @@ const { title, intro, items } = Astro.props;
               {m.bullets.map((b) => <li>{b}</li>)}
             </ul>
           )}
+          {/* 起订量 —— PDF 定案要求标注。B 端采购看完能做什么,下一个问题必是「多少起做」 */}
+          {m.moq && (
+            <p class="moq">
+              <span class="mk">MOQ</span>
+              <span>{m.moq}</span>
+            </p>
+          )}
         </li>
       ))}
     </ul>
@@ -99,5 +106,25 @@ const { title, intro, items } = Astro.props;
     content: '—';
     color: var(--ck-ink-faint);
     flex: none;
+  }
+  .moq {
+    margin-top: 1.125rem;
+    padding-top: 0.875rem;
+    border-top: var(--ck-border-w) solid var(--ck-line);
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: var(--ck-small);
+    color: var(--ck-ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .mk {
+    font-family: var(--ck-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    padding: 0.125rem 0.375rem;
+    border-radius: 3px;
+    background: var(--ck-accent-soft);
+    color: var(--ck-accent);
   }
 </style>

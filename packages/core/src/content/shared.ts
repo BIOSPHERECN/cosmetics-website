@@ -13,7 +13,7 @@
  * 形状必须继续符合 types.ts 的契约。
  * ═══════════════════════════════════════════════════════════════════
  */
-import type { Certification } from '../types.ts';
+import type { Certification, InquiryFormLabels, WorkshopClip } from '../types.ts';
 import type { Locale } from '../i18n/index.ts';
 
 /** 集团级资质(5 站共用)—— 占位样例,待核实 */
@@ -191,6 +191,92 @@ export const CONTACT: Record<Locale, {
     langLabel: '対応言語',
     langValue: '日本語 / 中文 / English',
     note: '当社は一般消費者向けの販売を行わず、オンラインカートも設けていません。本サイトの導線はすべて法人様のお問い合わせに向かいます。',
+  },
+};
+
+/**
+ * 落地页内嵌询盘表单标签(PDF 定案第 7 屏:姓名/公司/邮箱/国家/需求)
+ * 5 站共用同一套字段 —— 字段一致,将来后台的询盘池才不用按站分表。
+ */
+export const FORM_LABELS: Record<Locale, InquiryFormLabels> = {
+  'zh-cn': {
+    name: '姓名', company: '公司', email: '邮箱', country: '国家/地区', need: '需求描述',
+    submit: '提交询盘',
+    privacyNote: '提交的信息仅用于回复本次询盘,不用于任何第三方营销。当前阶段由邮件直达业务负责人。',
+  },
+  'zh-tw': {
+    name: '姓名', company: '公司', email: '信箱', country: '國家/地區', need: '需求描述',
+    submit: '送出詢價',
+    privacyNote: '送出的資訊僅用於回覆本次詢價,不用於任何第三方行銷。現階段以郵件直達業務負責人。',
+  },
+  en: {
+    name: 'Name', company: 'Company', email: 'Email', country: 'Country / region', need: 'What you need',
+    submit: 'Send inquiry',
+    privacyNote: 'Your details are used only to answer this inquiry and are never passed to third-party marketing. At this stage the form reaches our account team by email.',
+  },
+  ja: {
+    name: 'お名前', company: '会社名', email: 'メールアドレス', country: '国・地域', need: 'ご要望',
+    submit: '送信する',
+    privacyNote: 'ご記入内容は本件へのご回答のみに使用し、第三者のマーケティングには一切利用しません。現時点ではメールで担当者へ直接届きます。',
+  },
+};
+
+/**
+ * 车间实证三段(PDF 定案第 2 屏:乳化/灌装/包装各一段)
+ * 各站工段名略有差异(口腔线是膏体制备而非乳化),用参数区分。
+ * ⚠️ media 一律留空 —— PDF 摄影红线禁用素材库摆拍图,实拍到位前前端显示待补占位框。
+ */
+export function workshopClips(locale: Locale, kind: 'cosmetic' | 'oral' = 'cosmetic'): WorkshopClip[] {
+  const first = {
+    'zh-cn': kind === 'oral' ? '膏体制备' : '乳化车间',
+    'zh-tw': kind === 'oral' ? '膏體製備' : '乳化車間',
+    en: kind === 'oral' ? 'Paste compounding' : 'Emulsification',
+    ja: kind === 'oral' ? 'ペースト調製' : '乳化工程',
+  }[locale];
+
+  const table: Record<Locale, { t: string; c: string; d: string }[]> = {
+    'zh-cn': [
+      { t: first, c: '真空乳化锅与温控记录,同一配方每批的工艺参数可回溯比对。', d: '45 秒' },
+      { t: '灌装产线', c: '按剂型切换灌装头,在线称重剔除,装量偏差逐支监控。', d: '40 秒' },
+      { t: '包装与出货检', c: '贴标、批号喷码、外箱码放,出货前按 AQL 抽检。', d: '35 秒' },
+    ],
+    'zh-tw': [
+      { t: first, c: '真空乳化鍋與溫控紀錄,同一配方每批的製程參數可回溯比對。', d: '45 秒' },
+      { t: '充填產線', c: '依劑型切換充填頭,線上秤重剔除,裝量偏差逐支監控。', d: '40 秒' },
+      { t: '包裝與出貨檢', c: '貼標、批號噴碼、外箱碼放,出貨前依 AQL 抽檢。', d: '35 秒' },
+    ],
+    en: [
+      { t: first, c: 'Vacuum emulsifiers with logged temperature control, so process parameters stay comparable batch to batch.', d: '45s' },
+      { t: 'Filling lines', c: 'Filling heads swapped by format, with in-line checkweighing rejecting out-of-spec units.', d: '40s' },
+      { t: 'Packing and outgoing check', c: 'Labelling, batch coding and case packing, with AQL sampling before release.', d: '35s' },
+    ],
+    ja: [
+      { t: first, c: '真空乳化釜と温度記録により、同一処方のロット間で工程条件を照合できます。', d: '45秒' },
+      { t: '充填ライン', c: '剤形に応じて充填ヘッドを切替え、インライン重量検査で規格外を排除します。', d: '40秒' },
+      { t: '包装・出荷検査', c: 'ラベル貼付、ロット印字、ケース詰めを行い、出荷前に AQL 抜取検査を実施します。', d: '35秒' },
+    ],
+  };
+  const ids = ['compound', 'filling', 'packing'];
+  return table[locale].map((x, i) => ({ id: ids[i], title: x.t, caption: x.c, duration: x.d }));
+}
+
+/** 车间实证区块标题(各语言) */
+export const WORKSHOP_BLOCK: Record<Locale, { title: string; intro: string }> = {
+  'zh-cn': {
+    title: '车间实证',
+    intro: '判断一家代工厂是真是假,看车间比看文案快。以下三段覆盖乳化、灌装、包装三个关键工段,均为自有产线实拍,不做后期修饰。',
+  },
+  'zh-tw': {
+    title: '車間實證',
+    intro: '判斷一家代工廠是真是假,看車間比看文案快。以下三段涵蓋乳化、充填、包裝三個關鍵工段,皆為自有產線實拍,不做後製修飾。',
+  },
+  en: {
+    title: 'Inside the plant',
+    intro: 'A shop floor tells you more about a manufacturer than any brochure. These three clips cover compounding, filling and packing on our own lines, recorded without retouching.',
+  },
+  ja: {
+    title: '製造現場',
+    intro: '製造委託先の実力は、パンフレットより現場を見るほうが早く分かります。以下の三本は自社ラインの調製・充填・包装工程を、加工なしで撮影したものです。',
   },
 };
 

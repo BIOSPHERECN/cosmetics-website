@@ -1,0 +1,142 @@
+---
+/**
+ * 落地页内嵌询盘表单 —— PDF 定案第 7 屏。
+ * 原文:「姓名/公司/邮箱/国家/需求,提交即进系统询盘池」。
+ *
+ * ★ 当前实现与最终目标的差距,写在这里免得日后忘记:
+ *   PDF 要的「进系统询盘池」需要服务端接收,而本站是纯静态、零后端。
+ *   现阶段 method="post" action="mailto:" —— 浏览器把表单内容作为邮件正文发出,
+ *   零 JS、零第三方表单服务(接第三方会违反零外链纪律)、字段结构与最终 API 完全一致。
+ *   后台(Directus)落地后,只需把 action 换成一条 POST 路由,本组件其余一行不动。
+ *
+ * ★ 表单本身零 JS:用原生 required / type=email 做校验,浏览器自带提示,还自带多语言。
+ */
+import type { InquiryFormLabels } from '../types.ts';
+
+export interface Props {
+  title: string;
+  intro?: string;
+  labels: InquiryFormLabels;
+  /** 收件邮箱(当前 mailto 方案的去向) */
+  email: string;
+  /** 邮件主题,带品牌名便于分拣 */
+  subject: string;
+}
+
+const { title, intro, labels, email, subject } = Astro.props;
+const action = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+---
+
+<section class="fm ck-section" id="inquiry" aria-label={title}>
+  <div class="ck-wrap inner">
+    <div class="lead">
+      <h2>{title}</h2>
+      {intro && <p class="intro">{intro}</p>}
+      <p class="note">{labels.privacyNote}</p>
+    </div>
+
+    <form class="form" action={action} method="post" enctype="text/plain">
+      <div class="row">
+        <label class="field">
+          <span class="lab">{labels.name}</span>
+          <input class="in" type="text" name={labels.name} required autocomplete="name" />
+        </label>
+        <label class="field">
+          <span class="lab">{labels.company}</span>
+          <input class="in" type="text" name={labels.company} required autocomplete="organization" />
+        </label>
+      </div>
+      <div class="row">
+        <label class="field">
+          <span class="lab">{labels.email}</span>
+          <input class="in" type="email" name={labels.email} required autocomplete="email" />
+        </label>
+        <label class="field">
+          <span class="lab">{labels.country}</span>
+          <input class="in" type="text" name={labels.country} required autocomplete="country-name" />
+        </label>
+      </div>
+      <label class="field">
+        <span class="lab">{labels.need}</span>
+        <textarea class="in ta" name={labels.need} rows="5" required></textarea>
+      </label>
+      <p class="act">
+        <button class="submit" type="submit">{labels.submit}</button>
+      </p>
+    </form>
+  </div>
+</section>
+
+<style>
+  .fm {
+    background: var(--ck-surface-alt);
+    border-top: var(--ck-border-w) solid var(--ck-line);
+  }
+  .inner {
+    display: grid;
+    grid-template-columns: 0.85fr 1.15fr;
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: start;
+  }
+  .intro {
+    margin-top: 0.875rem;
+    color: var(--ck-ink-soft);
+    max-width: 72ch;
+  }
+  .note {
+    margin-top: 1.25rem;
+    font-size: var(--ck-small);
+    color: var(--ck-ink-faint);
+    padding-top: 1rem;
+    border-top: var(--ck-border-w) solid var(--ck-line);
+  }
+
+  .form { display: grid; gap: 1.125rem; }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.125rem;
+  }
+  .field { display: grid; gap: 0.4375rem; }
+  .lab {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: var(--ck-tracking-eyebrow);
+    text-transform: var(--ck-eyebrow-transform);
+    color: var(--ck-ink-faint);
+  }
+  .in {
+    font: inherit;
+    font-size: var(--ck-small);
+    color: var(--ck-ink);
+    background: var(--ck-surface);
+    border: var(--ck-border-w) solid var(--ck-line-strong);
+    border-radius: var(--ck-radius);
+    padding: 0.6875rem 0.8125rem;
+    width: 100%;
+    transition: border-color var(--ck-dur) var(--ck-ease);
+  }
+  .in:focus { border-color: var(--ck-accent); }
+  .ta { resize: vertical; min-height: 7rem; }
+
+  .act { margin-top: 0.375rem; }
+  .submit {
+    font: inherit;
+    cursor: pointer;
+    padding: 0.9375rem 2rem;
+    background: var(--ck-accent);
+    color: var(--ck-on-accent);
+    border: 0;
+    border-radius: var(--ck-cta-radius);
+    font-weight: var(--ck-cta-weight);
+    letter-spacing: var(--ck-cta-tracking);
+    text-transform: var(--ck-cta-transform);
+    transition: background var(--ck-dur) var(--ck-ease);
+  }
+  .submit:hover { background: var(--ck-accent-deep); }
+
+  @media (max-width: 52rem) {
+    .inner { grid-template-columns: 1fr; }
+    .row { grid-template-columns: 1fr; }
+  }
+</style>

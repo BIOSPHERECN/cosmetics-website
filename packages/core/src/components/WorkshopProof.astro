@@ -1,0 +1,129 @@
+---
+/**
+ * 车间实证 —— PDF 定案落地页第 2 屏。
+ * 原文:「30-60 秒车间实拍视频(乳化/灌装/包装各一段),配一行说明」,参照 Cosmax 工厂展示。
+ *
+ * ★ 为什么这一屏最重要:B 端采购判断一家代工厂真伪,看的不是文案,是「你有没有车间」。
+ *   Intercos / Cosmax 的官网首屏之后立刻就是产线实拍,不是巧合。
+ *
+ * ★ 素材红线(PDF 摄影规范):车间与设备实拍为主,冷白光,不加滤镜,**禁用素材库摆拍图**。
+ *   所以 clip.media 缺省时,这里画的是明确的「待补实拍」占位框 —— 宁可空着,
+ *   也不拿一张网图假装是自己的车间。那种假一眼被识破,信任反而全丢。
+ */
+import type { WorkshopClip } from '../types.ts';
+
+export interface Props {
+  title: string;
+  intro?: string;
+  clips: WorkshopClip[];
+  /** 占位框上的提示语(各语言由调用方传入) */
+  pendingLabel?: string;
+}
+
+const { title, intro, clips, pendingLabel = '实拍素材待补' } = Astro.props;
+---
+
+<section class="ws ck-section" aria-label={title}>
+  <div class="ck-wrap">
+    <header class="head">
+      <h2>{title}</h2>
+      {intro && <p class="intro">{intro}</p>}
+    </header>
+
+    <ul class="grid">
+      {clips.map((c) => (
+        <li class="clip">
+          <div class="frame">
+            {c.media ? (
+              <video class="media" src={c.media} muted playsinline preload="metadata" controls></video>
+            ) : (
+              <div class="pending" role="img" aria-label={`${c.title} ${pendingLabel}`}>
+                {/* 站内绘制的取景框标记 —— 明示是空位,不是素材 */}
+                <svg viewBox="0 0 48 32" aria-hidden="true" class="cam">
+                  <rect x="1" y="6" width="32" height="22" rx="2" fill="none" stroke="currentColor" stroke-width="1.6" />
+                  <path d="M33 14 L46 8 V26 L33 20 Z" fill="none" stroke="currentColor" stroke-width="1.6" />
+                  <circle cx="12" cy="17" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6" />
+                </svg>
+                <span class="ptext">{pendingLabel}</span>
+              </div>
+            )}
+            {c.duration && <span class="dur">{c.duration}</span>}
+          </div>
+          <h3 class="t">{c.title}</h3>
+          <p class="cap">{c.caption}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .ws {
+    background: var(--ck-surface-alt);
+    border-block: var(--ck-border-w) solid var(--ck-line);
+  }
+  .head { max-width: var(--ck-maxw-prose); }
+  .intro { margin-top: 0.875rem; color: var(--ck-ink-soft); }
+
+  .grid {
+    list-style: none;
+    margin: 2.75rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    gap: var(--ck-gap);
+  }
+
+  .frame {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: var(--ck-surface);
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-radius: var(--ck-radius);
+    overflow: hidden;
+  }
+  .media { width: 100%; height: 100%; object-fit: cover; }
+
+  /* 待补占位:虚线 + 取景框图标,一眼看出是空位而非素材 */
+  .pending {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 0.625rem;
+    border: 1px dashed var(--ck-line-strong);
+    border-radius: var(--ck-radius);
+    color: var(--ck-ink-faint);
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent 0 10px,
+      color-mix(in srgb, currentColor 6%, transparent) 10px 11px
+    );
+  }
+  .cam { width: 2.75rem; height: auto; opacity: 0.75; }
+  .ptext {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+  }
+
+  /* 时长角标:PDF 要求 30-60 秒,标出来让访客知道不用等太久 */
+  .dur {
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    padding: 0.125rem 0.4375rem;
+    background: var(--ck-band-bg);
+    color: var(--ck-band-ink);
+    font-family: var(--ck-font-mono);
+    font-size: 0.6875rem;
+    border-radius: 3px;
+  }
+
+  .t { margin-top: 1rem; font-size: var(--ck-h3); }
+  .cap {
+    margin-top: 0.4375rem;
+    font-size: var(--ck-small);
+    color: var(--ck-ink-soft);
+  }
+</style>

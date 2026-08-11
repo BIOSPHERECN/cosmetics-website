@@ -27,6 +27,8 @@ const { title, intro, steps } = Astro.props;
         <li class="step">
           <span class="no">{s.no}</span>
           <h3 class="t">{s.title}</h3>
+          {/* 各步时长 —— PDF 定案要求标注。交期是 B 端决策的关键变量,含糊就等于没说 */}
+          {s.duration && <p class="dur">{s.duration}</p>}
           <p class="d">{s.desc}</p>
         </li>
       ))}
@@ -70,6 +72,17 @@ const { title, intro, steps } = Astro.props;
     color: var(--ck-accent);
   }
   .t { font-size: var(--ck-h3); }
+  .dur {
+    margin-top: 0.4375rem;
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    background: var(--ck-accent-soft);
+    color: var(--ck-accent);
+    border-radius: 3px;
+    font-family: var(--ck-font-mono);
+    font-size: 0.6875rem;
+    font-variant-numeric: tabular-nums;
+  }
   .d {
     margin-top: 0.5625rem;
     color: var(--ck-ink-soft);

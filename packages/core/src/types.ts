@@ -133,7 +133,51 @@ export interface MatrixItem {
   id: string;
   title: string;
   desc: string;
+  /** 该品类下的代表剂型,PDF 定案要求每列 3–5 个 */
   bullets?: string[];
+  /** 起订量区间 —— PDF 定案明确要求标注,B 端采购第一个想知道的就是这个 */
+  moq?: string;
+}
+
+/**
+ * 车间实证单元(PDF 定案第 2 屏)
+ * 原文:「30-60 秒车间实拍视频(乳化/灌装/包装各一段),配一行说明」,参照 Cosmax 工厂展示。
+ * PDF 摄影红线:车间与设备实拍为主,冷白光,不加滤镜,**禁用素材库摆拍图**。
+ * 因此 media 未提供时,前端画的是「待补实拍」占位框,绝不拿库存图充数。
+ */
+export interface WorkshopClip {
+  id: string;
+  /** 工段名,如「乳化车间」 */
+  title: string;
+  /** 一行说明 */
+  caption: string;
+  /** 时长标注,如「45 秒」 */
+  duration?: string;
+  /** 实拍素材站内路径;缺省即显示待补占位 */
+  media?: string;
+}
+
+/**
+ * 合作证明单元(PDF 定案第 6 屏)
+ * 原文:「服务品牌数/出口国家数/客户评价(可匿名),**不用绝对化用语**」。
+ * 客户名一律匿名化到「地区 + 品类 + 角色」粒度,避免未授权披露客户关系。
+ */
+export interface Testimonial {
+  quote: string;
+  /** 匿名归属,如「欧洲某护肤品牌 · 采购负责人」 */
+  attribution: string;
+}
+
+/** 落地页内嵌询盘表单字段标签(PDF 定案第 7 屏:姓名/公司/邮箱/国家/需求) */
+export interface InquiryFormLabels {
+  name: string;
+  company: string;
+  email: string;
+  country: string;
+  need: string;
+  submit: string;
+  /** 提交去向说明,让访客知道数据到哪去 */
+  privacyNote: string;
 }
 
 /** 代工服务流程单步(B 端最关心「怎么合作」,PDF 工厂实力流派的标配版块) */
@@ -142,6 +186,8 @@ export interface ProcessStep {
   no: string;
   title: string;
   desc: string;
+  /** 该步耗时 —— PDF 定案要求「标注各步时长」,交期是 B 端决策的关键变量 */
+  duration?: string;
 }
 
 /** 证据陈列单项:一句主张 + 一份支撑(对标临床极简流派的功效证明页) */
@@ -162,9 +208,15 @@ export interface HomeContent {
     ctaSecondary?: string;
   };
   stats: { title?: string; items: StatItem[] };
+  /** 第 2 屏 车间实证 —— 仅代工站使用;自有品牌站(MEDIERBA)不适用 */
+  workshop?: { title: string; intro?: string; clips: WorkshopClip[] };
   matrix: { title: string; intro?: string; items: MatrixItem[] };
   process: { title: string; intro?: string; steps: ProcessStep[] };
   certs: { title: string; note?: string; items: Certification[] };
+  /** 第 6 屏 合作证明 —— 服务品牌数/出口国家数 + 匿名客户评价 */
+  proof?: { title: string; intro?: string; stats: StatItem[]; testimonials: Testimonial[] };
+  /** 第 7 屏 落地页内嵌询盘表单 */
+  form?: { title: string; intro?: string; labels: InquiryFormLabels };
   /** 可选:仅证据导向的站点(口腔/功效)使用 */
   evidence?: { title: string; intro?: string; items: EvidenceItem[] };
   /** 可选:仅科技参数流派使用 */
