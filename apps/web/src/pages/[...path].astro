@@ -187,6 +187,19 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
           return <SocialProof title={d.title} intro={d.intro} stats={d.stats ?? []} testimonials={d.testimonials ?? []} />;
         case 'form':
           return <InquiryForm title={d.title} intro={d.intro} labels={d.labels} email={email} subject={`[${site!.name}] ${d.title}`} />;
+        case 'prose':
+          // 正文段落 —— 内页的主体。行宽收在 68 字符内,超过就不好读了
+          return (
+            <section class="ck-section" style="background:var(--ck-bg)">
+              <div class="ck-wrap">
+                <div style="max-width:44rem;display:grid;gap:1.25rem" data-reveal="stagger">
+                  {(d.paragraphs ?? []).map((t: string) => (
+                    <p style="font-size:1.0625rem;line-height:1.75;color:var(--ck-ink-soft)">{t}</p>
+                  ))}
+                </div>
+              </div>
+            </section>
+          );
         case 'inquiry':
           return <InquiryBand inquiry={d} href={`/${lang}/contact/`} email={email} />;
         default:

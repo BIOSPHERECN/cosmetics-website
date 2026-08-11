@@ -9,8 +9,14 @@
  */
 import { HREFLANG, OG_LOCALE, LOCALES, switchLocalePath, type Locale } from '../i18n/index.ts';
 import '../styles/tokens.css';
+// 字体层放在中性令牌之后、流派之前:它改写字体族与字号阶梯,
+// 但仍允许各流派/风格在其上继续覆盖(如奢华系改用衬线)。
+import '../styles/fonts.css';
 import '../styles/schools.css';
 import '../styles/variants.css';
+// Summer Fridays 复刻层放最后:它要盖过流派与风格层。
+// 由 <html data-summer> 开关控制,创始人验完再决定哪些站保留。
+import '../styles/summer.css';
 import '../styles/base.css';
 
 export interface Props {
@@ -71,6 +77,7 @@ const allowIndex = indexable && liveIndexing;
   data-school={school}
   data-variant={variant}
   data-brand={brand}
+  data-summer
 >
   <head>
     <meta charset="utf-8" />

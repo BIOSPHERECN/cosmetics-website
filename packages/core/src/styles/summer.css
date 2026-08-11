@@ -1,0 +1,83 @@
+/**
+ * Summer Fridays 设计系统复刻 —— 创始人指定照此做。
+ * 色值与字号全部为其线上 CSS 变量的实测值,非估计。
+ *
+ * 它的调色板按「一天的光」和天然材质命名(morning-sky / afternoon-sky / chalk / clay),
+ * 这就是 PDF 里说的「加州光感」。关键特征三条:
+ *   1. 近黑带蓝调 #000418,不是纯黑 —— 整站的温度由此而来
+ *   2. 中性色是暖的(chalk/clay),与冷蓝的天空色形成呼吸
+ *   3. 大量留白 + 巨大标题 + 小正文,靠图片撑画面
+ *
+ * 字体:它用 Expressa(授权)+ futura-pt。我们用开源等价物 Jost(Futura 复刻)。
+ */
+
+:root {
+  /* ── 实测色值 ─────────────────────────────── */
+  --sf-ink: #000418;          /* 近黑,偏蓝 */
+  --sf-chalk: #eeedec;        /* 白垩 */
+  --sf-clay: #d5d1ca;         /* 陶土 */
+  --sf-morning: #5c7899;      /* 晨空 */
+  --sf-afternoon: #acd5e9;    /* 午后天空 */
+  --sf-butter: #eeeb7b;       /* 黄油黄 */
+  --sf-orange: #fd6210;       /* 亮橙 */
+}
+
+/* 全站套用 —— 高于流派与风格层,创始人验完再决定哪些站保留 */
+html[data-summer] {
+  --ck-bg: #ffffff;
+  --ck-surface: #ffffff;
+  --ck-surface-alt: var(--sf-chalk);
+  --ck-band-bg: var(--sf-ink);
+  --ck-band-ink: #ffffff;
+
+  --ck-ink: var(--sf-ink);
+  --ck-ink-soft: #46506a;
+  --ck-ink-faint: #5f6880;
+
+  --ck-line: #e6e4e1;
+  --ck-line-strong: var(--sf-clay);
+
+  --ck-accent: var(--sf-morning);
+  --ck-accent-deep: #45607f;
+  --ck-accent-soft: #e8f1f7;
+  --ck-on-accent: #ffffff;
+
+  --ck-hero-bg: var(--sf-chalk);
+  --ck-hero-ink: var(--sf-ink);
+  --ck-hero-minh: 40rem;
+  /* 它的首屏不做花哨装饰,靠大图 + 大字;这里只留一层极淡的天空色晕开 */
+  --ck-hero-deco: radial-gradient(70% 90% at 88% 8%, color-mix(in oklab, var(--sf-afternoon) 42%, transparent), transparent 66%);
+
+  /* ── 排版:实测 显示体 80px / Hero 45px / 正文 16px / 行高 20px ── */
+  --ck-font-head: 'Jost Variable', Jost, var(--ck-cjk);
+  --ck-font-body: 'Jost Variable', Jost, var(--ck-cjk);
+  --ck-h1: clamp(2.75rem, 1.6rem + 4.6vw, 5rem);
+  --ck-h2: clamp(1.75rem, 1.2rem + 2vw, 2.75rem);
+  --ck-body: 1rem;
+  --ck-small: 0.875rem;
+  --ck-lh-body: 1.55;
+  --ck-lh-head: 1.06;
+  --ck-weight-head: 500;
+  --ck-tracking-head: -0.02em;
+  --ck-tracking-eyebrow: 0.16em;
+
+  /* 留白大、圆角小(它整站 border-radius 只有 4px) */
+  --ck-section-py: clamp(4rem, 9vh, 7rem);
+  --ck-gap: 1.5rem;
+  --ck-radius: 4px;
+  --ck-radius-lg: 4px;
+  --ck-cta-radius: 999px;   /* 按钮是胶囊型 */
+  --ck-cta-weight: 500;
+  --ck-cta-tracking: 0.02em;
+  --ck-cta-transform: none;
+  --ck-maxw: 88rem;         /* 容器更宽,给图片留地方 */
+}
+
+/* 它的版块标题是场景化短句,居中大字 —— 与我们原来的左对齐小标题完全不同气质 */
+html[data-summer] .ck-section > .ck-wrap > header,
+html[data-summer] .ck-section > .ck-wrap > .head {
+  text-align: center;
+  max-width: 44rem;
+  margin-inline: auto;
+}
+html[data-summer] h2 { text-wrap: balance; }

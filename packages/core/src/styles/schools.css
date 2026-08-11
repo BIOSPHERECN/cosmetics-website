@@ -25,7 +25,7 @@
   --ck-accent-soft: #f4f4f5;
   --ck-hero-bg: #ffffff;
   --ck-hero-minh: 20rem;
-  --ck-h1: clamp(1.75rem, 1.2rem + 2.2vw, 2.75rem);
+  --ck-h1: clamp(2.188rem, 1.2rem + 2.2vw, 5.088rem);
   --ck-body: 0.9375rem;        /* 小字号高密度 */
   --ck-small: 0.8125rem;
   --ck-lh-body: 1.6;
@@ -59,7 +59,7 @@
   --ck-hero-bg: #10263b;
   --ck-hero-ink: #ffffff;
   --ck-hero-minh: 30rem;
-  --ck-h1: clamp(2.25rem, 1.3rem + 3.6vw, 4rem);   /* 大标题 */
+  --ck-h1: clamp(2.812rem, 1.3rem + 3.6vw, 7.4rem);   /* 大标题 */
   --ck-weight-head: 700;
   --ck-tracking-head: -0.025em;
   --ck-section-py: 5rem;
@@ -88,7 +88,7 @@
   --ck-hero-bg: #f1efe4;
   --ck-hero-minh: 32rem;
   --ck-font-head: var(--ck-font-serif);
-  --ck-h1: clamp(2.125rem, 1.3rem + 3.2vw, 3.5rem);
+  --ck-h1: clamp(2.656rem, 1.3rem + 3.2vw, 6.475rem);
   --ck-weight-head: 500;
   --ck-lh-head: 1.22;
   --ck-tracking-head: -0.005em;
@@ -121,7 +121,7 @@
   --ck-hero-ink: #f2ece1;
   --ck-hero-minh: 38rem;
   --ck-font-head: var(--ck-font-serif);
-  --ck-h1: clamp(2.5rem, 1.2rem + 5vw, 4.75rem);   /* 大号衬线 */
+  --ck-h1: clamp(3.125rem, 1.2rem + 5vw, 8.787rem);   /* 大号衬线 */
   --ck-weight-head: 400;
   --ck-lh-head: 1.1;
   --ck-tracking-head: 0.005em;
@@ -150,7 +150,7 @@
   --ck-accent-soft: #ffe6ef;
   --ck-hero-bg: #b8e6ff;
   --ck-hero-minh: 28rem;
-  --ck-h1: clamp(2.25rem, 1.2rem + 4vw, 4rem);
+  --ck-h1: clamp(2.812rem, 1.2rem + 4vw, 7.4rem);
   --ck-weight-head: 800;
   --ck-tracking-head: -0.03em;
   --ck-section-py: 4rem;
@@ -179,7 +179,7 @@
   --ck-hero-ink: #f7f5f4;
   --ck-hero-minh: 40rem;       /* 人物大片主导 */
   --ck-font-head: var(--ck-font-serif);
-  --ck-h1: clamp(2.25rem, 1.2rem + 4vw, 4rem);
+  --ck-h1: clamp(2.812rem, 1.2rem + 4vw, 7.4rem);
   --ck-weight-head: 400;
   --ck-section-py: 6rem;
   --ck-radius: 3px;
@@ -206,7 +206,7 @@
   --ck-hero-bg: #080b12;
   --ck-hero-ink: #eef1f8;
   --ck-hero-minh: 32rem;
-  --ck-h1: clamp(2rem, 1.2rem + 3.4vw, 3.5rem);
+  --ck-h1: clamp(2.5rem, 1.2rem + 3.4vw, 6.475rem);
   --ck-weight-head: 650;
   --ck-tracking-head: -0.02em;
   --ck-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, monospace;
@@ -236,7 +236,7 @@
   --ck-accent-soft: #efe9ff;
   --ck-hero-bg: #f0edff;
   --ck-hero-minh: 26rem;
-  --ck-h1: clamp(2.125rem, 1.2rem + 3.8vw, 3.75rem);
+  --ck-h1: clamp(2.656rem, 1.2rem + 3.8vw, 6.938rem);
   --ck-weight-head: 750;
   --ck-tracking-head: -0.03em;
   --ck-section-py: 4rem;

@@ -126,6 +126,11 @@ const { labels, submitHref } = Astro.props;
 </script>
 
 <style>
+  /* 必须放最前:HTML 的 hidden 属性靠 UA 样式表的 display:none 生效,
+     而下面 .cart 与 .cart-fab 各自写了 display:flex —— 作者样式优先级更高,
+     会把 hidden 直接盖掉,导致面板一开页就展开且关不上。这一行是修那个 bug 的。 */
+  [hidden] { display: none !important; }
+
   .cart-fab {
     position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 60;
     display: flex; align-items: center; gap: 0.625rem;

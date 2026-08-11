@@ -1,0 +1,55 @@
+/**
+ * 字体层 —— 自托管 SIL OFL 开源字体,外部请求为 0。
+ *
+ * 立此层的原因(实测标杆站后的结论,不是偏好):
+ *   Intercos   标题 BebasNeueBold 177.8px + 正文 FuturaStd-Book 20px
+ *   KDC-One    标题 Nantes 80px/字重300 + 正文 Untitled Sans 18px
+ *   SummerFridays 标题 Expressa 80px + 正文 futura-pt 16px
+ *   —— 每一家都是「显示体 + 正文体」配对,没有一家用系统字体。
+ *   我之前全站 system-ui,这是「廉价感」最大的单一来源。
+ *
+ * 开源替身对照(全部 OFL-1.1,可商用可自托管):
+ *   Futura   → Jost(Futura 的直接复刻)
+ *   BebasNeue→ Bebas Neue(本体即开源)
+ *   ABC Diatype → Archivo
+ *   Nantes / Ivar / Queens(衬线显示体) → Fraunces / Instrument Serif
+ */
+
+/* 变量字重:一个文件覆盖 100–900,比引 5 个静态字重更省 */
+@import '@fontsource-variable/jost/index.css';
+@import '@fontsource-variable/archivo/index.css';
+@import '@fontsource-variable/fraunces/index.css';
+@import '@fontsource/bebas-neue/400.css';
+@import '@fontsource/instrument-serif/400.css';
+@import '@fontsource/instrument-serif/400-italic.css';
+
+:root {
+  /* 中日韩字形不在这些西文字体里,必须跟系统字体兜底,否则中文会退成默认宋体 */
+  --ck-cjk: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+  --ck-cjk-serif: 'Songti SC', SimSun, 'Noto Serif CJK SC', 'Hiragino Mincho ProN', serif;
+
+  --ck-font-body: 'Jost Variable', Jost, var(--ck-cjk);
+  --ck-font-head: 'Jost Variable', Jost, var(--ck-cjk);
+  --ck-font-display: 'Bebas Neue', 'Jost Variable', var(--ck-cjk);
+  --ck-font-serif: 'Fraunces Variable', Fraunces, 'Instrument Serif', var(--ck-cjk-serif);
+  --ck-font-grotesk: 'Archivo Variable', Archivo, var(--ck-cjk);
+
+  /* ── 字号阶梯:按标杆实测上调 ──────────────────────────
+     正文 16 → 18px(标杆 18–20px);首屏标题 64 → 最大 132px(标杆 80–178px)。
+     16px 正文在大屏上显得局促,这是"像文档不像品牌站"的另一半原因。 */
+  --ck-body: 1.125rem;          /* 18px */
+  --ck-small: 0.9375rem;        /* 15px */
+  --ck-h1: clamp(2.75rem, 1.4rem + 5.6vw, 8.25rem);   /* 44 → 132px */
+  --ck-h2: clamp(1.875rem, 1.2rem + 2.4vw, 3.25rem);
+  --ck-h3: clamp(1.25rem, 1.05rem + 0.7vw, 1.625rem);
+  --ck-lh-body: 1.65;
+}
+
+/* 显示体专用微调:Bebas 本身是全大写压缩体,字距要放开一点才不糊 */
+.ck-display {
+  font-family: var(--ck-font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 0.92;
+  text-transform: uppercase;
+}

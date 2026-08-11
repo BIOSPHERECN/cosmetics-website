@@ -52,7 +52,7 @@
   --ck-hero-minh: 36rem;
   --ck-hero-deco: radial-gradient(70% 120% at 78% 12%, rgba(168, 130, 60, 0.2), transparent 62%);
   --ck-font-head: var(--ck-font-serif);
-  --ck-h1: clamp(2.375rem, 1.2rem + 4.4vw, 4.25rem);
+  --ck-h1: clamp(2.969rem, 1.2rem + 4.4vw, 7.863rem);
   --ck-weight-head: 400;
   --ck-lh-head: 1.12;
   --ck-tracking-head: 0.004em;
@@ -337,7 +337,7 @@
   --ck-hero-deco: radial-gradient(58% 108% at 74% 8%, rgba(184, 151, 74, 0.2), transparent 60%),
     linear-gradient(180deg, transparent 82%, rgba(184, 151, 74, 0.14));
   --ck-font-head: var(--ck-font-serif);
-  --ck-h1: clamp(2.5rem, 1.2rem + 5vw, 4.75rem);
+  --ck-h1: clamp(3.125rem, 1.2rem + 5vw, 8.787rem);
   --ck-weight-head: 400;
   --ck-tracking-eyebrow: 0.26em;
   --ck-section-py: 8rem;

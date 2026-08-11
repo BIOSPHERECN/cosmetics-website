@@ -13,6 +13,12 @@ export interface Props {
 }
 
 const { title, intro, items } = Astro.props;
+
+/*
+ * 这里原本给每格标了 01/02/03 —— 已删除。
+ * 这四项是**并列**的能力,不是有先后的步骤;给并列内容编号纯属装饰,
+ * 也是 AI 生成设计最典型的痕迹之一。真正有序的「打样流程」才保留编号。
+ */
 ---
 
 <section class="matrix ck-section" aria-label={title}>
@@ -25,7 +31,6 @@ const { title, intro, items } = Astro.props;
     <ul class="grid">
       {items.map((m, i) => (
         <li class="cell">
-          <span class="no" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
           <h3 class="t">{m.title}</h3>
           <p class="d">{m.desc}</p>
           {m.bullets && m.bullets.length > 0 && (
@@ -67,20 +72,16 @@ const { title, intro, items } = Astro.props;
     border: var(--ck-border-w) solid var(--ck-line);
     border-radius: var(--ck-radius-lg);
     box-shadow: var(--ck-shadow);
-    /* 顶部强调条:栅格严整感的来源,厚度随流派变(--ck-rule-w) */
-    border-top: var(--ck-rule-w) solid var(--ck-accent);
+    /* 原有「顶部强调条 + 圆角卡」的组合已去掉 —— 那是 AI 生成设计的套路之一。
+       改用标题下的短规则线做层次,克制且不落俗套。 */
     transition: border-color var(--ck-dur) var(--ck-ease);
   }
-  .cell:hover { border-color: var(--ck-line-strong); border-top-color: var(--ck-accent); }
-  .no {
-    display: block;
-    font-family: var(--ck-font-mono);
-    font-size: 0.75rem;
-    letter-spacing: 0.12em;
-    color: var(--ck-accent);
-  }
+  .cell:hover { border-color: var(--ck-line-strong); }
   .t {
-    margin-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: var(--ck-rule-w) solid var(--ck-accent);
+    /* 短线只在标题文字宽度下方,不横贯整卡 */
+    display: inline-block;
   }
   .d {
     margin-top: 0.625rem;

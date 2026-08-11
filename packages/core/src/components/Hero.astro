@@ -114,7 +114,12 @@ const { hero, ctaHref, ctaSecondaryHref, highlights = [], texture = 'cream', ima
   }
   h1 {
     margin-top: 0.875rem;
-    max-width: 22ch;
+    max-width: 18ch;
+    /* 首屏标题用更紧的行高与字距 —— 大字号下默认行高会散,标杆站都收得很紧
+       (Intercos 177.8px/字距 4px;KDC-One 80px/字重 300) */
+    line-height: 0.98;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
   }
   .lead {
     max-width: var(--ck-maxw-prose);
