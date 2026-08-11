@@ -1,0 +1,91 @@
+---
+/**
+ * 质地场 —— 生成式视觉,给「还没有实拍图」的版面立刻有画面。
+ *
+ * 为什么不用图库照片:
+ *  · PDF 红线明令禁用素材库摆拍图冒充自家产品;
+ *  · Wikimedia 上的 CC 素材是纪实照(工厂外景、人物肖像),放高端美妆站比没图更难看;
+ *  · 生成式图形零版权风险、颜色跟品牌令牌走、真图到了直接替换,不用改版式。
+ *
+ * 四种质地对应四类产品语言(不是通用粒子特效,是化妆品自己的视觉词汇):
+ *   cream  乳霜:柔和高光 + 厚重块面
+ *   fluid  精华/乳液:流动条带 + 透光
+ *   powder 粉体:细颗粒散布 + 哑光
+ *   gel    凝胶/膏体:半透明层叠 + 湿润高光
+ *
+ * 纯 CSS 渐变实现,零图片零 JS;尺寸自适应容器。
+ */
+export interface Props {
+  kind?: 'cream' | 'fluid' | 'powder' | 'gel';
+  /** 强度:hero 用 full,卡片背景用 soft */
+  tone?: 'full' | 'soft';
+  class?: string;
+}
+const { kind = 'cream', tone = 'full', class: cls = '' } = Astro.props;
+---
+
+<div class:list={['tex', `k-${kind}`, `t-${tone}`, cls]} aria-hidden="true"></div>
+
+<style>
+  .tex {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    /* 颜色全部从品牌令牌派生 —— 换风格时质地自动跟着变 */
+    --c1: color-mix(in oklab, var(--ck-accent) 70%, white);
+    --c2: var(--ck-accent);
+    --c3: color-mix(in oklab, var(--ck-accent) 55%, black);
+  }
+  .t-soft { opacity: 0.35; }
+  .t-full { opacity: 0.85; }
+
+  /* ── 乳霜:大块柔光,边缘化开 ─────────────────────── */
+  .k-cream {
+    background:
+      radial-gradient(58% 44% at 24% 30%, color-mix(in oklab, var(--c1) 85%, transparent) 0%, transparent 62%),
+      radial-gradient(46% 38% at 74% 62%, color-mix(in oklab, var(--c2) 70%, transparent) 0%, transparent 66%),
+      radial-gradient(70% 60% at 52% 96%, color-mix(in oklab, var(--c3) 50%, transparent) 0%, transparent 70%);
+    filter: blur(0.5px);
+  }
+
+  /* ── 流体:斜向条带 + 透光,模拟精华挂壁 ───────────── */
+  .k-fluid {
+    background:
+      repeating-linear-gradient(
+        118deg,
+        color-mix(in oklab, var(--c1) 42%, transparent) 0 3%,
+        transparent 3% 9%,
+        color-mix(in oklab, var(--c2) 34%, transparent) 9% 12%,
+        transparent 12% 21%
+      ),
+      radial-gradient(80% 70% at 78% 18%, color-mix(in oklab, var(--c1) 62%, transparent), transparent 68%);
+  }
+
+  /* ── 粉体:细密颗粒(两层错位点阵)+ 哑光底 ────────── */
+  .k-powder {
+    background:
+      radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--c1) 60%, transparent) 0.6px, transparent 0.7px) 0 0 / 7px 7px,
+      radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--c3) 45%, transparent) 0.5px, transparent 0.6px) 3px 4px / 11px 11px,
+      linear-gradient(168deg, color-mix(in oklab, var(--c2) 34%, transparent), transparent 72%);
+  }
+
+  /* ── 凝胶:半透明层叠 + 一道湿润高光 ───────────────── */
+  .k-gel {
+    background:
+      radial-gradient(42% 62% at 30% 34%, color-mix(in oklab, var(--c1) 70%, transparent), transparent 68%),
+      radial-gradient(34% 50% at 64% 56%, color-mix(in oklab, var(--c2) 60%, transparent), transparent 70%),
+      linear-gradient(96deg, transparent 38%, color-mix(in oklab, white 46%, transparent) 46%, transparent 54%);
+  }
+
+  /* 动效克制:极缓的呼吸,几乎察觉不到,只是让画面不死板 */
+  @media (prefers-reduced-motion: no-preference) {
+    .t-full {
+      animation: tex-breathe 18s ease-in-out infinite alternate;
+    }
+    @keyframes tex-breathe {
+      from { transform: scale(1) translate3d(0, 0, 0); }
+      to   { transform: scale(1.06) translate3d(-1.2%, -0.8%, 0); }
+    }
+  }
+</style>

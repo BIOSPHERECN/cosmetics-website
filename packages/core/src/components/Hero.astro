@@ -7,6 +7,7 @@
  * 产品实拍图到位后,在此加一列图片位即可,版式不必重排。
  */
 import type { HomeContent, StatItem } from '../types.ts';
+import TextureField from './TextureField.astro';
 
 export interface Props {
   hero: HomeContent['hero'];
@@ -20,13 +21,17 @@ export interface Props {
    * 传超过 3 条也能排,但按定案建议只给 3 条,多了反而稀释。
    */
   highlights?: StatItem[];
+  /** 首屏质地场:实拍图到位前先给画面,真图到了把这层换成 <img> 即可 */
+  texture?: 'cream' | 'fluid' | 'powder' | 'gel';
 }
 
-const { hero, ctaHref, ctaSecondaryHref, highlights = [] } = Astro.props;
+const { hero, ctaHref, ctaSecondaryHref, highlights = [], texture = 'cream' } = Astro.props;
 ---
 
 <section class="hero">
   <div class="deco" aria-hidden="true"></div>
+  {/* 质地场铺在右半幅,给首屏一个"产品"而不是纯文字 */}
+  <div class="texwrap" aria-hidden="true"><TextureField kind={texture} tone="full" /></div>
   <div class="ck-wrap inner">
     {hero.eyebrow && <p class="ck-eyebrow ck-fade-up">{hero.eyebrow}</p>}
     <h1 class="ck-fade-up ck-delay-1">{hero.title}</h1>
@@ -69,6 +74,25 @@ const { hero, ctaHref, ctaSecondaryHref, highlights = [] } = Astro.props;
     background: var(--ck-hero-deco);
     background-size: var(--ck-hero-deco-size);
     pointer-events: none;
+  }
+  /* 质地场:右侧 46% 宽,左缘用遮罩化开,不与文字抢对比度 */
+  .texwrap {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: min(46%, 40rem);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 34%);
+    mask-image: linear-gradient(90deg, transparent, #000 34%);
+    pointer-events: none;
+  }
+  @media (max-width: 52rem) {
+    /* 窄屏文字要占满,质地退到底部一条,避免压住正文 */
+    .texwrap {
+      inset: auto 0 0 0;
+      width: 100%;
+      height: 38%;
+      -webkit-mask-image: linear-gradient(180deg, transparent, #000 60%);
+      mask-image: linear-gradient(180deg, transparent, #000 60%);
+    }
   }
   .inner {
     position: relative;
