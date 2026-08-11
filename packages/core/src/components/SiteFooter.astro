@@ -20,21 +20,22 @@ export interface Props {
   showLocaleSwitch?: boolean;
   /** 惰性模式:风格实验室的预览页用。站内导航指向 # 而非真实路径,避免点出 404 */
   inert?: boolean;
+  /** 导航树,与页头同源(数据库驱动);不传则退回最小导航 */
+  nav?: { slug: string; label: string; children?: { slug: string; label: string }[] }[];
 }
 
 const {
   locale, path, site, siblings, email,
-  linkSiblings = true, showLocaleSwitch = true, inert = false,
+  linkSiblings = true, showLocaleSwitch = true, inert = false, nav,
 } = Astro.props;
 const tr = t(locale);
 const year = 2026;
 const L = (p: string) => (inert ? '#' : `/${locale}${p}`);
 
-/** 同 SiteHeader:只列已建成的页面,不放死链。产品目录与品牌故事页建好后加回。 */
-const nav: { key: Parameters<typeof tr>[0]; href: string }[] = [
-  { key: 'nav.home', href: '/' },
-  { key: 'nav.contact', href: '/contact/' },
-];
+/** 页脚列全部顶级页面(含法务页);没拿到导航数据时只放确实存在的两项,不放死链 */
+const items = nav?.length
+  ? [{ slug: '', label: tr('nav.home') }, ...nav]
+  : [{ slug: '', label: tr('nav.home') }, { slug: 'contact', label: tr('nav.contact') }];
 ---
 
 <footer class="ft">
@@ -48,7 +49,7 @@ const nav: { key: Parameters<typeof tr>[0]; href: string }[] = [
     <nav class="col" aria-label={tr('footer.nav')}>
       <h2 class="ch">{tr('footer.nav')}</h2>
       <ul class="list">
-        {nav.map((n) => <li><a href={L(n.href)}>{tr(n.key)}</a></li>)}
+        {items.map((n) => <li><a href={L(n.slug ? `/${n.slug}/` : '/')}>{n.label}</a></li>)}
       </ul>
     </nav>
 

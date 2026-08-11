@@ -1,0 +1,134 @@
+---
+/**
+ * 全站唯一入口 —— 按「域名 → 站点」「路径 → 语言 + 页面」从 D1 取内容并渲染。
+ *
+ * 为什么用一个 catch-all 而不是给每个页面建文件:
+ * 页面结构存在数据库里(85 个页面 × 4 语),运营在后台加一个页面就该立刻能访问,
+ * 不该需要程序员加一个 .astro 文件再发版。所以路由必须是数据驱动的。
+ *
+ * 路径形状:/{lang}/{slug...}/    例:/zh-cn/  ·  /en/about/history/
+ */
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import Hero from '@cosmetic/core/components/Hero.astro';
+import WorkshopProof from '@cosmetic/core/components/WorkshopProof.astro';
+import CertWall from '@cosmetic/core/components/CertWall.astro';
+import CategoryMatrix from '@cosmetic/core/components/CategoryMatrix.astro';
+import ProcessSteps from '@cosmetic/core/components/ProcessSteps.astro';
+import EvidenceGrid from '@cosmetic/core/components/EvidenceGrid.astro';
+import SocialProof from '@cosmetic/core/components/SocialProof.astro';
+import InquiryForm from '@cosmetic/core/components/InquiryForm.astro';
+import InquiryBand from '@cosmetic/core/components/InquiryBand.astro';
+import { getSiteByHost, getSiteById, getPageBundle, isLang, DEFAULT_LANG, type Lang } from '../lib/db';
+import { getVariant, getSite as getStaticSite } from '@cosmetic/core/registry';
+// Astro v6 起 Astro.locals.runtime.env 已移除,绑定改从 cloudflare:workers 取
+import { env } from 'cloudflare:workers';
+
+export const prerender = false;
+
+const db = (env as any)?.DB as D1Database | undefined;
+
+/* ── 解析语言与路径 ───────────────────────────────────────────── */
+const raw = (Astro.params.path ?? '').replace(/^\/+|\/+$/g, '');
+const segs = raw ? raw.split('/') : [];
+const lang: Lang = isLang(segs[0]) ? (segs.shift() as Lang) : DEFAULT_LANG;
+const slug = segs.join('/');
+
+/* ── 解析站点:线上按域名;预览域名/本地按 ?site= 回退 ─────────── */
+const hostname = Astro.url.hostname;
+const override = Astro.url.searchParams.get('site');
+
+let bundle = null;
+let dbError: string | null = null;
+
+if (!db) {
+  dbError = 'D1 未绑定(本地开发请用 wrangler pages dev,或在 Pages 项目里绑定 DB)';
+} else {
+  try {
+    const site = override
+      ? await getSiteById(db, override, lang)
+      : (await getSiteByHost(db, hostname, lang)) ?? (await getSiteById(db, 'beauty2oem', lang));
+    if (site) bundle = await getPageBundle(db, site.id, slug, lang);
+  } catch (e) {
+    dbError = e instanceof Error ? e.message : String(e);
+  }
+}
+
+if (!bundle && !dbError) {
+  return new Response(null, { status: 404, headers: { 'x-bohui-reason': `no page: ${slug || '(home)'}` } });
+}
+
+/* ── 渲染参数 ─────────────────────────────────────────────────── */
+const site = bundle?.site;
+const staticSite = site ? (() => { try { return getStaticSite(site.id); } catch { return null; } })() : null;
+const variant = staticSite ? getVariant(staticSite, site!.variant) : null;
+const email = `inquiry@${site?.domain ?? 'bohui.group'}`;
+const path = `/${lang}/${slug ? slug + '/' : ''}`;
+
+const PENDING: Record<Lang, string> = {
+  'zh-cn': '出处待补充', 'zh-tw': '出處待補充', en: 'source pending', ja: '出典未記載',
+};
+const SHOT_PENDING: Record<Lang, string> = {
+  'zh-cn': '车间实拍待补', 'zh-tw': '車間實拍待補', en: 'footage pending', ja: '現場映像は準備中',
+};
+
+/** 内容改完即时生效,但同一秒内的重复请求走边缘缓存,避免每次都打 D1 */
+Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=300');
+---
+
+{dbError ? (
+  <html lang="zh-CN"><head><meta charset="utf-8" /><title>数据源未就绪</title></head>
+  <body style="font-family:system-ui;padding:3rem;max-width:44rem;margin:auto;line-height:1.7">
+    <h1 style="font-size:1.5rem">数据源未就绪</h1>
+    <p style="color:#555">{dbError}</p>
+    <p style="color:#888;font-size:.875rem">这是配置问题,不是代码问题。绑定 D1 后刷新即可。</p>
+  </body></html>
+) : (
+<BaseLayout
+  locale={lang}
+  school={variant?.school ?? 'factory-b2b'}
+  variant={site!.variant}
+  brand={site!.id}
+  siteName={site!.name}
+  siteUrl={`https://${site!.domain}`}
+  path={path}
+  title={bundle!.page.title}
+  description={bundle!.page.seo_desc ?? ''}
+  indexable={site!.is_live === 1}
+  brandColor={site!.brand_color}
+>
+  <a class="ck-skip-link" href="#main">跳到主内容</a>
+  <SiteHeader locale={lang} path={path} siteName={site!.name} siteNameZh={site!.tagline ?? ''} nav={bundle!.nav} />
+
+  <main id="main">
+    {bundle!.blocks.map((b) => {
+      const d = b.data as any;
+      switch (b.type) {
+        case 'hero':
+          return <Hero hero={d} ctaHref={`/${lang}/contact/`} highlights={d.stats ?? []} />;
+        case 'workshop':
+          return <WorkshopProof title={d.title} intro={d.intro} clips={d.clips ?? []} pendingLabel={SHOT_PENDING[lang]} />;
+        case 'certs':
+          return <CertWall title={d.title} note={d.note} items={d.items ?? []} />;
+        case 'matrix':
+          return <CategoryMatrix title={d.title} intro={d.intro} items={d.items ?? []} />;
+        case 'process':
+          return <ProcessSteps title={d.title} intro={d.intro} steps={d.steps ?? []} />;
+        case 'evidence':
+          return <EvidenceGrid title={d.title} intro={d.intro} items={d.items ?? []} pendingLabel={PENDING[lang]} />;
+        case 'proof':
+          return <SocialProof title={d.title} intro={d.intro} stats={d.stats ?? []} testimonials={d.testimonials ?? []} />;
+        case 'form':
+          return <InquiryForm title={d.title} intro={d.intro} labels={d.labels} email={email} subject={`[${site!.name}] ${d.title}`} />;
+        case 'inquiry':
+          return <InquiryBand inquiry={d} href={`/${lang}/contact/`} email={email} />;
+        default:
+          return null;
+      }
+    })}
+  </main>
+
+  <SiteFooter locale={lang} path={path} site={{ ...staticSite!, name: site!.name }} siblings={[]} email={email} nav={bundle!.nav} />
+</BaseLayout>
+)}

@@ -1,0 +1,28 @@
+# 帛卉多站 SSR 应用 —— 部署为 Worker + 静态资源
+# (Astro 的 Cloudflare 适配器 v14 起产出 Workers 格式;CF 已把 Workers+Assets 作为 Pages 的后继形态。)
+#
+# ⚠️ 本文件**只写绑定与变量**,不要写 main / assets:
+#    那两项由适配器在构建时生成到 dist/server/wrangler.json;
+#    若在此处写死 main,Cloudflare 的 vite 插件会在构建**前**去校验该文件是否存在,
+#    而它要构建完才生成 —— 形成鸡生蛋死锁,构建直接失败。
+name = "bohui-web"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+# 内容库:5 站 × 4 语 × 页面/版块/产品/媒体/询盘
+[[d1_databases]]
+binding = "DB"
+database_name = "bohui-cms-v2"
+database_id = "ea5b0da4-7f96-48bf-8fca-dc7193a9596d"
+
+# Astro 会话存储(适配器要求存在此绑定)
+[[kv_namespaces]]
+binding = "SESSION"
+id = "a461419944d4422cb81e374a391632ce"
+
+[vars]
+MEDIA_DRIVER = "r2-s3"
+R2_BUCKET = "bohui-photo"
+
+# 说明:R2 走 S3 兼容接口而非绑定 —— 桶在创始人主账号、站点在 BIOSPHERECN 账号,
+# 绑定只能同账号。凭据用 `wrangler secret put` 注入,不写在本文件。

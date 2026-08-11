@@ -19,20 +19,28 @@ export interface Props {
   showLocaleSwitch?: boolean;
   /** 惰性模式:风格实验室的预览页用。导航指向 # 而非真实路径,避免点出 404 */
   inert?: boolean;
+  /**
+   * 导航树(两级)。由数据库驱动 —— 运营在后台加一个页面,导航自动出现,不用改代码。
+   * 不传时退回到只有「联系询盘」的最小导航(静态站与实验室预览用)。
+   */
+  nav?: NavNode[];
 }
 
-const { locale, path, siteName, siteNameZh, showLocaleSwitch = true, inert = false } = Astro.props;
+export interface NavNode {
+  slug: string;
+  label: string;
+  children?: NavNode[];
+}
+
+const { locale, path, siteName, siteNameZh, showLocaleSwitch = true, inert = false, nav } = Astro.props;
 const tr = t(locale);
 
-/**
- * 导航只列**已建成**的页面。
- * 产品目录与品牌故事页尚未开工(缺产品数据与实拍图),故暂不出现在导航里 ——
- * 宁可导航少一项,也不要放一个点进去 404 的链接。页面建好后在此加回。
- */
-const nav: { key: Parameters<typeof tr>[0]; href: string }[] = [
-  { key: 'nav.contact', href: '/contact/' },
-];
 const L = (p: string) => (inert ? '#' : `/${locale}${p}`);
+
+/** 数据库没给导航时的兜底:只放确实存在的页面,绝不放死链 */
+const items: NavNode[] = nav?.length
+  ? nav.filter((n) => n.slug !== '')
+  : [{ slug: 'contact', label: tr('nav.contact') }];
 ---
 
 <header class="hdr">
@@ -50,9 +58,21 @@ const L = (p: string) => (inert ? '#' : `/${locale}${p}`);
       </span>
     </a>
 
+    {/* 两级导航:零 JS,靠 :hover / :focus-within 展开 —— 键盘 Tab 同样能打开 */}
     <nav class="nav" aria-label={tr('footer.nav')}>
-      {nav.map((n) => (
-        <a class="link" href={L(n.href)}>{tr(n.key)}</a>
+      {items.map((n) => (
+        n.children?.length ? (
+          <div class="grp">
+            <a class="link" href={L(`/${n.slug}/`)} aria-haspopup="true">{n.label}</a>
+            <ul class="sub">
+              {n.children.map((c) => (
+                <li><a class="sublink" href={L(`/${c.slug}/`)}>{c.label}</a></li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <a class="link" href={L(`/${n.slug}/`)}>{n.label}</a>
+        )
       ))}
     </nav>
 
@@ -140,6 +160,43 @@ const L = (p: string) => (inert ? '#' : `/${locale}${p}`);
     color: var(--ck-ink);
     border-bottom-color: var(--ck-accent);
   }
+
+  /* ── 二级下拉(零 JS)────────────────────────── */
+  .grp { position: relative; }
+  .sub {
+    position: absolute;
+    top: 100%;
+    left: -0.875rem;
+    min-width: 13rem;
+    margin: 0;
+    padding: 0.5rem 0;
+    list-style: none;
+    background: var(--ck-surface);
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-top: var(--ck-rule-w) solid var(--ck-accent);
+    border-radius: var(--ck-radius);
+    box-shadow: 0 12px 28px -12px rgb(0 0 0 / 0.25);
+    /* 用 visibility 而非 display:none —— 后者会让内部链接对键盘不可达 */
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+    z-index: 20;
+  }
+  .grp:hover .sub,
+  .grp:focus-within .sub {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .sublink {
+    display: block;
+    padding: 0.5rem 1.125rem;
+    font-size: var(--ck-small);
+    color: var(--ck-ink-soft);
+    text-decoration: none;
+  }
+  .sublink:hover { background: var(--ck-surface-alt); color: var(--ck-ink); }
 
   .right {
     display: flex;

@@ -5,6 +5,9 @@
 packages:
   - packages/*
   - sites/*
+  # apps/web = 多站 SSR 应用(一个部署按域名服务 5 个品牌 + /admin 后台)
+  # 与 sites/* 的关系:sites/style-lab 保留做风格评审;5 个静态站在 apps/web 上线后退役
+  - apps/*
 
 # pnpm 11 用 allowBuilds(name: bool)放行依赖的 postinstall 构建脚本;
 # 旧写法 onlyBuiltDependencies 在 pnpm 11 已不生效(实测:配了仍报 ERR_PNPM_IGNORED_BUILDS,
