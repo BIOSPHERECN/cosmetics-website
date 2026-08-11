@@ -1,0 +1,124 @@
+---
+/**
+ * 产品插画 —— 用 SVG 画出化妆品的实际形态,替代"还没有实拍图"的空缺。
+ *
+ * 为什么走这条路(前面三条都试过并失败,记下来免得重来):
+ *  · Openverse:聚合第三方域名,本机大量连不上;
+ *  · Wikimedia:百科图库,**没有商业级美妆摄影**;
+ *  · Unsplash/Pexels:质量够,但都要 API key,创始人不愿再折腾配置。
+ * 而美妆产品的形态其实只有有限几种,画出来比找图更可控:
+ * 颜色跟品牌令牌走、任何尺寸都清晰、零版权、真图到了直接替换,版式一行不动。
+ *
+ * 材质靠三层叠加做出来:瓶身主渐变 + 一道竖直高光 + 底部反射阴影。
+ * 这是产品摄影里"棚拍打光"的最简抽象 —— 不追求写实,追求一眼认得出是什么。
+ */
+export type ProductKind = 'dropper' | 'pump' | 'jar' | 'tube' | 'compact';
+
+export interface Props {
+  kind: ProductKind;
+  /** 主色;缺省用品牌强调色 */
+  tint?: string;
+  /** 背景色场;传 none 则透明 */
+  field?: string;
+  class?: string;
+  label?: string;
+}
+
+const { kind, tint, field, class: cls = '', label } = Astro.props;
+const c = tint ?? 'var(--ck-accent)';
+const bg = field ?? 'var(--ck-surface-alt)';
+const uid = Math.random().toString(36).slice(2, 8);
+---
+
+<svg
+  class:list={['pa', cls]}
+  viewBox="0 0 240 300"
+  role={label ? 'img' : 'presentation'}
+  aria-label={label}
+  aria-hidden={label ? undefined : 'true'}
+>
+  <defs>
+    {/* 瓶身主渐变:左暗右亮,模拟单侧主光源 */}
+    <linearGradient id={`body-${uid}`} x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color={c} stop-opacity="0.95" />
+      <stop offset="38%" stop-color={c} stop-opacity="0.62" />
+      <stop offset="72%" stop-color={c} stop-opacity="0.86" />
+      <stop offset="100%" stop-color={c} stop-opacity="1" />
+    </linearGradient>
+    {/* 竖直高光:棚拍时柔光箱在瓶身上留下的那一道 */}
+    <linearGradient id={`gloss-${uid}`} x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0" />
+      <stop offset="50%" stop-color="#fff" stop-opacity="0.55" />
+      <stop offset="100%" stop-color="#fff" stop-opacity="0" />
+    </linearGradient>
+    {/* 盖子:比瓶身更深,做出材质差 */}
+    <linearGradient id={`cap-${uid}`} x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color={c} stop-opacity="1" />
+      <stop offset="45%" stop-color={c} stop-opacity="0.72" />
+      <stop offset="100%" stop-color={c} stop-opacity="1" />
+    </linearGradient>
+    {/* 落地投影 */}
+    <radialGradient id={`sh-${uid}`}>
+      <stop offset="0%" stop-color={c} stop-opacity="0.28" />
+      <stop offset="100%" stop-color={c} stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  {bg !== 'none' && <rect width="240" height="300" fill={bg} />}
+  <ellipse cx="120" cy="272" rx="62" ry="10" fill={`url(#sh-${uid})`} />
+
+  {kind === 'dropper' && (
+    <g>
+      <rect x="86" y="108" width="68" height="132" rx="6" fill={`url(#body-${uid})`} />
+      <rect x="100" y="112" width="12" height="124" fill={`url(#gloss-${uid})`} opacity="0.7" />
+      <rect x="104" y="88" width="32" height="24" rx="3" fill={`url(#cap-${uid})`} />
+      <rect x="112" y="52" width="16" height="38" rx="8" fill={`url(#cap-${uid})`} />
+      <rect x="118" y="118" width="4" height="86" rx="2" fill="#fff" opacity="0.32" />
+    </g>
+  )}
+
+  {kind === 'pump' && (
+    <g>
+      <rect x="82" y="96" width="76" height="144" rx="10" fill={`url(#body-${uid})`} />
+      <rect x="98" y="102" width="13" height="134" fill={`url(#gloss-${uid})`} opacity="0.7" />
+      <rect x="106" y="74" width="28" height="24" rx="4" fill={`url(#cap-${uid})`} />
+      <path d="M120 74 V56 h22 a6 6 0 0 1 0 12 h-8" fill="none" stroke={c} stroke-width="7" stroke-linecap="round" />
+    </g>
+  )}
+
+  {kind === 'jar' && (
+    <g>
+      <rect x="66" y="140" width="108" height="100" rx="10" fill={`url(#body-${uid})`} />
+      <rect x="86" y="146" width="16" height="90" fill={`url(#gloss-${uid})`} opacity="0.65" />
+      <rect x="58" y="112" width="124" height="34" rx="8" fill={`url(#cap-${uid})`} />
+      <rect x="58" y="124" width="124" height="4" fill="#fff" opacity="0.22" />
+    </g>
+  )}
+
+  {kind === 'tube' && (
+    <g>
+      {/* 软管:上宽下收,底部一道压合缝 */}
+      <path d="M92 120 h56 l10 118 a8 8 0 0 1 -8 8 h-60 a8 8 0 0 1 -8 -8 z" fill={`url(#body-${uid})`} />
+      <rect x="104" y="126" width="12" height="112" fill={`url(#gloss-${uid})`} opacity="0.6" />
+      <rect x="86" y="238" width="68" height="8" rx="3" fill={c} opacity="0.85" />
+      <rect x="104" y="92" width="32" height="30" rx="4" fill={`url(#cap-${uid})`} />
+    </g>
+  )}
+
+  {kind === 'compact' && (
+    <g>
+      <ellipse cx="120" cy="186" rx="72" ry="56" fill={`url(#body-${uid})`} />
+      <ellipse cx="120" cy="180" rx="56" ry="42" fill={c} opacity="0.32" />
+      <ellipse cx="104" cy="166" rx="20" ry="14" fill="#fff" opacity="0.3" />
+      <path d="M48 186 a72 56 0 0 1 144 0" fill="none" stroke="#fff" stroke-width="2" opacity="0.28" />
+    </g>
+  )}
+</svg>
+
+<style>
+  .pa {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+</style>

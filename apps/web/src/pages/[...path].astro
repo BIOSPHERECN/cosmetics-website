@@ -83,11 +83,11 @@ const SHOT_PENDING: Record<Lang, string> = {
  * 质地类型按各站产品语言分配:护肤=流体、彩妆代工=乳霜、口腔=凝胶、AI=粉体。
  */
 const DEMO_SHOT: Record<string, string> = {
-  beauty2oem: '/media/demo/demo-1.jpg',
-  skin2oem: '/media/demo/demo-3.jpg',
-  'biosphere-ai': '/media/demo/demo-7.jpg',
-  medierba: '/media/demo/demo-8.jpg',
-  'biosphere-oralcare': '/media/demo/demo-6.jpg',
+  beauty2oem: '/media/shots/hero-01.jpg',
+  skin2oem: '/media/shots/skin-01.jpg',
+  'biosphere-ai': '/media/shots/texture-01.jpg',
+  medierba: '/media/shots/botany-01.jpg',
+  'biosphere-oralcare': '/media/shots/oral-01.jpg',
 };
 const DEMO_TEXTURE: Record<string, 'cream' | 'fluid' | 'powder' | 'gel'> = {
   beauty2oem: 'cream',
@@ -102,18 +102,22 @@ const DEMO_TEXTURE: Record<string, 'cream' | 'fluid' | 'powder' | 'gel'> = {
  * 真产品入库后从 products 表读,这张表即可删除。
  */
 const DEMO_PRODUCTS = [
-  { id: 'serum', name: '精华液', summary: '水感或油感基质,活性物浓度可定制', image: '/media/demo/demo-3.jpg', moq: '3,000 支起',
+  { id: 'serum', name: '精华液', summary: '水感或油感基质,活性物浓度可定制', image: '/media/shots/skin-02.jpg', moq: '3,000 支起',
     options: { 容量: ['30ml', '50ml'], 包材: ['玻璃滴管瓶', '真空泵瓶'] } },
-  { id: 'cream', name: '面霜', summary: '真空乳化,常温与冷制工艺可选', image: '/media/demo/demo-1.jpg', moq: '3,000 罐起',
+  { id: 'cream', name: '面霜', summary: '真空乳化,常温与冷制工艺可选', image: '/media/shots/texture-02.jpg', moq: '3,000 罐起',
     options: { 容量: ['30g', '50g'], 包材: ['玻璃罐', 'PP 罐'] } },
-  { id: 'mask', name: '面膜', summary: '水洗式与贴片式,精华液配比可调', image: '/media/demo/demo-8.jpg', moq: '10,000 片起',
+  { id: 'mask', name: '面膜', summary: '水洗式与贴片式,精华液配比可调', image: '/media/shots/life-01.jpg', moq: '10,000 片起',
     options: { 规格: ['单片装', '盒装 5 片'], 基布: ['天丝', '生物纤维'] } },
-  { id: 'cleanser', name: '洁面', summary: '氨基酸与皂基两条路线', image: '/media/demo/demo-6.jpg', moq: '5,000 支起',
+  { id: 'cleanser', name: '洁面', summary: '氨基酸与皂基两条路线', image: '/media/shots/skin-03.jpg', moq: '5,000 支起',
     options: { 容量: ['100ml', '150ml'], 形态: ['膏状', '慕斯'] } },
-  { id: 'toothpaste', name: '牙膏', summary: '低研磨配方,益生菌可添加', image: '/media/demo/demo-2.jpg', moq: '10,000 支起',
+  { id: 'toothpaste', name: '牙膏', summary: '低研磨配方,益生菌可添加', image: '/media/shots/oral-02.jpg', moq: '10,000 支起',
     options: { 容量: ['100g', '120g'], 管材: ['铝塑复合管', '可回收单材质管'] } },
-  { id: 'powder', name: '粉体彩妆', summary: '压粉与散粉,色号按 Pantone 打样', image: '/media/demo/demo-7.jpg', moq: '5,000 盒起',
+  { id: 'powder', name: '粉体彩妆', summary: '压粉与散粉,色号按 Pantone 打样', image: '/media/shots/makeup-01.jpg', moq: '5,000 盒起',
     options: { 形态: ['压粉饼', '散粉'], 盘型: ['单色', '四色'] } },
+  { id: 'oil', name: '精华油', summary: '植物基油相,冷压原料可溯源', image: '/media/shots/botany-02.jpg', moq: '3,000 支起',
+    options: { 容量: ['20ml', '30ml'], 包材: ['滴管瓶', '按压瓶'] } },
+  { id: 'balm', name: '膏体唇部', summary: '润唇与有色唇膏,蜡体配比可调', image: '/media/shots/makeup-02.jpg', moq: '8,000 支起',
+    options: { 形态: ['管状', '罐装'], 色号: ['单色', '定制'] } },
 ];
 
 const CART_LABELS: Record<Lang, any> = {

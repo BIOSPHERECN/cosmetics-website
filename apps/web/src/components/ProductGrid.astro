@@ -17,6 +17,8 @@ export interface GridItem {
   /** 可选规格,如 {容量:['30ml','50ml'], 包材:['玻璃瓶','软管']} */
   options?: Record<string, string[]>;
 }
+import ProductArt, { type ProductKind } from '@cosmetic/core/components/ProductArt.astro';
+
 export interface Props {
   title: string;
   intro?: string;
@@ -25,6 +27,12 @@ export interface Props {
   moqLabel: string;
 }
 const { title, intro, items, addLabel, moqLabel } = Astro.props;
+
+/** 剂型 → 产品形态。没有实拍图时画对应的瓶型,比放灰块或不相干的图强 */
+const ART: Record<string, ProductKind> = {
+  serum: 'dropper', cream: 'jar', mask: 'tube', cleanser: 'pump',
+  toothpaste: 'tube', powder: 'compact',
+};
 ---
 
 <section class="pg ck-section" aria-label={title}>
@@ -40,7 +48,7 @@ const { title, intro, items, addLabel, moqLabel } = Astro.props;
           <div class="shotwrap">
             {p.image
               ? <img class="shot" src={p.image} alt={p.name} loading="lazy" decoding="async" />
-              : <div class="noshot" aria-hidden="true"></div>}
+              : <ProductArt kind={ART[p.id] ?? 'jar'} label={p.name} />}
           </div>
           <div class="meta">
             <h3 class="nm">{p.name}</h3>
