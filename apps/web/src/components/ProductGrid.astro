@@ -1,0 +1,154 @@
+---
+/**
+ * 剂型网格 —— DTC 商品网格的 B 端等价物。
+ *
+ * 对标 Summer Fridays 一类 DTC 站的商品列表:大图 + 就地加购。
+ * 换成 B 端后:剂型大图 + 规格下拉 + 「加入询盘」——
+ * 采购不用离开当前页,可以一路逛一路攒,最后一次性提交整车。
+ *
+ * 卡片上放起订量,是因为 PDF 定案明确要求标注,也是 B 端第一个要问的数。
+ */
+export interface GridItem {
+  id: string;
+  name: string;
+  summary?: string;
+  image?: string;
+  moq?: string;
+  /** 可选规格,如 {容量:['30ml','50ml'], 包材:['玻璃瓶','软管']} */
+  options?: Record<string, string[]>;
+}
+export interface Props {
+  title: string;
+  intro?: string;
+  items: GridItem[];
+  addLabel: string;
+  moqLabel: string;
+}
+const { title, intro, items, addLabel, moqLabel } = Astro.props;
+---
+
+<section class="pg ck-section" aria-label={title}>
+  <div class="ck-wrap">
+    <header class="hd">
+      <h2>{title}</h2>
+      {intro && <p class="intro">{intro}</p>}
+    </header>
+
+    <ul class="grid" data-reveal="stagger">
+      {items.map((p) => (
+        <li class="card">
+          <div class="shotwrap">
+            {p.image
+              ? <img class="shot" src={p.image} alt={p.name} loading="lazy" decoding="async" />
+              : <div class="noshot" aria-hidden="true"></div>}
+          </div>
+          <div class="meta">
+            <h3 class="nm">{p.name}</h3>
+            {p.summary && <p class="sm">{p.summary}</p>}
+            {p.moq && (
+              <p class="moq"><span class="mk">{moqLabel}</span><span>{p.moq}</span></p>
+            )}
+
+            {p.options && Object.keys(p.options).length > 0 && (
+              <div class="opts">
+                {Object.entries(p.options).map(([k, vals]) => (
+                  <label class="opt">
+                    <span class="ol">{k}</span>
+                    <select class="os" data-opt={k}>
+                      {vals.map((v) => <option value={v}>{v}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {/* 规格随卡片一起带走 —— 点击时由内联脚本把当前下拉值收集进 data-options */}
+            <button class="add" data-add-inquiry data-id={p.id} data-name={p.name} data-options="{}">
+              {addLabel}
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<script is:inline>
+  // 点「加入询盘」前,把同卡片内所有下拉的当前值写进 data-options,
+  // 这样询盘车拿到的是采购真正选的规格,而不是默认值。
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-add-inquiry]');
+    if (!btn) return;
+    const card = btn.closest('.card');
+    if (!card) return;
+    const opts = {};
+    card.querySelectorAll('select[data-opt]').forEach((s) => { opts[s.dataset.opt] = s.value; });
+    btn.dataset.options = JSON.stringify(opts);
+  }, true);
+</script>
+
+<style>
+  .pg { background: var(--ck-bg); }
+  .hd { max-width: var(--ck-maxw-prose); }
+  .intro { margin-top: 0.875rem; color: var(--ck-ink-soft); }
+
+  .grid {
+    list-style: none; margin: 2.75rem 0 0; padding: 0;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: var(--ck-gap);
+  }
+  .card {
+    display: flex; flex-direction: column;
+    background: var(--ck-surface);
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-radius: var(--ck-radius-lg);
+    overflow: hidden;
+    transition: border-color var(--ck-dur) var(--ck-ease), transform var(--ck-dur) var(--ck-ease);
+  }
+  .card:hover { border-color: var(--ck-line-strong); transform: translateY(-3px); }
+
+  .shotwrap { aspect-ratio: 4 / 3; overflow: hidden; background: var(--ck-surface-alt); }
+  .shot {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    transition: transform 0.6s var(--ck-ease);
+  }
+  .card:hover .shot { transform: scale(1.05); }
+  .noshot {
+    width: 100%; height: 100%;
+    background:
+      radial-gradient(60% 50% at 35% 40%, color-mix(in oklab, var(--ck-accent) 26%, transparent), transparent 68%),
+      var(--ck-surface-alt);
+  }
+
+  .meta { padding: 1.125rem 1.125rem 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
+  .nm { font-size: var(--ck-h3); }
+  .sm { font-size: var(--ck-small); color: var(--ck-ink-soft); }
+  .moq { display: flex; align-items: baseline; gap: 0.5rem; font-size: var(--ck-small); font-variant-numeric: tabular-nums; }
+  .mk {
+    font-family: var(--ck-font-mono); font-size: 0.625rem; letter-spacing: 0.08em;
+    padding: 0.125rem 0.375rem; border-radius: 3px;
+    background: var(--ck-accent-soft); color: var(--ck-accent);
+  }
+
+  .opts { display: grid; gap: 0.5rem; margin-top: 0.25rem; }
+  .opt { display: grid; gap: 0.25rem; }
+  .ol { font-size: 0.6875rem; color: var(--ck-ink-faint); letter-spacing: 0.06em; }
+  .os {
+    font: inherit; font-size: var(--ck-small);
+    padding: 0.4375rem 0.5rem;
+    border: var(--ck-border-w) solid var(--ck-line-strong);
+    border-radius: var(--ck-radius);
+    background: var(--ck-surface); color: var(--ck-ink);
+  }
+
+  .add {
+    margin-top: auto; font: inherit; cursor: pointer;
+    padding: 0.6875rem 1rem; border: 0;
+    background: var(--ck-accent); color: var(--ck-on-accent);
+    border-radius: var(--ck-cta-radius);
+    font-size: var(--ck-small); font-weight: var(--ck-cta-weight);
+    letter-spacing: var(--ck-cta-tracking); text-transform: var(--ck-cta-transform);
+    transition: background var(--ck-dur) var(--ck-ease);
+  }
+  .add:hover { background: var(--ck-accent-deep); }
+</style>

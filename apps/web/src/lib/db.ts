@@ -9,12 +9,72 @@
  *    避免哪天漏了判断把草稿泄露到线上。
  */
 
-export type Lang = 'zh-cn' | 'zh-tw' | 'en' | 'ja';
-export const LANGS: Lang[] = ['zh-cn', 'zh-tw', 'en', 'ja'];
-export const DEFAULT_LANG: Lang = 'zh-cn';
+/**
+ * 语种覆盖 —— 按创始人指定的出口市场排布。
+ * 印尼语在列是因为集团现有业务的主战场就是印尼(旧站标题即「印尼美妆OEM头部供应商」)。
+ * 葡语用 pt-BR(巴西)而非 pt-PT:美妆出口的葡语市场主体是巴西。
+ */
+/**
+ * 全语种覆盖 —— **英文为源语言**,其余为译文。
+ *
+ * 为什么以英文为源而不是中文:出海站的第一读者是海外采购,英文是事实上的商务通用语;
+ * 而且几十种译文若从中文出发,每多一门语言就多一次「中→X」的语义损耗,
+ * 从英文出发则译文之间质量更齐。
+ *
+ * 分组是给下拉用的 —— 几十个语言平铺成一列没法找,按大区分组才选得动。
+ */
+export const LANG_GROUPS: { group: string; langs: [string, string][] }[] = [
+  { group: 'Global', langs: [['en', 'English']] },
+  { group: '亚太 Asia-Pacific', langs: [
+    ['zh-cn', '简体中文'], ['zh-tw', '繁體中文'], ['ja', '日本語'], ['ko', '한국어'],
+    ['id', 'Bahasa Indonesia'], ['ms', 'Bahasa Melayu'], ['th', 'ไทย'], ['vi', 'Tiếng Việt'],
+    ['hi', 'हिन्दी'], ['bn', 'বাংলা'], ['tl', 'Filipino'],
+  ] },
+  { group: '欧洲 Europe', langs: [
+    ['fr', 'Français'], ['de', 'Deutsch'], ['es', 'Español'], ['it', 'Italiano'],
+    ['pt-PT', 'Português'], ['nl', 'Nederlands'], ['pl', 'Polski'], ['sv', 'Svenska'],
+    ['da', 'Dansk'], ['fi', 'Suomi'], ['no', 'Norsk'], ['cs', 'Čeština'],
+    ['el', 'Ελληνικά'], ['hu', 'Magyar'], ['ro', 'Română'], ['uk', 'Українська'],
+  ] },
+  { group: '美洲 Americas', langs: [
+    ['pt-BR', 'Português (BR)'], ['es-MX', 'Español (MX)'],
+  ] },
+  { group: '中东与非洲 MEA', langs: [
+    ['ar', 'العربية'], ['tr', 'Türkçe'], ['fa', 'فارسی'], ['he', 'עברית'], ['sw', 'Kiswahili'],
+  ] },
+  { group: '独联体 CIS', langs: [['ru', 'Русский'], ['kk', 'Қазақша']] },
+];
+
+export type Lang = string;
+export const LANGS: Lang[] = LANG_GROUPS.flatMap((g) => g.langs.map(([c]) => c));
+export const DEFAULT_LANG: Lang = 'en';
+
+export const LANG_LABEL: Record<string, string> = Object.fromEntries(
+  LANG_GROUPS.flatMap((g) => g.langs),
+);
+
+/** 从右向左书写的语言 —— 页面要整体镜像,不做的话阿拉伯语版会完全读不了 */
+export const RTL = new Set(['ar', 'fa', 'he']);
+
+/** hreflang:多数语言码即规范码,少数需要映射 */
+export function hreflangOf(lang: Lang): string {
+  return ({ 'zh-cn': 'zh-Hans', 'zh-tw': 'zh-Hant' } as Record<string, string>)[lang] ?? lang;
+}
+
+/**
+ * 内容回退链 —— 七语站的关键设计。
+ * 某语言还没翻译时,回落到英文、再回落到简体,**而不是给访客一个 404**。
+ * 缺翻译是内容进度问题,不该变成访客看到的错误。后台另有「缺哪门语言」的清单来催补。
+ */
+export const FALLBACK: Lang[] = ['en', 'zh-cn'];
 
 export function isLang(x: unknown): x is Lang {
   return typeof x === 'string' && (LANGS as string[]).includes(x);
+}
+
+/** 依次尝试:目标语言 → 英文 → 简体,返回第一个有内容的 */
+export function langChain(lang: Lang): Lang[] {
+  return [lang, ...FALLBACK.filter((l) => l !== lang)];
 }
 
 export interface SiteRow {
@@ -70,16 +130,24 @@ export async function getSiteByHost(db: D1Database, host: string, lang: Lang): P
   return row ?? null;
 }
 
+/**
+ * 回退优先级 SQL 片段:目标语言 0、英文 1、简体 2,取序号最小的那条。
+ * 这样一条查询就完成「有译文用译文,没有就用英文」,不必查两次。
+ */
+const PRI = `CASE i.lang WHEN ? THEN 0 WHEN 'en' THEN 1 WHEN 'zh-cn' THEN 2 ELSE 3 END`;
+const chain = (lang: Lang) => [lang, 'en', 'zh-cn'];
+
 export async function getSiteById(db: D1Database, id: string, lang: Lang): Promise<SiteRow | null> {
   const row = await db
     .prepare(
       `SELECT s.id, s.domain, s.brand_color, s.variant, s.is_live,
               i.name, i.tagline, i.description
          FROM sites s
-         JOIN site_i18n i ON i.site_id = s.id AND i.lang = ?
-        WHERE s.id = ?`,
+         JOIN site_i18n i ON i.site_id = s.id AND i.lang IN (?,?,?)
+        WHERE s.id = ?
+        ORDER BY ${PRI} LIMIT 1`,
     )
-    .bind(lang, id)
+    .bind(...chain(lang), id, lang)
     .first<SiteRow>();
   return row ?? null;
 }
@@ -92,13 +160,15 @@ export async function getSiteById(db: D1Database, id: string, lang: Lang): Promi
 export async function getNav(db: D1Database, siteId: string, lang: Lang): Promise<NavItem[]> {
   const { results } = await db
     .prepare(
-      `SELECT p.id, p.slug, p.parent_id, i.nav_label
+      `SELECT p.id, p.slug, p.parent_id, i.nav_label,
+              MIN(${PRI}) AS pri
          FROM pages p
-         JOIN page_i18n i ON i.page_id = p.id AND i.lang = ?
+         JOIN page_i18n i ON i.page_id = p.id AND i.lang IN (?,?,?)
         WHERE p.site_id = ? AND p.status = 'published' AND p.in_nav = 1
+        GROUP BY p.id
         ORDER BY p.sort_order, p.id`,
     )
-    .bind(lang, siteId)
+    .bind(lang, ...chain(lang), siteId)
     .all<{ id: number; slug: string; parent_id: number | null; nav_label: string }>();
 
   const rows = results ?? [];
@@ -132,23 +202,29 @@ export async function getPageBundle(
     .prepare(
       `SELECT p.id, p.slug, p.template, i.title, i.seo_desc
          FROM pages p
-         JOIN page_i18n i ON i.page_id = p.id AND i.lang = ?
-        WHERE p.site_id = ? AND p.slug = ? ${statusClause}`,
+         JOIN page_i18n i ON i.page_id = p.id AND i.lang IN (?,?,?)
+        WHERE p.site_id = ? AND p.slug = ? ${statusClause}
+        ORDER BY ${PRI} LIMIT 1`,
     )
-    .bind(lang, siteId, slug)
+    .bind(...chain(lang), siteId, slug, lang)
     .first<{ id: number; slug: string; template: string; title: string; seo_desc: string | null }>();
   if (!page) return null;
 
   // 一次取回该页全部版块及其本语言文案,避免 N+1
   const { results } = await db
     .prepare(
-      `SELECT b.id, b.type, b.sort_order, b.config_json, bi.data_json
+      // 每个版块各自回退:某版块有法语译文就用法语,没有的那个用英文,
+      // 不会因为一个版块缺译文就整页退回英文。
+      `SELECT b.id, b.type, b.sort_order, b.config_json,
+              (SELECT bi.data_json FROM block_i18n bi
+                WHERE bi.block_id = b.id AND bi.lang IN (?,?,?)
+                ORDER BY CASE bi.lang WHEN ? THEN 0 WHEN 'en' THEN 1 ELSE 2 END
+                LIMIT 1) AS data_json
          FROM blocks b
-    LEFT JOIN block_i18n bi ON bi.block_id = b.id AND bi.lang = ?
         WHERE b.page_id = ? AND b.is_visible = 1
         ORDER BY b.sort_order, b.id`,
     )
-    .bind(lang, page.id)
+    .bind(...chain(lang), lang, page.id)
     .all<{ id: number; type: string; sort_order: number; config_json: string; data_json: string | null }>();
 
   const blocks: BlockRow[] = (results ?? []).map((r) => ({

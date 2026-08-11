@@ -1,0 +1,164 @@
+---
+/**
+ * 询盘车 —— DTC 购物车的 B 端等价物。
+ *
+ * 交互模型直接对标 Summer Fridays 一类的 DTC 站:
+ *   逛剂型网格 → 就地「加入询盘」(不跳页) → 右上角计数 +1 → 侧滑车里累积
+ *   → 最后一次性提交整车。采购经理带走的是一份清单,不是一句「请联系我们」。
+ *
+ * 三个刻意的技术取舍:
+ * 1. **车只存在浏览器本地**(localStorage),提交时才落库。
+ *    逛的全程零服务端状态 → 不用建会话表、不用发 cookie,也就没有隐私合规负担。
+ * 2. **原生 JS 不引框架**:整个车不到 3KB,比引 React 只为一个抽屉划算得多。
+ * 3. **渐进增强**:JS 没跑起来时「加入询盘」按钮不显示(而不是显示但点了没反应),
+ *    页面仍可正常浏览并走传统询盘表单。坏掉的按钮比没有按钮更伤信任。
+ */
+export interface Props {
+  /** 各语言文案 */
+  labels: {
+    open: string;      // 询盘车
+    empty: string;     // 车里还没有剂型
+    remove: string;    // 移除
+    submit: string;    // 提交整车询盘
+    count: string;     // 已选 {n} 项
+    hint: string;      // 提交后我们两个工作日内书面回复
+  };
+  /** 提交去向(询盘页) */
+  submitHref: string;
+}
+const { labels, submitHref } = Astro.props;
+---
+
+<button class="cart-fab" data-cart-open hidden aria-haspopup="dialog">
+  <span class="fab-txt">{labels.open}</span>
+  <span class="fab-n" data-cart-count>0</span>
+</button>
+
+<aside class="cart" data-cart-panel hidden role="dialog" aria-modal="true" aria-label={labels.open}>
+  <header class="cart-hd">
+    <strong data-cart-title>{labels.open}</strong>
+    <button class="cart-x" data-cart-close aria-label="close">✕</button>
+  </header>
+  <div class="cart-body" data-cart-list>
+    <p class="cart-empty" data-cart-empty>{labels.empty}</p>
+  </div>
+  <footer class="cart-ft">
+    <p class="cart-hint">{labels.hint}</p>
+    <a class="cart-go" data-cart-submit href={submitHref}>{labels.submit}</a>
+  </footer>
+</aside>
+<div class="cart-veil" data-cart-veil hidden></div>
+
+<script is:inline define:vars={{ labels }}>
+  (() => {
+    const KEY = 'bohui_inquiry_cart';
+    const $ = (s) => document.querySelector(s);
+    const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; } };
+    const write = (v) => { localStorage.setItem(KEY, JSON.stringify(v)); render(); };
+
+    const fab = $('[data-cart-open]');
+    const panel = $('[data-cart-panel]');
+    const veil = $('[data-cart-veil]');
+    const list = $('[data-cart-list]');
+    const countEl = $('[data-cart-count]');
+    const emptyEl = $('[data-cart-empty]');
+
+    // JS 可用才显示按钮 —— 避免出现"点了没反应"的死按钮
+    if (fab) fab.hidden = false;
+
+    function render() {
+      const items = read();
+      if (countEl) countEl.textContent = String(items.length);
+      if (!list) return;
+      list.querySelectorAll('.cart-item').forEach((n) => n.remove());
+      if (emptyEl) emptyEl.hidden = items.length > 0;
+      items.forEach((it, i) => {
+        const row = document.createElement('div');
+        row.className = 'cart-item';
+        const opts = Object.entries(it.options || {}).map(([k, v]) => `${k} ${v}`).join(' · ');
+        row.innerHTML =
+          `<div class="ci-main"><strong>${it.name}</strong>${opts ? `<span class="ci-opt">${opts}</span>` : ''}</div>` +
+          `<button class="ci-x" data-i="${i}" aria-label="${labels.remove}">✕</button>`;
+        list.appendChild(row);
+      });
+    }
+
+    // 加入询盘:任何带 data-add-inquiry 的按钮都能用,组件不必知道谁调它
+    document.addEventListener('click', (e) => {
+      const add = e.target.closest('[data-add-inquiry]');
+      if (add) {
+        e.preventDefault();
+        const items = read();
+        const name = add.dataset.name || '';
+        let options = {};
+        try { options = JSON.parse(add.dataset.options || '{}'); } catch {}
+        // 同名同规格不重复加,避免采购连点造出一堆重复行
+        const key = name + JSON.stringify(options);
+        if (!items.some((x) => x.name + JSON.stringify(x.options || {}) === key)) {
+          items.push({ id: add.dataset.id || '', name, options });
+          write(items);
+        }
+        open();
+        return;
+      }
+      const rm = e.target.closest('.ci-x');
+      if (rm) { const v = read(); v.splice(Number(rm.dataset.i), 1); write(v); return; }
+      if (e.target.closest('[data-cart-open]')) return open();
+      if (e.target.closest('[data-cart-close]') || e.target.closest('[data-cart-veil]')) return close();
+    });
+
+    function open() { panel.hidden = false; veil.hidden = false; document.body.style.overflow = 'hidden'; }
+    function close() { panel.hidden = true; veil.hidden = true; document.body.style.overflow = ''; }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+
+    // 提交时把车挂到 URL 上带去询盘页,询盘页读出来预填进表单
+    const go = $('[data-cart-submit]');
+    if (go) go.addEventListener('click', (e) => {
+      const items = read();
+      if (!items.length) { e.preventDefault(); return; }
+      const u = new URL(go.href, location.origin);
+      u.searchParams.set('cart', btoa(unescape(encodeURIComponent(JSON.stringify(items)))).slice(0, 1800));
+      go.href = u.toString();
+    });
+
+    render();
+  })();
+</script>
+
+<style>
+  .cart-fab {
+    position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 60;
+    display: flex; align-items: center; gap: 0.625rem;
+    padding: 0.875rem 1.25rem; border: 0; cursor: pointer;
+    background: var(--ck-accent); color: var(--ck-on-accent);
+    border-radius: 999px; font: inherit; font-size: var(--ck-small); font-weight: 600;
+    box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.4);
+  }
+  .fab-n {
+    min-width: 1.5rem; height: 1.5rem; display: grid; place-items: center;
+    background: var(--ck-on-accent); color: var(--ck-accent);
+    border-radius: 999px; font-size: 0.75rem; font-variant-numeric: tabular-nums;
+  }
+  .cart-veil { position: fixed; inset: 0; background: rgb(0 0 0 / 0.4); z-index: 70; }
+  .cart {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 80;
+    width: min(24rem, 100%); display: flex; flex-direction: column;
+    background: var(--ck-surface); border-left: var(--ck-border-w) solid var(--ck-line);
+  }
+  .cart-hd, .cart-ft { padding: 1.125rem 1.25rem; }
+  .cart-hd { display: flex; justify-content: space-between; align-items: center; border-bottom: var(--ck-border-w) solid var(--ck-line); }
+  .cart-x { background: 0; border: 0; cursor: pointer; font-size: 1rem; color: var(--ck-ink-soft); }
+  .cart-body { flex: 1; overflow: auto; padding: 0.5rem 1.25rem; }
+  .cart-empty { padding: 2rem 0; color: var(--ck-ink-faint); font-size: var(--ck-small); }
+  .cart-item { display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.875rem 0; border-bottom: var(--ck-border-w) solid var(--ck-line); }
+  .ci-main { flex: 1; display: flex; flex-direction: column; gap: 0.25rem; font-size: var(--ck-small); }
+  .ci-opt { color: var(--ck-ink-faint); font-size: 0.75rem; }
+  .ci-x { background: 0; border: 0; cursor: pointer; color: var(--ck-ink-faint); }
+  .cart-ft { border-top: var(--ck-border-w) solid var(--ck-line); }
+  .cart-hint { font-size: 0.75rem; color: var(--ck-ink-faint); margin-bottom: 0.75rem; }
+  .cart-go {
+    display: block; text-align: center; padding: 0.875rem 1rem;
+    background: var(--ck-accent); color: var(--ck-on-accent);
+    border-radius: var(--ck-cta-radius); text-decoration: none; font-weight: 600;
+  }
+</style>
