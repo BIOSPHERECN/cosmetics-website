@@ -42,9 +42,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # 不传 version:pnpm 版本以 package.json 的 packageManager 字段为唯一真源。
+      # 两处都声明会让 action 报 "Multiple versions of pnpm specified" 直接失败。
       - uses: pnpm/action-setup@v4
-        with:
-          version: 11
 
       - uses: actions/setup-node@v6
         with:

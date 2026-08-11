@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "pnpm -r build",
-    "build:brand-1": "pnpm --filter brand-1 build",
-    "placeholders": "node tools/gen-placeholders.mjs"
+    "scaffold": "node tools/scaffold-sites.mjs",
+    "lab": "pnpm --filter style-lab dev"
   }
 }
