@@ -74,6 +74,27 @@ const SHOT_PENDING: Record<Lang, string> = {
   'zh-cn': '车间实拍待补', 'zh-tw': '車間實拍待補', en: 'footage pending', ja: '現場映像は準備中',
 };
 
+/**
+ * demo 阶段的占位实拍图与质地类型。
+ * 目的只有一个:证明「图片进版式」这条路是通的 —— 真图入库后由 block 数据里的
+ * d.image 覆盖,这两张表就可以删掉,版式一行不动。
+ * 质地类型按各站产品语言分配:护肤=流体、彩妆代工=乳霜、口腔=凝胶、AI=粉体。
+ */
+const DEMO_SHOT: Record<string, string> = {
+  beauty2oem: '/media/demo/demo-1.jpg',
+  skin2oem: '/media/demo/demo-3.jpg',
+  'biosphere-ai': '/media/demo/demo-7.jpg',
+  medierba: '/media/demo/demo-8.jpg',
+  'biosphere-oralcare': '/media/demo/demo-6.jpg',
+};
+const DEMO_TEXTURE: Record<string, 'cream' | 'fluid' | 'powder' | 'gel'> = {
+  beauty2oem: 'cream',
+  skin2oem: 'fluid',
+  'biosphere-ai': 'powder',
+  medierba: 'cream',
+  'biosphere-oralcare': 'gel',
+};
+
 /** 内容改完即时生效,但同一秒内的重复请求走边缘缓存,避免每次都打 D1 */
 Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=300');
 ---
@@ -107,7 +128,17 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
       const d = b.data as any;
       switch (b.type) {
         case 'hero':
-          return <Hero hero={d} ctaHref={`/${lang}/contact/`} highlights={d.stats ?? []} />;
+          // demo 阶段:每站取一张占位实拍图证明图片管线通;真图入库后由 d.image 覆盖
+          return (
+            <Hero
+              hero={d}
+              ctaHref={`/${lang}/contact/`}
+              highlights={d.stats ?? []}
+              image={d.image ?? DEMO_SHOT[site!.id]}
+              imageAlt={d.imageAlt ?? ''}
+              texture={DEMO_TEXTURE[site!.id] ?? 'cream'}
+            />
+          );
         case 'workshop':
           return <WorkshopProof title={d.title} intro={d.intro} clips={d.clips ?? []} pendingLabel={SHOT_PENDING[lang]} />;
         case 'certs':

@@ -23,15 +23,24 @@ export interface Props {
   highlights?: StatItem[];
   /** 首屏质地场:实拍图到位前先给画面,真图到了把这层换成 <img> 即可 */
   texture?: 'cream' | 'fluid' | 'powder' | 'gel';
+  /** 首屏主图。有真图就用图,没有才回落到生成式质地 —— 一个开关,不用改版式 */
+  image?: string;
+  imageAlt?: string;
 }
 
-const { hero, ctaHref, ctaSecondaryHref, highlights = [], texture = 'cream' } = Astro.props;
+const { hero, ctaHref, ctaSecondaryHref, highlights = [], texture = 'cream', image, imageAlt } = Astro.props;
 ---
 
 <section class="hero">
   <div class="deco" aria-hidden="true"></div>
-  {/* 质地场铺在右半幅,给首屏一个"产品"而不是纯文字 */}
-  <div class="texwrap" aria-hidden="true"><TextureField kind={texture} tone="full" /></div>
+  {/* 右半幅:有实拍图就铺图,没有则用生成式质地兜底 */}
+  <div class="texwrap" aria-hidden={image ? undefined : 'true'}>
+    {image ? (
+      <img class="shot" src={image} alt={imageAlt ?? ''} loading="eager" decoding="async" />
+    ) : (
+      <TextureField kind={texture} tone="full" />
+    )}
+  </div>
   <div class="ck-wrap inner">
     {hero.eyebrow && <p class="ck-eyebrow ck-fade-up">{hero.eyebrow}</p>}
     <h1 class="ck-fade-up ck-delay-1">{hero.title}</h1>
@@ -93,6 +102,12 @@ const { hero, ctaHref, ctaSecondaryHref, highlights = [], texture = 'cream' } = 
       -webkit-mask-image: linear-gradient(180deg, transparent, #000 60%);
       mask-image: linear-gradient(180deg, transparent, #000 60%);
     }
+  }
+  .shot {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
   .inner {
     position: relative;
