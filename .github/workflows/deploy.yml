@@ -73,12 +73,24 @@ jobs:
             grep -q 'Disallow: /' "$d/robots.txt" || { echo "::error::预览态 robots 未禁抓"; exit 1; }
           fi
 
+      # 凭据缺失时给一句人话报错,而不是让 wrangler 抛一串看不懂的鉴权错误
+      - name: 校验凭据已配置
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$T" || { echo "::error::仓库 Secret CLOUDFLARE_API_TOKEN 未配置"; exit 1; }
+          test -n "$A" || { echo "::error::仓库 Secret CLOUDFLARE_ACCOUNT_ID 未配置"; exit 1; }
+          echo "凭据已就位(值不打印)"
+
+      # 直接调仓库内钉好版本的 wrangler,不用 cloudflare/wrangler-action:
+      # 该 action 会尝试用 pnpm 往 workspace 根安装 wrangler,被 pnpm 的
+      # ERR_PNPM_ADDING_TO_ROOT 保护机制拒绝而失败。用锁文件里的版本更可复现。
       - name: 发布到 Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: >-
-            pages deploy sites/${{ matrix.site }}/dist
-            --project-name bohui-${{ matrix.site }}
-            --branch main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: >-
+          pnpm exec wrangler pages deploy sites/${{ matrix.site }}/dist
+          --project-name bohui-${{ matrix.site }}
+          --branch main

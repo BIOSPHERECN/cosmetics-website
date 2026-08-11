@@ -9,7 +9,9 @@ packages:
 # pnpm 11 用 allowBuilds(name: bool)放行依赖的 postinstall 构建脚本;
 # 旧写法 onlyBuiltDependencies 在 pnpm 11 已不生效(实测:配了仍报 ERR_PNPM_IGNORED_BUILDS,
 # 且 pnpm 会自己往本文件追加 allowBuilds 存根让人显式表态)。
-# 只放行 Astro 工具链确实需要的两个,其余依赖的脚本一律仍拦。
+# 只放行确实需要的三个,其余依赖的脚本一律仍拦。
+# workerd 是 wrangler 的运行时,不放行则 wrangler 装不全(CI 部署步骤会挂)。
 allowBuilds:
   esbuild: true
   sharp: true
+  workerd: true
