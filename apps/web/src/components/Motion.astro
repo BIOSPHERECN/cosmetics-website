@@ -1,0 +1,71 @@
+---
+/**
+ * 动效层 —— 全站只引入一次,靠 data 属性声明式驱动,组件本身不用写任何动画代码。
+ *
+ * 三条自律:
+ * 1. **渐进增强**:JS 没跑起来时元素是正常可见的(初始态在 JS 里设,不写在 CSS 里)。
+ *    反过来做——CSS 先隐藏、等 JS 显示——一旦脚本失败,整页就是空白。这是常见事故。
+ * 2. **尊重 prefers-reduced-motion**:系统开了减弱动效就整套跳过,不是减速,是不做。
+ * 3. **不劫持滚动**:只做进场揭示与数字滚动,不接管滚轮。采购经理要的是快速找信息,
+ *    scroll-jacking 会让他找不到东西然后离开。
+ *
+ * 用法:
+ *   <div data-reveal>            进场淡入上移
+ *   <div data-reveal="stagger">  子元素依次进场
+ *   <span data-count="1.2">      数字从 0 滚到 1.2(保留原文本里的单位与符号)
+ */
+---
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!reduced) {
+    gsap.registerPlugin(ScrollTrigger);
+
+    // ── 进场揭示 ────────────────────────────────────────────────
+    // 初始态用 gsap.set 而不是 CSS:脚本没跑时内容照常可见,不会白屏
+    document.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => {
+      const mode = el.dataset.reveal;
+      const targets = mode === 'stagger' ? Array.from(el.children) as HTMLElement[] : [el];
+      gsap.set(targets, { opacity: 0, y: 22 });
+      gsap.to(targets, {
+        opacity: 1,
+        y: 0,
+        duration: 0.7,
+        ease: 'power2.out',
+        stagger: mode === 'stagger' ? 0.08 : 0,
+        scrollTrigger: { trigger: el, start: 'top 85%', once: true },
+      });
+    });
+
+    // ── 数字滚动 ────────────────────────────────────────────────
+    // 只动数字部分,保留原文里的单位/前缀(如「1.2 亿支」「>550」「<24h」),
+    // 否则滚完会把单位吃掉,变成一个没有意义的裸数字。
+    document.querySelectorAll<HTMLElement>('[data-count]').forEach((el) => {
+      const raw = el.textContent ?? '';
+      const m = raw.match(/[\d][\d,]*\.?\d*/);
+      if (!m) return;
+      const target = parseFloat(m[0].replace(/,/g, ''));
+      if (!isFinite(target)) return;
+      const decimals = (m[0].split('.')[1] || '').length;
+      const before = raw.slice(0, m.index!);
+      const after = raw.slice(m.index! + m[0].length);
+      const state = { v: 0 };
+      gsap.to(state, {
+        v: target,
+        duration: 1.4,
+        ease: 'power2.out',
+        scrollTrigger: { trigger: el, start: 'top 88%', once: true },
+        onUpdate: () => {
+          const n = decimals
+            ? state.v.toFixed(decimals)
+            : Math.round(state.v).toLocaleString('en-US');
+          el.textContent = `${before}${n}${after}`;
+        },
+      });
+    });
+  }
+</script>

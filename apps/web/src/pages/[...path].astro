@@ -20,6 +20,7 @@ import EvidenceGrid from '@cosmetic/core/components/EvidenceGrid.astro';
 import SocialProof from '@cosmetic/core/components/SocialProof.astro';
 import InquiryForm from '@cosmetic/core/components/InquiryForm.astro';
 import InquiryBand from '@cosmetic/core/components/InquiryBand.astro';
+import Motion from '../components/Motion.astro';
 import { getSiteByHost, getSiteById, getPageBundle, isLang, DEFAULT_LANG, type Lang } from '../lib/db';
 import { getVariant, getSite as getStaticSite } from '@cosmetic/core/registry';
 // Astro v6 起 Astro.locals.runtime.env 已移除,绑定改从 cloudflare:workers 取
@@ -130,5 +131,6 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
   </main>
 
   <SiteFooter locale={lang} path={path} site={{ ...staticSite!, name: site!.name }} siblings={[]} email={email} nav={bundle!.nav} />
+  <Motion />
 </BaseLayout>
 )}
