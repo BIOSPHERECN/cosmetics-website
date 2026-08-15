@@ -4,7 +4,7 @@
  *
  * 设计要点:
  *  · 数据来自 D1 的 providers 表,不是环境变量 —— 加一家模型不必改代码重部署;
- *  · **key 只写不读**:表格里只显示"配了几个",不提供查看原值的路径;
+ *  · **key 只写不读**:只显示"配了几个",不提供查看原值的路径;
  *  · 第一屏就是体检 —— 古方线曾因配错 base 整批 0 产出却无人察觉,空转很久才发现。
  */
 import { env } from 'cloudflare:workers';
@@ -21,12 +21,14 @@ if (!sess) return Astro.redirect('/bohui/login/');
 type Row = {
   id: string; label: string; base_url: string; model: string; tier: number;
   can_image: number; can_video: number; is_free: number; enabled: number; nkeys: number;
+  last_ok: number | null; last_ms: number | null; last_note: string | null; last_check_at: string | null;
 };
 let rows: Row[] = [];
 if (db) {
   const { results } = await db
     .prepare(
       `SELECT id,label,base_url,model,tier,can_image,can_video,is_free,enabled,
+              last_ok,last_ms,last_note,last_check_at,
               CASE WHEN api_keys='' THEN 0
                    ELSE LENGTH(api_keys)-LENGTH(REPLACE(api_keys,',',''))+1 END AS nkeys
          FROM providers ORDER BY tier, id`,
@@ -39,123 +41,200 @@ const imageReady = ready.filter((r) => r.can_image).length;
 ---
 
 <AdminShell title="模型舰队" active="models" email={sess.email}>
-    <h1>模型舰队</h1>
-    <p class="lead">
-      共 <strong>{rows.length}</strong> 家,其中 <strong>{ready.length}</strong> 家已配 key 可用。
-      分档降级:档位小的先用,失败自动切下一档,业务代码不感知。
-      同一家可填多个 key(逗号分隔)轮询使用。
-      <strong>加一家新模型不需要改代码</strong> —— 在下方表单里填完即生效。
-    </p>
+  <h1>模型舰队</h1>
+  <p class="lead">
+    共 <b>{rows.length}</b> 家,其中 <b>{ready.length}</b> 家已配 key 可用。
+    档位小的先用,失败自动切下一档,业务代码不感知;同一家可填多个 key(逗号分隔)轮询。
+    加一家新模型不需要改代码,在下方表单填完即生效。
+  </p>
 
-    {ready.length > 0 && imageReady < 2 && (
-      <div class="warnbox">
-        <strong>单点风险:</strong>具备出图能力且已配 key 的只有 {imageReady} 家。
-        文本已有 {ready.length} 档冗余,图像链路一旦这家限流就整体中断 —— 建议尽快再接一家出图源。
-      </div>
-    )}
-    {ready.length === 0 && (
-      <div class="warnbox">还没有任何一家配了 key。在下面填上 key 后,AI 功能才会启用。</div>
-    )}
+  {ready.length === 0 && (
+    <div class="note bad">还没有任何一家配了 key。填上 key 后,AI 功能才会启用。</div>
+  )}
+  {ready.length > 0 && imageReady === 0 && (
+    <div class="note warn">
+      <b>图像链路缺口:</b>已配 key 的 {ready.length} 家里,<b>没有一家具备出图能力</b>。
+      文本可用,但「生成包装图」这一步现在跑不出结果 —— 需要接一家支持图像的模型(如 Agnes)。
+    </div>
+  )}
+  {imageReady === 1 && (
+    <div class="note warn">
+      <b>单点风险:</b>能出图且已配 key 的只有 1 家,一旦限流图像链路整体中断,建议再接一家。
+    </div>
+  )}
 
+  <form autocomplete="off">
+  <div class="tblwrap">
     <table>
+      {/* colgroup 才是真正定死列宽的地方:
+          写在 th 上的 width 在 table-layout:fixed 下仍会被浏览器按剩余空间重新分配
+          —— 档位列曾因此被撑到 214px。 */}
+      <colgroup>
+        <col style="width:4.5rem" /><col style="width:11rem" /><col style="width:15rem" />
+        <col style="width:12rem" /><col style="width:10rem" /><col style="width:8.5rem" />
+        <col style="width:13rem" />
+      </colgroup>
       <thead><tr>
-        <th style="width:5rem">档位</th><th style="width:9rem">名称</th><th>接口地址</th>
-        <th style="width:12rem">模型</th><th style="width:12rem">API Key</th>
-        <th style="width:7rem">能力</th><th style="width:11rem">操作</th>
+        <th>档位</th><th>供应商</th><th>接口地址</th>
+        <th>模型</th><th>API Key</th><th>状态</th><th>操作</th>
       </tr></thead>
       <tbody>
         {rows.map((r) => (
           <tr class={r.enabled ? '' : 'off'} data-row={r.id}>
-            <td><input class="num" name="tier" type="number" value={r.tier} /></td>
-            <td><input name="label" value={r.label} /></td>
-            <td><input name="base_url" value={r.base_url} /></td>
-            <td><input name="model" value={r.model} /></td>
+            <td><input class="num" name={`tier-${r.id}`} data-f="tier" type="number" value={r.tier} /></td>
             <td>
-              <input class="k" name="api_keys" type="password" autocomplete="off"
+              <input name={`label-${r.id}`} data-f="label" value={r.label} />
+              <div class="tags">
+                <code>{r.id}</code>
+                {r.is_free ? <span class="tag free">免费</span> : null}
+                {r.can_image ? <span class="tag">图</span> : null}
+                {r.can_video ? <span class="tag">视频</span> : null}
+              </div>
+            </td>
+            <td><input name={`base-${r.id}`} data-f="base_url" value={r.base_url} spellcheck="false" /></td>
+            <td><input name={`model-${r.id}`} data-f="model" value={r.model} spellcheck="false" /></td>
+            <td>
+              {/* autocomplete="new-password":这一格是 type=password,
+                  不加这句浏览器会把整页当登录表单,把保存的邮箱塞进上面的输入框 */}
+              <input class="k" name={`key-${r.id}`} data-f="api_keys" type="password"
+                     autocomplete="new-password" spellcheck="false"
                      placeholder={r.nkeys ? `已配 ${r.nkeys} 个 · 留空不改` : '未配置'} />
             </td>
             <td>
-              {r.is_free ? <span class="pill p-free">免费</span> : null}
-              {r.can_image ? <span class="pill p-free">图</span> : null}
-              {r.can_video ? <span class="pill p-free">视频</span> : null}
+              <span class="state" data-res={r.id}>
+                {!r.enabled ? <span class="pill p-wait">已停用</span>
+                  : r.nkeys === 0 ? <span class="pill p-warn">未配 key</span>
+                  : r.last_check_at
+                    ? <span class:list={['pill', r.last_ok ? 'p-ok' : 'p-bad']}>{r.last_note ?? (r.last_ok ? '正常' : '异常')}</span>
+                    : <span class="pill p-wait">未体检</span>}
+              </span>
             </td>
             <td>
-              <button class="btn pri" data-save={r.id}>保存</button>
-              <button class="btn" data-toggle={r.id}>{r.enabled ? '停用' : '启用'}</button>
-              <button class="btn" data-ping={r.id}>体检</button>
-              <span data-res={r.id}></span>
+              <div class="ops">
+                <button type="button" class="btn pri" data-save={r.id}>保存</button>
+                <button type="button" class="btn" data-toggle={r.id}>{r.enabled ? '停用' : '启用'}</button>
+                <button type="button" class="btn" data-ping={r.id}>体检</button>
+              </div>
             </td>
           </tr>
         ))}
       </tbody>
     </table>
+  </div>
 
-    <section class="add">
-      <strong>新增供应商</strong>
-      <p class="lead" style="margin:.5rem 0 0">
-        任何兼容 OpenAI 接口的厂商都能加。<code>接口地址</code>填到 <code>/v1</code> 为止 ——
-        <strong>不要再往后拼版本号</strong>,拼了会变成双路径 404、整批空转。
-      </p>
-      <div class="grid">
-        <label class="fld"><span>id(小写)</span><input id="n-id" placeholder="moonshot" /></label>
-        <label class="fld"><span>名称</span><input id="n-label" placeholder="月之暗面" /></label>
-        <label class="fld"><span>接口地址</span><input id="n-base" placeholder="https://api.moonshot.cn/v1" /></label>
-        <label class="fld"><span>模型</span><input id="n-model" placeholder="moonshot-v1-8k" /></label>
-        <label class="fld"><span>API Key</span><input id="n-keys" type="password" autocomplete="off" /></label>
-        <label class="fld"><span>档位</span><input id="n-tier" type="number" value="10" /></label>
-      </div>
-      <p style="margin-top:.75rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
-        <label><input type="checkbox" id="n-free" /> 免费</label>
-        <label><input type="checkbox" id="n-img" /> 可出图</label>
-        <label><input type="checkbox" id="n-vid" /> 可出视频</label>
-        <button class="btn pri" id="n-add">新增</button>
-        <span id="n-msg" style="color:var(--faint);font-size:.8125rem"></span>
-      </p>
-    </section>
+  <section class="add">
+    <h2>新增供应商</h2>
+    <p class="hint">
+      任何兼容 OpenAI 接口的厂商都能加。<b>接口地址填到 <code>/v1</code> 为止</b> ——
+      再往后拼版本号会变成双路径 404、整批空转。
+    </p>
+    <div class="grid">
+      <label class="fld"><span>id(小写英文)</span><input id="n-id" name="np-id" autocomplete="off" placeholder="moonshot" /></label>
+      <label class="fld"><span>显示名称</span><input id="n-label" name="np-label" autocomplete="off" placeholder="月之暗面" /></label>
+      <label class="fld"><span>接口地址</span><input id="n-base" name="np-base" autocomplete="off" spellcheck="false" placeholder="https://api.moonshot.cn/v1" /></label>
+      <label class="fld"><span>模型</span><input id="n-model" name="np-model" autocomplete="off" spellcheck="false" placeholder="moonshot-v1-8k" /></label>
+      <label class="fld"><span>API Key</span><input id="n-keys" name="np-key" type="password" autocomplete="new-password" /></label>
+      <label class="fld"><span>档位(小的先用)</span><input id="n-tier" name="np-tier" type="number" value="10" /></label>
+    </div>
+    <div class="addrow">
+      <label class="ck"><input type="checkbox" id="n-free" /><span>免费</span></label>
+      <label class="ck"><input type="checkbox" id="n-img" /><span>可出图</span></label>
+      <label class="ck"><input type="checkbox" id="n-vid" /><span>可出视频</span></label>
+      <button type="button" class="btn pri" id="n-add">新增</button>
+      <span id="n-msg" class="msg"></span>
+    </div>
+  </section>
+  </form>
+
+  <div id="toast" class="toast" hidden></div>
 
   <style>
-    .warnbox{margin:1.25rem 0;padding:.875rem 1.125rem;border:1px dashed var(--warn);border-radius:8px;
-             color:var(--warn);font-size:.875rem;background:#fffdf7}
-    input.k{font-family:ui-monospace,monospace}
-    tr.off{opacity:.45}
-    .p-free{background:#e8eff6;color:var(--accent)}
-    code{background:#f1f2f4;padding:.0625rem .3125rem;border-radius:4px;font-size:.8125rem}
-    .add{margin-top:1.5rem;padding:1.25rem;background:var(--panel);border:1px solid var(--line);border-radius:10px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.75rem;margin-top:.75rem}
-    .fld{display:grid;gap:.25rem} .fld span{font-size:.75rem;color:var(--faint)}
-    .add label input[type=checkbox]{width:auto;margin-right:.25rem}
+    .lead b { color: var(--ink); }
+    .note { padding: .8125rem 1.0625rem; border-radius: 8px; font-size: .8125rem; line-height: 1.65; margin-bottom: 1.125rem; }
+    .note.warn { background: #fdf1e0; border: 1px solid #f0dcb8; color: #7a4a00; }
+    .note.bad { background: #fdecea; border: 1px solid #f3c9c4; color: #8a2018; }
+
+    .tblwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+    /* table-layout:fixed —— 自动布局会按内容重新分配宽度,
+       写在 th 上的 width 只会被当成建议(档位列曾被撑到 214px)。固定布局才真的按列宽排。 */
+    table { border: 0; border-radius: 0; width: 74rem; min-width: 74rem; table-layout: fixed; }
+    th, td { padding: .625rem; vertical-align: top; }
+    th:first-child, td:first-child { padding-left: 1rem; }
+    th:last-child, td:last-child { padding-right: 1rem; }
+    tr.off { opacity: .5; }
+    td { word-break: break-word; }
+    thead th:last-child, tbody td:last-child { text-align: left; }
+    td input { font-size: .8125rem; padding: .375rem .5rem; }
+    input.k, td input[data-f="base_url"], td input[data-f="model"] { font-family: ui-monospace, monospace; font-size: .75rem; }
+    .tags { display: flex; gap: .25rem; align-items: center; flex-wrap: wrap; margin-top: .3125rem; }
+    .tags code { font-size: .6875rem; color: var(--faint); }
+    .tag { font-size: .625rem; padding: .0625rem .3125rem; border-radius: 3px; background: #eef0f3; color: var(--soft); }
+    .tag.free { background: #e8eff6; color: var(--accent); }
+    .state { display: inline-flex; flex-direction: column; gap: .25rem; align-items: flex-start; }
+    .state .ms { font-size: .6875rem; color: var(--faint); font-variant-numeric: tabular-nums; }
+    .ops { display: flex; gap: .3125rem; }
+    .ops .btn { padding: .3125rem .5rem; font-size: .75rem; }
+
+    .add { margin-top: 1.5rem; padding: 1.25rem 1.375rem; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+    .add h2 { font-size: .9375rem; margin: 0 0 .375rem; }
+    .hint { font-size: .8125rem; color: var(--soft); line-height: 1.65; margin: 0 0 1rem; }
+    .hint code { background: #eef0f3; padding: .0625rem .3125rem; border-radius: 4px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .875rem; }
+    .fld { display: grid; gap: .3125rem; }
+    .fld span { font-size: .75rem; color: var(--faint); }
+    .addrow { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-top: 1.125rem; }
+    .ck { display: inline-flex; align-items: center; gap: .375rem; font-size: .8125rem; color: var(--soft); }
+    .ck input { width: auto; margin: 0; }
+    .msg { font-size: .8125rem; color: var(--bad); }
+
+    .toast { position: fixed; right: 1.25rem; bottom: 1.25rem; background: #10131a; color: #fff;
+             padding: .6875rem 1.0625rem; border-radius: 8px; font-size: .8125rem; z-index: 9;
+             box-shadow: 0 10px 30px -8px rgb(0 0 0 / .35); }
+    .toast.bad { background: var(--bad); }
+    [hidden] { display: none !important; }
   </style>
 
   <script is:inline>
+  (() => {
+    const toast = document.getElementById('toast');
+    const say = (m, bad) => {
+      toast.textContent = m; toast.classList.toggle('bad', !!bad); toast.hidden = false;
+      clearTimeout(say.t); say.t = setTimeout(() => { toast.hidden = true; }, 3000);
+    };
     const post = (b) => fetch('/api/admin/provider', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b),
     }).then((r) => r.json());
 
     document.querySelectorAll('[data-save]').forEach((b) => b.addEventListener('click', async () => {
-      const id = b.dataset.save;
-      const tr = document.querySelector(`[data-row="${id}"]`);
-      const v = (n) => tr.querySelector(`[name="${n}"]`).value;
+      const tr = document.querySelector(`[data-row="${b.dataset.save}"]`);
+      const v = (f) => tr.querySelector(`[data-f="${f}"]`).value;
       b.disabled = true;
-      const d = await post({ id, label: v('label'), base_url: v('base_url'), model: v('model'),
-                             api_keys: v('api_keys'), tier: Number(v('tier')) });
+      const d = await post({ id: b.dataset.save, label: v('label'), base_url: v('base_url'),
+                             model: v('model'), api_keys: v('api_keys'), tier: Number(v('tier')) });
       b.disabled = false;
-      if (d.ok) { tr.querySelector('[name=api_keys]').value = ''; location.reload(); }
-      else alert(d.msg || '保存失败');
+      if (d.ok) location.reload(); else say(d.msg || '保存失败', true);
     }));
 
     document.querySelectorAll('[data-toggle]').forEach((b) => b.addEventListener('click', async () => {
-      await post({ id: b.dataset.toggle, action: 'toggle' }); location.reload();
+      b.disabled = true;
+      await post({ id: b.dataset.toggle, action: 'toggle' });
+      location.reload();
     }));
 
     document.querySelectorAll('[data-ping]').forEach((b) => b.addEventListener('click', async () => {
       const id = b.dataset.ping, out = document.querySelector(`[data-res="${id}"]`);
-      b.disabled = true; out.textContent = ' 检测中…';
+      b.disabled = true;
+      out.innerHTML = '<span class="pill p-wait">检测中…</span>';
       try {
         const d = await (await fetch('/api/admin/fleet-health?id=' + encodeURIComponent(id))).json();
-        const x = (d.list || []).find((y) => y.id === id);
-        out.innerHTML = x ? ` <span class="pill ${x.ok ? 'p-ok' : 'p-bad'}">${x.note}</span> <span class="num" style="color:var(--faint)">${x.ms}ms</span>`
-                          : ' <span class="pill p-bad">未配 key</span>';
-      } catch { out.innerHTML = ' <span class="pill p-bad">请求失败</span>'; }
+        const x = (d.list || [])[0];
+        if (!x) { out.innerHTML = '<span class="pill p-bad">无返回</span>'; }
+        else {
+          out.innerHTML = '<span class="pill ' + (x.ok ? 'p-ok' : 'p-bad') + '"></span><span class="ms"></span>';
+          out.querySelector('.pill').textContent = x.note || (x.ok ? '正常' : '异常');
+          out.querySelector('.ms').textContent = x.ms ? x.ms + 'ms' : '';
+        }
+      } catch (e) { out.innerHTML = '<span class="pill p-bad">请求失败</span>'; }
       b.disabled = false;
     }));
 
@@ -163,10 +242,12 @@ const imageReady = ready.filter((r) => r.can_image).length;
       const g = (i) => document.getElementById(i).value.trim();
       const c = (i) => document.getElementById(i).checked;
       const msg = document.getElementById('n-msg');
+      if (!/^[a-z0-9-]{2,20}$/.test(g('n-id'))) { msg.textContent = 'id 只能是小写字母、数字或短横线'; return; }
       const d = await post({ id: g('n-id'), label: g('n-label'), base_url: g('n-base'), model: g('n-model'),
                              api_keys: g('n-keys'), tier: Number(g('n-tier') || 10),
                              is_free: c('n-free'), can_image: c('n-img'), can_video: c('n-vid') });
       if (d.ok) location.reload(); else msg.textContent = d.msg || '新增失败';
     });
+  })();
   </script>
 </AdminShell>

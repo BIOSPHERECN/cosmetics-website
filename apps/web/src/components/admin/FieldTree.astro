@@ -1,0 +1,163 @@
+---
+/**
+ * 字段树 —— 按内容的数据结构递归渲染成表单。
+ *
+ * 为什么是服务端渲染而不是前端 JS 生成:
+ *   Astro 的 <style> 是编译期按模板里的元素打作用域类的。
+ *   前端 JS 造出来的元素拿不到那个类,样式一条都不会生效 ——
+ *   之前的编辑器就是这么糊成一团的。凡是要带样式的结构,就必须在模板里出现。
+ *
+ * 顺带的好处:不依赖 JS 就能看见内容、首屏不闪、也不用等脚本跑完。
+ * JS 只负责三件事:增行、删行、保存时把表单读回 JSON。
+ */
+import Self from './FieldTree.astro';
+
+export interface Props {
+  data: unknown;
+  /** 字段在父级里的键名,用于显示中文名与回读时定位 */
+  name?: string;
+  depth?: number;
+}
+const { data, name, depth = 0 } = Astro.props;
+
+/** 字段中文名。没收录的键退回原名 —— 宁可露出英文键,也不瞎猜译错误导运营 */
+const LABELS: Record<string, string> = {
+  eyebrow: '眉标(小字)', title: '标题', lead: '导语', ctaPrimary: '主按钮文字', ctaSecondary: '次按钮文字',
+  heading: '标题', body: '正文', text: '正文', label: '名称', value: '数值', name: '名称', desc: '说明',
+  caption: '图注', note: '备注', items: '条目', stats: '数字', cells: '格子', steps: '步骤',
+  cards: '卡片', points: '要点', quote: '引述', author: '署名', sub: '副标题', tag: '标签',
+  alt: '图片说明', href: '链接', src: '图片路径', intro: '引言', outro: '结语', unit: '单位',
+  placeholder: '占位提示', submit: '提交按钮', fields: '表单字段', ok: '成功提示', badge: '角标',
+};
+const L = (k?: string) => (k ? LABELS[k] ?? k : '');
+
+/** 长文本给 textarea。判据同时看键名与实际长度 —— 只看键名会漏掉写长了的标题 */
+const LONG = new Set(['lead', 'body', 'text', 'desc', 'intro', 'outro', 'quote', 'note', 'seo_desc']);
+const isLong = (k?: string, v = '') => (k ? LONG.has(k) : false) || v.length > 48;
+
+const kind = Array.isArray(data) ? 'arr' : data !== null && typeof data === 'object' ? 'obj' : 'val';
+/** 新增行的空白模板:照第一条的形状生成,而不是给一个空字符串 */
+const blank = (sample: unknown): unknown =>
+  Array.isArray(sample) ? []
+  : sample !== null && typeof sample === 'object'
+    ? Object.fromEntries(Object.keys(sample as object).map((k) => [k, '']))
+    : '';
+---
+
+{kind === 'val' && (
+  <div class="ft-f" data-key={name} data-scalar={name === undefined ? '' : undefined}>
+    <label>{L(name) || '内容'}</label>
+    {isLong(name, String(data ?? '')) ? (
+      <textarea rows="3">{String(data ?? '')}</textarea>
+    ) : (
+      <input value={String(data ?? '')} />
+    )}
+  </div>
+)}
+
+{kind === 'obj' && (
+  <div class="ft-grp" data-key={name} data-kind="obj">
+    {name && <div class="ft-h">{L(name)}</div>}
+    <div class="ft-body">
+      {Object.entries(data as Record<string, unknown>).map(([k, v]) => (
+        <Self data={v} name={k} depth={depth + 1} />
+      ))}
+    </div>
+  </div>
+)}
+
+{kind === 'arr' && (
+  <div class="ft-grp ft-arr" data-key={name} data-kind="arr">
+    <div class="ft-h">
+      <span>{L(name)}</span>
+      <span class="ft-cnt">{(data as unknown[]).length} 条</span>
+      <button type="button" class="ft-mini ft-add">+ 新增一条</button>
+    </div>
+    <div class="ft-items">
+      {(data as unknown[]).map((it, i) => (
+        <div class="ft-item">
+          <div class="ft-item-h">
+            <span class="ft-ix">{i + 1}</span>
+            <button type="button" class="ft-mini ft-rm">删除</button>
+          </div>
+          {it !== null && typeof it === 'object' && !Array.isArray(it) ? (
+            <div class="ft-body">
+              {Object.entries(it as Record<string, unknown>).map(([k, v]) => (
+                <Self data={v} name={k} depth={depth + 1} />
+              ))}
+            </div>
+          ) : (
+            <Self data={it} depth={depth + 1} />
+          )}
+        </div>
+      ))}
+    </div>
+    {/* 新增行的模板必须写在模板里,不能用 JS 现造 —— 否则新行拿不到作用域类,又会没样式 */}
+    <template class="ft-tpl">
+      <div class="ft-item">
+        <div class="ft-item-h">
+          <span class="ft-ix">新</span>
+          <button type="button" class="ft-mini ft-rm">删除</button>
+        </div>
+        {(() => {
+          const b = blank((data as unknown[])[0]);
+          return b !== null && typeof b === 'object' ? (
+            <div class="ft-body">
+              {Object.entries(b as Record<string, unknown>).map(([k, v]) => (
+                <Self data={v} name={k} depth={depth + 1} />
+              ))}
+            </div>
+          ) : (
+            <Self data="" depth={depth + 1} />
+          );
+        })()}
+      </div>
+    </template>
+  </div>
+)}
+
+<style is:global>
+  /* 这层刻意用 is:global:字段树是递归组件,层层作用域类会让选择器无法命中子层。
+     类名都带 admin 语义前缀,不会外泄到前台 —— 后台页各自独立,没有共用冲突。 */
+  .ft-f { display: grid; gap: 0.3125rem; margin-bottom: 0.875rem; }
+  .ft-f > label { font-size: 0.75rem; color: var(--faint); letter-spacing: 0.02em; }
+  .ft-f input,
+  .ft-f textarea {
+    font: inherit; font-size: 0.875rem; width: 100%;
+    padding: 0.4375rem 0.5625rem; border: 1px solid var(--line); border-radius: 6px;
+    background: #fff; color: var(--ink);
+  }
+  .ft-f textarea { min-height: 4.25rem; resize: vertical; line-height: 1.6; }
+  .ft-f input:focus, .ft-f textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+
+  .ft-grp { margin-bottom: 1rem; }
+  .ft-grp.ft-arr {
+    border: 1px solid var(--line); border-radius: 8px;
+    background: #fbfcfd; padding: 0.75rem 0.875rem 0.25rem;
+  }
+  .ft-h {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.75rem; font-weight: 600; color: var(--soft);
+    margin-bottom: 0.625rem;
+  }
+  .ft-h .ft-cnt { color: var(--faint); font-weight: 400; }
+  .ft-h .ft-add { margin-left: auto; }
+  .ft-mini {
+    font: inherit; font-size: 0.6875rem; cursor: pointer;
+    border: 1px solid var(--line); background: #fff; color: var(--soft);
+    padding: 0.1875rem 0.5rem; border-radius: 5px; white-space: nowrap;
+  }
+  .ft-mini:hover { border-color: var(--accent); color: var(--accent); }
+  .ft-mini.ft-rm:hover { border-color: #e6b8b3; color: var(--bad); }
+
+  .ft-items { display: grid; gap: 0.625rem; }
+  .ft-item { background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: 0.625rem 0.75rem 0; }
+  .ft-item-h { display: flex; align-items: center; margin-bottom: 0.5rem; }
+  .ft-item-h .ft-ix {
+    font-size: 0.6875rem; color: var(--faint); font-variant-numeric: tabular-nums;
+    background: #f1f3f5; border-radius: 4px; padding: 0.0625rem 0.375rem;
+  }
+  .ft-item-h .ft-rm { margin-left: auto; }
+  .ft-item .ft-f:last-child { margin-bottom: 0.75rem; }
+  .ft-item .ft-grp:last-child { margin-bottom: 0.75rem; }
+</style>
