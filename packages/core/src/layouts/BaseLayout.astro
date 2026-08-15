@@ -17,8 +17,11 @@ import '../styles/variants.css';
 // Summer Fridays 复刻层放最后:它要盖过流派与风格层。
 // 由 <html data-summer> 开关控制,创始人验完再决定哪些站保留。
 import '../styles/summer.css';
-// 深金主题放最后 —— 创始人认可的视觉语气,盖过前面所有层
+// 深金主题(备用,当前未启用 —— 由 <html data-noir> 开关控制)
 import '../styles/noir.css';
+// 编辑式版面层放最后:只改版面几何(不对称/出血/超大字/不均留白),不动颜色字体,
+// 与主题层互不干扰。这一层是去掉「模板感」的关键 —— 模板感来自"每个版块都长一样"。
+import '../styles/editorial.css';
 import '../styles/base.css';
 
 export interface Props {
@@ -79,7 +82,8 @@ const allowIndex = indexable && liveIndexing;
   data-school={school}
   data-variant={variant}
   data-brand={brand}
-  data-noir
+  data-summer
+  data-editorial
 >
   <head>
     <meta charset="utf-8" />

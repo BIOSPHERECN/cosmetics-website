@@ -1,0 +1,116 @@
+/**
+ * 编辑式版面层 —— 去掉"模板感"。
+ *
+ * 创始人评价「太传统的模板」,技术上的根源很具体:
+ *   居中标题 + 通栏色块 + 等宽网格卡片,一路垂直堆叠。
+ *   这是 Bootstrap 时代的排法,每个版块都长一样,所以看着像模板。
+ *
+ * 高端站(Aesop / KDC-One / Summer Fridays 实测)的共同做法是**编辑式版面**:
+ *   ① 不对称:内容不居中,按 12 栅格偏置,左右留白不等
+ *   ② 出血:图片破出容器贴边,打破"页面是一个盒子"的感觉
+ *   ③ 超大字压紧:字号极大但行距压到 0.95,字距收负
+ *   ④ 留白不均:版块之间的间距故意不一致,形成呼吸节奏
+ *   ⑤ 叠压:相邻版块局部重叠,而不是首尾相接
+ *
+ * 本层只改版面几何,不动颜色与字体 —— 那两项由主题层负责,互不干扰。
+ */
+
+html[data-editorial][data-brand] {
+  --ed-gutter: clamp(1.25rem, 5vw, 5rem);
+  --ed-col: calc((100vw - var(--ed-gutter) * 2) / 12);
+}
+
+/* ── ① 首屏:文字偏左六栏,不居中;标题超大压紧 ───────────────── */
+html[data-editorial][data-brand] .hero .inner {
+  max-width: none;
+  padding-inline: var(--ed-gutter);
+}
+html[data-editorial][data-brand] .hero h1 {
+  max-width: 15ch;
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+  /* 大字号下负字距是必须的:默认字距在 100px 以上会显得松垮 */
+}
+html[data-editorial][data-brand] .hero .lead {
+  max-width: 34ch;
+  margin-left: 0;
+}
+/* 首屏数字墙偏右下,与标题错开而不是并排居中 */
+html[data-editorial][data-brand] .hero .hl {
+  margin-left: auto;
+  margin-right: 0;
+  max-width: 38rem;
+  text-align: right;
+}
+
+/* ── ② 图片出血:破出容器贴到视口边缘 ──────────────────────── */
+html[data-editorial][data-brand] .hero .texwrap {
+  width: min(52%, 46rem);
+  /* 上下也出血,让图成为一整条竖带而不是一个方块 */
+  inset: 0 0 0 auto;
+}
+
+/* ── ③ 版块标题:不居中,退回左对齐并加大 ───────────────────── */
+html[data-editorial][data-brand] .ck-section > .ck-wrap > header,
+html[data-editorial][data-brand] .ck-section > .ck-wrap > .head {
+  text-align: left;
+  max-width: 24ch;
+  margin-inline: 0;
+}
+
+/* ── ④ 交替偏置:偶数版块整体右移两栏,打破一柱到底 ──────────── */
+html[data-editorial][data-brand] .ck-section:nth-of-type(even) > .ck-wrap {
+  padding-left: calc(var(--ed-col) * 2 + var(--ed-gutter));
+}
+
+/* ── ⑤ 网格改成不等宽:第一格占两倍,后面依次收窄 ───────────── */
+html[data-editorial][data-brand] .matrix .grid {
+  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+  align-items: start;
+}
+html[data-editorial][data-brand] .matrix .cell:first-child {
+  padding-top: 0;
+}
+/* 后面几格逐个下沉,形成阶梯而不是一条水平线 */
+html[data-editorial][data-brand] .matrix .cell:nth-child(2) { margin-top: 3rem; }
+html[data-editorial][data-brand] .matrix .cell:nth-child(3) { margin-top: 6rem; }
+html[data-editorial][data-brand] .matrix .cell:nth-child(4) { margin-top: 9rem; }
+
+/* ── ⑥ 产品网格:第一张占两格,做成杂志式主次 ───────────────── */
+html[data-editorial][data-brand] .pg .grid {
+  grid-template-columns: repeat(12, 1fr);
+}
+html[data-editorial][data-brand] .pg .card { grid-column: span 3; }
+html[data-editorial][data-brand] .pg .card:nth-child(1) { grid-column: span 6; }
+html[data-editorial][data-brand] .pg .card:nth-child(1) .shotwrap { aspect-ratio: 16 / 10; }
+html[data-editorial][data-brand] .pg .card:nth-child(6) { grid-column: span 6; }
+html[data-editorial][data-brand] .pg .card:nth-child(6) .shotwrap { aspect-ratio: 16 / 10; }
+
+/* ── ⑦ 留白不均:相邻版块的上下间距刻意不同,形成呼吸 ────────── */
+html[data-editorial][data-brand] .ck-section:nth-of-type(3n + 1) { padding-block: calc(var(--ck-section-py) * 1.5); }
+html[data-editorial][data-brand] .ck-section:nth-of-type(3n + 2) { padding-block: calc(var(--ck-section-py) * 0.7); }
+
+/* ── ⑧ 数字墙:超大字 + 细标签,数字之间不用等宽格 ──────────── */
+html[data-editorial][data-brand] .statwall .grid,
+html[data-editorial][data-brand] .proof .nums {
+  grid-template-columns: 1.3fr 1fr 1fr 0.9fr;
+}
+html[data-editorial][data-brand] .statwall .val,
+html[data-editorial][data-brand] .proof .v {
+  font-size: clamp(2.5rem, 1.2rem + 4.2vw, 5.5rem);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+
+/* 窄屏回归单列 —— 编辑式版面在手机上会挤,不硬撑 */
+@media (max-width: 60rem) {
+  html[data-editorial][data-brand] .ck-section:nth-of-type(even) > .ck-wrap { padding-left: var(--ed-gutter); }
+  html[data-editorial][data-brand] .matrix .grid,
+  html[data-editorial][data-brand] .statwall .grid,
+  html[data-editorial][data-brand] .proof .nums { grid-template-columns: 1fr 1fr; }
+  html[data-editorial][data-brand] .matrix .cell { margin-top: 0 !important; }
+  html[data-editorial][data-brand] .pg .card,
+  html[data-editorial][data-brand] .pg .card:nth-child(1),
+  html[data-editorial][data-brand] .pg .card:nth-child(6) { grid-column: span 6; }
+  html[data-editorial][data-brand] .hero .hl { text-align: left; margin-left: 0; }
+}
