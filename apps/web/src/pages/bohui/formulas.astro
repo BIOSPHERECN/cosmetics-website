@@ -1,0 +1,164 @@
+---
+/**
+ * 配方库 —— AI 共创的地基。
+ *
+ * 特意把「样例数据」标红:AI 是从这张表里检索候选配方再解释的(grounding-first),
+ * 库里是假数据,AI 就会一本正经地推荐不存在的配方 —— 这是最危险的一种"看起来能用"。
+ * 所以宁可在后台每一屏都提醒,也不让它悄悄混上线。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const q = (url.searchParams.get('q') ?? '').trim();
+const cat = url.searchParams.get('cat') ?? '';
+const fmt = url.searchParams.get('fmt') ?? '';
+const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
+const PER = 30;
+
+const where: string[] = [], bind: unknown[] = [];
+if (cat) { where.push('category=?'); bind.push(cat); }
+if (fmt) { where.push('format=?'); bind.push(fmt); }
+if (q) { where.push('(code LIKE ? OR benefits LIKE ? OR actives_json LIKE ? OR texture LIKE ?)'); bind.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
+const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+const total = (await c.db.prepare(`SELECT COUNT(*) n FROM formulas ${W}`).bind(...bind).first<{ n: number }>())?.n ?? 0;
+const { results: rows } = await c.db.prepare(
+  `SELECT * FROM formulas ${W} ORDER BY category, format, code LIMIT ? OFFSET ?`
+).bind(...bind, PER, (page - 1) * PER).all<any>();
+const { results: cats } = await c.db.prepare(`SELECT category, COUNT(*) n FROM formulas GROUP BY category ORDER BY n DESC`).all<any>();
+const { results: fmts } = await c.db.prepare(`SELECT format, COUNT(*) n FROM formulas GROUP BY format ORDER BY n DESC`).all<any>();
+
+const CAT: Record<string, string> = { skincare: '护肤', makeup: '彩妆', cleansing: '清洁', oral: '口腔', body: '身体', hair: '洗护' };
+const BAND: Record<string, string> = { low: '经济', mid: '中档', high: '高端' };
+const pages = Math.max(1, Math.ceil(total / PER));
+const link = (p: number) => {
+  const u = new URLSearchParams();
+  if (q) u.set('q', q); if (cat) u.set('cat', cat); if (fmt) u.set('fmt', fmt);
+  u.set('p', String(p)); return `?${u}`;
+};
+const acts = (s: string) => { try { return JSON.parse(s) as { name: string; pct: string }[]; } catch { return []; } };
+---
+
+<AdminShell title="配方库" active="formulas" email={c.sess.email}>
+  <h1>配方库</h1>
+  <p class="lead">
+    共 {total} 条。客户在前台用自然语言描述需求时,AI 先从这张表里检索候选,再解释为什么推荐 ——
+    <b style="color:var(--bad)">所以这里必须是真实配方</b>,库里是样例数据的话,AI 的推荐就是编的。
+  </p>
+
+  <div class="warn-bar">
+    ⚠ 当前 {total} 条为搭建期样例数据。请把真实配方导入后再对外开放 AI 共创功能。
+    需要批量导入 Excel/CSV 的话,把表格发我,我按这张表的字段做导入脚本。
+  </div>
+
+  <form class="bar" method="get">
+    <input name="q" value={q} placeholder="搜配方号 / 功效 / 活性物 / 肤感…" style="max-width:20rem" />
+    <select name="cat"><option value="">全部品类</option>
+      {cats.map((x: any) => <option value={x.category} selected={x.category === cat}>{CAT[x.category] ?? x.category}({x.n})</option>)}</select>
+    <select name="fmt"><option value="">全部剂型</option>
+      {fmts.map((x: any) => <option value={x.format} selected={x.format === fmt}>{x.format}({x.n})</option>)}</select>
+    <button class="btn pri" type="submit">筛选</button>
+    {(q || cat || fmt) && <a class="btn" href="/bohui/formulas/">清空</a>}
+  </form>
+
+  {rows.length === 0 ? <div class="empty">没有匹配的配方。</div> : (
+    <table>
+      <thead><tr>
+        <th style="width:7rem">配方号</th><th style="width:5rem">品类</th><th style="width:6rem">剂型</th>
+        <th>活性物 / 功效</th><th style="width:5rem">起订</th><th style="width:5rem">打样</th>
+        <th style="width:5rem">成本档</th><th style="width:8rem">可售市场</th><th style="width:4rem"></th>
+      </tr></thead>
+      <tbody>
+        {rows.map((r: any) => (
+          <tr data-id={r.id}>
+            <td><code style="font-weight:600">{r.code}</code></td>
+            <td style="font-size:.8125rem">{CAT[r.category] ?? r.category}</td>
+            <td style="font-size:.8125rem">{r.format}</td>
+            <td>
+              <div class="ac">{acts(r.actives_json).map((a) => <span class="chip">{a.name} {a.pct}</span>)}</div>
+              <div class="bf">{r.benefits}{r.texture ? ` · ${r.texture}` : ''}</div>
+            </td>
+            <td class="num">{r.moq ?? '—'}</td>
+            <td class="num">{r.lead_days ? `${r.lead_days} 天` : '—'}</td>
+            <td style="font-size:.8125rem">{BAND[r.cost_band] ?? r.cost_band ?? '—'}</td>
+            <td style="font-size:.75rem;color:var(--soft)">{r.markets || '—'}</td>
+            <td style="text-align:right"><button class="btn ed">改</button></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+
+  {pages > 1 && (
+    <div class="pager">
+      {page > 1 && <a class="btn" href={link(page - 1)}>上一页</a>}
+      <span>第 {page} / {pages} 页 · 共 {total} 条</span>
+      {page < pages && <a class="btn" href={link(page + 1)}>下一页</a>}
+    </div>
+  )}
+
+  <dialog id="dlg">
+    <form method="dialog" id="ef">
+      <h3>编辑配方</h3>
+      <div class="g2">
+        <label>配方号<input name="code" required /></label>
+        <label>品类<input name="category" /></label>
+        <label>剂型<input name="format" /></label>
+        <label>肤感<input name="texture" /></label>
+        <label>起订量<input name="moq" type="number" /></label>
+        <label>打样天数<input name="lead_days" type="number" /></label>
+        <label>成本档<select name="cost_band"><option value="">—</option><option value="low">经济</option><option value="mid">中档</option><option value="high">高端</option></select></label>
+        <label>可售市场<input name="markets" placeholder="CN,EU,US" /></label>
+      </div>
+      <label>功效(逗号分隔)<input name="benefits" /></label>
+      <label>活性物 JSON<textarea name="actives_json" rows="3" placeholder='[{"name":"烟酰胺","pct":"2-5%"}]'></textarea></label>
+      <label>合规备注<input name="cert_notes" /></label>
+      <div class="ops"><button value="cancel" class="btn">取消</button><button value="save" class="btn pri">保存</button></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" hidden></div>
+
+  <style>
+    .warn-bar{background:#fdf1e0;border:1px solid #f0dcb8;color:#7a4a00;padding:.75rem 1rem;
+              border-radius:8px;font-size:.8125rem;line-height:1.6;margin-bottom:1.125rem}
+    .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+    .bar input,.bar select{width:auto}
+    .ac{display:flex;gap:.25rem;flex-wrap:wrap;margin-bottom:.1875rem}
+    .chip{background:#eef4fa;color:var(--accent);border-radius:4px;padding:.0625rem .3125rem;font-size:.6875rem}
+    .bf{font-size:.75rem;color:var(--soft)}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--soft)}
+    dialog{border:0;border-radius:12px;padding:1.5rem;width:min(38rem,94vw);box-shadow:0 24px 64px -20px rgb(0 0 0/.4)}
+    dialog::backdrop{background:rgb(0 0 0/.4)}
+    dialog h3{margin:0 0 1rem;font-size:1rem}
+    dialog label{display:grid;gap:.25rem;font-size:.75rem;color:var(--soft);margin-bottom:.75rem}
+    .g2{display:grid;grid-template-columns:1fr 1fr;gap:0 .875rem}
+    .ops{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.5rem}
+    .toast{position:fixed;right:1.25rem;bottom:1.25rem;background:#10131a;color:#fff;padding:.625rem 1rem;border-radius:7px;font-size:.8125rem;z-index:9}
+    [hidden]{display:none !important}
+  </style>
+  <script is:inline define:vars={{ rows }}>
+    const dlg = document.getElementById('dlg'), ef = document.getElementById('ef'), toast = document.getElementById('toast');
+    let cur = null;
+    document.querySelectorAll('.ed').forEach((b) => b.addEventListener('click', () => {
+      cur = +b.closest('tr').dataset.id;
+      const r = rows.find((x) => x.id === cur);
+      for (const k of ['code','category','format','texture','moq','lead_days','cost_band','markets','benefits','actives_json','cert_notes'])
+        if (ef.elements[k]) ef.elements[k].value = r[k] ?? '';
+      dlg.showModal();
+    }));
+    ef.addEventListener('submit', async (e) => {
+      if (e.submitter?.value !== 'save') return;
+      const body = { id: cur };
+      new FormData(ef).forEach((v, k) => body[k] = v);
+      const r = await fetch('/api/admin/formula', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const d = await r.json();
+      toast.textContent = d.ok ? '已保存' : (d.msg || '保存失败'); toast.hidden = false;
+      if (d.ok) setTimeout(() => location.reload(), 500);
+    });
+  </script>
+</AdminShell>

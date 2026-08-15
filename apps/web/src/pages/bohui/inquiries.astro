@@ -1,0 +1,169 @@
+---
+/**
+ * 询盘线索 —— 这个后台唯一直接产生营收的页面。
+ *
+ * 所以它按「未处理优先」排,而不是按时间倒序:B2B 询盘的转化率和响应速度强相关,
+ * 一条躺了三天的新线索比一条刚回过的更重要。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { SITES } from '@cosmetic/core/registry';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const q = (url.searchParams.get('q') ?? '').trim();
+const site = url.searchParams.get('site') ?? '';
+const status = url.searchParams.get('status') ?? '';
+const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
+const PER = 25;
+
+const where: string[] = [], bind: unknown[] = [];
+if (site) { where.push('i.site_id=?'); bind.push(site); }
+if (status) { where.push('i.status=?'); bind.push(status); }
+if (q) { where.push('(i.name LIKE ? OR i.email LIKE ? OR i.company LIKE ? OR i.message LIKE ?)'); bind.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
+const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+const total = (await c.db.prepare(`SELECT COUNT(*) n FROM inquiries i ${W}`).bind(...bind).first<{ n: number }>())?.n ?? 0;
+const { results: rows } = await c.db.prepare(
+  `SELECT i.*, (SELECT COUNT(*) FROM inquiry_items t WHERE t.inquiry_id=i.id) AS items
+     FROM inquiries i ${W}
+    ORDER BY CASE i.status WHEN 'new' THEN 0 WHEN 'replied' THEN 1 ELSE 2 END, i.created_at DESC
+    LIMIT ? OFFSET ?`
+).bind(...bind, PER, (page - 1) * PER).all<any>();
+
+const { results: counts } = await c.db.prepare(
+  `SELECT status, COUNT(*) n FROM inquiries GROUP BY status`
+).all<{ status: string; n: number }>();
+const cnt = Object.fromEntries(counts.map((x) => [x.status, x.n]));
+
+let items: any[] = [];
+if (rows.length) {
+  const { results } = await c.db.prepare(
+    `SELECT inquiry_id, product_name, qty_note, options_json FROM inquiry_items
+      WHERE inquiry_id IN (${rows.map(() => '?').join(',')}) ORDER BY sort_order`
+  ).bind(...rows.map((r: any) => r.id)).all<any>();
+  items = results ?? [];
+}
+
+const siteName = new Map(SITES.map((s) => [s.id, s.name]));
+const pages = Math.max(1, Math.ceil(total / PER));
+const ST: Record<string, [string, string]> = {
+  new: ['待处理', 'p-bad'], replied: ['已回复', 'p-ok'], archived: ['已归档', 'p-wait'],
+};
+const link = (p: number) => {
+  const u = new URLSearchParams();
+  if (q) u.set('q', q); if (site) u.set('site', site); if (status) u.set('status', status);
+  u.set('p', String(p)); return `?${u}`;
+};
+---
+
+<AdminShell title="询盘线索" active="inquiries" email={c.sess.email} badges={{ inquiries: cnt.new ?? 0 }}>
+  <h1>询盘线索</h1>
+  <p class="lead">共 {total} 条 · 待处理 {cnt.new ?? 0} · 已回复 {cnt.replied ?? 0} · 已归档 {cnt.archived ?? 0}。未处理的排在最前。</p>
+
+  <form class="bar" method="get">
+    <input name="q" value={q} placeholder="搜姓名 / 邮箱 / 公司 / 正文…" style="max-width:20rem" />
+    <select name="site"><option value="">全部站点</option>
+      {SITES.map((s) => <option value={s.id} selected={s.id === site}>{s.name}</option>)}</select>
+    <select name="status"><option value="">全部状态</option>
+      <option value="new" selected={status === 'new'}>待处理</option>
+      <option value="replied" selected={status === 'replied'}>已回复</option>
+      <option value="archived" selected={status === 'archived'}>已归档</option></select>
+    <button class="btn pri" type="submit">筛选</button>
+    {(q || site || status) && <a class="btn" href="/bohui/inquiries/">清空</a>}
+  </form>
+
+  {rows.length === 0 ? (
+    <div class="empty">还没有询盘。前台表单提交后会实时出现在这里。</div>
+  ) : (
+    <div class="list">
+      {rows.map((r) => {
+        const mine = items.filter((x) => x.inquiry_id === r.id);
+        const st = ST[r.status] ?? ['未知', 'p-wait'];
+        return (
+          <details class="inq" data-id={r.id}>
+            <summary>
+              <span class:list={['pill', st[1]]}>{st[0]}</span>
+              <b>{r.name}</b>
+              <span class="co">{r.company || '—'}</span>
+              <span class="em">{r.email}</span>
+              {r.items > 0 && <span class="pill p-ok">{r.items} 款产品</span>}
+              {r.spam_score > 50 && <span class="pill p-warn">疑似垃圾</span>}
+              <span class="dt">{(r.created_at ?? '').slice(0, 16)}</span>
+            </summary>
+            <div class="dt-body">
+              <dl>
+                <dt>来源</dt><dd>{siteName.get(r.site_id) ?? r.site_id} · {r.lang}{r.country ? ` · ${r.country}` : ''}</dd>
+                <dt>邮箱</dt><dd><a href={`mailto:${r.email}`}>{r.email}</a></dd>
+                <dt>留言</dt><dd class="msg">{r.message}</dd>
+                {mine.length > 0 && (
+                  <>
+                    <dt>询价清单</dt>
+                    <dd>
+                      <ul class="pl">
+                        {mine.map((x) => <li>{x.product_name}{x.qty_note ? ` · ${x.qty_note}` : ''}</li>)}
+                      </ul>
+                    </dd>
+                  </>
+                )}
+              </dl>
+              <div class="ops">
+                <button class="btn" data-st="new" disabled={r.status === 'new'}>标为待处理</button>
+                <button class="btn pri" data-st="replied" disabled={r.status === 'replied'}>标为已回复</button>
+                <button class="btn" data-st="archived" disabled={r.status === 'archived'}>归档</button>
+                <a class="btn" href={`mailto:${r.email}?subject=Re: your inquiry to BOHUI`}>写邮件</a>
+              </div>
+            </div>
+          </details>
+        );
+      })}
+    </div>
+  )}
+
+  {pages > 1 && (
+    <div class="pager">
+      {page > 1 && <a class="btn" href={link(page - 1)}>上一页</a>}
+      <span>第 {page} / {pages} 页</span>
+      {page < pages && <a class="btn" href={link(page + 1)}>下一页</a>}
+    </div>
+  )}
+
+  <div id="toast" class="toast" hidden></div>
+  <style>
+    .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+    .bar input,.bar select{width:auto}
+    .list{display:grid;gap:.5rem}
+    .inq{background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+    .inq > summary{padding:.6875rem 1rem;cursor:pointer;display:flex;gap:.625rem;align-items:center;
+                   flex-wrap:wrap;list-style:none;font-size:.875rem}
+    .inq > summary::-webkit-details-marker{display:none}
+    .inq[open] > summary{border-bottom:1px solid var(--line);background:#fafbfc}
+    .co{color:var(--soft)} .em{color:var(--faint);font-family:ui-monospace,monospace;font-size:.75rem}
+    .dt{margin-left:auto;color:var(--faint);font-size:.75rem}
+    .dt-body{padding:1rem 1.125rem}
+    dl{display:grid;grid-template-columns:5rem 1fr;gap:.5rem .875rem;margin:0 0 1rem;font-size:.875rem}
+    dt{color:var(--faint);font-size:.8125rem} dd{margin:0}
+    .msg{white-space:pre-wrap;line-height:1.65;background:#fafbfc;border:1px solid var(--line);
+         border-radius:6px;padding:.625rem .75rem}
+    .pl{margin:0;padding-left:1.125rem} .pl li{margin-bottom:.1875rem}
+    .ops{display:flex;gap:.5rem;flex-wrap:wrap}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--soft)}
+    .toast{position:fixed;right:1.25rem;bottom:1.25rem;background:#10131a;color:#fff;padding:.625rem 1rem;
+           border-radius:7px;font-size:.8125rem;z-index:9}
+    [hidden]{display:none !important}
+  </style>
+  <script is:inline>
+    const t = document.getElementById('toast');
+    document.querySelectorAll('.ops button[data-st]').forEach((b) => b.addEventListener('click', async () => {
+      const id = +b.closest('.inq').dataset.id;
+      b.disabled = true;
+      const r = await fetch('/api/admin/inquiry', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: b.dataset.st }) });
+      if ((await r.json()).ok) { t.textContent = '已更新'; t.hidden = false; setTimeout(() => location.reload(), 500); }
+      else { b.disabled = false; t.textContent = '更新失败'; t.hidden = false; }
+    }));
+  </script>
+</AdminShell>

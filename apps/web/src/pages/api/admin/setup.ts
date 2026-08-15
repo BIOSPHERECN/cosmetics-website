@@ -11,26 +11,37 @@ export const prerender = false;
  *  · 口令由创始人自己设,不经任何人之手,库里只存 PBKDF2 派生值;
  *  · 不需要在代码或环境变量里预置任何默认口令(预置默认口令是最常见的入侵入口)。
  */
+/**
+ * 整个处理器套 try/catch —— 任何异常都必须以 JSON 形式返回。
+ * 此前没套:哈希跑爆 Worker 时前端只看到"请求失败",分不清是网络、
+ * 服务端还是返回体格式的问题,白白排查了很久。接口的错误也是产品的一部分。
+ */
 export const POST: APIRoute = async ({ request }) => {
-  const db = (env as any).DB as D1Database;
-  const n = await db.prepare(`SELECT COUNT(*) AS c FROM users`).first<{ c: number }>();
-  if ((n?.c ?? 0) > 0) {
-    return json({ ok: false, msg: '管理员已存在,本接口已关闭' }, 403);
+  try {
+    const db = (env as any).DB as D1Database | undefined;
+    if (!db) return json({ ok: false, msg: '数据库未绑定(D1 binding 缺失)' }, 500);
+
+    const n = await db.prepare(`SELECT COUNT(*) AS c FROM users`).first<{ c: number }>();
+    if ((n?.c ?? 0) > 0) {
+      return json({ ok: false, msg: '管理员已存在,本接口已关闭' }, 403);
+    }
+
+    const { email, password } = (await request.json().catch(() => ({}))) as { email?: string; password?: string };
+    if (!email || !password) return json({ ok: false, msg: '请提供邮箱与口令' }, 400);
+    // 6 位下限由创始人指定。短口令的爆破风险由登录限流兜底
+    // (同 IP 15 分钟内失败 8 次即拒绝,见 auth.ts 的 tooManyAttempts)。
+    if (password.length < 6) return json({ ok: false, msg: '口令至少 6 位' }, 400);
+
+    const { hash, salt } = await hashPassword(password);
+    await db
+      .prepare(`INSERT INTO users (email, pass_hash, pass_salt, role, display_name) VALUES (?,?,?,'admin',?)`)
+      .bind(email.trim().toLowerCase(), hash, salt, '管理员')
+      .run();
+
+    return json({ ok: true, msg: '管理员已创建,请回到 /bohui/ 登录' });
+  } catch (e) {
+    return json({ ok: false, msg: `服务端异常:${e instanceof Error ? e.message.slice(0, 160) : String(e)}` }, 500);
   }
-
-  const { email, password } = (await request.json().catch(() => ({}))) as { email?: string; password?: string };
-  if (!email || !password) return json({ ok: false, msg: '请提供邮箱与口令' }, 400);
-  // 6 位下限由创始人指定。短口令的爆破风险由登录限流兜底
-  // (同 IP 15 分钟内失败 8 次即拒绝,见 auth.ts 的 tooManyAttempts)。
-  if (password.length < 6) return json({ ok: false, msg: '口令至少 6 位' }, 400);
-
-  const { hash, salt } = await hashPassword(password);
-  await db
-    .prepare(`INSERT INTO users (email, pass_hash, pass_salt, role, display_name) VALUES (?,?,?,'admin',?)`)
-    .bind(email.trim().toLowerCase(), hash, salt, '管理员')
-    .run();
-
-  return json({ ok: true, msg: '管理员已创建,请回到 /admin/ 登录' });
 };
 
 function json(b: unknown, status = 200) {

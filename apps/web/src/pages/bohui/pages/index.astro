@@ -1,0 +1,158 @@
+---
+/**
+ * 页面与版块列表 —— 对标 WordPress 的「所有页面」。
+ *
+ * 一张能用的列表页要同时具备:搜索、筛选、排序、分页、批量操作、状态一眼可见。
+ * 少任何一项,内容一多就管不动了 —— 5 站 × 17 页 × 36 语,靠肉眼翻是不可能的。
+ *
+ * 「译文」列是这个后台最该有的一列:多语站真正的烂尾方式不是写错,
+ * 是某个语种少了一段而没人知道,访客看到英文回退还以为站坏了。
+ */
+import AdminShell from '../../../layouts/AdminShell.astro';
+import { pageGuard } from '../../../lib/guard';
+import { SITES } from '@cosmetic/core/registry';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const q = (url.searchParams.get('q') ?? '').trim();
+const site = url.searchParams.get('site') ?? '';
+const status = url.searchParams.get('status') ?? '';
+const sort = url.searchParams.get('sort') ?? 'site';
+const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
+const PER = 30;
+
+const where: string[] = [];
+const bind: unknown[] = [];
+if (site) { where.push(`p.site_id = ?`); bind.push(site); }
+if (status) { where.push(`p.status = ?`); bind.push(status); }
+if (q) {
+  where.push(`(p.slug LIKE ? OR EXISTS (SELECT 1 FROM page_i18n x WHERE x.page_id=p.id AND (x.title LIKE ? OR x.nav_label LIKE ?)))`);
+  bind.push(`%${q}%`, `%${q}%`, `%${q}%`);
+}
+const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
+const ORDER = ({
+  site: `p.site_id, p.sort_order, p.slug`,
+  updated: `p.updated_at DESC`,
+  blocks: `blocks DESC`,
+  slug: `p.slug`,
+} as Record<string, string>)[sort] ?? `p.site_id, p.sort_order`;
+
+const total = (await c.db.prepare(`SELECT COUNT(*) n FROM pages p ${W}`).bind(...bind).first<{ n: number }>())?.n ?? 0;
+
+const { results: rows } = await c.db.prepare(
+  `SELECT p.id, p.site_id, p.slug, p.template, p.status, p.in_nav, p.updated_at,
+          (SELECT COUNT(*) FROM blocks b WHERE b.page_id = p.id) AS blocks,
+          (SELECT COUNT(*) FROM page_i18n i WHERE i.page_id = p.id) AS langs,
+          (SELECT i.title FROM page_i18n i WHERE i.page_id = p.id
+             ORDER BY CASE i.lang WHEN 'zh-cn' THEN 0 WHEN 'en' THEN 1 ELSE 2 END LIMIT 1) AS title
+     FROM pages p ${W} ORDER BY ${ORDER} LIMIT ? OFFSET ?`
+).bind(...bind, PER, (page - 1) * PER).all<any>();
+
+// 每站的译文缺口:有多少 block 少了语种
+const { results: gaps } = await c.db.prepare(
+  `SELECT p.id AS page_id, COUNT(*) AS n FROM blocks b
+     JOIN pages p ON p.id = b.page_id
+    WHERE (SELECT COUNT(*) FROM block_i18n bi WHERE bi.block_id = b.id) < 2
+    GROUP BY p.id`
+).all<{ page_id: number; n: number }>();
+const gapBy = new Map(gaps.map((g) => [g.page_id, g.n]));
+
+const siteName = new Map(SITES.map((s) => [s.id, s.name]));
+const pages = Math.max(1, Math.ceil(total / PER));
+const link = (o: Record<string, string | number>) => {
+  const u = new URLSearchParams();
+  const cur: Record<string, string> = { q, site, status, sort };
+  for (const [k, v] of Object.entries(cur)) if (v) u.set(k, v);
+  for (const [k, v] of Object.entries(o)) v ? u.set(k, String(v)) : u.delete(k);
+  return `?${u}`;
+};
+const TPL: Record<string, string> = {
+  home: '首页', standard: '标准页', products: '产品目录', product: '产品详情',
+  contact: '询盘页', about: '关于', quality: '质量合规',
+};
+---
+
+<AdminShell title="页面与版块" active="pages" email={c.sess.email}>
+  <h1>页面与版块</h1>
+  <p class="lead">5 个站点共 {total} 个页面。点「编辑」进版块编辑器,可逐语种改文案、调顺序、隐藏版块。</p>
+
+  <form class="bar" method="get">
+    <input name="q" value={q} placeholder="搜标题或路径…" style="max-width:18rem" />
+    <select name="site">
+      <option value="">全部站点</option>
+      {SITES.map((s) => <option value={s.id} selected={s.id === site}>{s.name}</option>)}
+    </select>
+    <select name="status">
+      <option value="">全部状态</option>
+      <option value="published" selected={status === 'published'}>已发布</option>
+      <option value="draft" selected={status === 'draft'}>草稿</option>
+    </select>
+    <select name="sort">
+      <option value="site" selected={sort === 'site'}>按站点排序</option>
+      <option value="updated" selected={sort === 'updated'}>最近更新</option>
+      <option value="blocks" selected={sort === 'blocks'}>版块数</option>
+      <option value="slug" selected={sort === 'slug'}>按路径</option>
+    </select>
+    <button class="btn pri" type="submit">筛选</button>
+    {(q || site || status) && <a class="btn" href="/bohui/pages/">清空</a>}
+  </form>
+
+  {rows.length === 0 ? (
+    <div class="empty">没有符合条件的页面。</div>
+  ) : (
+    <table>
+      <thead><tr>
+        <th>标题 / 路径</th><th style="width:9rem">站点</th><th style="width:7rem">模板</th>
+        <th style="width:5rem">版块</th><th style="width:7rem">译文</th><th style="width:6rem">状态</th>
+        <th style="width:9rem">更新</th><th style="width:9rem"></th>
+      </tr></thead>
+      <tbody>
+        {rows.map((r) => {
+          const gap = gapBy.get(r.id) ?? 0;
+          return (
+            <tr>
+              <td>
+                <div style="font-weight:600">{r.title || '(未命名)'}</div>
+                <code style="font-size:.6875rem;color:var(--faint)">/{r.slug || ''}</code>
+                {!r.in_nav && <span class="pill p-wait" style="margin-left:.375rem">不在导航</span>}
+              </td>
+              <td style="font-size:.8125rem">{siteName.get(r.site_id) ?? r.site_id}</td>
+              <td style="font-size:.8125rem">{TPL[r.template] ?? r.template}</td>
+              <td class="num">{r.blocks}</td>
+              <td class="num">
+                {gap > 0
+                  ? <span style="color:var(--warn);font-weight:600">缺 {gap}</span>
+                  : <span style="color:var(--ok)">齐全</span>}
+              </td>
+              <td>{r.status === 'published'
+                ? <span class="pill p-ok">已发布</span>
+                : <span class="pill p-warn">草稿</span>}</td>
+              <td style="font-size:.75rem;color:var(--faint)">{(r.updated_at ?? '').slice(0, 16)}</td>
+              <td style="text-align:right;white-space:nowrap">
+                <a class="btn" href={`/zh-cn/${r.slug}${r.slug ? '/' : ''}?site=${r.site_id}`} target="_blank">看</a>
+                <a class="btn pri" href={`/bohui/pages/${r.id}/`}>编辑</a>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  )}
+
+  {pages > 1 && (
+    <div class="pager">
+      {page > 1 && <a class="btn" href={link({ p: page - 1 })}>上一页</a>}
+      <span>第 {page} / {pages} 页 · 共 {total} 条</span>
+      {page < pages && <a class="btn" href={link({ p: page + 1 })}>下一页</a>}
+    </div>
+  )}
+
+  <style>
+    .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+    .bar input,.bar select{width:auto}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--soft)}
+  </style>
+</AdminShell>

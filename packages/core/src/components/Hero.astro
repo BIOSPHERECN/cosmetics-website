@@ -164,15 +164,21 @@ const { hero, ctaHref, ctaSecondaryHref, highlights = [], texture = 'cream', ima
     background: color-mix(in srgb, currentColor 8%, transparent);
   }
 
-  /* 首屏数字墙:超大字号 + 小标签(PDF 版式规范),继承 Hero 前景色,深浅底都成立 */
+  /* 首屏数字墙:超大字号 + 小标签(PDF 版式规范),继承 Hero 前景色,深浅底都成立。
+     宽度收在文字栏内 —— 之前铺满整行会伸到右侧图片区,数字压在图上完全读不清。
+     首屏的图是背景,不该有任何文字压在上面。 */
   .hl {
     margin: clamp(2.5rem, 6vh, 4rem) 0 0;
     padding-top: 1.75rem;
     border-top: var(--ck-border-w) solid color-mix(in srgb, currentColor 22%, transparent);
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-    gap: var(--ck-gap);
-    max-width: 46rem;
+    grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+    gap: 1.25rem var(--ck-gap);
+    /* 与 .lead 同宽:文字区最多占左侧一半,右半留给图 */
+    max-width: min(46rem, 52%);
+  }
+  @media (max-width: 60rem) {
+    .hl { max-width: none; }
   }
   .hcell { min-width: 0; }
   .hv {

@@ -1,0 +1,134 @@
+---
+/**
+ * 账号与权限。
+ *
+ * 两条纪律写进代码而不是写进文档:
+ *  ① 口令由本人在浏览器里设,服务端只存 PBKDF2 派生值 —— 我不经手任何人的明文口令;
+ *  ② 不能删掉最后一个管理员 —— 否则后台就永久锁死了,只能改数据库才能进来。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const { results: users } = await c.db.prepare(
+  `SELECT id, email, role, display_name, created_at FROM users ORDER BY id`
+).all<any>();
+const { results: acts } = await c.db.prepare(
+  `SELECT user_id, COUNT(*) n, MAX(created_at) last FROM revisions GROUP BY user_id`
+).all<{ user_id: number; n: number; last: string }>();
+const actBy = new Map(acts.map((a) => [a.user_id, a]));
+const isAdmin = c.sess.role === 'admin';
+const nAdmin = users.filter((u: any) => u.role === 'admin').length;
+const ROLE: Record<string, string> = { admin: '管理员', editor: '编辑' };
+---
+
+<AdminShell title="账号与权限" active="users" email={c.sess.email}>
+  <h1>账号与权限</h1>
+  <p class="lead">
+    管理员可以管所有内容与系统设置;编辑只能改内容,不能动模型配置与账号。
+    共 {users.length} 个账号,其中 {nAdmin} 个管理员。
+  </p>
+
+  <table>
+    <thead><tr>
+      <th>邮箱</th><th style="width:8rem">姓名</th><th style="width:7rem">角色</th>
+      <th style="width:7rem">修改次数</th><th style="width:10rem">最近操作</th><th style="width:11rem"></th>
+    </tr></thead>
+    <tbody>
+      {users.map((u: any) => {
+        const a = actBy.get(u.id);
+        return (
+          <tr data-id={u.id}>
+            <td>
+              <b>{u.email}</b>
+              {u.id === c.sess.uid && <span class="pill p-ok" style="margin-left:.375rem">当前登录</span>}
+            </td>
+            <td style="font-size:.8125rem">{u.display_name ?? '—'}</td>
+            <td>
+              {isAdmin && u.id !== c.sess.uid ? (
+                <select class="role">
+                  <option value="admin" selected={u.role === 'admin'}>管理员</option>
+                  <option value="editor" selected={u.role === 'editor'}>编辑</option>
+                </select>
+              ) : <span class="pill p-wait">{ROLE[u.role] ?? u.role}</span>}
+            </td>
+            <td class="num">{a?.n ?? 0}</td>
+            <td style="font-size:.75rem;color:var(--faint)">{(a?.last ?? '—').slice(0, 16)}</td>
+            <td style="text-align:right;white-space:nowrap">
+              {u.id === c.sess.uid && <button class="btn pw">改我的口令</button>}
+              {isAdmin && u.id !== c.sess.uid && !(u.role === 'admin' && nAdmin <= 1) &&
+                <button class="btn danger del">删除</button>}
+            </td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+
+  {isAdmin && (
+    <section class="pane">
+      <h2>新增账号</h2>
+      <p class="hint">
+        新账号的口令由对方自己设:这里只填邮箱与角色,系统生成一次性设置链接,
+        对方打开后设定口令。<b>我不会、也不该经手任何人的明文口令。</b>
+      </p>
+      <form id="nf" class="row">
+        <input name="email" type="email" placeholder="name@biosphere-ai.com" required style="max-width:18rem" />
+        <input name="display_name" placeholder="姓名(选填)" style="max-width:10rem" />
+        <select name="role"><option value="editor">编辑</option><option value="admin">管理员</option></select>
+        <button class="btn pri" type="submit">生成邀请</button>
+      </form>
+      <p id="invite" class="invite" hidden></p>
+    </section>
+  )}
+
+  <div id="toast" class="toast" hidden></div>
+  <style>
+    .pane{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1.125rem 1.25rem;margin-top:1.5rem}
+    .pane h2{font-size:.9375rem;margin:0 0 .5rem}
+    .hint{font-size:.8125rem;color:var(--soft);line-height:1.65;margin:0 0 .875rem}
+    .row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+    .row input,.row select{width:auto}
+    .btn.danger{border-color:#f0c4c0;color:var(--bad)}
+    .invite{margin-top:.875rem;font-size:.8125rem;background:#eef4fa;border:1px solid #cfe0ee;
+            border-radius:7px;padding:.625rem .75rem;word-break:break-all;font-family:ui-monospace,monospace}
+    .toast{position:fixed;right:1.25rem;bottom:1.25rem;background:#10131a;color:#fff;padding:.625rem 1rem;border-radius:7px;font-size:.8125rem;z-index:9}
+    [hidden]{display:none !important}
+  </style>
+  <script is:inline>
+    const toast = document.getElementById('toast');
+    const say = (m) => { toast.textContent = m; toast.hidden = false; setTimeout(() => toast.hidden = true, 2400); };
+    const post = (m, b) => fetch('/api/admin/user', { method: m, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(r => r.json());
+
+    document.querySelectorAll('select.role').forEach(s => s.addEventListener('change', async () => {
+      const d = await post('PATCH', { id: +s.closest('tr').dataset.id, role: s.value });
+      say(d.ok ? '角色已更新' : (d.msg || '更新失败'));
+    }));
+    document.querySelectorAll('.del').forEach(b => b.addEventListener('click', async () => {
+      const tr = b.closest('tr');
+      if (!confirm('确定删除账号 ' + tr.querySelector('b').textContent + '?')) return;
+      const d = await post('DELETE', { id: +tr.dataset.id });
+      d.ok ? location.reload() : say(d.msg || '删除失败');
+    }));
+    document.querySelectorAll('.pw').forEach(b => b.addEventListener('click', async () => {
+      const p1 = prompt('输入新口令(至少 6 位)'); if (!p1) return;
+      if (p1 !== prompt('再输一次确认')) return say('两次输入不一致');
+      const d = await post('PATCH', { id: +b.closest('tr').dataset.id, password: p1 });
+      say(d.ok ? '口令已更新,下次登录生效' : (d.msg || '更新失败'));
+    }));
+    document.getElementById('nf')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target), body = {};
+      fd.forEach((v, k) => body[k] = v);
+      const d = await post('POST', body);
+      if (!d.ok) return say(d.msg || '创建失败');
+      const box = document.getElementById('invite');
+      box.textContent = '把这个链接发给对方(24 小时内有效,只能用一次):' + location.origin + d.link;
+      box.hidden = false;
+      say('已创建');
+    });
+  </script>
+</AdminShell>

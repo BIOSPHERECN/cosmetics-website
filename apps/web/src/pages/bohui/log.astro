@@ -1,0 +1,124 @@
+---
+/**
+ * 修订记录 —— 谁、什么时候、把什么改成了什么。
+ *
+ * 一个没有审计轨迹的后台,出问题时只能靠互相回忆。
+ * 这里存的是改前改后的完整 JSON,所以任何一次误改都能查出来、也能照着改回去。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const who = url.searchParams.get('who') ?? '';
+const ent = url.searchParams.get('ent') ?? '';
+const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
+const PER = 40;
+
+const where: string[] = [], bind: unknown[] = [];
+if (who) { where.push('r.user_id=?'); bind.push(Number(who)); }
+if (ent) { where.push('r.entity=?'); bind.push(ent); }
+const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+const total = (await c.db.prepare(`SELECT COUNT(*) n FROM revisions r ${W}`).bind(...bind).first<{ n: number }>())?.n ?? 0;
+const { results: rows } = await c.db.prepare(
+  `SELECT r.*, u.email FROM revisions r LEFT JOIN users u ON u.id=r.user_id
+     ${W} ORDER BY r.created_at DESC, r.id DESC LIMIT ? OFFSET ?`
+).bind(...bind, PER, (page - 1) * PER).all<any>();
+const { results: users } = await c.db.prepare(`SELECT id, email FROM users ORDER BY id`).all<any>();
+const { results: ents } = await c.db.prepare(`SELECT entity, COUNT(*) n FROM revisions GROUP BY entity`).all<any>();
+
+const ENT: Record<string, string> = {
+  block_i18n: '版块内容', page_i18n: '页面信息', product_i18n: '产品内容',
+  providers: '模型配置', media: '媒体', users: '账号',
+};
+const pages = Math.max(1, Math.ceil(total / PER));
+/** 只显示真正变了的字段 —— 整段 JSON 对比人眼是读不出来的 */
+function diff(before: string | null, after: string): { k: string; a: string; b: string }[] {
+  const flat = (o: any, pre = ''): Record<string, string> => {
+    const out: Record<string, string> = {};
+    if (o === null || typeof o !== 'object') { out[pre || '值'] = String(o ?? ''); return out; }
+    for (const [k, v] of Object.entries(o)) Object.assign(out, flat(v, pre ? `${pre}.${k}` : k));
+    return out;
+  };
+  const p = (s: string | null) => { try { return s ? JSON.parse(s) : {}; } catch { return {}; } };
+  const A = flat(p(before)), B = flat(p(after));
+  const keys = [...new Set([...Object.keys(A), ...Object.keys(B)])];
+  return keys.filter((k) => A[k] !== B[k]).slice(0, 12).map((k) => ({ k, a: A[k] ?? '(无)', b: B[k] ?? '(删除)' }));
+}
+---
+
+<AdminShell title="修订记录" active="log" email={c.sess.email}>
+  <h1>修订记录</h1>
+  <p class="lead">共 {total} 条。每次保存都会留痕,展开可看改前改后的逐字段对比。</p>
+
+  <form class="bar" method="get">
+    <select name="who"><option value="">全部操作人</option>
+      {users.map((u: any) => <option value={u.id} selected={String(u.id) === who}>{u.email}</option>)}</select>
+    <select name="ent"><option value="">全部对象</option>
+      {ents.map((e: any) => <option value={e.entity} selected={e.entity === ent}>{ENT[e.entity] ?? e.entity}({e.n})</option>)}</select>
+    <button class="btn pri" type="submit">筛选</button>
+    {(who || ent) && <a class="btn" href="/bohui/log/">清空</a>}
+  </form>
+
+  {rows.length === 0 ? (
+    <div class="empty">还没有修订记录。在页面编辑器里保存一次内容,这里就会出现第一条。</div>
+  ) : (
+    <div class="list">
+      {rows.map((r: any) => {
+        const d = diff(r.before_json, r.after_json);
+        return (
+          <details class="rv">
+            <summary>
+              <span class="pill p-wait">{ENT[r.entity] ?? r.entity}</span>
+              <span class="who">{r.email ?? '系统'}</span>
+              <span class="what">{r.before_json ? `改了 ${d.length} 个字段` : '新建'}{r.lang ? ` · ${r.lang}` : ''}</span>
+              <span class="dt">{(r.created_at ?? '').slice(0, 16)}</span>
+            </summary>
+            <div class="bd">
+              {d.length === 0 ? <p class="none">没有可显示的差异。</p> : (
+                <table class="df">
+                  <thead><tr><th style="width:9rem">字段</th><th>改前</th><th>改后</th></tr></thead>
+                  <tbody>{d.map((x) => (
+                    <tr><td><code>{x.k}</code></td><td class="a">{x.a}</td><td class="b">{x.b}</td></tr>
+                  ))}</tbody>
+                </table>
+              )}
+            </div>
+          </details>
+        );
+      })}
+    </div>
+  )}
+
+  {pages > 1 && (
+    <div class="pager">
+      {page > 1 && <a class="btn" href={`?p=${page - 1}${who ? `&who=${who}` : ''}${ent ? `&ent=${ent}` : ''}`}>上一页</a>}
+      <span>第 {page} / {pages} 页</span>
+      {page < pages && <a class="btn" href={`?p=${page + 1}${who ? `&who=${who}` : ''}${ent ? `&ent=${ent}` : ''}`}>下一页</a>}
+    </div>
+  )}
+
+  <style>
+    .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+    .bar select{width:auto}
+    .list{display:grid;gap:.375rem}
+    .rv{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+    .rv > summary{padding:.5625rem 1rem;cursor:pointer;display:flex;gap:.625rem;align-items:center;
+                  list-style:none;font-size:.8125rem}
+    .rv > summary::-webkit-details-marker{display:none}
+    .rv[open] > summary{border-bottom:1px solid var(--line);background:#fafbfc}
+    .who{font-weight:600} .what{color:var(--soft)}
+    .dt{margin-left:auto;color:var(--faint);font-size:.75rem}
+    .bd{padding:.875rem 1rem}
+    table.df{border:0;font-size:.8125rem}
+    table.df td{vertical-align:top;word-break:break-word}
+    table.df .a{color:var(--faint);text-decoration:line-through}
+    table.df .b{color:var(--ok)}
+    .none{color:var(--faint);font-size:.8125rem;margin:0}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--soft)}
+  </style>
+</AdminShell>

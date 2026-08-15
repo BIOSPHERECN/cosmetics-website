@@ -1,0 +1,58 @@
+---
+/**
+ * 邀请激活页 —— 新同事自己设口令的地方。
+ * 页面不做校验(令牌真伪由接口判定),避免把"令牌是否有效"这个信息在渲染阶段泄露出去。
+ */
+export const prerender = false;
+const t = new URL(Astro.request.url).searchParams.get('t') ?? '';
+---
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" /><title>设置口令 · 帛卉后台</title>
+<style>
+:root{--panel:#fff;--ink:#10131a;--soft:#5b6472;--line:#e4e7ec;--accent:#1f4e79;--bad:#b3261e;--ok:#197a4b;
+      font-family:system-ui,'PingFang SC','Microsoft YaHei',sans-serif}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:1.5rem;
+     background:linear-gradient(160deg,#12161d,#1c2431)}
+.card{width:min(24rem,100%);background:var(--panel);border-radius:14px;padding:2.25rem 2rem;
+      box-shadow:0 24px 60px -24px rgb(0 0 0/.5)}
+h1{font-size:1.0625rem;margin:0 0 .25rem}
+p.s{color:var(--soft);font-size:.8125rem;line-height:1.65;margin:0 0 1.5rem}
+label{display:grid;gap:.375rem;margin-bottom:1rem;font-size:.8125rem;color:var(--soft)}
+input{font:inherit;padding:.6875rem .75rem;border:1px solid var(--line);border-radius:7px}
+button{font:inherit;width:100%;padding:.75rem;border:0;border-radius:7px;background:var(--accent);
+       color:#fff;font-weight:600;cursor:pointer;margin-top:.5rem}
+.msg{margin-top:.875rem;font-size:.8125rem;min-height:1.3em;color:var(--bad)}
+.msg.ok{color:var(--ok)}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>设置你的登录口令</h1>
+  <p class="s">口令只有你自己知道 —— 系统只保存它的不可逆派生值,任何人(包括管理员)都无法读出原文。至少 6 位。</p>
+  <form id="f">
+    <input type="hidden" name="token" value={t} />
+    <label>新口令<input name="p1" type="password" required minlength="6" autocomplete="new-password" /></label>
+    <label>再输一次<input name="p2" type="password" required minlength="6" autocomplete="new-password" /></label>
+    <button type="submit">设置并登录</button>
+    <p class="msg" id="m"></p>
+  </form>
+</div>
+<script is:inline>
+const f = document.getElementById('f'), m = document.getElementById('m');
+f.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(f), b = f.querySelector('button');
+  if (fd.get('p1') !== fd.get('p2')) { m.className = 'msg'; m.textContent = '两次输入不一致'; return; }
+  b.disabled = true; m.textContent = '';
+  const r = await fetch('/api/admin/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: fd.get('token'), password: fd.get('p1') }) });
+  const d = await r.json();
+  if (d.ok) { m.className = 'msg ok'; m.textContent = '已设置,正在进入后台…'; location.href = '/bohui/'; }
+  else { m.className = 'msg'; m.textContent = d.msg || '设置失败'; b.disabled = false; }
+});
+</script>
+</body>
+</html>

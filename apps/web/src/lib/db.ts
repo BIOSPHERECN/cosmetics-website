@@ -88,6 +88,39 @@ export interface SiteRow {
   description: string | null;
 }
 
+/**
+ * 集团生态 —— 依据创始人品牌视觉图《品牌生态架构》。
+ * BIOSPHERE-AI 是科技大脑,三个智造平台与一个自有品牌挂在它下面。
+ * 五站平铺会丢掉这层关系,看起来像五个不相干的站;
+ * 有了层级,访客一眼看懂「谁赋能谁」,这本身就是集团实力的表达。
+ */
+export interface EcoNode {
+  id: string;
+  name: string;
+  domain: string;
+  role: 'hub' | 'manufacturing' | 'brand' | string;
+  tagline: string | null;
+}
+
+export async function getEcosystem(db: D1Database, lang: Lang): Promise<{ hub: EcoNode | null; children: EcoNode[] }> {
+  const { results } = await db
+    .prepare(
+      `SELECT s.id, s.domain, s.role, i.name, i.tagline
+         FROM sites s
+         JOIN site_i18n i ON i.site_id = s.id AND i.lang IN (?,?,?)
+        GROUP BY s.id
+        ORDER BY (s.role <> 'hub'), s.sort_order`,
+    )
+    .bind(...chain(lang))
+    .all<EcoNode & { role: string }>();
+
+  const rows = (results ?? []) as EcoNode[];
+  return {
+    hub: rows.find((r) => r.role === 'hub') ?? null,
+    children: rows.filter((r) => r.role !== 'hub'),
+  };
+}
+
 export interface NavItem {
   slug: string;
   label: string;

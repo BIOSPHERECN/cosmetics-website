@@ -1,0 +1,319 @@
+---
+/**
+ * 版块编辑器 —— 后台的核心。
+ *
+ * 版块内容存的是 JSON,但绝不能把 JSON 甩给运营看。
+ * 这里的做法:读一条版块的数据结构,按结构自动生成表单 ——
+ *   字符串 → 单行/多行输入;对象数组 → 可增删的重复行;布尔 → 开关。
+ * 这是 headless CMS(Directus / Payload)的通用套路,好处是版块类型将来加多少种,
+ * 编辑器都不用改;坏处是字段名要有中文映射,否则运营看到的是 ctaPrimary。
+ * 所以下面维护了一张 LABELS 表 —— 这张表就是"给人用"和"给程序员用"的分界线。
+ */
+import AdminShell from '../../../layouts/AdminShell.astro';
+import { pageGuard } from '../../../lib/guard';
+import { LANG_GROUPS } from '../../../lib/db';
+import { SITES } from '@cosmetic/core/registry';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const id = Number(Astro.params.id);
+const pg = await c.db.prepare(
+  `SELECT id, site_id, slug, template, status, in_nav, sort_order FROM pages WHERE id=?`
+).bind(id).first<any>();
+if (!pg) return new Response('页面不存在', { status: 404 });
+
+const { results: meta } = await c.db.prepare(
+  `SELECT lang, nav_label, title, seo_desc FROM page_i18n WHERE page_id=? ORDER BY lang`
+).bind(id).all<any>();
+
+const { results: blocks } = await c.db.prepare(
+  `SELECT id, type, sort_order, is_visible, config_json FROM blocks WHERE page_id=? ORDER BY sort_order, id`
+).bind(id).all<any>();
+
+const ids = blocks.map((b: any) => b.id);
+let i18n: any[] = [];
+if (ids.length) {
+  const { results } = await c.db.prepare(
+    `SELECT block_id, lang, data_json FROM block_i18n WHERE block_id IN (${ids.map(() => '?').join(',')})`
+  ).bind(...ids).all<any>();
+  i18n = results ?? [];
+}
+const dataBy = new Map<string, string>(i18n.map((r) => [`${r.block_id}:${r.lang}`, r.data_json]));
+const langsOf = (bid: number) => i18n.filter((r) => r.block_id === bid).map((r) => r.lang);
+
+// 编辑语种:默认中英双栏 —— 一屏对照着改,比来回切语种快得多
+const url = new URL(Astro.request.url);
+const editLangs = (url.searchParams.get('langs') ?? 'zh-cn,en').split(',').filter(Boolean);
+
+const LNAME = new Map(LANG_GROUPS.flatMap((g) => g.langs));
+const siteName = new Map(SITES.map((s) => [s.id, s.name])).get(pg.site_id) ?? pg.site_id;
+const BTYPE: Record<string, string> = {
+  hero: '首屏', workshop: '车间实拍', certs: '资质证书', matrix: '品类矩阵',
+  process: '服务流程', evidence: '能力佐证', proof: '数字实证', form: '询盘表单',
+  inquiry: '询盘引导', prose: '正文段落', statwall: '数字墙',
+};
+const payload = {
+  page: { id: pg.id, slug: pg.slug, template: pg.template, status: pg.status, in_nav: pg.in_nav },
+  meta,
+  blocks: blocks.map((b: any) => ({
+    id: b.id, type: b.type, sort_order: b.sort_order, is_visible: b.is_visible,
+    data: Object.fromEntries(editLangs.map((l) => [l, JSON.parse(dataBy.get(`${b.id}:${l}`) ?? '{}')])),
+    has: langsOf(b.id),
+  })),
+  editLangs,
+};
+---
+
+<AdminShell title="编辑页面" active="pages" email={c.sess.email}>
+  <nav class="crumb">
+    <a href="/bohui/">仪表盘</a> › <a href="/bohui/pages/">页面与版块</a> › <span>{siteName} /{pg.slug}</span>
+  </nav>
+
+  <div class="hd">
+    <div>
+      <h1>{meta.find((m: any) => m.lang === 'zh-cn')?.title ?? pg.slug ?? '首页'}</h1>
+      <p class="lead" style="margin-bottom:0">
+        {siteName} · <code>/{pg.slug}</code> · 模板 {pg.template} · {blocks.length} 个版块 · 已有 {meta.length} 个语种
+      </p>
+    </div>
+    <div class="acts">
+      <a class="btn" href={`/zh-cn/${pg.slug}${pg.slug ? '/' : ''}?site=${pg.site_id}`} target="_blank">预览前台</a>
+      <button class="btn pri" id="saveall">保存全部</button>
+    </div>
+  </div>
+
+  <div class="langbar">
+    <span>对照编辑:</span>
+    {['zh-cn', 'en', 'zh-tw', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'ar', 'pt', 'id'].map((l) => (
+      <label class:list={['lg', editLangs.includes(l) && 'on']}>
+        <input type="checkbox" value={l} checked={editLangs.includes(l)} /> {LNAME.get(l) ?? l}
+      </label>
+    ))}
+  </div>
+
+  <section class="pane">
+    <h2>页面信息</h2>
+    <table class="meta">
+      <thead><tr><th style="width:7rem">语种</th><th>导航标签</th><th>页面标题</th><th>SEO 描述</th></tr></thead>
+      <tbody>
+        {editLangs.map((l) => {
+          const m = meta.find((x: any) => x.lang === l);
+          return (
+            <tr data-lang={l}>
+              <td>{LNAME.get(l) ?? l}{!m && <span class="pill p-warn" style="margin-left:.375rem">缺</span>}</td>
+              <td><input class="m-nav" value={m?.nav_label ?? ''} /></td>
+              <td><input class="m-title" value={m?.title ?? ''} /></td>
+              <td><input class="m-seo" value={m?.seo_desc ?? ''} /></td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </section>
+
+  {blocks.length === 0 ? (
+    <div class="empty">这个页面还没有版块。</div>
+  ) : (
+    <div id="blocks"></div>
+  )}
+
+  <div id="toast" class="toast" hidden></div>
+  <script id="payload" type="application/json" set:html={JSON.stringify(payload)}></script>
+
+  <style>
+    .crumb{font-size:.8125rem;color:var(--faint);margin-bottom:.75rem}
+    .crumb a{color:var(--accent);text-decoration:none}
+    .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+    .acts{display:flex;gap:.5rem;flex-shrink:0}
+    .langbar{display:flex;gap:.375rem;align-items:center;flex-wrap:wrap;margin:1.25rem 0;
+             font-size:.8125rem;color:var(--soft)}
+    .lg{border:1px solid var(--line);border-radius:999px;padding:.1875rem .625rem;background:var(--panel);cursor:pointer}
+    .lg.on{border-color:var(--accent);color:var(--accent);background:#eef4fa}
+    .lg input{width:auto;margin-right:.25rem;vertical-align:-1px}
+    .pane{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1.125rem 1.25rem;margin-bottom:1rem}
+    .pane h2{font-size:.9375rem;margin:0 0 .875rem}
+    table.meta{border:0}
+    table.meta th{background:0;padding-left:0}
+    table.meta td{padding-left:0}
+    .blk{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:.875rem;overflow:hidden}
+    .blk > summary{padding:.75rem 1.125rem;cursor:pointer;display:flex;align-items:center;gap:.625rem;
+                   background:#fafbfc;border-bottom:1px solid transparent;list-style:none}
+    .blk[open] > summary{border-bottom-color:var(--line)}
+    .blk > summary::-webkit-details-marker{display:none}
+    .blk .ty{font-weight:600}
+    .blk .tag{font-size:.6875rem;color:var(--faint);font-family:ui-monospace,monospace}
+    .blk .rt{margin-left:auto;display:flex;gap:.375rem;align-items:center}
+    .body{padding:1.125rem;display:grid;gap:1.25rem;
+          grid-template-columns:repeat(auto-fit,minmax(20rem,1fr))}
+    .col > h4{margin:0 0 .75rem;font-size:.8125rem;color:var(--accent);letter-spacing:.04em}
+    .f{display:grid;gap:.25rem;margin-bottom:.75rem}
+    .f > label{font-size:.75rem;color:var(--soft)}
+    .f textarea{min-height:4.5rem;resize:vertical;line-height:1.55}
+    .rep{border:1px solid var(--line);border-radius:7px;padding:.625rem;margin-bottom:.75rem;background:#fcfcfd}
+    .rep > .rh{font-size:.75rem;color:var(--soft);margin-bottom:.5rem;display:flex;align-items:center}
+    .rep .add{margin-left:auto;font-size:.75rem}
+    .item{border-top:1px dashed var(--line);padding-top:.625rem;margin-top:.625rem;position:relative}
+    .item:first-of-type{border-top:0;padding-top:0;margin-top:0}
+    .rm{position:absolute;top:.375rem;right:0;font-size:.6875rem;color:var(--bad);cursor:pointer;background:0;border:0}
+    .toast{position:fixed;right:1.25rem;bottom:1.25rem;background:#10131a;color:#fff;padding:.625rem 1rem;
+           border-radius:7px;font-size:.8125rem;box-shadow:0 8px 24px rgb(0 0 0/.25);z-index:9}
+    .toast.bad{background:var(--bad)}
+    [hidden]{display:none !important}
+  </style>
+
+  <script is:inline>
+  (() => {
+    const P = JSON.parse(document.getElementById('payload').textContent);
+    const LANGNAME = {'zh-cn':'简体中文','zh-tw':'繁體中文',en:'English',ja:'日本語',ko:'한국어',
+      es:'Español',fr:'Français',de:'Deutsch',ru:'Русский',ar:'العربية',pt:'Português',id:'Bahasa'};
+    /* 字段中文名。没收录的键退回原名 —— 宁可露出英文键,也不要瞎猜译错误导运营 */
+    const LABELS = {
+      eyebrow:'眉标(小字)', title:'标题', lead:'导语', ctaPrimary:'主按钮文字', ctaSecondary:'次按钮文字',
+      heading:'标题', body:'正文', text:'正文', label:'名称', value:'数值', name:'名称', desc:'说明',
+      caption:'图注', note:'备注', items:'条目', stats:'数字', cells:'格子', steps:'步骤',
+      cards:'卡片', points:'要点', quote:'引述', author:'署名', sub:'副标题', tag:'标签',
+      alt:'图片说明', href:'链接', src:'图片路径', intro:'引言', outro:'结语',
+    };
+    const L = (k) => LABELS[k] || k;
+    const long = (k, v) => v.length > 60 || ['lead','body','text','desc','intro','outro','quote','seo_desc'].includes(k);
+
+    /* 按数据结构生成表单。递归三种情况:对象数组 / 纯字符串数组 / 标量 */
+    function fields(obj, path, host) {
+      for (const [k, v] of Object.entries(obj)) {
+        const p = path.concat(k);
+        if (Array.isArray(v)) {
+          const box = el('div', 'rep');
+          const hd = el('div', 'rh'); hd.textContent = L(k) + '(' + v.length + ' 条)';
+          const add = el('button', 'btn add'); add.type = 'button'; add.textContent = '+ 新增一条';
+          hd.appendChild(add); box.appendChild(hd);
+          const list = el('div'); box.appendChild(list);
+          const tpl = v[0] !== undefined ? v[0] : '';
+          v.forEach((it, i) => list.appendChild(itemRow(it, p.concat(i), tpl)));
+          add.onclick = () => {
+            const blank = typeof tpl === 'object' && tpl !== null
+              ? Object.fromEntries(Object.keys(tpl).map(x => [x, ''])) : '';
+            list.appendChild(itemRow(blank, p.concat(list.children.length), tpl));
+          };
+          host.appendChild(box);
+        } else if (v !== null && typeof v === 'object') {
+          const box = el('div', 'rep');
+          const hd = el('div', 'rh'); hd.textContent = L(k); box.appendChild(hd);
+          fields(v, p, box); host.appendChild(box);
+        } else {
+          host.appendChild(field(L(k), String(v ?? ''), p, long(k, String(v ?? ''))));
+        }
+      }
+    }
+    function itemRow(it, p, tpl) {
+      const row = el('div', 'item');
+      const rm = el('button', 'rm'); rm.type = 'button'; rm.textContent = '删除';
+      rm.onclick = () => row.remove();
+      row.appendChild(rm);
+      if (it !== null && typeof it === 'object') fields(it, p, row);
+      else row.appendChild(field('内容', String(it ?? ''), p, String(it ?? '').length > 60));
+      return row;
+    }
+    function field(label, val, path, multi) {
+      const f = el('div', 'f');
+      const lb = el('label'); lb.textContent = label; f.appendChild(lb);
+      const inp = document.createElement(multi ? 'textarea' : 'input');
+      inp.value = val; inp.dataset.path = JSON.stringify(path);
+      f.appendChild(inp); return f;
+    }
+    function el(t, cls) { const e = document.createElement(t); if (cls) e.className = cls; return e; }
+
+    /* 从表单读回 JSON:按 path 逐层写入,数组下标连续重排(删过条目后不能留洞) */
+    function collect(host) {
+      const out = {};
+      host.querySelectorAll('[data-path]').forEach((inp) => {
+        const path = JSON.parse(inp.dataset.path);
+        let cur = out;
+        for (let i = 0; i < path.length - 1; i++) {
+          const k = path[i], nk = path[i + 1];
+          if (cur[k] === undefined) cur[k] = typeof nk === 'number' ? [] : {};
+          cur = cur[k];
+        }
+        cur[path[path.length - 1]] = inp.value;
+      });
+      return compact(out);
+    }
+    function compact(v) {
+      if (Array.isArray(v)) return v.filter(x => x !== undefined && x !== null).map(compact);
+      if (v && typeof v === 'object') { for (const k in v) v[k] = compact(v[k]); }
+      return v;
+    }
+
+    const BTYPE = {hero:'首屏',workshop:'车间实拍',certs:'资质证书',matrix:'品类矩阵',process:'服务流程',
+      evidence:'能力佐证',proof:'数字实证',form:'询盘表单',inquiry:'询盘引导',prose:'正文段落',statwall:'数字墙'};
+
+    const host = document.getElementById('blocks');
+    if (host) P.blocks.forEach((b, idx) => {
+      const d = el('details', 'blk'); d.dataset.id = b.id; if (idx < 2) d.open = true;
+      const s = el('summary');
+      s.innerHTML = '<span class="ty"></span><span class="tag"></span>';
+      s.querySelector('.ty').textContent = (BTYPE[b.type] || b.type);
+      s.querySelector('.tag').textContent = '#' + b.sort_order + ' · ' + b.type;
+      const rt = el('div', 'rt');
+      const miss = P.editLangs.filter(l => !b.has.includes(l));
+      if (miss.length) {
+        const w = el('span', 'pill p-warn'); w.textContent = '缺 ' + miss.map(l => LANGNAME[l] || l).join('/');
+        rt.appendChild(w);
+      }
+      const vis = el('label'); vis.style.fontSize = '.75rem'; vis.style.color = 'var(--soft)';
+      vis.innerHTML = '<input type="checkbox" class="vis" style="width:auto;vertical-align:-1px"> 显示';
+      vis.querySelector('input').checked = !!b.is_visible;
+      vis.onclick = e => e.stopPropagation();
+      rt.appendChild(vis); s.appendChild(rt); d.appendChild(s);
+
+      const body = el('div', 'body');
+      P.editLangs.forEach(l => {
+        const col = el('div', 'col'); col.dataset.lang = l;
+        const h = el('h4'); h.textContent = LANGNAME[l] || l; col.appendChild(h);
+        const data = b.data[l] && Object.keys(b.data[l]).length ? b.data[l]
+          : JSON.parse(JSON.stringify(b.data[P.editLangs.find(x => Object.keys(b.data[x] || {}).length)] || {}));
+        if (!Object.keys(data).length) { const e = el('p'); e.style.cssText = 'color:var(--faint);font-size:.8125rem'; e.textContent = '(无内容)'; col.appendChild(e); }
+        else fields(data, [], col);
+        body.appendChild(col);
+      });
+      d.appendChild(body); host.appendChild(d);
+    });
+
+    const toast = document.getElementById('toast');
+    const say = (m, bad) => { toast.textContent = m; toast.classList.toggle('bad', !!bad); toast.hidden = false;
+      clearTimeout(say.t); say.t = setTimeout(() => toast.hidden = true, 2600); };
+
+    document.getElementById('saveall').addEventListener('click', async (ev) => {
+      const btn = ev.currentTarget; btn.disabled = true; btn.textContent = '保存中…';
+      const meta = [...document.querySelectorAll('table.meta tbody tr')].map(tr => ({
+        lang: tr.dataset.lang,
+        nav_label: tr.querySelector('.m-nav').value,
+        title: tr.querySelector('.m-title').value,
+        seo_desc: tr.querySelector('.m-seo').value,
+      }));
+      const blocks = [...document.querySelectorAll('.blk')].map(d => ({
+        id: +d.dataset.id,
+        is_visible: d.querySelector('.vis').checked ? 1 : 0,
+        data: Object.fromEntries([...d.querySelectorAll('.col')].map(c => [c.dataset.lang, collect(c)])),
+      }));
+      try {
+        const r = await fetch('/api/admin/page', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ page_id: P.page.id, meta, blocks }),
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.msg);
+        say('已保存 · 页面信息 ' + d.meta + ' 条,版块 ' + d.blocks + ' 条');
+      } catch (e) { say(e.message || '保存失败', true); }
+      btn.disabled = false; btn.textContent = '保存全部';
+    });
+
+    document.querySelectorAll('.langbar input').forEach(cb => cb.addEventListener('change', () => {
+      const on = [...document.querySelectorAll('.langbar input')].filter(x => x.checked).map(x => x.value);
+      if (!on.length) return location.search = '?langs=zh-cn';
+      location.search = '?langs=' + on.join(',');
+    }));
+  })();
+  </script>
+</AdminShell>

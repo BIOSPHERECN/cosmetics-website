@@ -1,0 +1,166 @@
+---
+/**
+ * 集团品牌生态 —— 按创始人品牌视觉图《品牌生态架构》渲染。
+ *
+ * 原文:「以 BIOSPHERE-AI 为科技大脑,构建美妆与口腔健康产业生态,
+ *        通过智能制造平台赋能全球品牌,以自有品牌传递草本科技之美。」
+ *
+ * 为什么不能平铺五个:平铺看起来像五家不相干的公司,
+ * 而层级本身就是集团实力的表达 —— 访客一眼看懂「谁赋能谁」。
+ * 大脑单独居上,四个平台在下,中间用一条竖线连起来(纯 CSS,零图片)。
+ */
+import type { EcoNode } from '../lib/db';
+
+export interface Props {
+  hub: EcoNode | null;
+  children: EcoNode[];
+  title: string;
+  intro?: string;
+  /** 当前站点 id —— 自己那一格不做成链接,标为「当前」 */
+  currentId?: string;
+}
+const { hub, children, title, intro, currentId } = Astro.props;
+const ROLE: Record<string, string> = {
+  manufacturing: '智造平台',
+  brand: '自有品牌',
+  hub: '科技大脑',
+};
+---
+
+{hub && (
+  <section class="eco ck-section" aria-label={title}>
+    <div class="ck-wrap">
+      <header class="head">
+        <p class="ck-eyebrow">BRAND ECOSYSTEM</p>
+        <h2>{title}</h2>
+        {intro && <p class="intro">{intro}</p>}
+      </header>
+
+      {/* 大脑 */}
+      <div class="hubwrap">
+        <a class:list={['node', 'hub', currentId === hub.id && 'self']}
+           href={currentId === hub.id ? undefined : `https://${hub.domain}`}
+           rel={currentId === hub.id ? undefined : 'noopener'}>
+          <span class="role">{ROLE.hub}</span>
+          <strong class="nm">{hub.name}</strong>
+          <span class="dom">{hub.domain}</span>
+          {hub.tagline && <span class="tag">{hub.tagline}</span>}
+        </a>
+      </div>
+
+      {/* 连接线:一条竖线 + 一条横梁,纯 CSS 画 */}
+      <div class="link" aria-hidden="true"><span class="v"></span><span class="h"></span></div>
+
+      {/* 四个平台 */}
+      <ul class="kids">
+        {children.map((c) => (
+          <li>
+            <a class:list={['node', currentId === c.id && 'self']}
+               href={currentId === c.id ? undefined : `https://${c.domain}`}
+               rel={currentId === c.id ? undefined : 'noopener'}>
+              <span class="stem" aria-hidden="true"></span>
+              <span class="role">{ROLE[c.role] ?? c.role}</span>
+              <strong class="nm">{c.name}</strong>
+              <span class="dom">{c.domain}</span>
+              {currentId === c.id && <span class="here">当前站点</span>}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+)}
+
+<style>
+  .eco {
+    background: var(--ck-surface-alt);
+    border-top: var(--ck-border-w) solid var(--ck-line);
+  }
+  .head { max-width: var(--ck-maxw-prose); }
+  .intro { margin-top: 0.875rem; color: var(--ck-ink-soft); }
+
+  .hubwrap { display: flex; justify-content: center; margin-top: 3rem; }
+
+  .node {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--ck-surface);
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-radius: var(--ck-radius-lg);
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    transition: border-color var(--ck-dur) var(--ck-ease), transform var(--ck-dur) var(--ck-ease);
+  }
+  a.node:hover { border-color: var(--ck-accent); transform: translateY(-2px); }
+  /* 当前站点不可点,视觉上也弱化 —— 点自己是无效交互 */
+  .node.self { cursor: default; border-style: dashed; }
+
+  .hub {
+    min-width: min(22rem, 100%);
+    align-items: center;
+    text-align: center;
+    border-top: var(--ck-rule-w) solid var(--ck-accent);
+  }
+
+  .role {
+    font-size: 0.625rem;
+    letter-spacing: var(--ck-tracking-eyebrow);
+    text-transform: var(--ck-eyebrow-transform);
+    color: var(--ck-accent);
+    font-weight: 700;
+  }
+  .nm {
+    font-family: var(--ck-font-head);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .dom { font-family: var(--ck-font-mono); font-size: 0.75rem; color: var(--ck-ink-faint); }
+  .tag { margin-top: 0.375rem; font-size: var(--ck-small); color: var(--ck-ink-soft); }
+  .here {
+    margin-top: 0.375rem;
+    font-size: 0.6875rem;
+    color: var(--ck-ink-faint);
+  }
+
+  /* 连接线:竖线从大脑下来,横梁把四个平台串起来 */
+  .link {
+    display: grid;
+    justify-items: center;
+    margin-top: -0.0625rem;
+  }
+  .link .v { width: 1px; height: 2.25rem; background: var(--ck-line-strong); }
+  .link .h {
+    width: min(72%, 52rem);
+    height: 1px;
+    background: var(--ck-line-strong);
+  }
+
+  .kids {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: var(--ck-gap);
+  }
+  /* 每格顶部一小段竖线,接到上面的横梁 */
+  .kids .node { padding-top: 2rem; }
+  .stem {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 1px;
+    height: 1.125rem;
+    background: var(--ck-line-strong);
+  }
+
+  @media (max-width: 44rem) {
+    .link .h { width: 1px; }
+    .stem { display: none; }
+    .kids .node { padding-top: 1.25rem; }
+  }
+</style>

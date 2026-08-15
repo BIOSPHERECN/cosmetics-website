@@ -35,12 +35,13 @@ html[data-editorial][data-brand] .hero .lead {
   max-width: 34ch;
   margin-left: 0;
 }
-/* 首屏数字墙偏右下,与标题错开而不是并排居中 */
+/* 首屏数字墙保持在文字栏内。
+   原来让它靠右对齐,结果和右半幅的图片重叠、数字完全读不清 ——
+   编辑式版面追求的是不对称,不是让元素互相压住。 */
 html[data-editorial][data-brand] .hero .hl {
-  margin-left: auto;
-  margin-right: 0;
-  max-width: 38rem;
-  text-align: right;
+  margin-left: 0;
+  max-width: min(38rem, 52%);
+  text-align: left;
 }
 
 /* ── ② 图片出血:破出容器贴到视口边缘 ──────────────────────── */

@@ -1,0 +1,215 @@
+---
+/**
+ * 媒体库 —— 创始人反复要的「自己可以上传图片」。
+ *
+ * 关键取舍:压缩放在浏览器端做。
+ * Worker 没有图像处理能力(没有 sharp、CPU 也有上限),真要在服务端压就得再引一个服务;
+ * 而浏览器的 canvas 天生就能解码-缩放-重编码,还省掉了上传大图的等待。
+ * 顺带解决了 D1 单值 1MB 的限制 —— 一张 8MB 的手机原图压完通常 150-300KB。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const q = (url.searchParams.get('q') ?? '').trim();
+const folder = url.searchParams.get('folder') ?? '';
+const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
+const PER = 48;
+
+const where: string[] = [];
+const bind: unknown[] = [];
+if (q) { where.push(`(filename LIKE ? OR alt_zh LIKE ?)`); bind.push(`%${q}%`, `%${q}%`); }
+if (folder) { where.push(`folder = ?`); bind.push(folder); }
+const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+const total = (await c.db.prepare(`SELECT COUNT(*) n FROM media ${W}`).bind(...bind).first<{ n: number }>())?.n ?? 0;
+const { results: items } = await c.db.prepare(
+  `SELECT id, filename, mime, bytes, width, height, folder, alt_zh, created_at
+     FROM media ${W} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`
+).bind(...bind, PER, (page - 1) * PER).all<any>();
+
+const { results: folders } = await c.db.prepare(
+  `SELECT folder, COUNT(*) n, SUM(bytes) b FROM media GROUP BY folder ORDER BY n DESC`
+).all<{ folder: string; n: number; b: number }>();
+
+const totalBytes = folders.reduce((s, f) => s + (f.b || 0), 0);
+const pages = Math.max(1, Math.ceil(total / PER));
+const kb = (b: number) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.round(b / 1024)} KB`);
+const qs = (p: number) => {
+  const u = new URLSearchParams();
+  if (q) u.set('q', q);
+  if (folder) u.set('folder', folder);
+  u.set('p', String(p));
+  return `?${u}`;
+};
+---
+
+<AdminShell title="媒体库" active="media" email={c.sess.email}>
+  <h1>媒体库</h1>
+  <p class="lead">
+    拖进来就能传。上传前浏览器会自动转成 WebP、长边压到 1600px —— 手机原图直接拖也没问题。
+    共 {total} 个文件,占用 {kb(totalBytes)}。
+  </p>
+
+  <div id="drop" class="drop">
+    <div class="dz-in">
+      <b>把图片拖到这里</b>
+      <span>或 <label class="lnk">选择文件<input id="pick" type="file" accept="image/*,video/mp4" multiple hidden /></label>,支持 JPG / PNG / WebP / SVG / MP4</span>
+      <span class="fold">存到分组:<input id="fold" value={folder || 'uncategorized'} style="width:11rem;display:inline-block" /></span>
+    </div>
+    <div id="queue" class="queue" hidden></div>
+  </div>
+
+  <form class="bar" method="get">
+    <input name="q" value={q} placeholder="搜文件名或说明文字…" style="max-width:20rem" />
+    <select name="folder">
+      <option value="">全部分组</option>
+      {folders.map((f) => <option value={f.folder} selected={f.folder === folder}>{f.folder}({f.n})</option>)}
+    </select>
+    <button class="btn" type="submit">筛选</button>
+    {(q || folder) && <a class="btn" href="/bohui/media/">清空</a>}
+    <span class="sel-info" id="selinfo"></span>
+    <button class="btn danger" type="button" id="del" hidden>删除所选</button>
+  </form>
+
+  {items.length === 0 ? (
+    <div class="empty">还没有任何媒体。把图片拖到上面的方框里就会开始上传。</div>
+  ) : (
+    <div class="grid">
+      {items.map((m) => (
+        <figure class="tile" data-id={m.id}>
+          <label class="chk"><input type="checkbox" value={m.id} /></label>
+          {m.mime.startsWith('video') ? (
+            <video src={`/media/${m.id}`} muted preload="metadata"></video>
+          ) : (
+            <img src={`/media/${m.id}`} alt={m.alt_zh ?? m.filename} loading="lazy" />
+          )}
+          <figcaption>
+            <b title={m.filename}>{m.filename}</b>
+            <span>{m.width && m.height ? `${m.width}×${m.height} · ` : ''}{kb(m.bytes)}</span>
+            <code class="cp" data-u={`/media/${m.id}`} title="点击复制路径">/media/{m.id}</code>
+          </figcaption>
+        </figure>
+      ))}
+    </div>
+  )}
+
+  {pages > 1 && (
+    <div class="pager">
+      {page > 1 && <a class="btn" href={qs(page - 1)}>上一页</a>}
+      <span>第 {page} / {pages} 页</span>
+      {page < pages && <a class="btn" href={qs(page + 1)}>下一页</a>}
+    </div>
+  )}
+
+  <style>
+    .drop{border:2px dashed var(--line);border-radius:10px;background:var(--panel);padding:1.75rem;
+          margin-bottom:1.25rem;text-align:center;transition:border-color .15s,background .15s}
+    .drop.over{border-color:var(--accent);background:#eef4fa}
+    .dz-in b{display:block;margin-bottom:.375rem}
+    .dz-in span{display:block;font-size:.8125rem;color:var(--soft);margin-top:.25rem}
+    .lnk{color:var(--accent);cursor:pointer;text-decoration:underline}
+    .fold{margin-top:.75rem !important}
+    .queue{margin-top:1rem;text-align:left;display:grid;gap:.375rem;max-height:16rem;overflow:auto}
+    .qi{display:flex;gap:.625rem;align-items:center;font-size:.8125rem;background:#fafbfc;
+        border:1px solid var(--line);border-radius:6px;padding:.375rem .625rem}
+    .qi .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .qi .st{color:var(--soft);font-size:.75rem}
+    .qi.done .st{color:var(--ok)} .qi.err .st{color:var(--bad)}
+    .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+    .bar input,.bar select{width:auto}
+    .btn.danger{border-color:#f0c4c0;color:var(--bad)}
+    .sel-info{font-size:.8125rem;color:var(--soft);margin-left:auto}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr));gap:.875rem}
+    .tile{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;position:relative}
+    .tile img,.tile video{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#f0f1f3}
+    .chk{position:absolute;top:.375rem;left:.375rem;background:#fff;border-radius:4px;padding:.125rem .25rem;line-height:0}
+    .chk input{width:auto;margin:0}
+    figcaption{padding:.5rem .625rem;font-size:.75rem;display:grid;gap:.125rem}
+    figcaption b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+    figcaption span{color:var(--faint)}
+    .cp{font-size:.6875rem;color:var(--accent);cursor:pointer;font-family:ui-monospace,monospace}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--soft)}
+  </style>
+
+  <script is:inline>
+  (() => {
+    const drop = document.getElementById('drop'), pick = document.getElementById('pick');
+    const queue = document.getElementById('queue'), fold = document.getElementById('fold');
+
+    /* 浏览器端压缩:解码 → 等比缩到长边 1600 → 重编码 WebP q0.82。
+       q0.82 是肉眼几乎无损的拐点,再往上体积涨得快、观感差别看不出来。 */
+    async function shrink(file) {
+      if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') return { blob: file, w: null, h: null };
+      const bmp = await createImageBitmap(file);
+      const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+      const cv = new OffscreenCanvas(w, h);
+      cv.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      bmp.close();
+      let q = 0.82, blob = await cv.convertToBlob({ type: 'image/webp', quality: q });
+      // 仍超限就继续降质,而不是直接报错甩给用户
+      while (blob.size > 900000 && q > 0.4) { q -= 0.12; blob = await cv.convertToBlob({ type: 'image/webp', quality: q }); }
+      return { blob: new File([blob], file.name.replace(/\.\w+$/, '') + '.webp', { type: 'image/webp' }), w, h };
+    }
+
+    async function upload(files) {
+      queue.hidden = false;
+      let done = 0;
+      for (const f of files) {
+        const row = document.createElement('div');
+        row.className = 'qi';
+        row.innerHTML = '<span class="nm"></span><span class="st">压缩中…</span>';
+        row.querySelector('.nm').textContent = f.name;
+        queue.appendChild(row);
+        const st = row.querySelector('.st');
+        try {
+          const r0 = await shrink(f);
+          st.textContent = '上传中 ' + (r0.blob.size / 1024).toFixed(0) + 'KB…';
+          const fd = new FormData();
+          fd.append('file', r0.blob);
+          fd.append('folder', fold.value.trim() || 'uncategorized');
+          if (r0.w) { fd.append('width', r0.w); fd.append('height', r0.h); }
+          const r = await fetch('/api/admin/upload', { method: 'POST', body: fd });
+          const d = await r.json();
+          if (!d.ok) throw new Error(d.msg);
+          row.classList.add('done');
+          const orig = f.size > r0.blob.size * 1.2 ? '(原 ' + (f.size / 1048576).toFixed(1) + 'MB)' : '';
+          st.textContent = '已存入 ' + (r0.blob.size / 1024).toFixed(0) + 'KB' + orig;
+          done++;
+        } catch (e) { row.classList.add('err'); st.textContent = e.message || '失败'; }
+      }
+      if (done) setTimeout(() => location.reload(), 700);
+    }
+
+    ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+    drop.addEventListener('drop', e => upload([...e.dataTransfer.files]));
+    pick.addEventListener('change', () => upload([...pick.files]));
+
+    /* 多选 + 批量删除 —— WP 的 bulk action,没有它管理上百张图就是灾难 */
+    const boxes = [...document.querySelectorAll('.tile input[type=checkbox]')];
+    const del = document.getElementById('del'), info = document.getElementById('selinfo');
+    const sync = () => {
+      const n = boxes.filter(b => b.checked).length;
+      del.hidden = n === 0; info.textContent = n ? '已选 ' + n + ' 项' : '';
+    };
+    boxes.forEach(b => b.addEventListener('change', sync));
+    del.addEventListener('click', async () => {
+      const ids = boxes.filter(b => b.checked).map(b => +b.value);
+      if (!confirm('确定删除 ' + ids.length + ' 个文件?页面里已引用的会变成空图。')) return;
+      const r = await fetch('/api/admin/upload', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+      (await r.json()).ok ? location.reload() : alert('删除失败');
+    });
+
+    document.querySelectorAll('.cp').forEach(el => el.addEventListener('click', () => {
+      navigator.clipboard.writeText(el.dataset.u);
+      const o = el.textContent; el.textContent = '已复制'; setTimeout(() => { el.textContent = o; }, 900);
+    }));
+  })();
+  </script>
+</AdminShell>

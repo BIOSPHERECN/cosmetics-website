@@ -1,0 +1,120 @@
+---
+/**
+ * AI 共创记录 —— 客户在前台说的每一句原话都留在这里。
+ *
+ * raw_input 一字不改地存,是刻意的:AI 解析结果可以重跑(模型会变强),
+ * 但客户当时的原话丢了就永远回不来了。原文是根,派生可重洗。
+ * 留了邮箱的记录才算线索,所以单独标出来。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { SITES } from '@cosmetic/core/registry';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
+const onlyLead = url.searchParams.get('lead') === '1';
+const PER = 25;
+const W = onlyLead ? `WHERE contact_email IS NOT NULL AND contact_email <> ''` : '';
+
+const total = (await c.db.prepare(`SELECT COUNT(*) n FROM studio_sessions ${W}`).first<{ n: number }>())?.n ?? 0;
+const leads = (await c.db.prepare(`SELECT COUNT(*) n FROM studio_sessions WHERE contact_email IS NOT NULL AND contact_email <> ''`).first<{ n: number }>())?.n ?? 0;
+const { results: rows } = await c.db.prepare(
+  `SELECT * FROM studio_sessions ${W} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+).bind(PER, (page - 1) * PER).all<any>();
+
+const nProv = (await c.db.prepare(`SELECT COUNT(*) n FROM providers WHERE enabled=1 AND api_keys<>''`).first<{ n: number }>())?.n ?? 0;
+const siteName = new Map(SITES.map((s) => [s.id, s.name]));
+const pages = Math.max(1, Math.ceil(total / PER));
+const j = (s: string | null) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
+---
+
+<AdminShell title="AI 共创记录" active="studio" email={c.sess.email}>
+  <h1>AI 共创记录</h1>
+  <p class="lead">
+    客户用自然语言描述需求 → AI 从配方库检索候选 → 生成卖点文案与包装图。
+    这里留存全过程,共 {total} 次,其中 {leads} 次留了联系方式。
+  </p>
+
+  {nProv === 0 && (
+    <div class="warn-bar">
+      ⚠ 目前 <b>0 个模型可用</b>(全部未配 API Key),AI 共创功能实际不会产生任何结果。
+      去 <a href="/bohui/models/">模型舰队</a> 把 key 填上,这个页面才会有数据。
+    </div>
+  )}
+
+  <div class="bar">
+    <a class:list={['btn', !onlyLead && 'pri']} href="/bohui/studio/">全部 {total}</a>
+    <a class:list={['btn', onlyLead && 'pri']} href="?lead=1">只看留了邮箱的 {leads}</a>
+  </div>
+
+  {rows.length === 0 ? (
+    <div class="empty">还没有共创记录。前台的 AI 共创入口上线后,每一次对话都会落在这里。</div>
+  ) : (
+    <div class="list">
+      {rows.map((r: any) => {
+        const m = j(r.matched_json), p = j(r.parsed_json);
+        return (
+          <details class="ss">
+            <summary>
+              {r.contact_email
+                ? <span class="pill p-ok">线索</span>
+                : <span class="pill p-wait">匿名</span>}
+              <b class="raw">{r.raw_input}</b>
+              <span class="dt">{siteName.get(r.site_id) ?? r.site_id} · {(r.created_at ?? '').slice(0, 16)}</span>
+            </summary>
+            <div class="bd">
+              <h4>客户原话</h4>
+              <p class="msg">{r.raw_input}</p>
+              {p && <><h4>AI 解析出的需求</h4><pre>{JSON.stringify(p, null, 2)}</pre></>}
+              {m && <><h4>命中的配方与理由</h4><pre>{JSON.stringify(m, null, 2)}</pre></>}
+              {r.copy_text && <><h4>生成的卖点文案</h4><p class="msg">{r.copy_text}</p></>}
+              {r.image_urls && (
+                <><h4>生成的包装图</h4>
+                  <div class="imgs">{String(r.image_urls).split(',').filter(Boolean).map((u: string) => (
+                    <a href={u} target="_blank"><img src={u} alt="" loading="lazy" /></a>))}</div></>
+              )}
+              {r.contact_email && <><h4>联系方式</h4><p><a href={`mailto:${r.contact_email}`}>{r.contact_email}</a></p></>}
+            </div>
+          </details>
+        );
+      })}
+    </div>
+  )}
+
+  {pages > 1 && (
+    <div class="pager">
+      {page > 1 && <a class="btn" href={`?p=${page - 1}${onlyLead ? '&lead=1' : ''}`}>上一页</a>}
+      <span>第 {page} / {pages} 页</span>
+      {page < pages && <a class="btn" href={`?p=${page + 1}${onlyLead ? '&lead=1' : ''}`}>下一页</a>}
+    </div>
+  )}
+
+  <style>
+    .warn-bar{background:#fdecea;border:1px solid #f3c9c4;color:#8a2018;padding:.75rem 1rem;
+              border-radius:8px;font-size:.8125rem;line-height:1.6;margin-bottom:1.125rem}
+    .warn-bar a{color:#8a2018}
+    .bar{display:flex;gap:.5rem;margin-bottom:1rem}
+    .list{display:grid;gap:.5rem}
+    .ss{background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+    .ss > summary{padding:.6875rem 1rem;cursor:pointer;display:flex;gap:.625rem;align-items:center;
+                  list-style:none;font-size:.875rem}
+    .ss > summary::-webkit-details-marker{display:none}
+    .ss[open] > summary{border-bottom:1px solid var(--line);background:#fafbfc}
+    .raw{font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+    .dt{color:var(--faint);font-size:.75rem;flex-shrink:0}
+    .bd{padding:1rem 1.125rem}
+    .bd h4{margin:1rem 0 .375rem;font-size:.75rem;color:var(--accent);letter-spacing:.04em}
+    .bd h4:first-child{margin-top:0}
+    .msg{white-space:pre-wrap;line-height:1.65;background:#fafbfc;border:1px solid var(--line);
+         border-radius:6px;padding:.625rem .75rem;margin:0;font-size:.875rem}
+    pre{background:#fafbfc;border:1px solid var(--line);border-radius:6px;padding:.625rem .75rem;
+        overflow-x:auto;font-size:.75rem;margin:0}
+    .imgs{display:flex;gap:.5rem;flex-wrap:wrap}
+    .imgs img{width:9rem;border-radius:6px;border:1px solid var(--line)}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--soft)}
+  </style>
+</AdminShell>

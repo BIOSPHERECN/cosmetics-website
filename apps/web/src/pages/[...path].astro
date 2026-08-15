@@ -21,9 +21,10 @@ import SocialProof from '@cosmetic/core/components/SocialProof.astro';
 import InquiryForm from '@cosmetic/core/components/InquiryForm.astro';
 import InquiryBand from '@cosmetic/core/components/InquiryBand.astro';
 import Motion from '../components/Motion.astro';
+import BrandEcosystem from '../components/BrandEcosystem.astro';
 import ProductGrid from '../components/ProductGrid.astro';
 import InquiryCart from '../components/InquiryCart.astro';
-import { getSiteByHost, getSiteById, getPageBundle, isLang, DEFAULT_LANG, type Lang } from '../lib/db';
+import { getSiteByHost, getSiteById, getPageBundle, getEcosystem, isLang, DEFAULT_LANG, type Lang } from '../lib/db';
 import { getVariant, getSite as getStaticSite } from '@cosmetic/core/registry';
 // Astro v6 起 Astro.locals.runtime.env 已移除,绑定改从 cloudflare:workers 取
 import { env } from 'cloudflare:workers';
@@ -83,11 +84,7 @@ const SHOT_PENDING: Record<Lang, string> = {
  * 质地类型按各站产品语言分配:护肤=流体、彩妆代工=乳霜、口腔=凝胶、AI=粉体。
  */
 const DEMO_SHOT: Record<string, string> = {
-  beauty2oem: '/media/shots/hero-01.jpg',
-  skin2oem: '/media/shots/skin-01.jpg',
-  'biosphere-ai': '/media/shots/texture-01.jpg',
-  medierba: '/media/shots/botany-01.jpg',
-  'biosphere-oralcare': '/media/shots/oral-01.jpg',
+  // 暂时全部留空 —— 见上方说明。有了可信的实拍图再逐个填回来。
 };
 const DEMO_TEXTURE: Record<string, 'cream' | 'fluid' | 'powder' | 'gel'> = {
   beauty2oem: 'cream',
@@ -96,6 +93,9 @@ const DEMO_TEXTURE: Record<string, 'cream' | 'fluid' | 'powder' | 'gel'> = {
   medierba: 'cream',
   'biosphere-oralcare': 'gel',
 };
+
+/** 集团生态(大脑 + 四平台),页脚前渲染 */
+const eco = db && bundle ? await getEcosystem(db, lang).catch(() => null) : null;
 
 /**
  * demo 用剂型数据 —— 证明「逛→选规格→加入询盘→攒车→提交」这条动线通。
@@ -126,12 +126,24 @@ const CART_LABELS: Record<Lang, any> = {
   en: { open: 'Inquiry list', empty: 'No formats selected yet', remove: 'Remove', submit: 'Send the whole list', count: 'Selected', hint: 'We reply in writing within two working days.' },
   ja: { open: 'お問い合わせリスト', empty: 'まだ剤形が選ばれていません', remove: '削除', submit: 'リストをまとめて送信', count: '選択中', hint: '2 営業日以内に書面でご回答します。' },
 };
+const ECO_TEXT: Record<Lang, { title: string; intro: string }> = {
+  'zh-cn': { title: '集团品牌生态', intro: '以 BIOSPHERE-AI 为科技大脑,构建美妆与口腔健康产业生态;通过智能制造平台赋能全球品牌,以自有品牌传递草本科技之美。' },
+  en: { title: 'Brand ecosystem', intro: 'BIOSPHERE-AI serves as the technology core, powering global brands through our manufacturing platforms and expressing herbal science through our own brand.' },
+};
+
 const GRID_TEXT: Record<Lang, { title: string; intro: string; add: string; moq: string }> = {
   'zh-cn': { title: '可做剂型', intro: '选好规格直接加入询盘车,逛完一次性提交 —— 不用每个剂型都填一遍表。', add: '加入询盘', moq: 'MOQ' },
   'zh-tw': { title: '可做劑型', intro: '選好規格直接加入詢價車,逛完一次送出 —— 不必每個劑型都填一次表。', add: '加入詢價', moq: 'MOQ' },
   en: { title: 'Formats we make', intro: 'Pick a spec, add it to your list, and send everything at once — no form per item.', add: 'Add to inquiry', moq: 'MOQ' },
   ja: { title: '対応剤形', intro: '仕様を選んでリストに追加し、最後にまとめて送信できます。剤形ごとに入力する必要はありません。', add: 'リストに追加', moq: 'MOQ' },
 };
+
+/**
+ * 界面文案回退 —— 文案表只覆盖部分语种(内容可以逐步翻译,界面不能等)。
+ * 直接 TEXT[lang] 在未覆盖的语种上会取到 undefined,随后 .title 抛错整页 500。
+ * 这类错误只在小语种访客身上出现,最难被发现,所以统一走这个函数。
+ */
+const pick = <T,>(m: Record<string, T>, l: string): T => m[l] ?? m.en ?? m['zh-cn'];
 
 /** 内容改完即时生效,但同一秒内的重复请求走边缘缓存,避免每次都打 D1 */
 Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=300');
@@ -178,7 +190,7 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
             />
           );
         case 'workshop':
-          return <WorkshopProof title={d.title} intro={d.intro} clips={d.clips ?? []} pendingLabel={SHOT_PENDING[lang]} />;
+          return <WorkshopProof title={d.title} intro={d.intro} clips={d.clips ?? []} pendingLabel={pick(SHOT_PENDING, lang)} />;
         case 'certs':
           return <CertWall title={d.title} note={d.note} items={d.items ?? []} />;
         case 'matrix':
@@ -186,7 +198,7 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
         case 'process':
           return <ProcessSteps title={d.title} intro={d.intro} steps={d.steps ?? []} />;
         case 'evidence':
-          return <EvidenceGrid title={d.title} intro={d.intro} items={d.items ?? []} pendingLabel={PENDING[lang]} />;
+          return <EvidenceGrid title={d.title} intro={d.intro} items={d.items ?? []} pendingLabel={pick(PENDING, lang)} />;
         case 'proof':
           return <SocialProof title={d.title} intro={d.intro} stats={d.stats ?? []} testimonials={d.testimonials ?? []} />;
         case 'form':
@@ -213,16 +225,26 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
     {/* 产品页:剂型网格 —— 逛→选规格→就地加入询盘车 */}
     {bundle!.page.template === 'products' && (
       <ProductGrid
-        title={GRID_TEXT[lang].title}
-        intro={GRID_TEXT[lang].intro}
+        title={pick(GRID_TEXT, lang).title}
+        intro={pick(GRID_TEXT, lang).intro}
         items={DEMO_PRODUCTS}
-        addLabel={GRID_TEXT[lang].add}
-        moqLabel={GRID_TEXT[lang].moq}
+        addLabel={pick(GRID_TEXT, lang).add}
+        moqLabel={pick(GRID_TEXT, lang).moq}
       />
     )}
   </main>
 
-  <InquiryCart labels={CART_LABELS[lang]} submitHref={`/${lang}/contact/`} />
+  {eco?.hub && (
+    <BrandEcosystem
+      hub={eco.hub}
+      children={eco.children}
+      currentId={site!.id}
+      title={pick(ECO_TEXT, lang).title}
+      intro={pick(ECO_TEXT, lang).intro}
+    />
+  )}
+
+  <InquiryCart labels={pick(CART_LABELS, lang)} submitHref={`/${lang}/contact/`} />
 
   <SiteFooter locale={lang} path={path} site={{ ...staticSite!, name: site!.name }} siblings={[]} email={email} nav={bundle!.nav} />
   <Motion />

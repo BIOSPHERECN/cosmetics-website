@@ -1,0 +1,155 @@
+---
+/**
+ * 后台首页 —— 仪表盘。
+ *
+ * 对照 WordPress 的「概览」与企业后台的 Dashboard:
+ * 第一屏该回答三个问题 —— 现在有多少东西、哪里出了问题、下一步该做什么。
+ * 之前只放了一张站点表,回答不了后两个,所以显得简陋。
+ *
+ * 「待办」区不是装饰:缺译文、缺 key、未收录这些状态如果不主动推到眼前,
+ * 就会一直烂在那里 —— 多语站最常见的烂尾方式就是没人知道哪里缺。
+ */
+import { env } from 'cloudflare:workers';
+import AdminShell from '../../layouts/AdminShell.astro';
+import { readSession, readCookie, COOKIE } from '../../lib/auth';
+import { getMissingTranslations } from '../../lib/db';
+import { SITES, type SiteDef } from '@cosmetic/core/registry';
+
+export const prerender = false;
+
+const db = (env as any).DB as D1Database | undefined;
+const secret = (env as any).AUTH_SECRET as string | undefined;
+const sess = await readSession(readCookie(Astro.request.headers.get('cookie'), COOKIE), secret ?? '');
+
+/** 未登录 → 独立登录页。登录表单不该混在仪表盘里,那会让未登录态也加载全部查询 */
+if (!sess) return Astro.redirect('/bohui/login/');
+
+const one = async (sql: string) => {
+  try { return (await db!.prepare(sql).first<{ n: number }>())?.n ?? 0; } catch { return 0; }
+};
+
+const [nSites, nPages, nBlocks, nFormulas, nMedia, nInquiries, nStudio, nProviders, nProvKeys] = await Promise.all([
+  one(`SELECT COUNT(*) n FROM sites`),
+  one(`SELECT COUNT(*) n FROM pages`),
+  one(`SELECT COUNT(*) n FROM blocks`),
+  one(`SELECT COUNT(*) n FROM formulas`),
+  one(`SELECT COUNT(*) n FROM media`),
+  one(`SELECT COUNT(*) n FROM inquiries WHERE status='new'`),
+  one(`SELECT COUNT(*) n FROM studio_sessions`),
+  one(`SELECT COUNT(*) n FROM providers WHERE enabled=1`),
+  one(`SELECT COUNT(*) n FROM providers WHERE enabled=1 AND api_keys<>''`),
+]);
+
+// 站点表 + 每站缺译文数
+type Row = { id: string; variant: string; is_live: number; pages: number; missing: number };
+let rows: Row[] = [];
+if (db) {
+  const { results } = await db
+    .prepare(`SELECT s.id, s.variant, s.is_live,
+                     (SELECT COUNT(*) FROM pages p WHERE p.site_id=s.id) AS pages
+                FROM sites s ORDER BY s.sort_order`)
+    .all<Omit<Row, 'missing'>>();
+  for (const r of results ?? []) {
+    rows.push({ ...r, missing: (await getMissingTranslations(db, r.id)).length });
+  }
+}
+const byId = new Map(SITES.map((s) => [s.id, s]));
+const totalMissing = rows.reduce((n, r) => n + r.missing, 0);
+const notLive = rows.filter((r) => !r.is_live).length;
+
+/** 待办 —— 按「拦住业务的程度」排序,不按类型排 */
+const todos: { level: 'bad' | 'warn'; text: string; href: string; cta: string }[] = [];
+if (nProvKeys === 0) todos.push({ level: 'bad', text: `模型舰队 ${nProviders} 家都没配 API Key,AI 功能全部不可用`, href: '/bohui/models/', cta: '去配置' });
+if (nFormulas > 0) todos.push({ level: 'warn', text: `配方库 ${nFormulas} 条全是样例数据,上线前必须替换为真实配方`, href: '/bohui/formulas/', cta: '查看' });
+if (totalMissing > 0) todos.push({ level: 'warn', text: `${totalMissing} 个版块缺少部分语种译文,访客会看到英文回退`, href: '/bohui/pages/', cta: '去补齐' });
+if (nMedia === 0) todos.push({ level: 'warn', text: '媒体库为空,页面用的还是占位素材', href: '/bohui/media/', cta: '去上传' });
+if (notLive > 0) todos.push({ level: 'warn', text: `${notLive} 个站未开放收录(内容核实前的保护,核实后再开)`, href: '#', cta: '' });
+---
+
+<AdminShell title="仪表盘" active="sites" email={sess.email} badges={{ inquiries: nInquiries }}>
+  <h1>仪表盘</h1>
+  <p class="lead">帛卉集团 5 站矩阵 · 内容、配方、模型、线索都在这里管。</p>
+
+  <div class="cards">
+    <div class="card"><div class="k">站点</div><div class="v num">{nSites}</div><div class="s">共 {nPages} 个页面</div></div>
+    <div class="card"><div class="k">内容版块</div><div class="v num">{nBlocks}</div><div class="s">跨全部语种</div></div>
+    <div class="card"><div class="k">配方库</div><div class="v num">{nFormulas}</div><div class="s">AI 检索的依据</div></div>
+    <div class="card"><div class="k">媒体</div><div class="v num">{nMedia}</div><div class="s">图片与视频</div></div>
+    <div class:list={['card', nInquiries > 0 && 'ok']}><div class="k">待处理询盘</div><div class="v num">{nInquiries}</div><div class="s">共 {nStudio} 次 AI 共创</div></div>
+    <div class:list={['card', nProvKeys === 0 && 'warn']}><div class="k">可用模型</div><div class="v num">{nProvKeys}<span style="font-size:.9rem;color:var(--faint)"> / {nProviders}</span></div><div class="s">已配 key / 已启用</div></div>
+  </div>
+
+  {todos.length > 0 && (
+    <>
+      <h2 style="font-size:1rem;margin:0 0 .75rem">待办</h2>
+      <table style="margin-bottom:1.75rem">
+        <tbody>
+          {todos.map((t) => (
+            <tr>
+              <td style="width:4.5rem">
+                <span class:list={['pill', t.level === 'bad' ? 'p-bad' : 'p-warn']}>
+                  {t.level === 'bad' ? '阻塞' : '待办'}
+                </span>
+              </td>
+              <td>{t.text}</td>
+              <td style="width:6rem;text-align:right">
+                {t.cta && <a class="btn" href={t.href}>{t.cta}</a>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  )}
+
+  <h2 style="font-size:1rem;margin:0 0 .75rem">站点</h2>
+  <table>
+    <thead><tr>
+      <th>站点</th><th style="width:16rem">模板 / 风格</th><th style="width:5rem">页面</th>
+      <th style="width:6rem">缺译文</th><th style="width:6rem">收录</th><th style="width:11rem"></th>
+    </tr></thead>
+    <tbody>
+      {rows.map((r) => {
+        const def = byId.get(r.id) as SiteDef | undefined;
+        return (
+          <tr>
+            <td>
+              <div style="font-weight:600">{def?.name ?? r.id}</div>
+              <div style="color:var(--faint);font-size:.75rem;font-family:ui-monospace,monospace">{def?.domain}</div>
+            </td>
+            <td>
+              <select data-site={r.id} class="tpl">
+                {(def?.variants ?? []).map((v) => (
+                  <option value={v.id} selected={v.id === r.variant}>{v.name}</option>
+                ))}
+              </select>
+            </td>
+            <td class="num">{r.pages}</td>
+            <td class="num" style={r.missing ? 'color:var(--warn);font-weight:600' : 'color:var(--ok)'}>
+              {r.missing || '齐全'}
+            </td>
+            <td>{r.is_live ? <span class="pill p-ok">已开放</span> : <span class="pill p-wait">未收录</span>}</td>
+            <td style="text-align:right">
+              <a class="btn" href={`/zh-cn/?site=${r.id}`} target="_blank">前台</a>
+              <a class="btn" href={`/bohui/pages/?site=${r.id}`}>编辑内容</a>
+            </td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+
+  <script is:inline>
+    document.querySelectorAll('select.tpl').forEach((s) => {
+      s.addEventListener('change', async () => {
+        s.disabled = true;
+        const r = await fetch('/api/admin/site-variant', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ site: s.dataset.site, variant: s.value }),
+        });
+        s.disabled = false;
+        if (!r.ok) alert('保存失败,请重试');
+      });
+    });
+  </script>
+</AdminShell>

@@ -1,0 +1,89 @@
+---
+/**
+ * 产品与剂型 —— 前台产品目录的数据源。
+ * 与配方库的分工:配方库是内部技术资产(不对外露配方细节),
+ * 产品是对外可展示的成品形态。两者刻意分表,免得内部数据被误发到前台。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { SITES } from '@cosmetic/core/registry';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const q = (url.searchParams.get('q') ?? '').trim();
+const site = url.searchParams.get('site') ?? '';
+
+const where: string[] = [], bind: unknown[] = [];
+if (site) { where.push('p.site_id=?'); bind.push(site); }
+if (q) { where.push('(p.slug LIKE ? OR EXISTS (SELECT 1 FROM product_i18n x WHERE x.product_id=p.id AND x.name LIKE ?))'); bind.push(`%${q}%`, `%${q}%`); }
+const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+const { results: rows } = await c.db.prepare(
+  `SELECT p.*, (SELECT x.name FROM product_i18n x WHERE x.product_id=p.id
+                 ORDER BY CASE x.lang WHEN 'zh-cn' THEN 0 WHEN 'en' THEN 1 ELSE 2 END LIMIT 1) AS name,
+          (SELECT COUNT(*) FROM product_i18n x WHERE x.product_id=p.id) AS langs,
+          (SELECT COUNT(*) FROM product_media m WHERE m.product_id=p.id) AS imgs
+     FROM products p ${W} ORDER BY p.site_id, p.sort_order, p.id LIMIT 200`
+).bind(...bind).all<any>();
+
+const siteName = new Map(SITES.map((s) => [s.id, s.name]));
+const CAT: Record<string, string> = { skincare: '护肤', makeup: '彩妆', cleansing: '清洁', oral: '口腔', body: '身体', hair: '洗护' };
+const nMedia = (await c.db.prepare(`SELECT COUNT(*) n FROM media`).first<{ n: number }>())?.n ?? 0;
+---
+
+<AdminShell title="产品与剂型" active="products" email={c.sess.email}>
+  <h1>产品与剂型</h1>
+  <p class="lead">前台「产品目录」页读的就是这张表。共 {rows.length} 个产品。</p>
+
+  <form class="bar" method="get">
+    <input name="q" value={q} placeholder="搜产品名或路径…" style="max-width:18rem" />
+    <select name="site"><option value="">全部站点</option>
+      {SITES.map((s) => <option value={s.id} selected={s.id === site}>{s.name}</option>)}</select>
+    <button class="btn pri" type="submit">筛选</button>
+    {(q || site) && <a class="btn" href="/bohui/products/">清空</a>}
+  </form>
+
+  {rows.length === 0 ? (
+    <div class="empty">
+      还没有产品条目。<br />
+      <span style="font-size:.8125rem">
+        产品需要真实图片与规格才有意义 —— 先去<a href="/bohui/media/">媒体库</a>上传实拍图
+        (当前 {nMedia} 张),再回来建条目。
+      </span>
+    </div>
+  ) : (
+    <table>
+      <thead><tr>
+        <th>产品</th><th style="width:9rem">站点</th><th style="width:6rem">品类</th>
+        <th style="width:6rem">起订</th><th style="width:5rem">图片</th><th style="width:5rem">语种</th>
+        <th style="width:6rem">状态</th>
+      </tr></thead>
+      <tbody>
+        {rows.map((r: any) => (
+          <tr>
+            <td>
+              <div style="font-weight:600">{r.name || '(未命名)'}</div>
+              <code style="font-size:.6875rem;color:var(--faint)">/{r.slug}</code>
+              {r.is_featured ? <span class="pill p-ok" style="margin-left:.375rem">推荐</span> : null}
+            </td>
+            <td style="font-size:.8125rem">{siteName.get(r.site_id) ?? r.site_id}</td>
+            <td style="font-size:.8125rem">{CAT[r.category] ?? r.category}</td>
+            <td style="font-size:.8125rem">{r.moq ?? '—'}</td>
+            <td class="num" style={r.imgs ? '' : 'color:var(--warn)'}>{r.imgs || '缺图'}</td>
+            <td class="num">{r.langs}</td>
+            <td>{r.status === 'published' ? <span class="pill p-ok">已发布</span> : <span class="pill p-warn">草稿</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+
+  <style>
+    .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+    .bar input,.bar select{width:auto}
+    .empty a{color:var(--accent)}
+  </style>
+</AdminShell>

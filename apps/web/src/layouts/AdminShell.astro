@@ -1,0 +1,150 @@
+---
+/**
+ * 后台外壳 —— 侧栏 + 内容区,所有后台页共用。
+ *
+ * 之前每页各写一套页头,结果像几个孤立的表格而不是一个系统。
+ * 侧栏的意义不只是导航:它让运营一眼看到"这个后台能管哪些东西",
+ * 这是"强大"与"简陋"最直接的区别 —— 功能有没有被看见。
+ *
+ * 深色侧栏 + 浅色内容区是控制台的通用语言(WP / Shopify / Directus 都如此):
+ * 侧栏是骨架不该抢眼,内容区要亮以便长时间阅读。
+ */
+import { LANGS } from '../lib/db';
+
+export interface Props {
+  title: string;
+  active: string;
+  email: string;
+  /** 顶部计数徽标,如询盘未读数 */
+  badges?: Record<string, number>;
+}
+const { title, active, email, badges = {} } = Astro.props;
+
+const NAV = [
+  { group: '内容', items: [
+    { id: 'sites', label: '站点总览', href: '/bohui/', icon: '▤' },
+    { id: 'pages', label: '页面与版块', href: '/bohui/pages/', icon: '▦' },
+    { id: 'media', label: '媒体库', href: '/bohui/media/', icon: '▣' },
+    { id: 'products', label: '产品与剂型', href: '/bohui/products/', icon: '◈' },
+  ]},
+  { group: '经营', items: [
+    { id: 'inquiries', label: '询盘线索', href: '/bohui/inquiries/', icon: '✉' },
+    { id: 'studio', label: 'AI 共创记录', href: '/bohui/studio/', icon: '◐' },
+    { id: 'formulas', label: '配方库', href: '/bohui/formulas/', icon: '◇' },
+  ]},
+  { group: '系统', items: [
+    { id: 'models', label: '模型舰队', href: '/bohui/models/', icon: '◉' },
+    { id: 'users', label: '账号与权限', href: '/bohui/users/', icon: '◎' },
+    { id: 'log', label: '修订记录', href: '/bohui/log/', icon: '↺' },
+  ]},
+];
+---
+
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>{title} · 帛卉后台</title>
+  <style>
+    :root{
+      --side:#12161d; --side-ink:#c9d1dc; --side-dim:#78828f; --side-on:#fff;
+      --bg:#f5f6f8; --panel:#fff; --ink:#10131a; --soft:#5b6472; --faint:#858d99;
+      --line:#e4e7ec; --accent:#1f4e79; --ok:#197a4b; --bad:#b3261e; --warn:#9a5b00;
+      font-family:system-ui,'PingFang SC','Microsoft YaHei',sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-size:14.5px;
+         display:grid;grid-template-columns:15rem 1fr;min-height:100vh}
+
+    /* ── 侧栏 ─────────────────────────────── */
+    aside{background:var(--side);color:var(--side-ink);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+    .brand{padding:1.25rem 1.25rem 1rem;border-bottom:1px solid #1e242e}
+    .brand b{color:var(--side-on);font-size:.9375rem;letter-spacing:.06em;display:block}
+    .brand span{color:var(--side-dim);font-size:.6875rem;letter-spacing:.1em}
+    nav{flex:1;overflow:auto;padding:.75rem 0}
+    .grp{padding:.875rem 1.25rem .375rem;color:var(--side-dim);font-size:.625rem;letter-spacing:.14em}
+    a.item{display:flex;align-items:center;gap:.625rem;padding:.5rem 1.25rem;color:var(--side-ink);
+           text-decoration:none;font-size:.875rem;border-left:2px solid transparent}
+    a.item:hover{background:#171c25;color:var(--side-on)}
+    a.item.on{background:#1a2029;color:var(--side-on);border-left-color:var(--accent)}
+    .ic{width:1rem;text-align:center;opacity:.7;font-size:.8125rem}
+    .badge{margin-left:auto;background:var(--accent);color:#fff;border-radius:999px;
+           padding:0 .375rem;font-size:.6875rem;min-width:1.125rem;text-align:center}
+    .who{padding:.875rem 1.25rem;border-top:1px solid #1e242e;font-size:.75rem;color:var(--side-dim)}
+    .who button{margin-top:.5rem;font:inherit;font-size:.75rem;background:0;border:1px solid #2a323d;
+                color:var(--side-ink);padding:.3125rem .625rem;border-radius:5px;cursor:pointer;width:100%}
+    .who button:hover{background:#1a2029;color:#fff}
+
+    /* ── 内容区 ───────────────────────────── */
+    main{padding:1.75rem 2rem 4rem;max-width:82rem}
+    h1{font-size:1.375rem;margin:0 0 .25rem}
+    .lead{color:var(--soft);margin:0 0 1.5rem;font-size:.9375rem;max-width:58rem;line-height:1.6}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:1rem;margin-bottom:1.75rem}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1.125rem 1.25rem}
+    .card .k{font-size:.75rem;color:var(--faint);letter-spacing:.04em}
+    .card .v{font-size:1.75rem;font-weight:700;margin-top:.25rem;font-variant-numeric:tabular-nums;line-height:1.1}
+    .card .s{font-size:.75rem;color:var(--soft);margin-top:.25rem}
+    .card.warn .v{color:var(--warn)} .card.ok .v{color:var(--ok)}
+    table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+    th,td{text-align:left;padding:.75rem .875rem;border-bottom:1px solid var(--line);vertical-align:middle}
+    th{font-size:.6875rem;color:var(--faint);font-weight:600;letter-spacing:.06em;background:#fafbfc}
+    tr:last-child td{border-bottom:0}
+    .btn{font:inherit;font-size:.8125rem;cursor:pointer;border:1px solid var(--line);background:var(--panel);
+         padding:.375rem .625rem;border-radius:5px;color:var(--ink);text-decoration:none;display:inline-block}
+    .btn.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .pill{display:inline-block;padding:.125rem .5rem;border-radius:999px;font-size:.6875rem}
+    .p-ok{background:#e6f4ec;color:var(--ok)} .p-bad{background:#fdecea;color:var(--bad)}
+    .p-wait{background:#f1f2f4;color:var(--faint)} .p-warn{background:#fdf1e0;color:var(--warn)}
+    input,select,textarea{font:inherit;font-size:.875rem;padding:.4375rem .5rem;border:1px solid var(--line);
+                          border-radius:5px;background:#fff;width:100%}
+    .num{font-variant-numeric:tabular-nums}
+    .empty{padding:2.5rem;text-align:center;color:var(--faint);background:var(--panel);
+           border:1px dashed var(--line);border-radius:10px}
+    @media(max-width:56rem){
+      body{grid-template-columns:1fr}
+      aside{position:static;height:auto}
+      nav{display:flex;overflow-x:auto;padding:.5rem}
+      .grp{display:none} a.item{white-space:nowrap;border-left:0;border-bottom:2px solid transparent}
+      a.item.on{border-left:0;border-bottom-color:var(--accent)}
+      main{padding:1.25rem}
+    }
+  </style>
+</head>
+<body>
+  <aside>
+    <div class="brand">
+      <b>帛卉后台</b>
+      <span>BOHUI CONSOLE</span>
+    </div>
+    <nav>
+      {NAV.map((g) => (
+        <>
+          <div class="grp">{g.group}</div>
+          {g.items.map((it) => (
+            <a class:list={['item', active === it.id && 'on']} href={it.href}>
+              <span class="ic">{it.icon}</span>
+              <span>{it.label}</span>
+              {badges[it.id] ? <span class="badge">{badges[it.id]}</span> : null}
+            </a>
+          ))}
+        </>
+      ))}
+    </nav>
+    <div class="who">
+      {email}
+      <button id="logout">退出登录</button>
+    </div>
+  </aside>
+
+  <main>
+    <slot />
+  </main>
+
+  <script is:inline>
+    document.getElementById('logout')?.addEventListener('click', async () => {
+      await fetch('/api/admin/login', { method: 'DELETE' });
+      location.href = '/bohui/';
+    });
+  </script>
+</body>
+</html>

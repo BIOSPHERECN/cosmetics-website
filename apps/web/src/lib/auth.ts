@@ -9,7 +9,17 @@
  * - 比较签名用**常数时间**比较,避免按字节提前返回泄露信息。
  */
 
-const ITER = 210_000;
+/**
+ * PBKDF2 迭代次数。
+ *
+ * OWASP 对服务器场景建议 21 万次,我最初照抄了 —— 那是错的:
+ * Cloudflare Worker 每请求有 CPU 时间上限,21 万次会把 Worker 跑爆,
+ * 进程被杀后返回的不是 JSON,前端只能看到"请求失败",极难排查。
+ *
+ * 6 万次是在 Worker CPU 预算内、且离线爆破成本仍然可观的折中。
+ * 真正的防线是登录限流(同 IP 15 分钟 8 次),而不是把单次哈希拉到极限。
+ */
+const ITER = 60_000;
 const SESSION_HOURS = 12;
 
 const te = new TextEncoder();
