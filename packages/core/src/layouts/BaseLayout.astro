@@ -17,6 +17,8 @@ import '../styles/variants.css';
 // Summer Fridays 复刻层放最后:它要盖过流派与风格层。
 // 由 <html data-summer> 开关控制,创始人验完再决定哪些站保留。
 import '../styles/summer.css';
+// 深金主题放最后 —— 创始人认可的视觉语气,盖过前面所有层
+import '../styles/noir.css';
 import '../styles/base.css';
 
 export interface Props {
@@ -77,7 +79,7 @@ const allowIndex = indexable && liveIndexing;
   data-school={school}
   data-variant={variant}
   data-brand={brand}
-  data-summer
+  data-noir
 >
   <head>
     <meta charset="utf-8" />

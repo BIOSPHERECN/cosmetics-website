@@ -1,0 +1,114 @@
+/**
+ * 深金主题(NOIR)—— 创始人认可的视觉语气。
+ *
+ * 依据是实测,不是猜:opencode 做的两个站(bohui-cosmetics / marvis-bohui)老板认可,
+ * 而它们的共同点被我量出来了 ——
+ *   底色 #0a0a0a–#0f0f0f 近黑 · 正文 #f5f0eb 暖白 · 强调 #C8A96E 金
+ *   标题用 Playfair Display 类衬线 · 版块高度 879–1802px(极大留白)· 支持主题切换
+ *   **两个站都是 0 张图** —— 所以打动人的是气质,不是素材量。
+ *
+ * 这一点纠正了我之前的判断:我一直以为差距在图片数量(SF 有 184 张),
+ * 于是抓了 42 张图往白底页面里塞。方向错了 —— 老板要的是奢侈品的语气。
+ *
+ * 本主题 = opencode 的深金气质 + Summer Fridays 的版面节奏(满屏首屏、栏数交替)。
+ * 衬线用 Fraunces(开源,可变字重),气质接近 Playfair 但更现代、可调更细。
+ */
+
+html[data-noir][data-brand] {
+  /* ── 表面:三层近黑,靠极小的明度差做层次,不用边框 ────────── */
+  --ck-bg: #0a0a0a;
+  --ck-surface: #121110;
+  --ck-surface-alt: #171512;
+  --ck-band-bg: #060606;
+  --ck-band-ink: #f5f0eb;
+
+  /* ── 文字:暖白而非纯白。纯白在近黑上会刺眼,暖白才有纸感 ──── */
+  --ck-ink: #f5f0eb;
+  --ck-ink-soft: #b8b0a5;
+  --ck-ink-faint: #8a8279;
+
+  /* ── 线条:几乎不可见,只在需要时透出 ─────────────────────── */
+  --ck-line: #221f1c;
+  --ck-line-strong: #3a342c;
+  --ck-border-w: 1px;
+
+  /* ── 金:opencode 用的 #C8A96E,实测值 ───────────────────── */
+  --ck-accent: #c8a96e;
+  --ck-accent-deep: #dcc088;
+  --ck-accent-soft: #1a1610;
+  --ck-on-accent: #0a0a0a;
+
+  /* ── 首屏:满屏高度,金色柔光从右上斜下 ───────────────────── */
+  --ck-hero-bg: #060606;
+  --ck-hero-ink: #f5f0eb;
+  --ck-hero-minh: 100vh;
+  --ck-hero-deco:
+    radial-gradient(58% 70% at 82% 6%, rgba(200, 169, 110, 0.16), transparent 62%),
+    radial-gradient(40% 50% at 12% 96%, rgba(200, 169, 110, 0.08), transparent 66%);
+
+  /* ── 排版:衬线大标题 + 无衬线正文,这是奢侈品站的标准配对 ──── */
+  --ck-font-head: 'Fraunces Variable', Fraunces, 'Instrument Serif', var(--ck-cjk-serif);
+  --ck-font-body: 'Jost Variable', Jost, var(--ck-cjk);
+  --ck-h1: clamp(2.75rem, 1.6rem + 5.2vw, 6.5rem);
+  --ck-h2: clamp(2rem, 1.3rem + 2.6vw, 3.5rem);
+  --ck-h3: clamp(1.25rem, 1.05rem + 0.8vw, 1.75rem);
+  --ck-body: 1.0625rem;
+  --ck-small: 0.9375rem;
+  --ck-weight-head: 400;          /* 衬线大字要细,粗了显笨重 */
+  --ck-lh-head: 1.08;
+  --ck-lh-body: 1.75;
+  --ck-tracking-head: -0.012em;
+  --ck-tracking-eyebrow: 0.28em;  /* 眉标字距拉开,是奢侈品排版的标志 */
+
+  /* ── 节奏:版块极高(实测 879–1802px),留白是这套语气的一半 ── */
+  --ck-section-py: clamp(6rem, 14vh, 11rem);
+  --ck-gap: 2.25rem;
+  --ck-maxw: 82rem;
+  --ck-maxw-prose: 42rem;
+
+  /* ── 形状:直角。圆角会削弱庄重感 ─────────────────────────── */
+  --ck-radius: 0;
+  --ck-radius-lg: 0;
+  --ck-cta-radius: 0;
+  --ck-cta-weight: 500;
+  --ck-cta-tracking: 0.18em;
+  --ck-cta-transform: uppercase;
+  --ck-rule-w: 1px;
+  --ck-shadow: none;
+}
+
+/* 眉标:金色小字 + 一道短横,是这套语气最省力的识别符 */
+html[data-noir][data-brand] .ck-eyebrow {
+  color: var(--ck-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+html[data-noir][data-brand] .ck-eyebrow::before {
+  content: '';
+  width: 2.25rem;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.7;
+}
+
+/* 大标题里的换行:opencode 那两个站的标题都是两行短句,不是一长串 */
+html[data-noir][data-brand] h1,
+html[data-noir][data-brand] h2 {
+  text-wrap: balance;
+  max-width: 16ch;
+}
+
+/* 图片在深底上要压一层,否则亮图会把版面撕开 */
+html[data-noir][data-brand] img {
+  filter: brightness(0.88) saturate(0.92);
+}
+
+/* 卡片不用边框,用极淡的面色差 —— 深色主题里边框会显脏 */
+html[data-noir][data-brand] .cell,
+html[data-noir][data-brand] .cert,
+html[data-noir][data-brand] .card,
+html[data-noir][data-brand] .q {
+  background: var(--ck-surface);
+  border-color: transparent;
+}
