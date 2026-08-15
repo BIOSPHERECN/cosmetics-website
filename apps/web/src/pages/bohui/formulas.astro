@@ -51,9 +51,10 @@ const acts = (s: string) => { try { return JSON.parse(s) as { name: string; pct:
     <b style="color:var(--ad-bad)">所以这里必须是真实配方</b>,库里是样例数据的话,AI 的推荐就是编的。
   </p>
 
-  <div class="warn-bar">
-    ⚠ 当前 {total} 条为搭建期样例数据。请把真实配方导入后再对外开放 AI 共创功能。
-    需要批量导入 Excel/CSV 的话,把表格发我,我按这张表的字段做导入脚本。
+  <div class="note warn">
+    <b>⚠ 当前 {total} 条为搭建期样例数据。</b>AI 是从这张表检索后再解释的,
+    库里是假的推荐就是编的 —— 真配方导入前,AI 检测与共创不该对外开放。
+    <a class="btn pri" href="/bohui/formulas/import/" style="margin-left:.75rem">批量导入真实配方</a>
   </div>
 
   <form class="bar" method="get">
@@ -64,6 +65,7 @@ const acts = (s: string) => { try { return JSON.parse(s) as { name: string; pct:
       {fmts.map((x: any) => <option value={x.format} selected={x.format === fmt}>{x.format}({x.n})</option>)}</select>
     <button class="btn pri" type="submit">筛选</button>
     {(q || cat || fmt) && <a class="btn" href="/bohui/formulas/">清空</a>}
+    <a class="btn" href="/bohui/formulas/import/" style="margin-left:auto">批量导入</a>
   </form>
 
   {rows.length === 0 ? <div class="empty">没有匹配的配方。</div> : (

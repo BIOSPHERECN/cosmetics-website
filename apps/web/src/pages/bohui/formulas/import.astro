@@ -1,0 +1,278 @@
+---
+/**
+ * 配方批量导入。
+ *
+ * 做成页面而不是命令行脚本:创始人不该为了灌一批数据去开终端。
+ * 三步走 —— 贴表格 → 对列 → 预览校验后再写入。
+ * 中间那步「对列」是关键:真实表格的表头千奇百怪(配方号/编号/货号/Code),
+ * 强行要求按我的字段名写表,等于把工作量推回给人。所以自动猜,猜错能改。
+ */
+import AdminShell from '../../../layouts/AdminShell.astro';
+import { pageGuard } from '../../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const n = (await c.db.prepare(`SELECT COUNT(*) n FROM formulas`).first<{ n: number }>())?.n ?? 0;
+
+/** 库字段 → 中文名 + 表头别名(用于自动猜列) */
+const FIELDS = [
+  { key: 'code',        label: '配方号',     req: true,  alias: ['配方号', '配方编号', '编号', '货号', '料号', 'code', 'sku'] },
+  { key: 'category',    label: '品类',       req: false, alias: ['品类', '类别', '分类', 'category'] },
+  { key: 'format',      label: '剂型',       req: false, alias: ['剂型', '形态', '产品形态', 'format', 'form'] },
+  { key: 'benefits',    label: '功效',       req: false, alias: ['功效', '功能', '卖点', '主打功效', 'benefits', 'claims'] },
+  { key: 'actives_json',label: '活性物',     req: false, alias: ['活性物', '主要成分', '核心成分', '添加物', 'actives', 'ingredients'] },
+  { key: 'texture',     label: '肤感',       req: false, alias: ['肤感', '质地', '使用感', 'texture'] },
+  { key: 'moq',         label: '起订量',     req: false, alias: ['起订量', '起订', 'moq', '最小起订'] },
+  { key: 'cost_band',   label: '成本档',     req: false, alias: ['成本档', '成本', '价格档', '档位', 'cost'] },
+  { key: 'lead_days',   label: '打样天数',   req: false, alias: ['打样天数', '打样', '交期', '周期', 'lead'] },
+  { key: 'markets',     label: '可售市场',   req: false, alias: ['可售市场', '市场', '销往', '注册地', 'markets'] },
+  { key: 'cert_notes',  label: '合规备注',   req: false, alias: ['合规备注', '备注', '认证', '合规', 'cert', 'note'] },
+];
+---
+
+<AdminShell title="导入配方" active="formulas" email={c.sess.email}>
+  <nav class="crumb">
+    <a href="/bohui/">仪表盘</a><span>›</span><a href="/bohui/formulas/">配方库</a><span>›</span><b>批量导入</b>
+  </nav>
+
+  <h1>批量导入配方</h1>
+  <p class="lead">
+    从 Excel 里整块复制粘贴,或选一个 CSV 文件。列名不用改成我的写法 ——
+    系统会自动对应,对错了你手动改。当前库里 <b>{n}</b> 条。
+  </p>
+
+  <div class="note info">
+    <b>为什么这件事值得认真做:</b>AI 是从配方表检索后再解释的。
+    库里是样例数据,推荐出来的配方号在现实中不存在,客户一问价就穿帮 ——
+    <b>真配方进来之前,AI 检测与共创不该对外开放</b>。
+  </div>
+
+  <!-- ① 贴数据 -->
+  <section class="card">
+    <div class="card-h"><h2>第一步 · 贴数据</h2>
+      <span class="hint">从 Excel 选中区域(含表头)直接 Ctrl+C / Ctrl+V</span></div>
+    <div class="card-b">
+      <textarea id="raw" rows="8" placeholder="配方号	品类	剂型	功效	活性物	起订量&#10;SR-2401	护肤	精华	保湿、提亮	烟酰胺 2%、神经酰胺 0.5%	3000"></textarea>
+      <div class="row">
+        <label class="btn">选 CSV 文件<input id="file" type="file" accept=".csv,.tsv,.txt" hidden /></label>
+        <button class="btn pri" id="parse">解析</button>
+        <span class="msg" id="pmsg"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ② 对列 -->
+  <section class="card" id="mapCard" hidden>
+    <div class="card-h"><h2>第二步 · 对列</h2><span class="hint" id="mapInfo"></span></div>
+    <div class="card-b">
+      <div class="maps" id="maps"></div>
+      <button class="btn pri" id="check" style="margin-top:1.125rem">校验并预览</button>
+    </div>
+  </section>
+
+  <!-- ③ 预览与写入 -->
+  <section class="card" id="preCard" hidden>
+    <div class="card-h"><h2>第三步 · 预览确认</h2><span class="hint">先验后写:确认没问题再真正入库</span></div>
+    <div class="card-b">
+      <div class="cards" id="stat"></div>
+      <div id="issues"></div>
+      <div class="scrollx"><table id="sample"></table></div>
+      <div class="row" style="margin-top:1.25rem">
+        <button class="btn pri" id="commit">确认导入</button>
+        <span class="msg" id="cmsg"></span>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <style>
+    .crumb { display:flex; align-items:center; gap:.4375rem; font-size:.8125rem; color:var(--ad-faint); margin-bottom:.875rem }
+    .crumb a { color:var(--ad-accent); text-decoration:none }
+    .crumb b { color:var(--ad-ink) }
+    textarea { font-family:var(--ad-mono); font-size:.8125rem; line-height:1.6; white-space:pre; overflow-x:auto }
+    .row { display:flex; gap:.625rem; align-items:center; flex-wrap:wrap; margin-top:.875rem }
+    .msg { font-size:.8125rem; color:var(--ad-bad) }
+    .maps { display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:.75rem }
+    .m { display:grid; gap:.3125rem }
+    .m > span { font-size:.75rem; color:var(--ad-faint) }
+    .m > span i { font-style:normal; color:var(--ad-bad) }
+    .m.on > span { color:var(--ad-accent); font-weight:600 }
+    .scrollx { overflow-x:auto; margin-top:1rem }
+    #sample th, #sample td { white-space:nowrap; font-size:.75rem }
+    .iss { display:grid; gap:.3125rem; margin:1rem 0; max-height:16rem; overflow:auto }
+    .iss .i { display:flex; gap:.625rem; align-items:baseline; font-size:.8125rem;
+              border:1px solid var(--ad-line); border-radius:6px; padding:.375rem .625rem; background:var(--ad-panel) }
+    .iss .i .ln { font-family:var(--ad-mono); color:var(--ad-faint); min-width:4.5rem }
+    .iss .i.bad { border-color:#EFC6C0; background:var(--ad-bad-soft) }
+  </style>
+
+  <script is:inline define:vars={{ FIELDS }}>
+  (() => {
+    const $ = (id) => document.getElementById(id);
+    const toast = $('toast');
+    const say = (m, bad) => { toast.textContent = m; toast.classList.toggle('bad', !!bad); toast.hidden = false;
+      clearTimeout(say.t); say.t = setTimeout(() => { toast.hidden = true; }, 3200); };
+
+    let header = [], data = [], mapped = [];
+
+    /* CSV/TSV 解析。自己写而不是引库:要处理的就是引号内的逗号与换行两件事,
+       为这两件事拉一个依赖不值得,而且 Worker 侧还得再装一份。 */
+    function parseTable(text) {
+      const t = text.replace(/\r\n?/g, '\n').trim();
+      if (!t) return [];
+      // 制表符比逗号多就按 TSV —— 从 Excel 直接粘贴出来的是 TSV
+      const delim = (t.split('\n')[0].match(/\t/g) || []).length >= (t.split('\n')[0].match(/,/g) || []).length ? '\t' : ',';
+      const rows = []; let row = [], cell = '', q = false;
+      for (let i = 0; i < t.length; i++) {
+        const ch = t[i];
+        if (q) {
+          if (ch === '"') { if (t[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+          else cell += ch;
+        } else if (ch === '"') q = true;
+        else if (ch === delim) { row.push(cell); cell = ''; }
+        else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+        else cell += ch;
+      }
+      row.push(cell); rows.push(row);
+      return rows.filter((r) => r.some((x) => String(x).trim()));
+    }
+
+    /* 自动猜列:表头去掉空格与括号后,和别名表做包含匹配。
+       猜不中就留空让人选 —— 猜错比不猜更糟,所以只在明确包含时才认。 */
+    function guess(h) {
+      const norm = (s) => String(s).toLowerCase().replace(/[\s()()\[\]【】·、\/]/g, '');
+      return FIELDS.map((f) => {
+        const idx = h.findIndex((col) => {
+          const cn = norm(col);
+          return f.alias.some((a) => cn === norm(a)) || f.alias.some((a) => cn.includes(norm(a)));
+        });
+        return { ...f, col: idx };
+      });
+    }
+
+    $('file').addEventListener('change', async () => {
+      const f = $('file').files[0]; if (!f) return;
+      $('raw').value = await f.text();
+      $('parse').click();
+    });
+
+    $('parse').addEventListener('click', () => {
+      const rows = parseTable($('raw').value);
+      $('pmsg').textContent = '';
+      if (rows.length < 2) { $('pmsg').textContent = '至少要有表头 + 一行数据'; return; }
+      header = rows[0].map((x) => String(x).trim());
+      data = rows.slice(1);
+      mapped = guess(header);
+
+      const box = $('maps'); box.innerHTML = '';
+      mapped.forEach((f, fi) => {
+        const wrap = document.createElement('label');
+        wrap.className = 'm' + (f.col >= 0 ? ' on' : '');
+        const lab = document.createElement('span');
+        lab.innerHTML = f.label + (f.req ? ' <i>*必填</i>' : '');
+        const sel = document.createElement('select');
+        sel.innerHTML = '<option value="-1">— 不导入 —</option>';
+        header.forEach((h, i) => {
+          const o = document.createElement('option');
+          o.value = i; o.textContent = h || ('第 ' + (i + 1) + ' 列');
+          if (i === f.col) o.selected = true;
+          sel.appendChild(o);
+        });
+        sel.addEventListener('change', () => {
+          mapped[fi].col = +sel.value;
+          wrap.classList.toggle('on', +sel.value >= 0);
+        });
+        wrap.appendChild(lab); wrap.appendChild(sel); box.appendChild(wrap);
+      });
+
+      const got = mapped.filter((f) => f.col >= 0).length;
+      $('mapInfo').textContent = '共 ' + data.length + ' 行数据 · 自动对上 ' + got + '/' + FIELDS.length + ' 列';
+      $('mapCard').hidden = false;
+      $('preCard').hidden = true;
+      $('mapCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    const toRows = () => data.map((r) => {
+      const o = {};
+      mapped.forEach((f) => { if (f.col >= 0) o[f.key] = (r[f.col] ?? '').trim(); });
+      return o;
+    });
+
+    $('check').addEventListener('click', async () => {
+      if (!mapped.find((f) => f.key === 'code' && f.col >= 0)) { say('必须指定「配方号」是哪一列', true); return; }
+      const btn = $('check'); btn.disabled = true; btn.textContent = '校验中…';
+      try {
+        const d = await (await fetch('/api/admin/formula-import', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rows: toRows(), dryRun: true }),
+        })).json();
+        if (!d.ok) throw new Error(d.msg);
+
+        const bad = (d.issues || []).filter((i) => i.level === 'bad').length;
+        $('stat').innerHTML =
+          card('总行数', d.total) + card('可导入', d.valid, 'ok') +
+          card('新增', d.willAdd) + card('更新已有', d.willUpdate) +
+          card('问题', (d.issues || []).length, bad ? 'warn' : '');
+
+        const ib = $('issues'); ib.innerHTML = '';
+        if ((d.issues || []).length) {
+          const box = document.createElement('div'); box.className = 'iss';
+          d.issues.forEach((i) => {
+            const el = document.createElement('div');
+            el.className = 'i' + (i.level === 'bad' ? ' bad' : '');
+            el.innerHTML = '<span class="ln"></span><span class="c"></span><span class="t"></span>';
+            el.querySelector('.ln').textContent = '第 ' + i.line + ' 行';
+            el.querySelector('.c').textContent = i.code;
+            el.querySelector('.t').textContent = i.msg;
+            box.appendChild(el);
+          });
+          ib.appendChild(box);
+        }
+
+        const tb = $('sample');
+        const cols = ['code', 'category', 'format', 'benefits', 'actives_json', 'texture', 'moq', 'cost_band', 'lead_days', 'markets'];
+        const zh = { code:'配方号', category:'品类', format:'剂型', benefits:'功效', actives_json:'活性物',
+                     texture:'肤感', moq:'起订量', cost_band:'成本档', lead_days:'打样', markets:'市场' };
+        tb.innerHTML = '<thead><tr>' + cols.map((k) => '<th>' + zh[k] + '</th>').join('') + '</tr></thead>';
+        const body = document.createElement('tbody');
+        (d.sample || []).forEach((s) => {
+          const tr = document.createElement('tr');
+          cols.forEach((k) => {
+            const td = document.createElement('td');
+            td.textContent = k === 'actives_json'
+              ? (JSON.parse(s[k] || '[]').map((a) => a.name + (a.pct ? ' ' + a.pct : '')).join('、') || '—')
+              : (s[k] ?? '—');
+            tr.appendChild(td);
+          });
+          body.appendChild(tr);
+        });
+        tb.appendChild(body);
+
+        $('preCard').hidden = false;
+        $('preCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (e) { say(e.message || '校验失败', true); }
+      btn.disabled = false; btn.textContent = '校验并预览';
+    });
+
+    function card(k, v, cls) {
+      return '<div class="card ' + (cls || '') + '"><div class="k">' + k + '</div><div class="v num">' + v + '</div></div>';
+    }
+
+    $('commit').addEventListener('click', async () => {
+      const btn = $('commit'); btn.disabled = true; btn.textContent = '写入中…';
+      try {
+        const d = await (await fetch('/api/admin/formula-import', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rows: toRows(), dryRun: false }),
+        })).json();
+        if (!d.ok) throw new Error(d.msg);
+        say('已导入 ' + d.imported + ' 条(新增 ' + d.added + ',更新 ' + d.updated + ')');
+        setTimeout(() => { location.href = '/bohui/formulas/'; }, 1400);
+      } catch (e) { $('cmsg').textContent = e.message || '导入失败'; btn.disabled = false; btn.textContent = '确认导入'; }
+    });
+  })();
+  </script>
+</AdminShell>

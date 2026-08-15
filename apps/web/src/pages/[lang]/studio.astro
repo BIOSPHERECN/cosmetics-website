@@ -1,0 +1,269 @@
+---
+/**
+ * AI 共创工作台 —— 一句话说需求,拿到可打样的配方方案。
+ *
+ * 与「AI 肌肤检测」的分工:
+ *   检测解决「客户不知道自己要什么」——从一张脸出发;
+ *   共创解决「客户知道要什么但说不清楚」——从一句话出发。
+ *   两者共用同一条 grounding 管线,推荐的配方都来自真实配方库。
+ *
+ * 页面刻意不做成聊天框:B2B 客户要的是一份能带回去开会的方案,
+ * 不是一段会滚走的对话。所以输入一次、输出一版结构化方案,可直接转询盘。
+ */
+import { env } from 'cloudflare:workers';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const db = (env as any).DB as D1Database | undefined;
+
+const nModel = db
+  ? ((await db.prepare(`SELECT COUNT(*) n FROM providers WHERE enabled=1 AND api_keys<>''`)
+      .first<{ n: number }>().catch(() => null))?.n ?? 0)
+  : 0;
+const nReal = db
+  ? ((await db.prepare(`SELECT COUNT(*) n FROM formulas WHERE status='active'`)
+      .first<{ n: number }>().catch(() => null))?.n ?? 0)
+  : 0;
+
+const T = zh ? {
+  eyebrow: 'AI 共创工作台',
+  title: '一句话说需求,当场拿到配方方案',
+  lead: `把你想做的产品用日常话描述出来 —— 品类、想要的功效、卖到哪些市场、大概起订多少。
+         系统会解析成结构化条件,从 ${nReal} 支在库配方里检索匹配项,并说明每一支为什么适配。`,
+  ph: '例:我想做一款主打保湿和修护的面部精华,目标客群是敏感肌,主要卖欧洲和日本,首批 5000 支左右。',
+  run: '生成方案',
+  running: '解析需求、检索配方中…',
+  parsed: '解析出的需求',
+  matched: '匹配到的配方',
+  advice: '方案说明',
+  inquiry: '就这套方案发起询盘',
+  again: '换个需求再试',
+  eg: '试试这些:',
+  examples: [
+    '做一支油皮用的控油精华,卖国内和东南亚,先做 3000 支',
+    '想要一款孕妇可用的温和洁面,成分越简单越好',
+    '男士抗初老面霜,要清爽不油腻,出口欧盟',
+  ],
+  noModel: '尚未配置模型,此功能暂不可用。',
+  sample: '⚠ 当前配方库为搭建期样例数据,以下结果仅供体验,不可直接下单。',
+  moq: '起订', lead_: '打样', mkt: '可售',
+} : {
+  eyebrow: 'AI Co-Creation',
+  title: 'Describe it in one sentence, get a formula plan',
+  lead: `Describe the product you have in mind — category, the effects you want, target markets, rough order size.
+         We parse it into structured criteria, search ${nReal} formulas in our library, and explain why each one fits.`,
+  ph: 'e.g. A facial serum focused on hydration and barrier repair, for sensitive skin, mainly for Europe and Japan, first run about 5,000 units.',
+  run: 'Generate plan',
+  running: 'Parsing and searching…',
+  parsed: 'Parsed criteria',
+  matched: 'Matching formulas',
+  advice: 'Notes',
+  inquiry: 'Start an inquiry for this plan',
+  again: 'Try another brief',
+  eg: 'Try one of these:',
+  examples: [
+    'An oil-control serum for oily skin, for China and SE Asia, 3,000 units to start',
+    'A gentle cleanser safe for pregnancy, the simpler the formula the better',
+    "Men's early anti-ageing cream, light finish, for the EU",
+  ],
+  noModel: 'No model configured yet — this feature is unavailable.',
+  sample: '⚠ The formula library currently holds sample data. Results are for demonstration only.',
+  moq: 'MOQ', lead_: 'Sampling', mkt: 'Markets',
+};
+const dir = ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr';
+---
+
+<html lang={lang} dir={dir}>
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{T.title} · 帛卉</title>
+  <meta name="description" content={T.lead} />
+  <style>
+    :root {
+      --ink:#0F1A14; --soft:#46564C; --faint:#7A8A80;
+      --ground:#F6F8F5; --panel:#FFFFFF; --line:#DDE6DD; --sunk:#EDF2EC;
+      --herb:#1F6B3A; --herb-deep:#17512C; --herb-soft:#E4F0E7;
+      --warn:#8A5A00; --warn-soft:#FBF0DC;
+      font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',system-ui,sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--ground);color:var(--ink);line-height:1.75}
+    .wrap{max-width:48rem;margin:0 auto;padding:3rem 1.25rem 5rem}
+    .eyebrow{font-size:.6875rem;letter-spacing:.2em;text-transform:uppercase;color:var(--herb);margin:0 0 .625rem}
+    h1{font-size:clamp(1.5rem,1.1rem+1.9vw,2.25rem);line-height:1.18;letter-spacing:-0.02em;margin:0 0 .75rem;text-wrap:balance}
+    .lead{color:var(--soft);margin:0 0 2rem}
+
+    .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.375rem}
+    textarea{font:inherit;font-size:1rem;line-height:1.7;width:100%;min-height:7rem;resize:vertical;
+             padding:.875rem 1rem;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink)}
+    textarea:focus{outline:none;border-color:var(--herb);box-shadow:0 0 0 3px var(--herb-soft)}
+    .egs{display:flex;gap:.4375rem;flex-wrap:wrap;margin:.875rem 0 0;align-items:baseline}
+    .egs .t{font-size:.75rem;color:var(--faint)}
+    .eg{font:inherit;font-size:.8125rem;background:var(--sunk);border:1px solid var(--line);color:var(--soft);
+        border-radius:999px;padding:.25rem .75rem;cursor:pointer;text-align:start}
+    .eg:hover{border-color:var(--herb);color:var(--herb)}
+    button.go{font:inherit;font-size:1rem;font-weight:600;width:100%;margin-top:1.125rem;
+              padding:.9375rem;border:0;border-radius:9px;background:var(--herb);color:#fff;cursor:pointer}
+    button.go:hover:not(:disabled){background:var(--herb-deep)}
+    button.go:disabled{opacity:.45;cursor:not-allowed}
+    .msg{margin:.75rem 0 0;font-size:.875rem;color:#A02B20;min-height:1.4em}
+    .off{background:#FBE7E4;border:1px solid #EFC6C0;color:#8A2018;border-radius:10px;
+         padding:.9375rem 1.125rem;font-size:.875rem;margin-bottom:1.25rem}
+    .warnbar{background:var(--warn-soft);border:1px solid #EFDCB6;color:#6E4700;border-radius:10px;
+             padding:.8125rem 1.0625rem;font-size:.8125rem;margin:1.5rem 0 0}
+
+    #out{display:none} #out.on{display:block}
+    h2{font-size:1rem;margin:2.25rem 0 .75rem}
+    .tags{display:flex;flex-wrap:wrap;gap:.4375rem;margin:0;padding:0;list-style:none}
+    .tags li{background:var(--herb-soft);color:var(--herb-deep);border-radius:999px;padding:.25rem .75rem;font-size:.8125rem}
+    .fm{border:1px solid var(--line);border-radius:11px;padding:1.125rem 1.25rem;margin-bottom:.75rem;background:var(--panel)}
+    .fm .hd{display:flex;align-items:baseline;gap:.625rem;flex-wrap:wrap}
+    .fm code{font-family:ui-monospace,monospace;font-size:1rem;font-weight:700}
+    .fm .cat{font-size:.75rem;color:var(--faint)}
+    .fm .sm{font-size:.6875rem;background:var(--warn-soft);color:var(--warn);border-radius:4px;padding:.0625rem .375rem}
+    .fm .ben{display:flex;gap:.3125rem;flex-wrap:wrap;margin-top:.5rem}
+    .fm .ben span{font-size:.75rem;background:var(--sunk);border-radius:4px;padding:.0625rem .4375rem;color:var(--soft)}
+    .fm .act{margin-top:.5rem;font-size:.8125rem;color:var(--soft)}
+    .fm .spec{margin-top:.625rem;padding-top:.625rem;border-top:1px solid var(--line);
+              display:flex;gap:1.25rem;flex-wrap:wrap;font-size:.75rem;color:var(--faint)}
+    .fm .spec b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+    .adv{white-space:pre-wrap;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:1.125rem 1.25rem}
+    .acts{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1.5rem}
+    .cta{display:inline-block;padding:.8125rem 1.5rem;background:var(--herb);color:#fff;
+         text-decoration:none;border-radius:9px;font-weight:600}
+    .ghost{display:inline-block;padding:.8125rem 1.5rem;border:1px solid var(--line);
+           color:var(--soft);text-decoration:none;border-radius:9px;background:var(--panel);cursor:pointer;font:inherit}
+    @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="eyebrow">{T.eyebrow}</p>
+    <h1>{T.title}</h1>
+    <p class="lead">{T.lead}</p>
+
+    {nModel === 0 && <div class="off">{T.noModel}</div>}
+
+    <div class="box">
+      <textarea id="brief" placeholder={T.ph}></textarea>
+      <div class="egs">
+        <span class="t">{T.eg}</span>
+        {T.examples.map((e) => <button type="button" class="eg">{e}</button>)}
+      </div>
+      <button class="go" id="go">{T.run}</button>
+      <p class="msg" id="msg"></p>
+    </div>
+
+    <div id="out">
+      <h2>{T.parsed}</h2>
+      <ul class="tags" id="filters"></ul>
+      <div id="samplebar"></div>
+      <h2>{T.matched}</h2>
+      <div id="list"></div>
+      <h2>{T.advice}</h2>
+      <div class="adv" id="adv"></div>
+      <div class="acts">
+        <a class="cta" id="cta" href={`/${lang}/contact/`}>{T.inquiry}</a>
+        <button class="ghost" id="reset">{T.again}</button>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline define:vars={{ lang, T }}>
+  (() => {
+    const $ = (id) => document.getElementById(id);
+    const brief = $('brief'), go = $('go'), msg = $('msg'), out = $('out');
+
+    document.querySelectorAll('.eg').forEach((b) =>
+      b.addEventListener('click', () => { brief.value = b.textContent; brief.focus(); }));
+
+    $('reset').addEventListener('click', () => {
+      out.classList.remove('on'); brief.value = ''; brief.focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    /* 解析出的条件用中文标签展示 —— 客户不该看到 skincare/hydrating 这种内部码 */
+    const CAT = { skincare:'护肤', makeup:'彩妆', cleansing:'清洁', oral:'口腔', body:'身体', hair:'洗护' };
+    const BEN = { hydrating:'保湿', brightening:'提亮', 'anti-aging':'抗初老', soothing:'舒缓',
+                  barrier:'修护屏障', acne:'控油祛痘', firming:'紧致', whitening:'美白', repair:'修护' };
+    const isZh = lang.indexOf('zh') === 0;
+    const cn = (map, v) => (isZh && map[v]) ? map[v] : v;
+
+    go.addEventListener('click', async () => {
+      const input = brief.value.trim();
+      if (input.length < 4) { msg.textContent = T.ph; return; }
+      go.disabled = true; go.textContent = T.running; msg.textContent = ''; out.classList.remove('on');
+      try {
+        const r = await fetch('/api/studio', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input, lang, site: new URLSearchParams(location.search).get('site') || 'beauty2oem' }),
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.msg || '生成失败');
+
+        const f = $('filters'); f.innerHTML = '';
+        const chips = [];
+        if (d.filters.category) chips.push(cn(CAT, d.filters.category));
+        if (d.filters.format) chips.push(d.filters.format);
+        (d.filters.benefits || []).forEach((b) => chips.push(cn(BEN, b)));
+        (d.filters.markets || []).forEach((m) => chips.push(m));
+        if (d.filters.qty) chips.push((isZh ? '约 ' : '≈ ') + d.filters.qty);
+        if (!chips.length) chips.push(isZh ? '未解析出明确条件,已按全库匹配' : 'No explicit criteria — searched the whole library');
+        chips.forEach((c) => { const li = document.createElement('li'); li.textContent = c; f.appendChild(li); });
+
+        $('samplebar').innerHTML = '';
+        if (d.hasSample) {
+          const w = document.createElement('div'); w.className = 'warnbar'; w.textContent = T.sample;
+          $('samplebar').appendChild(w);
+        }
+
+        const list = $('list'); list.innerHTML = '';
+        (d.matched || []).forEach((m) => {
+          const el = document.createElement('div'); el.className = 'fm';
+          const hd = document.createElement('div'); hd.className = 'hd';
+          const code = document.createElement('code'); code.textContent = m.code;
+          const cat = document.createElement('span'); cat.className = 'cat';
+          cat.textContent = cn(CAT, m.category) + ' · ' + m.format;
+          hd.appendChild(code); hd.appendChild(cat);
+          if (m.isSample) { const s = document.createElement('span'); s.className = 'sm'; s.textContent = isZh ? '样例' : 'sample'; hd.appendChild(s); }
+          el.appendChild(hd);
+
+          if ((m.benefits || []).length) {
+            const b = document.createElement('div'); b.className = 'ben';
+            m.benefits.forEach((x) => { const s = document.createElement('span'); s.textContent = cn(BEN, x); b.appendChild(s); });
+            el.appendChild(b);
+          }
+          if ((m.actives || []).length) {
+            const a = document.createElement('div'); a.className = 'act';
+            a.textContent = m.actives.map((x) => x.name + (x.pct ? ' ' + x.pct : '')).join('、');
+            el.appendChild(a);
+          }
+          const sp = document.createElement('div'); sp.className = 'spec';
+          const bits = [];
+          if (m.moq) bits.push([T.moq, m.moq]);
+          if (m.leadDays) bits.push([T.lead_, m.leadDays + (isZh ? ' 天' : 'd')]);
+          if (m.texture) bits.push([isZh ? '肤感' : 'Texture', m.texture]);
+          if ((m.markets || []).length) bits.push([T.mkt, m.markets.join('/')]);
+          bits.forEach(([k, v]) => {
+            const s = document.createElement('span'); s.textContent = k + ' ';
+            const b = document.createElement('b'); b.textContent = v;
+            s.appendChild(b); sp.appendChild(s);
+          });
+          if (bits.length) el.appendChild(sp);
+          list.appendChild(el);
+        });
+
+        $('adv').textContent = d.advice || (isZh ? '(模型未返回说明,可重试)' : '(no notes returned)');
+        const codes = (d.matched || []).map((m) => m.code).join(',');
+        $('cta').href = '/' + lang + '/contact/?formulas=' + encodeURIComponent(codes) + '&brief=' + encodeURIComponent(input.slice(0, 300));
+        out.classList.add('on');
+        out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (e) { msg.textContent = e.message || '生成失败,请重试'; }
+      go.disabled = false; go.textContent = T.run;
+    });
+  })();
+  </script>
+</body>
+</html>
