@@ -175,14 +175,35 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
   <SiteHeader locale={lang} path={path} siteName={site!.name} siteNameZh={site!.tagline ?? ''} nav={bundle!.nav} />
 
   <main id="main">
+    {/*
+      内页页头 —— 首页不需要(首屏的 h1 就是它),内页必须有。
+      实测发现 5 站 × 5 个内页共 25 页**一个 h1 都没有**:
+      版块里的标题都是 h2,页面标题只活在 <title> 里。
+      对搜索引擎和读屏器来说,这样的页面等于没说自己是讲什么的 ——
+      而这条产品线的打法正是 SEO/GEO,内页没有 h1 是直接漏分的。
+    */}
+    {!bundle!.blocks.some((b) => b.type === 'hero') && (
+      <section class="ck-section pagehead">
+        <div class="ck-wrap">
+          <h1>{bundle!.page.title}</h1>
+          {bundle!.page.seo_desc && <p class="ph-lead">{bundle!.page.seo_desc}</p>}
+        </div>
+      </section>
+    )}
+
     {bundle!.blocks.map((b) => {
       const d = b.data as any;
       switch (b.type) {
         case 'hero':
           // demo 阶段:每站取一张占位实拍图证明图片管线通;真图入库后由 d.image 覆盖
+          //
+          // 标题为空时回落到页面标题 —— 实测发现 5 站 × 5 个内页的 hero 都是
+          // "title":"",于是渲染出 <h1></h1>:标签在、字没有。
+          // 对搜索引擎和读屏器来说这等于没标题,而这条线的打法正是 SEO/GEO。
+          // 数据侧已回填,但兜底留在代码里:以后任何人清空标题都不会再漏出空 h1。
           return (
             <Hero
-              hero={d}
+              hero={{ ...d, title: (d.title ?? '').trim() || bundle!.page.title }}
               ctaHref={`/${lang}/contact/`}
               highlights={d.stats ?? []}
               image={d.image ?? DEMO_SHOT[site!.id]}
@@ -259,3 +280,26 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
   <Motion />
 </BaseLayout>
 )}
+
+<style>
+  /* 内页页头。上下留白比常规版块小 —— 它是引子不是内容,
+     占太多屏会把真正的内容推下去。 */
+  .pagehead {
+    padding-block: calc(var(--ck-section-py) * 0.62) calc(var(--ck-section-py) * 0.38);
+    background: var(--ck-bg);
+  }
+  .pagehead h1 {
+    margin: 0;
+    max-width: 20ch;
+    line-height: 1.06;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+  .pagehead .ph-lead {
+    margin: 1.125rem 0 0;
+    max-width: var(--ck-maxw-prose);
+    color: var(--ck-ink-soft);
+    font-size: 1.0625rem;
+    line-height: 1.7;
+  }
+</style>
