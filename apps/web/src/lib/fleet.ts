@@ -15,6 +15,10 @@
  */
 
 export interface Provider {
+  /** 能否读图(图生文)。与 image(文生图)是两种能力,别混用 */
+  vision?: boolean;
+  /** 视觉模型名,通常与文本模型不同 */
+  visionModel?: string;
   id: string;
   label: string;
   /** 优先级,数字小的先用 */
@@ -99,12 +103,13 @@ export async function loadFleet(db: D1Database | undefined, env: FleetEnv): Prom
   try {
     const { results } = await db
       .prepare(
-        `SELECT id,label,base_url,model,api_keys,tier,can_image,can_video,is_free
+        `SELECT id,label,base_url,model,api_keys,tier,can_image,can_video,can_vision,vision_model,is_free
            FROM providers WHERE enabled = 1 ORDER BY tier, id`,
       )
       .all<{
         id: string; label: string; base_url: string; model: string; api_keys: string;
-        tier: number; can_image: number; can_video: number; is_free: number;
+        tier: number; can_image: number; can_video: number; can_vision: number;
+        vision_model: string | null; is_free: number;
       }>();
 
     const list: Provider[] = (results ?? [])
@@ -117,6 +122,9 @@ export async function loadFleet(db: D1Database | undefined, env: FleetEnv): Prom
         keys: (r.api_keys || '').split(',').map((s) => s.trim()).filter(Boolean),
         image: !!r.can_image,
         video: !!r.can_video,
+        vision: !!r.can_vision,
+        // 视觉模型往往和文本模型不是同一个;没单独填就退回文本模型试
+        visionModel: r.vision_model || r.model,
         free: !!r.is_free,
       }))
       // 没填 key 的供应商不入列 —— 留在库里是为了保留配置,但不参与降级链,
@@ -201,6 +209,58 @@ export async function chat(
 }
 
 /** 出图。目前只有 Agnes 具备,没有则明确报错而不是静默返回空 */
+/**
+ * 读图 —— 把一张图 + 一段提问交给视觉模型,拿回文本。
+ *
+ * 走 OpenAI 的多模态消息格式(content 是数组),目前国内外主流兼容接口都认这个。
+ * 只在具备 vision 能力的供应商之间降级 —— 让纯文本模型去读图只会白等一次超时。
+ */
+export async function vision(
+  env: FleetEnv,
+  imageDataUrl: string,
+  prompt: string,
+  opts: { system?: string; json?: boolean; maxTokens?: number; fleet?: Provider[] } = {},
+): Promise<ChatResult> {
+  const pool = (opts.fleet ?? buildFleet(env)).filter((p) => p.vision);
+  if (!pool.length) throw new Error('[fleet] 没有配置具备读图能力的模型');
+
+  const errs: string[] = [];
+  for (const p of pool) {
+    const t0 = Date.now();
+    try {
+      const messages: any[] = [];
+      if (opts.system) messages.push({ role: 'system', content: opts.system });
+      messages.push({
+        role: 'user',
+        content: [
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: { url: imageDataUrl } },
+        ],
+      });
+      const r = await fetch(endpoint(p.base, 'chat/completions'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${pickKey(p)}` },
+        body: JSON.stringify({
+          model: p.visionModel ?? p.model,
+          messages,
+          temperature: 0.2,
+          max_tokens: opts.maxTokens ?? 900,
+          ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
+        }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      if (!r.ok) { errs.push(`${p.id}:${r.status}`); continue; }
+      const d = (await r.json()) as any;
+      const text = d?.choices?.[0]?.message?.content ?? '';
+      if (!text) { errs.push(`${p.id}:空响应`); continue; }
+      return { text, provider: p.id, model: p.visionModel ?? p.model, ms: Date.now() - t0 };
+    } catch (e) {
+      errs.push(`${p.id}:${e instanceof Error ? e.message.slice(0, 40) : '异常'}`);
+    }
+  }
+  throw new Error(`[fleet] 视觉模型全部不可用 → ${errs.join(' | ')}`);
+}
+
 export async function image(env: FleetEnv, prompt: string, fleet?: Provider[]): Promise<string[]> {
   const p = (fleet ?? buildFleet(env)).find((x) => x.image);
   if (!p) throw new Error('[fleet] 当前舰队无出图能力(需配置 Agnes)');

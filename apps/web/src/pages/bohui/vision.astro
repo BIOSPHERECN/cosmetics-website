@@ -1,0 +1,145 @@
+---
+/**
+ * 视觉模型横评 —— 「哪个模型更好」由实测回答,不由榜单回答。
+ *
+ * 通用榜单测的是看图说话的平均水平;我们要的是「读肌肤外观 + 稳定吐 JSON」。
+ * 这两件事排名常常不一样,而下游要拿 JSON 去检索配方,所以结构化稳定性比文采重要。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const { results: rows } = await c.db.prepare(
+  `SELECT id, label, vision_model, can_vision,
+          CASE WHEN api_keys='' THEN 0 ELSE 1 END AS has_key, enabled
+     FROM providers ORDER BY tier, id`
+).all<any>();
+const withKey = rows.filter((r: any) => r.has_key);
+const visionReady = rows.filter((r: any) => r.has_key && r.can_vision);
+---
+
+<AdminShell title="视觉模型横评" active="models" email={c.sess.email}>
+  <h1>视觉模型横评</h1>
+  <p class="lead">
+    传一张照片,<b>所有已配 key 的供应商同时跑一遍</b>,并排看谁读得准、谁吐得稳、谁快。
+    当前 {withKey.length} 家有 key,其中 {visionReady.length} 家已标记可读图 ——
+    没标记的也会一起测,因为「标记」是我们填的,跑通了才是事实。
+  </p>
+
+  {withKey.length === 0 && (
+    <div class="note bad">还没有任何一家配了 key,无法横评。先去<a href="/bohui/models/">模型舰队</a>填 key。</div>
+  )}
+
+  <div class="note info">
+    <b>评分只算能自动判的三件事:</b>能不能跑通(2 分)· 是否输出合法 JSON(2 分)· 必需字段齐不齐(每个 2 分,共 3 个)。
+    「描述得好不好」不假装能自动打分 —— 并排原文在下面,你自己看更准。
+  </div>
+
+  <div class="card">
+    <label class="drop" id="drop">
+      <span id="hint">点这里选一张测试照片</span>
+      <input id="pick" type="file" accept="image/*" hidden />
+    </label>
+    <p class="tip">建议用一张真实的肌肤照片 —— 用风景图测不出我们关心的能力。照片只在内存里传给各模型,不入库。</p>
+    <button class="btn pri" id="go" disabled>开始横评</button>
+    <span class="msg" id="msg"></span>
+  </div>
+
+  <div id="out"></div>
+
+  <style>
+    .card { background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: 10px;
+            padding: 1.25rem; display: grid; gap: .875rem; justify-items: start; margin-bottom: 1.25rem; }
+    .drop { width: 100%; max-width: 22rem; aspect-ratio: 4/3; border: 2px dashed var(--ad-line);
+            border-radius: 9px; display: grid; place-items: center; cursor: pointer;
+            background: #FBFCFB; color: var(--ad-faint); font-size: .875rem; overflow: hidden; }
+    .drop:hover { border-color: var(--ad-accent); }
+    .drop img { width: 100%; height: 100%; object-fit: cover; }
+    .tip { font-size: .8125rem; color: var(--ad-faint); margin: 0; }
+    .msg { font-size: .8125rem; color: var(--ad-bad); }
+    .rk { display: grid; gap: .75rem; }
+    .r { background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: 10px; overflow: hidden; }
+    .r.win { border-color: var(--ad-accent); box-shadow: 0 0 0 2px var(--ad-accent-soft); }
+    .rh { display: flex; gap: .625rem; align-items: center; flex-wrap: wrap;
+          padding: .75rem 1rem; background: #FAFBFB; border-bottom: 1px solid var(--ad-line); }
+    .rh .rank { font-family: var(--ad-mono); font-weight: 700; color: var(--ad-faint); }
+    .r.win .rank { color: var(--ad-accent); }
+    .rh b { font-size: .9375rem; }
+    .rh code { font-size: .6875rem; color: var(--ad-faint); }
+    .rh .sp { margin-left: auto; display: flex; gap: .5rem; align-items: center; }
+    .rb { padding: .875rem 1rem; }
+    .rb pre { margin: 0; font-size: .75rem; line-height: 1.6; white-space: pre-wrap;
+              word-break: break-word; background: #FAFBFB; border: 1px solid var(--ad-line);
+              border-radius: 7px; padding: .75rem; max-height: 18rem; overflow: auto; }
+    .rb .no { font-size: .8125rem; color: var(--ad-bad); margin: 0; }
+  </style>
+
+  <script is:inline>
+  (() => {
+    const pick = document.getElementById('pick'), drop = document.getElementById('drop');
+    const go = document.getElementById('go'), msg = document.getElementById('msg'), out = document.getElementById('out');
+    let dataUrl = null;
+
+    pick.addEventListener('change', async () => {
+      const f = pick.files && pick.files[0]; if (!f) return;
+      const bmp = await createImageBitmap(f);
+      const s = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+      const w = Math.round(bmp.width * s), h = Math.round(bmp.height * s);
+      const cv = new OffscreenCanvas(w, h);
+      cv.getContext('2d').drawImage(bmp, 0, 0, w, h); bmp.close();
+      let q = .8, blob = await cv.convertToBlob({ type: 'image/webp', quality: q });
+      while (blob.size > 1400000 && q > .4) { q -= .12; blob = await cv.convertToBlob({ type: 'image/webp', quality: q }); }
+      dataUrl = await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+      drop.innerHTML = ''; const img = document.createElement('img'); img.src = dataUrl; img.alt = '';
+      drop.appendChild(img); drop.appendChild(pick);
+      go.disabled = false;
+    });
+
+    go.addEventListener('click', async () => {
+      go.disabled = true; go.textContent = '各家并发跑中,约 20-40 秒…'; msg.textContent = ''; out.innerHTML = '';
+      try {
+        const r = await fetch('/api/admin/vision-bench', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: dataUrl }),
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.msg);
+        const box = document.createElement('div'); box.className = 'rk';
+        d.list.forEach((x, i) => {
+          const el = document.createElement('div');
+          el.className = 'r' + (i === 0 && x.ok ? ' win' : '');
+          const fields = x.fields && x.fields.length ? x.fields.join('/') : '—';
+          el.innerHTML =
+            '<div class="rh"><span class="rank"></span><b></b><code></code>' +
+            '<span class="sp"><span class="pill"></span><span class="pill p-wait"></span><span class="pill p-wait"></span></span></div>' +
+            '<div class="rb"></div>';
+          el.querySelector('.rank').textContent = '#' + (i + 1);
+          el.querySelector('b').textContent = x.label || x.id;
+          el.querySelector('code').textContent = x.model;
+          const pills = el.querySelectorAll('.pill');
+          pills[0].className = 'pill ' + (x.ok ? 'p-ok' : 'p-bad');
+          pills[0].textContent = x.ok ? '得分 ' + x.score + '/10' : '不可用';
+          pills[1].textContent = x.json_ok ? 'JSON 合法' : (x.ok ? 'JSON 不合法' : '—');
+          pills[2].textContent = x.ms ? x.ms + 'ms' : '—';
+          const body = el.querySelector('.rb');
+          if (x.ok) {
+            const p = document.createElement('pre'); p.textContent = x.text; body.appendChild(p);
+            if (x.note) { const n = document.createElement('p'); n.className = 'no'; n.textContent = x.note; body.appendChild(n); }
+            const f = document.createElement('p'); f.className = 'tip'; f.style.marginTop = '.5rem';
+            f.textContent = '命中必需字段:' + fields;
+            body.appendChild(f);
+          } else {
+            const n = document.createElement('p'); n.className = 'no'; n.textContent = x.note || '调用失败'; body.appendChild(n);
+          }
+          box.appendChild(el);
+        });
+        out.appendChild(box);
+      } catch (e) { msg.textContent = e.message || '横评失败'; }
+      go.disabled = false; go.textContent = '开始横评';
+    });
+  })();
+  </script>
+</AdminShell>

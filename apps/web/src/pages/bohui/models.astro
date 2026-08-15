@@ -22,12 +22,13 @@ type Row = {
   id: string; label: string; base_url: string; model: string; tier: number;
   can_image: number; can_video: number; is_free: number; enabled: number; nkeys: number;
   last_ok: number | null; last_ms: number | null; last_note: string | null; last_check_at: string | null;
+  can_vision: number; vision_model: string | null;
 };
 let rows: Row[] = [];
 if (db) {
   const { results } = await db
     .prepare(
-      `SELECT id,label,base_url,model,tier,can_image,can_video,is_free,enabled,
+      `SELECT id,label,base_url,model,tier,can_image,can_video,can_vision,vision_model,is_free,enabled,
               last_ok,last_ms,last_note,last_check_at,
               CASE WHEN api_keys='' THEN 0
                    ELSE LENGTH(api_keys)-LENGTH(REPLACE(api_keys,',',''))+1 END AS nkeys
@@ -63,6 +64,12 @@ const imageReady = ready.filter((r) => r.can_image).length;
     </div>
   )}
 
+  <p class="probe">
+    <button type="button" class="btn" id="vprobe">实测:哪几家真能读图</button>
+    <span class="hintline">发一张 8×8 的小图问颜色 —— 能不能读图不靠翻文档,测一次就知道。</span>
+  </p>
+  <div id="vout"></div>
+
   <form autocomplete="off">
   <div class="tblwrap">
     <table>
@@ -87,12 +94,17 @@ const imageReady = ready.filter((r) => r.can_image).length;
               <div class="tags">
                 <code>{r.id}</code>
                 {r.is_free ? <span class="tag free">免费</span> : null}
-                {r.can_image ? <span class="tag">图</span> : null}
+                {r.can_image ? <span class="tag">出图</span> : null}
+                {r.can_vision ? <span class="tag vis">读图</span> : null}
                 {r.can_video ? <span class="tag">视频</span> : null}
               </div>
             </td>
             <td><input name={`base-${r.id}`} data-f="base_url" value={r.base_url} spellcheck="false" /></td>
-            <td><input name={`model-${r.id}`} data-f="model" value={r.model} spellcheck="false" /></td>
+            <td>
+              <input name={`model-${r.id}`} data-f="model" value={r.model} spellcheck="false" />
+              <input name={`vm-${r.id}`} data-f="vision_model" value={r.vision_model ?? ''} spellcheck="false"
+                     placeholder="视觉模型(留空=不读图)" style="margin-top:.3125rem" />
+            </td>
             <td>
               {/* autocomplete="new-password":这一格是 type=password,
                   不加这句浏览器会把整页当登录表单,把保存的邮箱塞进上面的输入框 */}
@@ -153,6 +165,13 @@ const imageReady = ready.filter((r) => r.can_image).length;
 
   <style>
     .lead b { color: var(--ad-ink); }
+    .probe { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin: 0 0 1rem; }
+    .hintline { font-size: .75rem; color: var(--ad-faint); }
+    .tag.vis { background: #E3F0EE; color: #0E6B62; }
+    #vout:not(:empty) { margin-bottom: 1.125rem; display: grid; gap: .3125rem; }
+    #vout .row { display: flex; gap: .625rem; align-items: center; font-size: .8125rem;
+                 background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: 7px; padding: .4375rem .75rem; }
+    #vout .row b { min-width: 7rem; }
     .note { padding: .8125rem 1.0625rem; border-radius: 8px; font-size: .8125rem; line-height: 1.65; margin-bottom: 1.125rem; }
     .note.warn { background: #fdf1e0; border: 1px solid #f0dcb8; color: #7a4a00; }
     .note.bad { background: #fdecea; border: 1px solid #f3c9c4; color: #8a2018; }
@@ -213,7 +232,8 @@ const imageReady = ready.filter((r) => r.can_image).length;
       const v = (f) => tr.querySelector(`[data-f="${f}"]`).value;
       b.disabled = true;
       const d = await post({ id: b.dataset.save, label: v('label'), base_url: v('base_url'),
-                             model: v('model'), api_keys: v('api_keys'), tier: Number(v('tier')) });
+                             model: v('model'), vision_model: v('vision_model'),
+                             api_keys: v('api_keys'), tier: Number(v('tier')) });
       b.disabled = false;
       if (d.ok) location.reload(); else say(d.msg || '保存失败', true);
     }));
@@ -240,6 +260,27 @@ const imageReady = ready.filter((r) => r.can_image).length;
       } catch (e) { out.innerHTML = '<span class="pill p-bad">请求失败</span>'; }
       b.disabled = false;
     }));
+
+    document.getElementById('vprobe').addEventListener('click', async (e) => {
+      const b = e.currentTarget, box = document.getElementById('vout');
+      b.disabled = true; b.textContent = '实测中,逐家发图…';
+      box.innerHTML = '';
+      try {
+        const d = await (await fetch('/api/admin/fleet-health?vision=1')).json();
+        (d.list || []).forEach((x) => {
+          const row = document.createElement('div');
+          row.className = 'row';
+          row.innerHTML = '<b></b><span class="pill"></span><span class="n"></span>';
+          row.querySelector('b').textContent = x.id;
+          const pill = row.querySelector('.pill');
+          pill.className = 'pill ' + (x.ok ? 'p-ok' : 'p-wait');
+          pill.textContent = x.ok ? '能读图' : '不能';
+          row.querySelector('.n').textContent = x.note + (x.ms ? ' · ' + x.ms + 'ms' : '');
+          box.appendChild(row);
+        });
+      } catch (err) { box.textContent = '实测失败:' + err.message; }
+      b.disabled = false; b.textContent = '实测:哪几家真能读图';
+    });
 
     document.getElementById('n-add').addEventListener('click', async () => {
       const g = (i) => document.getElementById(i).value.trim();

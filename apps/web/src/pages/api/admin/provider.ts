@@ -45,17 +45,23 @@ export const POST: APIRoute = async ({ request }) => {
 
   await db
     .prepare(
-      `INSERT INTO providers (id,label,base_url,model,api_keys,tier,can_image,can_video,is_free,enabled,updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,1,datetime('now'))
+      `INSERT INTO providers (id,label,base_url,model,vision_model,api_keys,tier,
+                              can_image,can_video,can_vision,is_free,enabled,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,1,datetime('now'))
        ON CONFLICT(id) DO UPDATE SET
          label=excluded.label, base_url=excluded.base_url, model=excluded.model,
+         vision_model=excluded.vision_model,
          tier=excluded.tier, can_image=excluded.can_image, can_video=excluded.can_video,
+         can_vision=excluded.can_vision,
          is_free=excluded.is_free, updated_at=datetime('now'),
          api_keys=CASE WHEN excluded.api_keys='' THEN providers.api_keys ELSE excluded.api_keys END`,
     )
     .bind(
-      id, String(b.label ?? id), base, String(b.model ?? ''), keys,
-      Number(b.tier ?? 10), b.can_image ? 1 : 0, b.can_video ? 1 : 0, b.is_free ? 1 : 0,
+      id, String(b.label ?? id), base, String(b.model ?? ''),
+      // 填了视觉模型名就等于声明「这家能读图」—— 少一个容易忘记勾的开关
+      String(b.vision_model ?? '').trim() || null, keys,
+      Number(b.tier ?? 10), b.can_image ? 1 : 0, b.can_video ? 1 : 0,
+      String(b.vision_model ?? '').trim() ? 1 : 0, b.is_free ? 1 : 0,
     )
     .run();
 

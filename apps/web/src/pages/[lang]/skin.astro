@@ -1,0 +1,258 @@
+---
+/**
+ * AI 肌肤检测 —— 拍一张照片,拿到护肤选品建议。
+ *
+ * 三个刻意的设计:
+ *
+ *  ① 同意勾选放在按钮**之前**,不是页脚。人脸是敏感个人信息,
+ *    「同意」如果藏在没人看的地方,法律上不算有效同意,道义上更不算。
+ *
+ *  ② 照片在浏览器里压到 1024px 再上传,而且**不上传原图**。
+ *    压缩不只是省流量:传上去的像素越少,万一出事泄露的也越少。
+ *
+ *  ③ 结果页第一屏就写明「非诊疗」。护肤品不是药,
+ *    把免责声明放到最下面等于知道有问题还藏着。
+ */
+import { env } from 'cloudflare:workers';
+import { LANG_GROUPS } from '../../lib/db';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const db = (env as any).DB as D1Database | undefined;
+
+// 页面要不要提示「还没配好模型」—— 与其让客户点了才发现,不如提前说
+const ready = db
+  ? ((await db.prepare(
+      `SELECT COUNT(*) n FROM providers WHERE enabled=1 AND api_keys<>'' AND can_vision=1`
+    ).first<{ n: number }>().catch(() => null))?.n ?? 0) > 0
+  : false;
+const nFormula = db
+  ? ((await db.prepare(`SELECT COUNT(*) n FROM formulas WHERE status='active'`).first<{ n: number }>().catch(() => null))?.n ?? 0)
+  : 0;
+
+const T = zh ? {
+  eyebrow: 'AI 肌肤检测',
+  title: '拍一张照片,看看适合哪类配方',
+  lead: '照片交给视觉模型读出外观特征,再从我们的配方库里检索匹配的配方 —— 推荐的每一支都真实存在,可以直接询价打样。',
+  shoot: '拍照或选择照片',
+  again: '换一张',
+  run: '开始分析',
+  running: '分析中,约需 10-20 秒…',
+  consent: '同意用这张照片做一次分析(照片不保存)',
+  fine: '化妆品选型参阅,非医疗诊断。照片在浏览器内压缩、分析后即丢弃,不入库。',
+  resultTitle: '分析结果',
+  featTitle: '读出的外观特征',
+  formulaTitle: '匹配到的配方',
+  adviceTitle: '选型建议',
+  inquiry: '就这些配方发起询盘',
+  tips: '拍摄建议:正对镜头、光线明亮均匀、不化妆、不加滤镜。',
+  notReady: '该功能尚未开放:后台还没有配置具备读图能力的模型。',
+  noFormula: '配方库尚未导入真实配方,分析结果无法给出可询价的推荐。',
+} : {
+  eyebrow: 'AI Skin Reading',
+  title: 'Take one photo, see which formulas fit',
+  lead: 'A vision model reads visible traits from the photo, then we retrieve matching formulas from our own library — every formula suggested is real and can go straight to sampling.',
+  shoot: 'Take or choose a photo',
+  again: 'Use another photo',
+  run: 'Analyse',
+  running: 'Analysing, about 10-20 seconds…',
+  consent: 'Use this photo for one analysis (not stored)',
+  fine: 'For cosmetic selection reference, not a medical diagnosis. The photo is compressed in your browser, used once, and never stored.',
+  resultTitle: 'Result',
+  featTitle: 'Visible traits',
+  formulaTitle: 'Matching formulas',
+  adviceTitle: 'Selection notes',
+  inquiry: 'Start an inquiry for these formulas',
+  tips: 'For a good read: face the camera, even bright light, no makeup, no filters.',
+  notReady: 'Not available yet: no vision-capable model has been configured in the admin.',
+  noFormula: 'The formula library has no real formulas yet, so no quotable recommendation can be produced.',
+};
+const dir = ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr';
+---
+
+<html lang={lang} dir={dir}>
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{T.title} · 帛卉</title>
+  <meta name="description" content={T.lead} />
+  <style>
+    :root {
+      --ink: #10201C; --soft: #4A5A56; --faint: #7C8C88;
+      --ground: #F5F7F5; --panel: #FFFFFF; --line: #E0E7E4;
+      --accent: #0E6B62; --accent-deep: #0A544D; --accent-soft: #E3F0EE;
+      --warn: #8A5A00; --warn-soft: #FBF0DC;
+      font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--ground); color: var(--ink); line-height: 1.7; }
+    .wrap { max-width: 46rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+    .eyebrow { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); margin: 0 0 .625rem; }
+    h1 { font-size: clamp(1.5rem, 1.1rem + 1.8vw, 2.125rem); line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 .75rem; text-wrap: balance; }
+    .lead { color: var(--soft); margin: 0 0 2rem; }
+
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+    .shot { display: grid; gap: 1rem; justify-items: center; text-align: center; }
+    .drop {
+      width: 100%; aspect-ratio: 4/3; border: 2px dashed var(--line); border-radius: 10px;
+      display: grid; place-items: center; cursor: pointer; background: #FBFCFB; overflow: hidden;
+      color: var(--faint); font-size: .875rem; transition: border-color .15s;
+    }
+    .drop:hover { border-color: var(--accent); }
+    .drop img { width: 100%; height: 100%; object-fit: cover; }
+    .tips { font-size: .8125rem; color: var(--faint); margin: 0; }
+
+    .consent { display: flex; gap: .5rem; align-items: center; justify-content: center;
+               font-size: .8125rem; color: var(--soft); margin: 1.125rem 0 .875rem; cursor: pointer; }
+    .consent input { margin: 0; accent-color: var(--accent); flex: none; width: .9375rem; height: .9375rem; }
+
+    button.go {
+      font: inherit; font-size: 1rem; font-weight: 600; width: 100%;
+      padding: .9375rem; border: 0; border-radius: 9px;
+      background: var(--accent); color: #fff; cursor: pointer;
+    }
+    button.go:hover:not(:disabled) { background: var(--accent-deep); }
+    button.go:disabled { opacity: .45; cursor: not-allowed; }
+    .msg { margin: .875rem 0 0; font-size: .875rem; color: #A02B20; min-height: 1.4em; }
+
+    .fine { margin: .875rem 0 0; font-size: .75rem; line-height: 1.65; color: var(--faint); text-align: center; }
+
+    #out { display: none; }
+    #out.on { display: block; }
+    h2.sec { font-size: 1rem; margin: 2rem 0 .75rem; }
+    .traits { display: flex; flex-wrap: wrap; gap: .4375rem; margin: 0 0 1rem; padding: 0; list-style: none; }
+    .traits li { background: var(--accent-soft); color: var(--accent-deep); border-radius: 999px; padding: .25rem .75rem; font-size: .8125rem; }
+    .fm { border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.125rem; margin-bottom: .625rem; background: var(--panel); }
+    .fm b { font-family: ui-monospace, monospace; font-size: .9375rem; }
+    .fm .meta { font-size: .8125rem; color: var(--soft); margin-top: .25rem; }
+    .advice { white-space: pre-wrap; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 1.125rem 1.25rem; }
+    .disc { font-size: .75rem; color: var(--faint); margin-top: 1rem; line-height: 1.7; }
+    .cta { display: inline-block; margin-top: 1.25rem; padding: .8125rem 1.5rem; background: var(--accent); color: #fff;
+           text-decoration: none; border-radius: 8px; font-weight: 600; }
+    .off { background: #FBE7E4; border: 1px solid #EFC6C0; color: #8A2018; border-radius: 10px; padding: .9375rem 1.125rem; font-size: .875rem; margin-bottom: 1.25rem; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="eyebrow">{T.eyebrow}</p>
+    <h1>{T.title}</h1>
+    <p class="lead">{T.lead}</p>
+
+    {!ready && <div class="off">{T.notReady}</div>}
+    {ready && nFormula === 0 && <div class="off">{T.noFormula}</div>}
+
+    <div class="card">
+      <div class="shot">
+        <label class="drop" id="drop">
+          <span id="hint">{T.shoot}</span>
+          <input id="pick" type="file" accept="image/*" capture="user" hidden />
+        </label>
+        <p class="tips">{T.tips}</p>
+      </div>
+
+      <label class="consent">
+        <input type="checkbox" id="consent" />
+        <span>{T.consent}</span>
+      </label>
+
+      <button class="go" id="go" disabled>{T.run}</button>
+      <p class="msg" id="msg"></p>
+    </div>
+
+      <p class="fine">{T.fine}</p>
+
+    <div id="out">
+      <h2 class="sec">{T.featTitle}</h2>
+      <ul class="traits" id="traits"></ul>
+      <h2 class="sec">{T.adviceTitle}</h2>
+      <div class="advice" id="advice"></div>
+      <h2 class="sec">{T.formulaTitle}</h2>
+      <div id="formulas"></div>
+      <p class="disc" id="disc"></p>
+      <a class="cta" id="cta" href={`/${lang}/contact/`}>{T.inquiry}</a>
+    </div>
+  </div>
+
+  <script is:inline define:vars={{ lang, T }}>
+  (() => {
+    const pick = document.getElementById('pick'), drop = document.getElementById('drop');
+    const consent = document.getElementById('consent'), go = document.getElementById('go');
+    const msg = document.getElementById('msg'), out = document.getElementById('out');
+    let dataUrl = null;
+
+    const sync = () => { go.disabled = !(dataUrl && consent.checked); };
+    consent.addEventListener('change', sync);
+
+    /* 浏览器端压到长边 1024、WebP q0.8。
+       传上去的像素越少,万一出事泄露的也越少 —— 压缩在这里是隐私措施,不只是省流量 */
+    pick.addEventListener('change', async () => {
+      const f = pick.files && pick.files[0];
+      if (!f) return;
+      msg.textContent = '';
+      try {
+        const bmp = await createImageBitmap(f);
+        const s = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+        const w = Math.round(bmp.width * s), h = Math.round(bmp.height * s);
+        const cv = new OffscreenCanvas(w, h);
+        cv.getContext('2d').drawImage(bmp, 0, 0, w, h);
+        bmp.close();
+        let q = 0.8, blob = await cv.convertToBlob({ type: 'image/webp', quality: q });
+        while (blob.size > 1400000 && q > 0.4) { q -= 0.12; blob = await cv.convertToBlob({ type: 'image/webp', quality: q }); }
+        dataUrl = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
+        drop.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = dataUrl; img.alt = '';
+        drop.appendChild(img);
+        drop.appendChild(pick);
+        sync();
+      } catch (e) { msg.textContent = '这张图读不出来,请换一张'; }
+    });
+
+    go.addEventListener('click', async () => {
+      go.disabled = true; go.textContent = T.running; msg.textContent = ''; out.classList.remove('on');
+      try {
+        const r = await fetch('/api/ai/skin', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: dataUrl, lang, consent: true, site: new URLSearchParams(location.search).get('site') || 'beauty2oem' }),
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.msg || '分析失败');
+
+        const tr = document.getElementById('traits');
+        tr.innerHTML = '';
+        const chips = [];
+        if (d.features.skin_type) chips.push(d.features.skin_type);
+        (d.features.concerns || []).forEach((c) => chips.push(c));
+        (d.features.observations || []).forEach((o) => chips.push((o.area ? o.area + ' · ' : '') + o.trait));
+        chips.slice(0, 12).forEach((c) => { const li = document.createElement('li'); li.textContent = c; tr.appendChild(li); });
+
+        document.getElementById('advice').textContent = d.advice;
+
+        const fm = document.getElementById('formulas');
+        fm.innerHTML = '';
+        (d.formulas || []).forEach((f) => {
+          const box = document.createElement('div');
+          box.className = 'fm';
+          const b = document.createElement('b'); b.textContent = f.code;
+          const m = document.createElement('div'); m.className = 'meta';
+          m.textContent = [f.category, f.format, f.benefits, f.texture, f.moq ? '起订 ' + f.moq : '', f.lead_days ? '打样 ' + f.lead_days + ' 天' : '']
+            .filter(Boolean).join(' · ');
+          box.appendChild(b); box.appendChild(m); fm.appendChild(box);
+        });
+
+        document.getElementById('disc').textContent = d.disclaimer;
+        const codes = (d.formulas || []).map((f) => f.code).join(',');
+        document.getElementById('cta').href = '/' + lang + '/contact/?formulas=' + encodeURIComponent(codes);
+        out.classList.add('on');
+        out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (e) {
+        msg.textContent = e.message || '分析失败,请重试';
+      }
+      go.textContent = T.run; sync();
+    });
+  })();
+  </script>
+</body>
+</html>
