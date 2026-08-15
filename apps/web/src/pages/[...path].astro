@@ -17,6 +17,7 @@ import CertWall from '@cosmetic/core/components/CertWall.astro';
 import CategoryMatrix from '@cosmetic/core/components/CategoryMatrix.astro';
 import ProcessSteps from '@cosmetic/core/components/ProcessSteps.astro';
 import EvidenceGrid from '@cosmetic/core/components/EvidenceGrid.astro';
+import ProductionBases from '@cosmetic/core/components/ProductionBases.astro';
 import SocialProof from '@cosmetic/core/components/SocialProof.astro';
 import InquiryForm from '@cosmetic/core/components/InquiryForm.astro';
 import InquiryBand from '@cosmetic/core/components/InquiryBand.astro';
@@ -199,6 +200,14 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
           return <ProcessSteps title={d.title} intro={d.intro} steps={d.steps ?? []} />;
         case 'evidence':
           return <EvidenceGrid title={d.title} intro={d.intro} items={d.items ?? []} pendingLabel={pick(PENDING, lang)} />;
+        case 'bases':
+          // 生产基地 —— 从种植端到成品端,是帛卉区别于普通代工厂的地方
+          return (
+            <ProductionBases
+              eyebrow={d.eyebrow} title={d.title} intro={d.intro}
+              items={d.items ?? []} labels={d.labels} footnote={d.footnote}
+            />
+          );
         case 'proof':
           return <SocialProof title={d.title} intro={d.intro} stats={d.stats ?? []} testimonials={d.testimonials ?? []} />;
         case 'form':

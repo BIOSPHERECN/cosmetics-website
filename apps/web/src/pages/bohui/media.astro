@@ -107,33 +107,33 @@ const qs = (p: number) => {
   )}
 
   <style>
-    .drop{border:2px dashed var(--line);border-radius:10px;background:var(--panel);padding:1.75rem;
+    .drop{border:2px dashed var(--ad-line);border-radius:10px;background:var(--ad-panel);padding:1.75rem;
           margin-bottom:1.25rem;text-align:center;transition:border-color .15s,background .15s}
-    .drop.over{border-color:var(--accent);background:#eef4fa}
+    .drop.over{border-color:var(--ad-accent);background:#eef4fa}
     .dz-in b{display:block;margin-bottom:.375rem}
-    .dz-in span{display:block;font-size:.8125rem;color:var(--soft);margin-top:.25rem}
-    .lnk{color:var(--accent);cursor:pointer;text-decoration:underline}
+    .dz-in span{display:block;font-size:.8125rem;color:var(--ad-soft);margin-top:.25rem}
+    .lnk{color:var(--ad-accent);cursor:pointer;text-decoration:underline}
     .fold{margin-top:.75rem !important}
     .queue{margin-top:1rem;text-align:left;display:grid;gap:.375rem;max-height:16rem;overflow:auto}
     .qi{display:flex;gap:.625rem;align-items:center;font-size:.8125rem;background:#fafbfc;
-        border:1px solid var(--line);border-radius:6px;padding:.375rem .625rem}
+        border:1px solid var(--ad-line);border-radius:6px;padding:.375rem .625rem}
     .qi .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .qi .st{color:var(--soft);font-size:.75rem}
-    .qi.done .st{color:var(--ok)} .qi.err .st{color:var(--bad)}
+    .qi .st{color:var(--ad-soft);font-size:.75rem}
+    .qi.done .st{color:var(--ad-ok)} .qi.err .st{color:var(--ad-bad)}
     .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
     .bar input,.bar select{width:auto}
-    .btn.danger{border-color:#f0c4c0;color:var(--bad)}
-    .sel-info{font-size:.8125rem;color:var(--soft);margin-left:auto}
+    .btn.danger{border-color:#f0c4c0;color:var(--ad-bad)}
+    .sel-info{font-size:.8125rem;color:var(--ad-soft);margin-left:auto}
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr));gap:.875rem}
-    .tile{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;position:relative}
+    .tile{margin:0;background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:8px;overflow:hidden;position:relative}
     .tile img,.tile video{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#f0f1f3}
     .chk{position:absolute;top:.375rem;left:.375rem;background:#fff;border-radius:4px;padding:.125rem .25rem;line-height:0}
     .chk input{width:auto;margin:0}
     figcaption{padding:.5rem .625rem;font-size:.75rem;display:grid;gap:.125rem}
     figcaption b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
-    figcaption span{color:var(--faint)}
-    .cp{font-size:.6875rem;color:var(--accent);cursor:pointer;font-family:ui-monospace,monospace}
-    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--soft)}
+    figcaption span{color:var(--ad-faint)}
+    .cp{font-size:.6875rem;color:var(--ad-accent);cursor:pointer;font-family:ui-monospace,monospace}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--ad-soft)}
   </style>
 
   <script is:inline>

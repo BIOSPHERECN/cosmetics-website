@@ -76,7 +76,7 @@ if (notLive > 0) todos.push({ level: 'warn', text: `${notLive} 个站未开放�
     <div class="card"><div class="k">配方库</div><div class="v num">{nFormulas}</div><div class="s">AI 检索的依据</div></div>
     <div class="card"><div class="k">媒体</div><div class="v num">{nMedia}</div><div class="s">图片与视频</div></div>
     <div class:list={['card', nInquiries > 0 && 'ok']}><div class="k">待处理询盘</div><div class="v num">{nInquiries}</div><div class="s">共 {nStudio} 次 AI 共创</div></div>
-    <div class:list={['card', nProvKeys === 0 && 'warn']}><div class="k">可用模型</div><div class="v num">{nProvKeys}<span style="font-size:.9rem;color:var(--faint)"> / {nProviders}</span></div><div class="s">已配 key / 已启用</div></div>
+    <div class:list={['card', nProvKeys === 0 && 'warn']}><div class="k">可用模型</div><div class="v num">{nProvKeys}<span style="font-size:.9rem;color:var(--ad-faint)"> / {nProviders}</span></div><div class="s">已配 key / 已启用</div></div>
   </div>
 
   {todos.length > 0 && (
@@ -115,7 +115,7 @@ if (notLive > 0) todos.push({ level: 'warn', text: `${notLive} 个站未开放�
           <tr>
             <td>
               <div style="font-weight:600">{def?.name ?? r.id}</div>
-              <div style="color:var(--faint);font-size:.75rem;font-family:ui-monospace,monospace">{def?.domain}</div>
+              <div style="color:var(--ad-faint);font-size:.75rem;font-family:ui-monospace,monospace">{def?.domain}</div>
             </td>
             <td>
               <select data-site={r.id} class="tpl">
@@ -125,7 +125,7 @@ if (notLive > 0) todos.push({ level: 'warn', text: `${notLive} 个站未开放�
               </select>
             </td>
             <td class="num">{r.pages}</td>
-            <td class="num" style={r.missing ? 'color:var(--warn);font-weight:600' : 'color:var(--ok)'}>
+            <td class="num" style={r.missing ? 'color:var(--ad-warn);font-weight:600' : 'color:var(--ad-ok)'}>
               {r.missing || '齐全'}
             </td>
             <td>{r.is_live ? <span class="pill p-ok">已开放</span> : <span class="pill p-wait">未收录</span>}</td>

@@ -76,7 +76,7 @@ function diff(before: string | null, after: string): { k: string; a: string; b: 
               <span class="pill p-wait">{ENT[r.entity] ?? r.entity}</span>
               <span class="who">{r.email ?? '系统'}</span>
               <span class="what">{r.before_json ? `改了 ${d.length} 个字段` : '新建'}{r.lang ? ` · ${r.lang}` : ''}</span>
-              <span class="dt">{(r.created_at ?? '').slice(0, 16)}</span>
+              <time class="dt" data-utc={r.created_at}>{(r.created_at ?? '').slice(0, 16)}</time>
             </summary>
             <div class="bd">
               {d.length === 0 ? <p class="none">没有可显示的差异。</p> : (
@@ -106,19 +106,19 @@ function diff(before: string | null, after: string): { k: string; a: string; b: 
     .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
     .bar select{width:auto}
     .list{display:grid;gap:.375rem}
-    .rv{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+    .rv{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:8px;overflow:hidden}
     .rv > summary{padding:.5625rem 1rem;cursor:pointer;display:flex;gap:.625rem;align-items:center;
                   list-style:none;font-size:.8125rem}
     .rv > summary::-webkit-details-marker{display:none}
-    .rv[open] > summary{border-bottom:1px solid var(--line);background:#fafbfc}
-    .who{font-weight:600} .what{color:var(--soft)}
-    .dt{margin-left:auto;color:var(--faint);font-size:.75rem}
+    .rv[open] > summary{border-bottom:1px solid var(--ad-line);background:#fafbfc}
+    .who{font-weight:600} .what{color:var(--ad-soft)}
+    .dt{margin-left:auto;color:var(--ad-faint);font-size:.75rem}
     .bd{padding:.875rem 1rem}
     table.df{border:0;font-size:.8125rem}
     table.df td{vertical-align:top;word-break:break-word}
-    table.df .a{color:var(--faint);text-decoration:line-through}
-    table.df .b{color:var(--ok)}
-    .none{color:var(--faint);font-size:.8125rem;margin:0}
-    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--soft)}
+    table.df .a{color:var(--ad-faint);text-decoration:line-through}
+    table.df .b{color:var(--ad-ok)}
+    .none{color:var(--ad-faint);font-size:.8125rem;margin:0}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--ad-soft)}
   </style>
 </AdminShell>

@@ -1,0 +1,297 @@
+/**
+ * 后台设计系统 —— 全局层。
+ *
+ * 为什么必须是独立 CSS 文件而不是写在 AdminShell 的 <style> 里:
+ *   Astro 的组件样式会被作用域限定在**该组件自己模板里的元素**上。
+ *   而各页面写在 <AdminShell>…</AdminShell> 之间的内容属于「页面」这个组件,
+ *   拿的是页面的作用域标记 —— 于是 AdminShell 定义的 .btn / .pill / table / .lead
+ *   对页面内容一条都不生效,每一页都退化成浏览器默认样式。
+ *   被 import 的 .css 文件在 Astro 里是全局的,这才是放共享设计系统的地方。
+ *
+ * 视觉方向:化妆品受托制造的控制台 —— 洁净车间的精密感,不是美妆的柔粉调。
+ *   中性色带一点冷绿偏(不是纯灰,纯灰读起来像没挑过);
+ *   主色用深青,与"合格/警示/阻塞"三个语义色明确分开 —— 语义色不能兼任品牌色,
+ *   否则一屏全是主色,真正需要注意的地方就沉下去了。
+ */
+
+/* ── 令牌 ──────────────────────────────────────────────── */
+:root {
+  /* 侧栏:比内容区暗两级,是骨架不是主角 */
+  --ad-side:        #0F1614;
+  --ad-side-line:   #1D2725;
+  --ad-side-ink:    #A6B3B0;
+  --ad-side-dim:    #6B7A78;
+  --ad-side-on:     #FFFFFF;
+  --ad-side-hover:  #151E1C;
+  --ad-side-active: #1A2422;
+
+  --ad-ground:   #F4F6F5;
+  --ad-panel:    #FFFFFF;
+  --ad-sunk:     #EEF2F1;
+  --ad-ink:      #0F1A1B;
+  --ad-soft:     #4C5A5B;
+  --ad-faint:    #7E8C8C;
+  --ad-line:     #E1E7E6;
+  --ad-line-soft:#EDF1F0;
+
+  --ad-accent:      #0E6B62;
+  --ad-accent-deep: #0A544D;
+  --ad-accent-soft: #E2EFED;
+
+  --ad-ok:    #1B6E45;  --ad-ok-soft:    #E4F1E9;
+  --ad-warn:  #8A5A00;  --ad-warn-soft:  #FBF0DC;
+  --ad-bad:   #A02B20;  --ad-bad-soft:   #FBE7E4;
+
+  --ad-r:   8px;   /* 常规圆角 */
+  --ad-r-s: 6px;   /* 控件圆角 */
+  --ad-shadow: 0 1px 2px rgb(15 26 27 / .04), 0 10px 28px -18px rgb(15 26 27 / .35);
+
+  --ad-sans: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+  --ad-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, monospace;
+}
+
+/* ── 基础 ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ad-ground);
+  color: var(--ad-ink);
+  font-family: var(--ad-sans);
+  font-size: 14.5px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 键盘可见焦点 —— 后台是长时间操作的界面,不能只靠鼠标 */
+:focus-visible { outline: 2px solid var(--ad-accent); outline-offset: 2px; border-radius: 3px; }
+
+/* ── 排版 ──────────────────────────────────────────────── */
+main h1 {
+  font-size: 1.5rem;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  font-weight: 700;
+  margin: 0 0 .375rem;
+  text-wrap: balance;
+}
+main h2 { font-size: 1rem; letter-spacing: -0.008em; margin: 0 0 .75rem; }
+main .lead {
+  color: var(--ad-soft);
+  margin: 0 0 1.75rem;
+  font-size: .9375rem;
+  max-width: 58em;
+}
+main .lead b, main .lead strong { color: var(--ad-ink); font-weight: 600; }
+
+/* 数字对齐用等宽数字 —— 表格里数字不对齐是最廉价的观感来源 */
+.num, td .num, .v { font-variant-numeric: tabular-nums; }
+
+code, .mono { font-family: var(--ad-mono); font-size: .8125em; }
+main code {
+  background: var(--ad-sunk);
+  padding: .0625rem .3125rem;
+  border-radius: 4px;
+  color: var(--ad-soft);
+}
+
+/* ── 卡片 ──────────────────────────────────────────────── */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+  gap: .875rem;
+  margin-bottom: 1.75rem;
+}
+.card {
+  background: var(--ad-panel);
+  border: 1px solid var(--ad-line);
+  border-radius: var(--ad-r);
+  padding: 1.0625rem 1.125rem;
+  box-shadow: var(--ad-shadow);
+}
+.card .k {
+  font-size: .6875rem;
+  letter-spacing: .1em;
+  color: var(--ad-faint);
+  text-transform: uppercase;
+}
+.card .v {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-top: .375rem;
+  letter-spacing: -0.02em;
+}
+.card .s { font-size: .75rem; color: var(--ad-soft); margin-top: .1875rem; }
+.card.warn .v { color: var(--ad-warn); }
+.card.ok   .v { color: var(--ad-ok); }
+.card.bad  .v { color: var(--ad-bad); }
+
+/* ── 表格 ──────────────────────────────────────────────── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--ad-panel);
+  border: 1px solid var(--ad-line);
+  border-radius: var(--ad-r);
+  overflow: hidden;
+  box-shadow: var(--ad-shadow);
+}
+th, td {
+  text-align: left;
+  padding: .6875rem .875rem;
+  border-bottom: 1px solid var(--ad-line-soft);
+  vertical-align: middle;
+}
+thead th {
+  font-size: .6875rem;
+  font-weight: 600;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ad-faint);
+  background: var(--ad-sunk);
+  border-bottom-color: var(--ad-line);
+  white-space: nowrap;
+}
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: color-mix(in srgb, var(--ad-accent-soft) 45%, transparent); }
+
+/* ── 控件 ──────────────────────────────────────────────── */
+input, select, textarea {
+  font: inherit;
+  font-size: .875rem;
+  width: 100%;
+  padding: .4375rem .5625rem;
+  border: 1px solid var(--ad-line);
+  border-radius: var(--ad-r-s);
+  background: var(--ad-panel);
+  color: var(--ad-ink);
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+input:hover, select:hover, textarea:hover { border-color: #CFD8D7; }
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--ad-accent);
+  box-shadow: 0 0 0 3px var(--ad-accent-soft);
+}
+input::placeholder, textarea::placeholder { color: #A9B4B3; }
+input[type="checkbox"], input[type="radio"] { width: auto; accent-color: var(--ad-accent); }
+
+/* ── 按钮 ──────────────────────────────────────────────── */
+.btn {
+  font: inherit;
+  font-size: .8125rem;
+  line-height: 1.4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .375rem;
+  padding: .40625rem .6875rem;
+  border: 1px solid var(--ad-line);
+  border-radius: var(--ad-r-s);
+  background: var(--ad-panel);
+  color: var(--ad-ink);
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.btn:hover { border-color: #C6D1CF; background: var(--ad-sunk); }
+.btn:active { transform: translateY(.5px); }
+.btn:disabled, .btn[disabled] { opacity: .45; cursor: default; transform: none; }
+
+.btn.pri {
+  background: var(--ad-accent);
+  border-color: var(--ad-accent);
+  color: #fff;
+  font-weight: 600;
+}
+.btn.pri:hover { background: var(--ad-accent-deep); border-color: var(--ad-accent-deep); }
+
+.btn.danger { color: var(--ad-bad); border-color: #EDCBC7; }
+.btn.danger:hover { background: var(--ad-bad-soft); border-color: #E2AEA8; }
+
+/* ── 状态药丸 ──────────────────────────────────────────── */
+.pill {
+  display: inline-block;
+  padding: .15625rem .5rem;
+  border-radius: 999px;
+  font-size: .6875rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  line-height: 1.45;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.p-ok   { background: var(--ad-ok-soft);   color: var(--ad-ok); }
+.p-bad  { background: var(--ad-bad-soft);  color: var(--ad-bad); }
+.p-warn { background: var(--ad-warn-soft); color: var(--ad-warn); }
+.p-wait { background: var(--ad-sunk);      color: var(--ad-faint); }
+
+/* ── 空状态 ────────────────────────────────────────────── */
+.empty {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: var(--ad-faint);
+  background: var(--ad-panel);
+  border: 1px dashed var(--ad-line);
+  border-radius: var(--ad-r);
+  line-height: 1.8;
+}
+.empty a { color: var(--ad-accent); }
+
+/* ── 工具条与分页 ──────────────────────────────────────── */
+.bar {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.125rem;
+}
+.bar input, .bar select { width: auto; }
+
+.pager {
+  display: flex;
+  gap: .75rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.5rem;
+  font-size: .8125rem;
+  color: var(--ad-soft);
+}
+
+/* ── 提示条 ────────────────────────────────────────────── */
+.note {
+  padding: .8125rem 1.0625rem;
+  border-radius: var(--ad-r);
+  font-size: .8125rem;
+  line-height: 1.7;
+  margin-bottom: 1.125rem;
+}
+.note.warn { background: var(--ad-warn-soft); border: 1px solid #EFDCB6; color: #6E4700; }
+.note.bad  { background: var(--ad-bad-soft);  border: 1px solid #EFC6C0; color: #8A2018; }
+.note.info { background: var(--ad-accent-soft); border: 1px solid #C4DEDA; color: var(--ad-accent-deep); }
+.note a { color: inherit; }
+
+/* ── 浮层提示 ──────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  background: var(--ad-ink);
+  color: #fff;
+  padding: .6875rem 1.0625rem;
+  border-radius: var(--ad-r);
+  font-size: .8125rem;
+  z-index: 40;
+  box-shadow: 0 12px 32px -10px rgb(0 0 0 / .45);
+}
+.toast.bad { background: var(--ad-bad); }
+
+[hidden] { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

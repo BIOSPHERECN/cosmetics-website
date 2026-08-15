@@ -28,6 +28,10 @@ const LABELS: Record<string, string> = {
   cards: '卡片', points: '要点', quote: '引述', author: '署名', sub: '副标题', tag: '标签',
   alt: '图片说明', href: '链接', src: '图片路径', intro: '引言', outro: '结语', unit: '单位',
   placeholder: '占位提示', submit: '提交按钮', fields: '表单字段', ok: '成功提示', badge: '角标',
+  // 生产基地
+  kind: '类别', region: '所在地', area: '面积 / 产能', focus: '主要品种 / 能力',
+  cert: '规范与认证', type: '类型代码(grow=种植 / make=制造)', footnote: '脚注', labels: '汇总标签',
+  bases: '基地数', species: '品种数',
 };
 const L = (k?: string) => (k ? LABELS[k] ?? k : '');
 
@@ -120,41 +124,41 @@ const blank = (sample: unknown): unknown =>
   /* 这层刻意用 is:global:字段树是递归组件,层层作用域类会让选择器无法命中子层。
      类名都带 admin 语义前缀,不会外泄到前台 —— 后台页各自独立,没有共用冲突。 */
   .ft-f { display: grid; gap: 0.3125rem; margin-bottom: 0.875rem; }
-  .ft-f > label { font-size: 0.75rem; color: var(--faint); letter-spacing: 0.02em; }
+  .ft-f > label { font-size: 0.75rem; color: var(--ad-faint); letter-spacing: 0.02em; }
   .ft-f input,
   .ft-f textarea {
     font: inherit; font-size: 0.875rem; width: 100%;
-    padding: 0.4375rem 0.5625rem; border: 1px solid var(--line); border-radius: 6px;
-    background: #fff; color: var(--ink);
+    padding: 0.4375rem 0.5625rem; border: 1px solid var(--ad-line); border-radius: 6px;
+    background: #fff; color: var(--ad-ink);
   }
   .ft-f textarea { min-height: 4.25rem; resize: vertical; line-height: 1.6; }
-  .ft-f input:focus, .ft-f textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  .ft-f input:focus, .ft-f textarea:focus { outline: 2px solid var(--ad-accent); outline-offset: -1px; border-color: var(--ad-accent); }
 
   .ft-grp { margin-bottom: 1rem; }
   .ft-grp.ft-arr {
-    border: 1px solid var(--line); border-radius: 8px;
+    border: 1px solid var(--ad-line); border-radius: 8px;
     background: #fbfcfd; padding: 0.75rem 0.875rem 0.25rem;
   }
   .ft-h {
     display: flex; align-items: center; gap: 0.5rem;
-    font-size: 0.75rem; font-weight: 600; color: var(--soft);
+    font-size: 0.75rem; font-weight: 600; color: var(--ad-soft);
     margin-bottom: 0.625rem;
   }
-  .ft-h .ft-cnt { color: var(--faint); font-weight: 400; }
+  .ft-h .ft-cnt { color: var(--ad-faint); font-weight: 400; }
   .ft-h .ft-add { margin-left: auto; }
   .ft-mini {
     font: inherit; font-size: 0.6875rem; cursor: pointer;
-    border: 1px solid var(--line); background: #fff; color: var(--soft);
+    border: 1px solid var(--ad-line); background: #fff; color: var(--ad-soft);
     padding: 0.1875rem 0.5rem; border-radius: 5px; white-space: nowrap;
   }
-  .ft-mini:hover { border-color: var(--accent); color: var(--accent); }
-  .ft-mini.ft-rm:hover { border-color: #e6b8b3; color: var(--bad); }
+  .ft-mini:hover { border-color: var(--ad-accent); color: var(--ad-accent); }
+  .ft-mini.ft-rm:hover { border-color: #e6b8b3; color: var(--ad-bad); }
 
   .ft-items { display: grid; gap: 0.625rem; }
-  .ft-item { background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: 0.625rem 0.75rem 0; }
+  .ft-item { background: #fff; border: 1px solid var(--ad-line); border-radius: 7px; padding: 0.625rem 0.75rem 0; }
   .ft-item-h { display: flex; align-items: center; margin-bottom: 0.5rem; }
   .ft-item-h .ft-ix {
-    font-size: 0.6875rem; color: var(--faint); font-variant-numeric: tabular-nums;
+    font-size: 0.6875rem; color: var(--ad-faint); font-variant-numeric: tabular-nums;
     background: #f1f3f5; border-radius: 4px; padding: 0.0625rem 0.375rem;
   }
   .ft-item-h .ft-rm { margin-left: auto; }

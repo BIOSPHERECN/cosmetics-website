@@ -48,7 +48,7 @@ const acts = (s: string) => { try { return JSON.parse(s) as { name: string; pct:
   <h1>配方库</h1>
   <p class="lead">
     共 {total} 条。客户在前台用自然语言描述需求时,AI 先从这张表里检索候选,再解释为什么推荐 ——
-    <b style="color:var(--bad)">所以这里必须是真实配方</b>,库里是样例数据的话,AI 的推荐就是编的。
+    <b style="color:var(--ad-bad)">所以这里必须是真实配方</b>,库里是样例数据的话,AI 的推荐就是编的。
   </p>
 
   <div class="warn-bar">
@@ -86,7 +86,7 @@ const acts = (s: string) => { try { return JSON.parse(s) as { name: string; pct:
             <td class="num">{r.moq ?? '—'}</td>
             <td class="num">{r.lead_days ? `${r.lead_days} 天` : '—'}</td>
             <td style="font-size:.8125rem">{BAND[r.cost_band] ?? r.cost_band ?? '—'}</td>
-            <td style="font-size:.75rem;color:var(--soft)">{r.markets || '—'}</td>
+            <td style="font-size:.75rem;color:var(--ad-soft)">{r.markets || '—'}</td>
             <td style="text-align:right"><button class="btn ed">改</button></td>
           </tr>
         ))}
@@ -129,13 +129,13 @@ const acts = (s: string) => { try { return JSON.parse(s) as { name: string; pct:
     .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
     .bar input,.bar select{width:auto}
     .ac{display:flex;gap:.25rem;flex-wrap:wrap;margin-bottom:.1875rem}
-    .chip{background:#eef4fa;color:var(--accent);border-radius:4px;padding:.0625rem .3125rem;font-size:.6875rem}
-    .bf{font-size:.75rem;color:var(--soft)}
-    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--soft)}
+    .chip{background:#eef4fa;color:var(--ad-accent);border-radius:4px;padding:.0625rem .3125rem;font-size:.6875rem}
+    .bf{font-size:.75rem;color:var(--ad-soft)}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--ad-soft)}
     dialog{border:0;border-radius:12px;padding:1.5rem;width:min(38rem,94vw);box-shadow:0 24px 64px -20px rgb(0 0 0/.4)}
     dialog::backdrop{background:rgb(0 0 0/.4)}
     dialog h3{margin:0 0 1rem;font-size:1rem}
-    dialog label{display:grid;gap:.25rem;font-size:.75rem;color:var(--soft);margin-bottom:.75rem}
+    dialog label{display:grid;gap:.25rem;font-size:.75rem;color:var(--ad-soft);margin-bottom:.75rem}
     .g2{display:grid;grid-template-columns:1fr 1fr;gap:0 .875rem}
     .ops{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.5rem}
     .toast{position:fixed;right:1.25rem;bottom:1.25rem;background:#10131a;color:#fff;padding:.625rem 1rem;border-radius:7px;font-size:.8125rem;z-index:9}

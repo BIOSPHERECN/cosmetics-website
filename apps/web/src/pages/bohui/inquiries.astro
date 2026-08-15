@@ -92,7 +92,7 @@ const link = (p: number) => {
               <span class="em">{r.email}</span>
               {r.items > 0 && <span class="pill p-ok">{r.items} 款产品</span>}
               {r.spam_score > 50 && <span class="pill p-warn">疑似垃圾</span>}
-              <span class="dt">{(r.created_at ?? '').slice(0, 16)}</span>
+              <time class="dt" data-utc={r.created_at}>{(r.created_at ?? '').slice(0, 16)}</time>
             </summary>
             <div class="dt-body">
               <dl>
@@ -136,21 +136,21 @@ const link = (p: number) => {
     .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
     .bar input,.bar select{width:auto}
     .list{display:grid;gap:.5rem}
-    .inq{background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+    .inq{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;overflow:hidden}
     .inq > summary{padding:.6875rem 1rem;cursor:pointer;display:flex;gap:.625rem;align-items:center;
                    flex-wrap:wrap;list-style:none;font-size:.875rem}
     .inq > summary::-webkit-details-marker{display:none}
-    .inq[open] > summary{border-bottom:1px solid var(--line);background:#fafbfc}
-    .co{color:var(--soft)} .em{color:var(--faint);font-family:ui-monospace,monospace;font-size:.75rem}
-    .dt{margin-left:auto;color:var(--faint);font-size:.75rem}
+    .inq[open] > summary{border-bottom:1px solid var(--ad-line);background:#fafbfc}
+    .co{color:var(--ad-soft)} .em{color:var(--ad-faint);font-family:ui-monospace,monospace;font-size:.75rem}
+    .dt{margin-left:auto;color:var(--ad-faint);font-size:.75rem}
     .dt-body{padding:1rem 1.125rem}
     dl{display:grid;grid-template-columns:5rem 1fr;gap:.5rem .875rem;margin:0 0 1rem;font-size:.875rem}
-    dt{color:var(--faint);font-size:.8125rem} dd{margin:0}
-    .msg{white-space:pre-wrap;line-height:1.65;background:#fafbfc;border:1px solid var(--line);
+    dt{color:var(--ad-faint);font-size:.8125rem} dd{margin:0}
+    .msg{white-space:pre-wrap;line-height:1.65;background:#fafbfc;border:1px solid var(--ad-line);
          border-radius:6px;padding:.625rem .75rem}
     .pl{margin:0;padding-left:1.125rem} .pl li{margin-bottom:.1875rem}
     .ops{display:flex;gap:.5rem;flex-wrap:wrap}
-    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--soft)}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--ad-soft)}
     .toast{position:fixed;right:1.25rem;bottom:1.25rem;background:#10131a;color:#fff;padding:.625rem 1rem;
            border-radius:7px;font-size:.8125rem;z-index:9}
     [hidden]{display:none !important}

@@ -64,7 +64,7 @@ const j = (s: string | null) => { try { return s ? JSON.parse(s) : null; } catch
                 ? <span class="pill p-ok">线索</span>
                 : <span class="pill p-wait">匿名</span>}
               <b class="raw">{r.raw_input}</b>
-              <span class="dt">{siteName.get(r.site_id) ?? r.site_id} · {(r.created_at ?? '').slice(0, 16)}</span>
+              <span class="dt">{siteName.get(r.site_id) ?? r.site_id} · <time data-utc={r.created_at}>{(r.created_at ?? '').slice(0, 16)}</time></span>
             </summary>
             <div class="bd">
               <h4>客户原话</h4>
@@ -99,22 +99,22 @@ const j = (s: string | null) => { try { return s ? JSON.parse(s) : null; } catch
     .warn-bar a{color:#8a2018}
     .bar{display:flex;gap:.5rem;margin-bottom:1rem}
     .list{display:grid;gap:.5rem}
-    .ss{background:var(--panel);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+    .ss{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;overflow:hidden}
     .ss > summary{padding:.6875rem 1rem;cursor:pointer;display:flex;gap:.625rem;align-items:center;
                   list-style:none;font-size:.875rem}
     .ss > summary::-webkit-details-marker{display:none}
-    .ss[open] > summary{border-bottom:1px solid var(--line);background:#fafbfc}
+    .ss[open] > summary{border-bottom:1px solid var(--ad-line);background:#fafbfc}
     .raw{font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-    .dt{color:var(--faint);font-size:.75rem;flex-shrink:0}
+    .dt{color:var(--ad-faint);font-size:.75rem;flex-shrink:0}
     .bd{padding:1rem 1.125rem}
-    .bd h4{margin:1rem 0 .375rem;font-size:.75rem;color:var(--accent);letter-spacing:.04em}
+    .bd h4{margin:1rem 0 .375rem;font-size:.75rem;color:var(--ad-accent);letter-spacing:.04em}
     .bd h4:first-child{margin-top:0}
-    .msg{white-space:pre-wrap;line-height:1.65;background:#fafbfc;border:1px solid var(--line);
+    .msg{white-space:pre-wrap;line-height:1.65;background:#fafbfc;border:1px solid var(--ad-line);
          border-radius:6px;padding:.625rem .75rem;margin:0;font-size:.875rem}
-    pre{background:#fafbfc;border:1px solid var(--line);border-radius:6px;padding:.625rem .75rem;
+    pre{background:#fafbfc;border:1px solid var(--ad-line);border-radius:6px;padding:.625rem .75rem;
         overflow-x:auto;font-size:.75rem;margin:0}
     .imgs{display:flex;gap:.5rem;flex-wrap:wrap}
-    .imgs img{width:9rem;border-radius:6px;border:1px solid var(--line)}
-    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--soft)}
+    .imgs img{width:9rem;border-radius:6px;border:1px solid var(--ad-line)}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--ad-soft)}
   </style>
 </AdminShell>

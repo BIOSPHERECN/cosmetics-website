@@ -275,3 +275,27 @@ export interface ContactPage {
   form: ContactFormLabels;
   direct: ContactDirect;
 }
+
+/**
+ * 生产基地条目 —— 制造基地与植物药材种植基地共用一个结构。
+ *
+ * type 是给程序看的(决定视觉标记与汇总口径),kind 是给人看的显示名。
+ * 两者分开是刻意的:显示名要跟着语种走(「种植基地 / Cultivation Base」),
+ * 而汇总统计不能因为换了语种就算不出来。
+ */
+export interface BaseItem {
+  /** grow = 种植基地(计入面积与品种汇总);make = 制造基地 */
+  type: 'grow' | 'make';
+  /** 显示用的类别名,随语种变化 */
+  kind: string;
+  name: string;
+  /** 产地 / 所在地 */
+  region?: string;
+  /** 种植基地填面积(如「1,200 亩」),制造基地填产能 */
+  area?: string;
+  /** 种植基地填主要品种(顿号分隔,用于品种去重计数);制造基地填主要能力 */
+  focus?: string;
+  /** 规范与认证,如 GAP、有机认证、十万级洁净 */
+  cert?: string;
+  note?: string;
+}

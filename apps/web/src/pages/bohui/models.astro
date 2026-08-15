@@ -105,7 +105,10 @@ const imageReady = ready.filter((r) => r.can_image).length;
                 {!r.enabled ? <span class="pill p-wait">已停用</span>
                   : r.nkeys === 0 ? <span class="pill p-warn">未配 key</span>
                   : r.last_check_at
-                    ? <span class:list={['pill', r.last_ok ? 'p-ok' : 'p-bad']}>{r.last_note ?? (r.last_ok ? '正常' : '异常')}</span>
+                    ? <>
+                        <span class:list={['pill', r.last_ok ? 'p-ok' : 'p-bad']}>{r.last_note ?? (r.last_ok ? '正常' : '异常')}</span>
+                        <time class="ms" data-utc={r.last_check_at}>{r.last_check_at.slice(5, 16)}</time>
+                      </>
                     : <span class="pill p-wait">未体检</span>}
               </span>
             </td>
@@ -149,12 +152,12 @@ const imageReady = ready.filter((r) => r.can_image).length;
   <div id="toast" class="toast" hidden></div>
 
   <style>
-    .lead b { color: var(--ink); }
+    .lead b { color: var(--ad-ink); }
     .note { padding: .8125rem 1.0625rem; border-radius: 8px; font-size: .8125rem; line-height: 1.65; margin-bottom: 1.125rem; }
     .note.warn { background: #fdf1e0; border: 1px solid #f0dcb8; color: #7a4a00; }
     .note.bad { background: #fdecea; border: 1px solid #f3c9c4; color: #8a2018; }
 
-    .tblwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+    .tblwrap { overflow-x: auto; border: 1px solid var(--ad-line); border-radius: 10px; background: var(--ad-panel); }
     /* table-layout:fixed —— 自动布局会按内容重新分配宽度,
        写在 th 上的 width 只会被当成建议(档位列曾被撑到 214px)。固定布局才真的按列宽排。 */
     table { border: 0; border-radius: 0; width: 74rem; min-width: 74rem; table-layout: fixed; }
@@ -167,30 +170,30 @@ const imageReady = ready.filter((r) => r.can_image).length;
     td input { font-size: .8125rem; padding: .375rem .5rem; }
     input.k, td input[data-f="base_url"], td input[data-f="model"] { font-family: ui-monospace, monospace; font-size: .75rem; }
     .tags { display: flex; gap: .25rem; align-items: center; flex-wrap: wrap; margin-top: .3125rem; }
-    .tags code { font-size: .6875rem; color: var(--faint); }
-    .tag { font-size: .625rem; padding: .0625rem .3125rem; border-radius: 3px; background: #eef0f3; color: var(--soft); }
-    .tag.free { background: #e8eff6; color: var(--accent); }
+    .tags code { font-size: .6875rem; color: var(--ad-faint); }
+    .tag { font-size: .625rem; padding: .0625rem .3125rem; border-radius: 3px; background: #eef0f3; color: var(--ad-soft); }
+    .tag.free { background: #e8eff6; color: var(--ad-accent); }
     .state { display: inline-flex; flex-direction: column; gap: .25rem; align-items: flex-start; }
-    .state .ms { font-size: .6875rem; color: var(--faint); font-variant-numeric: tabular-nums; }
+    .state .ms { font-size: .6875rem; color: var(--ad-faint); font-variant-numeric: tabular-nums; }
     .ops { display: flex; gap: .3125rem; }
     .ops .btn { padding: .3125rem .5rem; font-size: .75rem; }
 
-    .add { margin-top: 1.5rem; padding: 1.25rem 1.375rem; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+    .add { margin-top: 1.5rem; padding: 1.25rem 1.375rem; background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: 10px; }
     .add h2 { font-size: .9375rem; margin: 0 0 .375rem; }
-    .hint { font-size: .8125rem; color: var(--soft); line-height: 1.65; margin: 0 0 1rem; }
+    .hint { font-size: .8125rem; color: var(--ad-soft); line-height: 1.65; margin: 0 0 1rem; }
     .hint code { background: #eef0f3; padding: .0625rem .3125rem; border-radius: 4px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .875rem; }
     .fld { display: grid; gap: .3125rem; }
-    .fld span { font-size: .75rem; color: var(--faint); }
+    .fld span { font-size: .75rem; color: var(--ad-faint); }
     .addrow { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-top: 1.125rem; }
-    .ck { display: inline-flex; align-items: center; gap: .375rem; font-size: .8125rem; color: var(--soft); }
+    .ck { display: inline-flex; align-items: center; gap: .375rem; font-size: .8125rem; color: var(--ad-soft); }
     .ck input { width: auto; margin: 0; }
-    .msg { font-size: .8125rem; color: var(--bad); }
+    .msg { font-size: .8125rem; color: var(--ad-bad); }
 
     .toast { position: fixed; right: 1.25rem; bottom: 1.25rem; background: #10131a; color: #fff;
              padding: .6875rem 1.0625rem; border-radius: 8px; font-size: .8125rem; z-index: 9;
              box-shadow: 0 10px 30px -8px rgb(0 0 0 / .35); }
-    .toast.bad { background: var(--bad); }
+    .toast.bad { background: var(--ad-bad); }
     [hidden] { display: none !important; }
   </style>
 

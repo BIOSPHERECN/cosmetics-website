@@ -66,13 +66,13 @@ const nMedia = (await c.db.prepare(`SELECT COUNT(*) n FROM media`).first<{ n: nu
           <tr>
             <td>
               <div style="font-weight:600">{r.name || '(未命名)'}</div>
-              <code style="font-size:.6875rem;color:var(--faint)">/{r.slug}</code>
+              <code style="font-size:.6875rem;color:var(--ad-faint)">/{r.slug}</code>
               {r.is_featured ? <span class="pill p-ok" style="margin-left:.375rem">推荐</span> : null}
             </td>
             <td style="font-size:.8125rem">{siteName.get(r.site_id) ?? r.site_id}</td>
             <td style="font-size:.8125rem">{CAT[r.category] ?? r.category}</td>
             <td style="font-size:.8125rem">{r.moq ?? '—'}</td>
-            <td class="num" style={r.imgs ? '' : 'color:var(--warn)'}>{r.imgs || '缺图'}</td>
+            <td class="num" style={r.imgs ? '' : 'color:var(--ad-warn)'}>{r.imgs || '缺图'}</td>
             <td class="num">{r.langs}</td>
             <td>{r.status === 'published' ? <span class="pill p-ok">已发布</span> : <span class="pill p-warn">草稿</span>}</td>
           </tr>
@@ -84,6 +84,6 @@ const nMedia = (await c.db.prepare(`SELECT COUNT(*) n FROM media`).first<{ n: nu
   <style>
     .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
     .bar input,.bar select{width:auto}
-    .empty a{color:var(--accent)}
+    .empty a{color:var(--ad-accent)}
   </style>
 </AdminShell>

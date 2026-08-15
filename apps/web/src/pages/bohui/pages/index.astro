@@ -116,7 +116,7 @@ const TPL: Record<string, string> = {
             <tr>
               <td>
                 <div style="font-weight:600">{r.title || '(未命名)'}</div>
-                <code style="font-size:.6875rem;color:var(--faint)">/{r.slug || ''}</code>
+                <code style="font-size:.6875rem;color:var(--ad-faint)">/{r.slug || ''}</code>
                 {!r.in_nav && <span class="pill p-wait" style="margin-left:.375rem">不在导航</span>}
               </td>
               <td style="font-size:.8125rem">{siteName.get(r.site_id) ?? r.site_id}</td>
@@ -124,13 +124,13 @@ const TPL: Record<string, string> = {
               <td class="num">{r.blocks}</td>
               <td class="num">
                 {gap > 0
-                  ? <span style="color:var(--warn);font-weight:600">缺 {gap}</span>
-                  : <span style="color:var(--ok)">齐全</span>}
+                  ? <span style="color:var(--ad-warn);font-weight:600">缺 {gap}</span>
+                  : <span style="color:var(--ad-ok)">齐全</span>}
               </td>
               <td>{r.status === 'published'
                 ? <span class="pill p-ok">已发布</span>
                 : <span class="pill p-warn">草稿</span>}</td>
-              <td style="font-size:.75rem;color:var(--faint)">{(r.updated_at ?? '').slice(0, 16)}</td>
+              <td style="font-size:.75rem;color:var(--ad-faint)"><time data-utc={r.updated_at}>{(r.updated_at ?? '').slice(0, 16)}</time></td>
               <td style="text-align:right;white-space:nowrap">
                 <a class="btn" href={`/zh-cn/${r.slug}${r.slug ? '/' : ''}?site=${r.site_id}`} target="_blank">看</a>
                 <a class="btn pri" href={`/bohui/pages/${r.id}/`}>编辑</a>
@@ -153,6 +153,6 @@ const TPL: Record<string, string> = {
   <style>
     .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
     .bar input,.bar select{width:auto}
-    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--soft)}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--ad-soft)}
   </style>
 </AdminShell>

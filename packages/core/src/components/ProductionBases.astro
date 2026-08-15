@@ -1,0 +1,221 @@
+---
+/**
+ * 生产基地 —— 制造基地 + 植物药材种植基地。
+ *
+ * 为什么单独成一个版块,而不是塞进「能力」里:
+ *   代工厂到处都是,能自己管到**种植端**的没几家。
+ *   「从一株药材到一支成品」是帛卉真正的护城河,它值得一个独立版块来讲,
+ *   而不是缩成能力清单里的一行字。
+ *
+ * 结构上按「会不断新增」来设计:
+ *   基地是一份会长的名册,所以顶部给汇总数字(几个基地/多少亩/多少品种),
+ *   新增一条基地时汇总自动变 —— 运营在后台加一行就行,不用回来改文案。
+ *   这也是为什么汇总是算出来的、不是写死的。
+ *
+ * 种植与制造用不同的视觉标记:两者的可信度来源不同 ——
+ *   种植看的是产地与规范(道地产区、GAP),制造看的是产能与洁净等级。
+ *   混在一起用同一套字段,读者反而分不清在看什么。
+ */
+import type { BaseItem } from '../types.ts';
+
+export interface Props {
+  eyebrow?: string;
+  title: string;
+  intro?: string;
+  items: BaseItem[];
+  /** 汇总行的三个标签(各语言由调用方传入) */
+  labels?: { bases: string; area: string; species: string };
+  /** 名册脚注,例如「持续整合中」 */
+  footnote?: string;
+}
+
+const {
+  eyebrow, title, intro, items = [], footnote,
+  labels = { bases: '基地', area: '种植面积', species: '在培品种' },
+} = Astro.props;
+
+/**
+ * 从「1,200 亩」这类写法里拆出数值与单位。
+ * 数值与单位必须一起取:先前把整串里除数字外的字符都当单位,
+ * 遇到「面积(如 1,200 亩)」这种带说明的写法就会把整句话当成单位显示出来。
+ * 单位只认紧跟数字后面的 1-3 个字,取不到就留空,宁可不显示也不显示错的。
+ */
+const parseQty = (s?: string): { n: number; unit: string } => {
+  const m = (s ?? '').match(/([\d][\d.,，]*)\s*([^\d\s,，.)）(（]{1,3})?/);
+  if (!m) return { n: 0, unit: '' };
+  return { n: parseFloat(m[1].replace(/[,，]/g, '')) || 0, unit: m[2] ?? '' };
+};
+const grow = items.filter((i) => i.type === 'grow');
+const areas = grow.map((i) => parseQty(i.area)).filter((q) => q.n > 0);
+const totalArea = areas.reduce((n, q) => n + q.n, 0);
+const areaUnit = areas.find((q) => q.unit)?.unit ?? '';
+/** 品种按逗号/顿号拆开去重 —— 多个基地种同一味药材不该重复计数 */
+const species = new Set(
+  grow.flatMap((i) => (i.focus ?? '').split(/[、,，/]/).map((s) => s.trim()).filter(Boolean)),
+);
+---
+
+<section class="bases ck-section" aria-label={title}>
+  <div class="ck-wrap">
+    <header class="head">
+      {eyebrow && <p class="ck-eyebrow">{eyebrow}</p>}
+      <h2>{title}</h2>
+      {intro && <p class="intro">{intro}</p>}
+    </header>
+
+    {grow.length > 0 && (
+      <dl class="sum">
+        <div><dt class="v">{items.length}</dt><dd>{labels.bases}</dd></div>
+        {totalArea > 0 && (
+          <div><dt class="v">{totalArea.toLocaleString('en-US')}<i>{areaUnit}</i></dt><dd>{labels.area}</dd></div>
+        )}
+        {species.size > 0 && (
+          <div><dt class="v">{species.size}</dt><dd>{labels.species}</dd></div>
+        )}
+      </dl>
+    )}
+
+    <ul class="grid">
+      {items.map((b) => (
+        <li class:list={['base', b.type === 'grow' ? 'grow' : 'make']}>
+          <div class="mark" aria-hidden="true"></div>
+          <p class="kind">{b.kind}</p>
+          <h3>{b.name}</h3>
+          {b.region && <p class="region">{b.region}</p>}
+          <dl class="spec">
+            {b.area && <div><dt>{b.type === 'grow' ? '面积' : '产能'}</dt><dd>{b.area}</dd></div>}
+            {b.focus && <div><dt>{b.type === 'grow' ? '主要品种' : '主要能力'}</dt><dd>{b.focus}</dd></div>}
+            {b.cert && <div><dt>规范</dt><dd>{b.cert}</dd></div>}
+          </dl>
+          {b.note && <p class="note">{b.note}</p>}
+        </li>
+      ))}
+    </ul>
+
+    {footnote && <p class="foot">{footnote}</p>}
+  </div>
+</section>
+
+<style>
+  .bases { background: var(--ck-bg); }
+  .head { max-width: var(--ck-maxw-prose); }
+  .intro { margin-top: 0.875rem; color: var(--ck-ink-soft); }
+
+  /* ── 汇总:名册会长,所以数字是算出来的 ─────────────── */
+  .sum {
+    margin: 2.25rem 0 0;
+    padding-top: 1.5rem;
+    border-top: var(--ck-rule-w) solid var(--ck-line-strong);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem 3.5rem;
+  }
+  .sum .v {
+    font-family: var(--ck-font-head);
+    font-size: clamp(1.75rem, 1.1rem + 2.4vw, 3rem);
+    font-weight: var(--ck-weight-head);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .sum .v i {
+    font-style: normal;
+    font-size: 0.4em;
+    margin-left: 0.25em;
+    letter-spacing: 0;
+  }
+  .sum dd {
+    margin: 0.5rem 0 0;
+    font-size: var(--ck-small);
+    color: var(--ck-ink-soft);
+  }
+
+  /* ── 基地卡 ────────────────────────────────────────── */
+  .grid {
+    list-style: none;
+    margin: 2.5rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: var(--ck-gap);
+  }
+  .base {
+    position: relative;
+    padding: 1.75rem 1.5rem 1.5rem;
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-radius: var(--ck-radius);
+    background: var(--ck-surface);
+  }
+  /* 顶部一道细标记区分两类基地 —— 比加图标克制,也不依赖字体 */
+  .mark {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    border-radius: var(--ck-radius) var(--ck-radius) 0 0;
+  }
+  .base.grow .mark { background: var(--ck-accent); }
+  .base.make .mark { background: color-mix(in srgb, var(--ck-ink) 30%, transparent); }
+
+  .kind {
+    margin: 0;
+    font-size: var(--ck-tiny, 0.6875rem);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ck-ink-soft);
+  }
+  .base.grow .kind { color: var(--ck-accent); }
+
+  .base h3 {
+    margin: 0.5rem 0 0;
+    font-size: 1.125rem;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+  .region {
+    margin: 0.3125rem 0 0;
+    font-size: var(--ck-small);
+    color: var(--ck-ink-soft);
+  }
+
+  .spec {
+    margin: 1.125rem 0 0;
+    display: grid;
+    gap: 0.625rem;
+  }
+  .spec > div {
+    display: grid;
+    grid-template-columns: 4.5rem 1fr;
+    gap: 0.75rem;
+    align-items: baseline;
+  }
+  .spec dt {
+    font-size: var(--ck-tiny, 0.6875rem);
+    color: var(--ck-ink-faint);
+    letter-spacing: 0.04em;
+  }
+  .spec dd {
+    margin: 0;
+    font-size: var(--ck-small);
+    line-height: 1.5;
+  }
+
+  .note {
+    margin: 1.125rem 0 0;
+    padding-top: 0.875rem;
+    border-top: var(--ck-border-w) solid var(--ck-line);
+    font-size: var(--ck-small);
+    color: var(--ck-ink-soft);
+    line-height: 1.6;
+  }
+
+  .foot {
+    margin: 1.75rem 0 0;
+    font-size: var(--ck-small);
+    color: var(--ck-ink-faint);
+  }
+
+  @media (max-width: 40rem) {
+    .sum { gap: 1.25rem 2rem; }
+    .spec > div { grid-template-columns: 4rem 1fr; }
+  }
+</style>
