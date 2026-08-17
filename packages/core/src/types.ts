@@ -299,3 +299,15 @@ export interface BaseItem {
   cert?: string;
   note?: string;
 }
+
+/**
+ * 叙事流程的一个阶段。
+ * code 是给版面用的短标签(如 BOTANY),不是给程序判断用的 ——
+ * 阶段顺序由数组顺序决定,不额外存序号,免得数据与显示对不上。
+ */
+export interface WorkflowStage {
+  name: string;
+  code?: string;
+  desc?: string;
+  points?: string[];
+}

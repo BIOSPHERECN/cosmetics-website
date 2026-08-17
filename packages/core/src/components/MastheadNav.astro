@@ -1,0 +1,180 @@
+---
+/**
+ * 报头式导航(N6)。
+ *
+ * 换掉原来的 N1a「字标 + 几个内联链接 + 右侧按钮」——
+ * 那是最容易被一眼认出「这是 AI 生成的」的导航形态,我们之前用的正是它。
+ *
+ * 报头式适合这条产品线的原因很实在:
+ *   受托制造要卖的是「可信赖」,而报头(刊名 + 期次行 + 分栏目录)天生带档案感;
+ *   而且它容得下 7-8 个栏目而不显拥挤 —— 我们有能力/产品/质量/基地/AI 检测/共创/关于/询盘,
+ *   塞进「字标 + 三个链接」的形态里只能砍掉一半。
+ */
+import { LOCALES, switchLocalePath, t as tr0, type Locale } from '../i18n/index.ts';
+
+export interface NavNode {
+  slug: string;
+  label: string;
+  children?: NavNode[];
+}
+
+export interface Props {
+  locale: Locale;
+  path: string;
+  siteName: string;
+  /** 中文副名,排在刊名下方的期次行里 */
+  siteNameZh?: string;
+  nav?: NavNode[];
+  /** 期次行右侧的一句定位语 */
+  standfirst?: string;
+}
+
+const { locale, path, siteName, siteNameZh, nav = [], standfirst } = Astro.props;
+const tr = (k: string) => tr0(locale, k as any);
+
+const items = nav.filter((n) => n.slug !== '');
+const href = (slug: string) => `/${locale}/${slug ? slug + '/' : ''}`;
+const isOn = (slug: string) => path === href(slug);
+---
+
+<header class="mh">
+  {/* 期次行 —— 报头的上沿:左定位语、右语言 */}
+  <div class="mh-issue">
+    <div class="ck-wrap mh-issue-in">
+      <span class="mh-standfirst">{standfirst ?? siteNameZh}</span>
+      <nav class="mh-langs" aria-label={tr('lang.label')}>
+        {LOCALES.map((l) => (
+          <a
+            href={switchLocalePath(path, l)}
+            class:list={['mh-lang', l === locale && 'on']}
+            hreflang={l}
+            aria-current={l === locale ? 'true' : undefined}
+          >{tr0(l, 'lang.short' as any)}</a>
+        ))}
+      </nav>
+    </div>
+  </div>
+
+  {/* 刊名 */}
+  <div class="ck-wrap mh-name">
+    <a class="mh-word" href={`/${locale}/`}>{siteName}</a>
+  </div>
+
+  {/* 栏目行 */}
+  <div class="mh-rule"></div>
+  <nav class="ck-wrap mh-cols" aria-label={tr('footer.nav')}>
+    {items.map((n) => (
+      <a href={href(n.slug)} class:list={['mh-col', isOn(n.slug) && 'on']}
+         aria-current={isOn(n.slug) ? 'page' : undefined}>{n.label}</a>
+    ))}
+  </nav>
+  <div class="mh-rule thin"></div>
+</header>
+
+<style>
+  .mh {
+    background: var(--ck-bg);
+    border-bottom: var(--ck-border-w) solid var(--ck-line);
+  }
+
+  .mh-issue {
+    border-bottom: var(--ck-border-w) solid var(--ck-line);
+    font-size: var(--ck-tiny, 0.6875rem);
+  }
+  .mh-issue-in {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 2.75rem;
+  }
+  .mh-standfirst {
+    color: var(--ck-ink-faint);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mh-langs { display: flex; gap: 0.75rem; flex: none; }
+  .mh-lang {
+    color: var(--ck-ink-faint);
+    text-decoration: none;
+    letter-spacing: 0.1em;
+    /* 触达目标 44px:窄屏上一排小字最容易点不中。
+       之前写的 2.25rem 只有 36px,自己定的底线自己没守住 */
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-inline: 0.125rem;
+    white-space: nowrap;
+  }
+  .mh-lang.on { color: var(--ck-accent); }
+  .mh-lang:hover { color: var(--ck-ink); }
+
+  .mh-name {
+    padding-block: clamp(1.25rem, 3vw, 2.25rem) clamp(0.875rem, 2vw, 1.5rem);
+    text-align: center;
+  }
+  .mh-word {
+    font-family: var(--ck-font-head);
+    font-size: clamp(1.75rem, 1rem + 4.2vw, 4rem);
+    font-weight: var(--ck-weight-head);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    color: var(--ck-ink);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    /* 刊名是链接,窄屏下字号缩到 28px 时点击区只有 29px 高 ——
+       补内边距到 44px 触达底线,而不是把字号硬撑大 */
+    min-height: 2.75rem;
+    padding-block: 0.25rem;
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+
+  .mh-rule { height: 2px; background: var(--ck-ink); opacity: 0.9; }
+  .mh-rule.thin { height: 1px; opacity: 0.4; }
+
+  .mh-cols {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 clamp(0.875rem, 2.5vw, 2rem);
+    padding-block: 0.5rem;
+  }
+  .mh-col {
+    font-size: var(--ck-small);
+    letter-spacing: 0.04em;
+    color: var(--ck-ink-soft);
+    text-decoration: none;
+    /* 栏目名绝不折成两行 —— 折行的导航项是窄屏上最刺眼的粗糙 */
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    border-bottom: 2px solid transparent;
+    transition: color var(--ck-dur) var(--ck-ease), border-color var(--ck-dur) var(--ck-ease);
+  }
+  .mh-col:hover { color: var(--ck-ink); }
+  .mh-col.on { color: var(--ck-accent); border-bottom-color: var(--ck-accent); }
+  .mh-col:focus-visible {
+    outline: 2px solid var(--ck-accent);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 40rem) {
+    /* 窄屏:栏目行改成可横滑的一条,不折行、不塞进汉堡 ——
+       B2B 访客要的是一眼看到「这家能管哪几段」,收进汉堡等于藏起来 */
+    .mh-cols {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      justify-content: flex-start;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .mh-cols::-webkit-scrollbar { display: none; }
+    .mh-standfirst { max-width: 58%; }
+  }
+</style>

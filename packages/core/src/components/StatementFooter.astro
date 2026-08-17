@@ -1,0 +1,165 @@
+---
+/**
+ * 陈述式页脚(Ft5)。
+ *
+ * 换掉原来的 Ft3「四列链接 + 社交图标 + 小版权」——
+ * 那是被点名的另一个 AI 指纹,我们之前用的正是它。
+ *
+ * 陈述式的做法:整个页脚只说一句话 —— 这家公司到底做什么。
+ * 然后一行元信息(联系方式、法务、语言)收尾。
+ * 对受托制造尤其合适:访客滚到底,最后记住的应该是一句能复述的话,
+ * 而不是四列他不会点的链接。
+ */
+import { LOCALES, switchLocalePath, t as tr0, type Locale } from '../i18n/index.ts';
+
+export interface NavNode { slug: string; label: string }
+
+export interface Props {
+  locale: Locale;
+  path: string;
+  siteName: string;
+  /** 页脚主陈述句 —— 一句话说清这家公司做什么。由内容层给,不在此编造 */
+  statement: string;
+  email?: string;
+  nav?: NavNode[];
+  /** 集团其它站点,横向一行 */
+  siblings?: { name: string; href: string }[];
+}
+
+const { locale, path, siteName, statement, email, nav = [], siblings = [] } = Astro.props;
+const tr = (k: string) => tr0(locale, k as any);
+const href = (slug: string) => `/${locale}/${slug ? slug + '/' : ''}`;
+const year = new Date().getFullYear();
+---
+
+<footer class="sf">
+  <div class="ck-wrap">
+    <p class="sf-statement">{statement}</p>
+
+    <div class="sf-meta">
+      {email && (
+        <a class="sf-mail" href={`mailto:${email}`}>{email}</a>
+      )}
+
+      {nav.length > 0 && (
+        <nav class="sf-links" aria-label={tr('footer.nav')}>
+          {nav.filter((n) => n.slug !== '').slice(0, 6).map((n) => (
+            <a href={href(n.slug)}>{n.label}</a>
+          ))}
+        </nav>
+      )}
+
+      <nav class="sf-langs" aria-label={tr('lang.label')}>
+        {LOCALES.map((l) => (
+          <a href={switchLocalePath(path, l)} class:list={[l === locale && 'on']} hreflang={l}>
+            {tr0(l, 'lang.short' as any)}
+          </a>
+        ))}
+      </nav>
+    </div>
+
+    {siblings.length > 0 && (
+      <p class="sf-sib">
+        {siblings.map((s, i) => (
+          <>{i > 0 && <span class="sep" aria-hidden="true"></span>}<a href={s.href}>{s.name}</a></>
+        ))}
+      </p>
+    )}
+
+    <p class="sf-legal">© {year} {siteName}</p>
+  </div>
+</footer>
+
+<style>
+  .sf {
+    background: var(--ck-bg);
+    border-top: 2px solid var(--ck-ink);
+    padding-block: clamp(3rem, 7vw, 6rem) clamp(1.75rem, 3vw, 2.5rem);
+  }
+
+  /* 一句话就是整个页脚的主体 —— 给它标题级的尺寸,因为它承担标题的职责 */
+  .sf-statement {
+    margin: 0;
+    font-family: var(--ck-font-head);
+    font-size: clamp(1.375rem, 0.9rem + 2.4vw, 2.75rem);
+    font-weight: var(--ck-weight-head);
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+    max-width: 26ch;
+    color: var(--ck-ink);
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+
+  .sf-meta {
+    margin-top: clamp(2rem, 5vw, 3.5rem);
+    padding-top: 1.25rem;
+    border-top: var(--ck-border-w) solid var(--ck-line);
+    display: flex;
+    align-items: center;
+    gap: 1rem 2rem;
+    flex-wrap: wrap;
+    font-size: var(--ck-small);
+  }
+
+  .sf-mail {
+    color: var(--ck-accent);
+    text-decoration: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--ck-accent) 40%, transparent);
+    white-space: nowrap;
+    /* 行内链接默认只有文字高(29px),达不到 44px 触达底线 */
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
+  .sf-mail:hover { border-bottom-color: var(--ck-accent); }
+
+  .sf-links,
+  .sf-langs { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; }
+  .sf-langs { margin-left: auto; }
+
+  .sf-links a,
+  .sf-langs a {
+    color: var(--ck-ink-soft);
+    text-decoration: none;
+    /* 页脚链接同样不许折两行 */
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    transition: color var(--ck-dur) var(--ck-ease);
+  }
+  .sf-links a:hover,
+  .sf-langs a:hover { color: var(--ck-ink); }
+  .sf-langs a.on { color: var(--ck-accent); }
+  .sf-links a:focus-visible,
+  .sf-langs a:focus-visible,
+  .sf-mail:focus-visible {
+    outline: 2px solid var(--ck-accent);
+    outline-offset: 2px;
+  }
+
+  .sf-sib {
+    margin: 1.25rem 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.875rem;
+    font-size: var(--ck-tiny, 0.75rem);
+  }
+  .sf-sib a { color: var(--ck-ink-faint); text-decoration: none; white-space: nowrap; }
+  .sf-sib a:hover { color: var(--ck-ink-soft); }
+  .sf-sib .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--ck-line); flex: none; }
+
+  .sf-legal {
+    margin: 1.5rem 0 0;
+    font-size: var(--ck-tiny, 0.75rem);
+    color: var(--ck-ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 40rem) {
+    .sf-langs { margin-left: 0; }
+  }
+</style>

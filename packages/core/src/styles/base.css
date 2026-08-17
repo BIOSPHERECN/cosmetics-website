@@ -1,3 +1,12 @@
+/* 根元素横向裁切 —— 用 clip 不用 hidden。
+   hidden 会让根元素变成滚动容器,从而废掉 position:sticky
+   (页头、侧栏都会失效);clip 只裁切、不建滚动上下文。
+   这是移动端硬底线的第一条:任何一屏都不许出现横向滚动。 */
+html,
+body {
+  overflow-x: clip;
+}
+
 /**
  * 基座基础样式:排版基调 + 克制动效(仅 CSS 淡入/轻位移)。
  * 动效姿势借鉴 arthelokyo/astrowind (MIT) 的 motion-safe 淡入思路,

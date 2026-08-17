@@ -72,6 +72,10 @@ const { inquiry, href, email } = Astro.props;
     color: color-mix(in srgb, currentColor 70%, transparent);
     text-decoration: none;
     border-bottom: 1px solid currentColor;
+    /* 行内链接只有文字高(29px),达不到 44px 触达底线 */
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
   }
   .mail:hover { color: inherit; }
 </style>

@@ -1,0 +1,292 @@
+---
+/**
+ * 叙事流程 —— Narrative Workflow 宏结构。
+ *
+ * 为什么用它,而不是继续「首屏 + 三个功能块 + CTA」:
+ *   老板文化墙上那六格本身就是一条**序列** ——
+ *   草本原料 → 古方研究 → 低温冷萃 → AI 检测 → 智能溯源 → 智能制造。
+ *   它不是六个并列卖点,是一条从一株药材到一支成品的链。
+ *   并列排成三张卡片,链条就断了,读者只看到「这家什么都会一点」;
+ *   排成阶段,读者看到的是「这家管得住整条链」—— 那才是受托制造真正的说服力。
+ *
+ * 为什么不用 Stat-Led(数字主导):
+ *   那个宏结构要求真实数字,而我们的产能与认证目前全是占位。
+ *   编造指标是最廉价也最危险的一种「好看」。宁可换结构,不编数字。
+ *
+ * 零摄影依赖:阶段编号、分隔规则与纯 CSS 绘制的标记撑起版面,不等实拍图。
+ *
+ * ⚠ 阶段编号必须**竖排在标题正上方**,不能做成「左编号 / 右标题」两栏。
+ *   后者是最典型的「模板化编辑腔」,一眼就能认出是生成的。
+ */
+import type { WorkflowStage } from '../types.ts';
+
+export interface Props {
+  eyebrow?: string;
+  title: string;
+  intro?: string;
+  stages: WorkflowStage[];
+  /** 页脚处的总起行动号召 */
+  ctaLabel?: string;
+  ctaHref?: string;
+}
+
+const { eyebrow, title, intro, stages = [], ctaLabel, ctaHref } = Astro.props;
+
+/** 阶段编号:1.0 / 2.0 —— 版本号式的写法比「01」更像工序,不像目录 */
+const stageNo = (i: number) => `${i + 1}.0`;
+---
+
+<section class="nw ck-section" aria-label={title}>
+  <div class="ck-wrap">
+    <header class="nw-head">
+      {eyebrow && <p class="ck-eyebrow">{eyebrow}</p>}
+      <h2>{title}</h2>
+      {intro && <p class="nw-intro">{intro}</p>}
+    </header>
+
+    <ol class="nw-list">
+      {stages.map((s, i) => (
+        <li class="stage" data-stage={i}>
+          {/* 分隔:粗规则线带编号,阶段之间的界线本身就是信息 */}
+          <div class="stage-rule" aria-hidden="true"></div>
+
+          <div class="stage-body">
+            {/* 编号在标题正上方、同一栏 —— 不做左右两栏 */}
+            <p class="stage-no"><span class="n">{stageNo(i)}</span>{s.code && <span class="code">{s.code}</span>}</p>
+            <h3>{s.name}</h3>
+            {s.desc && <p class="stage-desc">{s.desc}</p>}
+
+            {s.points && s.points.length > 0 && (
+              <ul class="stage-points">
+                {s.points.map((p) => <li>{p}</li>)}
+              </ul>
+            )}
+          </div>
+
+          {/* Tier A 纯 CSS 绘制的阶段标记 —— 不用图、不用 SVG 文件、不用图标字体。
+              六种几何形按阶段轮换,靠形状差异区分,不靠装饰 */}
+          <div class={`stage-mark m${i % 6}`} aria-hidden="true"></div>
+        </li>
+      ))}
+    </ol>
+
+    {ctaLabel && ctaHref && (
+      <p class="nw-cta">
+        <a href={ctaHref}>{ctaLabel}</a>
+      </p>
+    )}
+  </div>
+</section>
+
+<style>
+  .nw { background: var(--ck-bg); }
+
+  .nw-head { max-width: 34ch; }
+  .nw-head h2 {
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    /* 长词内部也要能断行 —— 中英混排里一个长英文词会把窄屏撑破 */
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+  .nw-intro {
+    margin-top: 1rem;
+    color: var(--ck-ink-soft);
+    max-width: var(--ck-maxw-prose);
+    line-height: 1.75;
+  }
+
+  .nw-list {
+    list-style: none;
+    margin: 3.5rem 0 0;
+    padding: 0;
+  }
+
+  .stage {
+    position: relative;
+    display: grid;
+    /* minmax(0,…) 而不是裸 1fr:含内容的轨道用裸 1fr 会在窄屏被内容撑破 */
+    grid-template-columns: minmax(0, 1fr) 6rem;
+    gap: 2rem;
+    align-items: start;
+    padding-block: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  /* 阶段之间的粗规则线 —— 分隔本身承载「这是一道工序交接」的意思 */
+  .stage-rule {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      var(--ck-accent) 0%,
+      color-mix(in srgb, var(--ck-accent) 22%, transparent) 18%,
+      var(--ck-line) 18%,
+      var(--ck-line) 100%
+    );
+  }
+
+  .stage-no {
+    display: flex;
+    align-items: baseline;
+    gap: 0.875rem;
+    margin: 0 0 0.625rem;
+    font-family: var(--ck-font-body);
+  }
+  .stage-no .n {
+    font-family: var(--ck-font-head);
+    font-size: clamp(1.5rem, 1rem + 1.8vw, 2.25rem);
+    font-weight: var(--ck-weight-head);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--ck-accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .stage-no .code {
+    font-size: var(--ck-tiny, 0.6875rem);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ck-ink-faint);
+  }
+
+  .stage h3 {
+    margin: 0;
+    font-size: clamp(1.375rem, 1rem + 1.6vw, 2rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+  .stage-desc {
+    margin: 0.875rem 0 0;
+    color: var(--ck-ink-soft);
+    max-width: var(--ck-maxw-prose);
+    line-height: 1.75;
+  }
+
+  .stage-points {
+    margin: 1.125rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4375rem 0.5rem;
+  }
+  .stage-points li {
+    font-size: var(--ck-small);
+    color: var(--ck-ink-soft);
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-radius: 999px;
+    padding: 0.1875rem 0.6875rem;
+  }
+
+  /* ── Tier A 纯 CSS 绘制的阶段标记 ─────────────────────
+     六种几何形,靠形状差异区分阶段,不用图片、不用图标字体。
+     刻意做得克制:它是页码旁的记号,不是插画。 */
+  .stage-mark {
+    width: 3.5rem;
+    height: 3.5rem;
+    justify-self: end;
+    border: var(--ck-border-w) solid color-mix(in srgb, var(--ck-accent) 45%, transparent);
+    position: relative;
+    flex: none;
+  }
+  .stage-mark::before,
+  .stage-mark::after {
+    content: '';
+    position: absolute;
+    background: var(--ck-accent);
+  }
+  /* 0 · 叶脉:一竖两斜 */
+  .m0 { border-radius: 999px 0 999px 0; }
+  .m0::before { inset: 30% 49% 18% 49%; }
+  .m0::after { inset: 44% 26% 44% 26%; height: 1px; transform: rotate(-24deg); }
+  /* 1 · 卷册:双横 */
+  .m1::before { inset: 34% 24% auto 24%; height: 1px; }
+  .m1::after { inset: 58% 24% auto 24%; height: 1px; }
+  /* 2 · 萃取:漏斗 */
+  .m2::before { inset: 28% 26% 42% 26%; background: none; border-top: 1px solid var(--ck-accent);
+                border-left: 1px solid var(--ck-accent); border-right: 1px solid var(--ck-accent);
+                clip-path: polygon(0 0, 100% 0, 62% 100%, 38% 100%); }
+  .m2::after { inset: auto 46% 26% 46%; height: 14%; }
+  /* 3 · 读取:同心 */
+  .m3 { border-radius: 50%; }
+  .m3::before { inset: 30%; border-radius: 50%; background: none; border: 1px solid var(--ck-accent); }
+  .m3::after { inset: 46%; border-radius: 50%; }
+  /* 4 · 溯源:链节 */
+  .m4::before { inset: 30% 46% 30% 22%; background: none; border: 1px solid var(--ck-accent); border-radius: 999px; }
+  .m4::after { inset: 30% 22% 30% 46%; background: none; border: 1px solid var(--ck-accent); border-radius: 999px; }
+  /* 5 · 成型:方中方 */
+  .m5::before { inset: 26%; background: none; border: 1px solid var(--ck-accent); }
+  .m5::after { inset: 44%; }
+
+  .nw-cta {
+    margin: 3rem 0 0;
+    padding-top: 2rem;
+    border-top: 2px solid var(--ck-line);
+  }
+  .nw-cta a {
+    font-family: var(--ck-font-head);
+    font-size: clamp(1.125rem, 0.9rem + 1vw, 1.625rem);
+    color: var(--ck-ink);
+    text-decoration: none;
+    letter-spacing: -0.01em;
+    border-bottom: 2px solid var(--ck-accent);
+    /* 40px 差 4px 到触达底线 —— 补在下内边距上,视觉几乎无变化 */
+    padding-block: 0.375rem 0.5rem;
+    /* 行动号召永不折成两行 —— 折行的按钮文字在窄屏是最明显的粗糙感 */
+    white-space: nowrap;
+    display: inline-block;
+    transition: color var(--ck-dur) var(--ck-ease);
+  }
+  .nw-cta a:hover { color: var(--ck-accent); }
+
+  /* ── 入场:阶段进入视口时横扫 ───────────────────────── */
+  @media (prefers-reduced-motion: no-preference) {
+    .stage-rule {
+      transform-origin: left center;
+      transform: scaleX(0);
+      transition: transform 0.62s var(--ck-ease);
+    }
+    .stage.in .stage-rule { transform: scaleX(1); }
+    .stage-body,
+    .stage-mark {
+      opacity: 0;
+      transform: translateY(0.75rem);
+      transition: opacity 0.5s var(--ck-ease) 0.12s, transform 0.5s var(--ck-ease) 0.12s;
+    }
+    .stage.in .stage-body,
+    .stage.in .stage-mark { opacity: 1; transform: none; }
+  }
+
+  @media (max-width: 46rem) {
+    .stage {
+      /* 窄屏收成单列;标记移到编号那一行的右侧,不再单占一栏 */
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.25rem;
+    }
+    .stage-mark {
+      width: 2.5rem;
+      height: 2.5rem;
+      justify-self: start;
+      order: -1;
+    }
+  }
+</style>
+
+<script>
+  /* 只做一件事:阶段进入视口时加 .in。
+     不用滚动联动动画 —— 窄屏上滚动本身有物理惯性,叠动画会打架。 */
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      }
+    },
+    { rootMargin: '0px 0px -12% 0px', threshold: 0.15 },
+  );
+  document.querySelectorAll('.nw .stage').forEach((el) => io.observe(el));
+</script>

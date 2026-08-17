@@ -15,13 +15,17 @@ import '../styles/fonts.css';
 import '../styles/schools.css';
 import '../styles/variants.css';
 // Summer Fridays 复刻层放最后:它要盖过流派与风格层。
-// 由 <html data-summer> 开关控制,创始人验完再决定哪些站保留。
+// 由 <html data-summer> 开关控制,现在改成按站可选(见 theme 属性)。
 import '../styles/summer.css';
-// 深金主题(备用,当前未启用 —— 由 <html data-noir> 开关控制)
+// 深金主题 —— 创始人认可的那一版,现为默认主题(由 theme 属性切换)
 import '../styles/noir.css';
 // 编辑式版面层放最后:只改版面几何(不对称/出血/超大字/不均留白),不动颜色字体,
 // 与主题层互不干扰。这一层是去掉「模板感」的关键 —— 模板感来自"每个版块都长一样"。
 import '../styles/editorial.css';
+// 节奏层放在几何层之后:它只管「屏与屏之间的空气」——
+// 相邻版块背景交替 + 卡片圆角与悬停。不用图片就能造出层次,
+// 这是创始人认可的那版深金站真正在做的事(实测,不是感觉)。
+import '../styles/rhythm.css';
 import '../styles/base.css';
 
 export interface Props {
@@ -44,11 +48,18 @@ export interface Props {
   indexable?: boolean;
   /** 品牌主色,用于生成站内绘制的 favicon(不外链、不占用一次网络请求) */
   brandColor?: string;
+  /**
+   * 视觉主题。此前写死成 summer(白底),5 个站没有一个能切到深金 ——
+   * 而创始人认可的正是深金那版。写死主题等于把风格决定权焊在代码里,
+   * 那本该是后台一个下拉框的事。
+   */
+  theme?: 'noir' | 'summer';
 }
 
 const {
   locale, school, variant, brand, title, description,
   siteName, siteUrl, path, indexable = true, brandColor = '#1f4e79',
+  theme = 'noir',
 } = Astro.props;
 
 /**
@@ -82,8 +93,9 @@ const allowIndex = indexable && liveIndexing;
   data-school={school}
   data-variant={variant}
   data-brand={brand}
-  data-summer
   data-editorial
+  data-summer={theme === 'summer' ? '' : undefined}
+  data-noir={theme === 'noir' ? '' : undefined}
 >
   <head>
     <meta charset="utf-8" />

@@ -78,6 +78,8 @@ export function langChain(lang: Lang): Lang[] {
 }
 
 export interface SiteRow {
+  /** 视觉主题:noir(深金)/ summer(白底)—— 按站可切,不写死在代码里 */
+  theme?: string;
   id: string;
   domain: string;
   brand_color: string;
@@ -152,7 +154,7 @@ export async function getSiteByHost(db: D1Database, host: string, lang: Lang): P
   const clean = host.replace(/^www\./, '').split(':')[0];
   const row = await db
     .prepare(
-      `SELECT s.id, s.domain, s.brand_color, s.variant, s.is_live,
+      `SELECT s.id, s.domain, s.brand_color, s.variant, s.is_live, s.theme,
               i.name, i.tagline, i.description
          FROM sites s
          JOIN site_i18n i ON i.site_id = s.id AND i.lang = ?
@@ -173,7 +175,7 @@ const chain = (lang: Lang) => [lang, 'en', 'zh-cn'];
 export async function getSiteById(db: D1Database, id: string, lang: Lang): Promise<SiteRow | null> {
   const row = await db
     .prepare(
-      `SELECT s.id, s.domain, s.brand_color, s.variant, s.is_live,
+      `SELECT s.id, s.domain, s.brand_color, s.variant, s.is_live, s.theme,
               i.name, i.tagline, i.description
          FROM sites s
          JOIN site_i18n i ON i.site_id = s.id AND i.lang IN (?,?,?)

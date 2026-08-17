@@ -95,6 +95,7 @@ const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
   path={path}
   indexable={shell.site?.is_live === 1}
   brandColor={shell.site?.brand_color}
+  theme={shell.site?.theme ?? 'noir'}
 >
   <a class="ck-skip-link" href="#main">跳到主内容</a>
   <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}

@@ -1,0 +1,105 @@
+/**
+ * 版面节奏层 —— 不用一张图就造出层次。
+ *
+ * 来源:创始人认可的那版深金站,实测它的做法是三件很便宜的事 ——
+ *   ① 相邻版块背景交替:纯色 ↔ 主色仅 2% 混入底色的极淡渐变;
+ *   ② 栅格极简:只有 2/3/4/6 四档,响应式三级(1列 → 2列 → n列);
+ *   ③ 卡片统一:细边 + 大圆角 + 慢过渡。
+ *
+ * 第一条是关键。我们此前所有版块共用同一个平底色,滚起来像一整张纸;
+ * 而深色底 + 极淡的主色晕会让每一屏有自己的"空气",这正是"高级"的来源 ——
+ * 与图片无关。2% 这个量是刻意的:再多就成了色块,层次感反而没了。
+ *
+ * 只在深色主题下开:浅底上 2% 的暖色会显脏,那是另一套做法。
+ */
+
+/* ── ① 版块背景交替 ─────────────────────────────────────── */
+html[data-noir][data-brand] .ck-section {
+  position: relative;
+  background: var(--ck-bg);
+}
+
+/* 偶数版块:自上而下从「主色 2% 混底色」淡出到纯底色 */
+html[data-noir][data-brand] .ck-section:nth-of-type(even) {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ck-accent) 2%, var(--ck-bg)) 0%,
+    var(--ck-bg) 100%
+  );
+}
+
+/* 每三屏插一屏实心面色 —— 纯交替久了也会腻,第三种背景打断节拍 */
+html[data-noir][data-brand] .ck-section:nth-of-type(3n) {
+  background: var(--ck-surface);
+}
+
+/* 首屏单独给一层更明显的晕(4%),因为它要立刻定调 */
+html[data-noir][data-brand] .hero {
+  background: linear-gradient(
+    180deg,
+    var(--ck-bg) 0%,
+    color-mix(in srgb, var(--ck-accent) 4%, var(--ck-bg)) 100%
+  );
+}
+
+/* 相邻两屏同色时补一道细分隔,避免看起来像一屏 */
+html[data-noir][data-brand] .ck-section + .ck-section::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 1px;
+  background: color-mix(in srgb, var(--ck-accent) 8%, transparent);
+  pointer-events: none;
+}
+
+/* ── ② 卡片:细边 + 大圆角 + 慢过渡 ─────────────────────── */
+html[data-noir][data-brand] {
+  /* 深色底上直角显得硬,大圆角才是那种"贵"的手感。
+     22px 是量出来的:比 16 更松弛,比 28 更克制。 */
+  --ck-radius: 22px;
+  --ck-radius-lg: 26px;
+  --ck-cta-radius: 999px;
+}
+
+html[data-noir][data-brand] .matrix .cell,
+html[data-noir][data-brand] .pg .card,
+html[data-noir][data-brand] .base,
+html[data-noir][data-brand] .certs li,
+html[data-noir][data-brand] .proof .nums > *,
+html[data-noir][data-brand] .steps li {
+  border: var(--ck-border-w) solid var(--ck-line);
+  border-radius: var(--ck-radius);
+  padding: 1.5rem;
+  background: color-mix(in srgb, var(--ck-surface) 70%, transparent);
+  transition: border-color 0.4s var(--ck-ease), background 0.4s var(--ck-ease);
+}
+
+html[data-noir][data-brand] .matrix .cell:hover,
+html[data-noir][data-brand] .pg .card:hover,
+html[data-noir][data-brand] .base:hover {
+  border-color: color-mix(in srgb, var(--ck-accent) 45%, var(--ck-line));
+  background: color-mix(in srgb, var(--ck-surface) 100%, transparent);
+}
+
+/* ── ③ 首屏:一屏一个概念,标题给足呼吸 ───────────────── */
+html[data-noir][data-brand] .hero h1 {
+  max-width: 13ch;
+}
+html[data-noir][data-brand] .hero .lead {
+  max-width: 32ch;
+}
+
+/* 数字墙在深色底上用主色,而不是继承正文色 —— 数字是这类站的门面 */
+html[data-noir][data-brand] .hero .hv,
+html[data-noir][data-brand] .proof .v,
+html[data-noir][data-brand] .statwall .val,
+html[data-noir][data-brand] .bases .sum .v {
+  color: var(--ck-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-noir][data-brand] * {
+    transition: none !important;
+  }
+}
