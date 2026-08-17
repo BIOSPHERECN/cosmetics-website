@@ -11,6 +11,11 @@
  * 不是一段会滚走的对话。所以输入一次、输出一版结构化方案,可直接转询盘。
  */
 import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../lib/shell';
+
 
 export const prerender = false;
 
@@ -72,74 +77,30 @@ const T = zh ? {
   sample: '⚠ The formula library currently holds sample data. Results are for demonstration only.',
   moq: 'MOQ', lead_: 'Sampling', mkt: 'Markets',
 };
-const dir = ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr';
+/* 外壳来自与全站同一处 —— 这两页的内容是写死的,但它们仍是这个站的页面,
+   必须共用页头、导航与页脚,否则点进去像掉到了别人网站上。 */
+const shell = await pageShell(db, Astro.url, lang);
+const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
 ---
 
-<html lang={lang} dir={dir}>
-<head>
-  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{T.title} · 帛卉</title>
-  <meta name="description" content={T.lead} />
-  <style>
-    :root {
-      --ink:#0F1A14; --soft:#46564C; --faint:#7A8A80;
-      --ground:#F6F8F5; --panel:#FFFFFF; --line:#DDE6DD; --sunk:#EDF2EC;
-      --herb:#1F6B3A; --herb-deep:#17512C; --herb-soft:#E4F0E7;
-      --warn:#8A5A00; --warn-soft:#FBF0DC;
-      font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',system-ui,sans-serif;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--ground);color:var(--ink);line-height:1.75}
-    .wrap{max-width:48rem;margin:0 auto;padding:3rem 1.25rem 5rem}
-    .eyebrow{font-size:.6875rem;letter-spacing:.2em;text-transform:uppercase;color:var(--herb);margin:0 0 .625rem}
-    h1{font-size:clamp(1.5rem,1.1rem+1.9vw,2.25rem);line-height:1.18;letter-spacing:-0.02em;margin:0 0 .75rem;text-wrap:balance}
-    .lead{color:var(--soft);margin:0 0 2rem}
+<BaseLayout
+  locale={lang}
+  school={shell.variant?.school ?? 'atelier'}
+  variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? 'beauty2oem'}
+  title={T.title}
+  description={T.lead}
+  siteName={shell.site?.name ?? '帛卉'}
+  siteUrl={`https://${shell.site?.domain ?? 'bohui.group'}`}
+  path={path}
+  indexable={shell.site?.is_live === 1}
+  brandColor={shell.site?.brand_color}
+>
+  <a class="ck-skip-link" href="#main">跳到主内容</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
 
-    .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1.375rem}
-    textarea{font:inherit;font-size:1rem;line-height:1.7;width:100%;min-height:7rem;resize:vertical;
-             padding:.875rem 1rem;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink)}
-    textarea:focus{outline:none;border-color:var(--herb);box-shadow:0 0 0 3px var(--herb-soft)}
-    .egs{display:flex;gap:.4375rem;flex-wrap:wrap;margin:.875rem 0 0;align-items:baseline}
-    .egs .t{font-size:.75rem;color:var(--faint)}
-    .eg{font:inherit;font-size:.8125rem;background:var(--sunk);border:1px solid var(--line);color:var(--soft);
-        border-radius:999px;padding:.25rem .75rem;cursor:pointer;text-align:start}
-    .eg:hover{border-color:var(--herb);color:var(--herb)}
-    button.go{font:inherit;font-size:1rem;font-weight:600;width:100%;margin-top:1.125rem;
-              padding:.9375rem;border:0;border-radius:9px;background:var(--herb);color:#fff;cursor:pointer}
-    button.go:hover:not(:disabled){background:var(--herb-deep)}
-    button.go:disabled{opacity:.45;cursor:not-allowed}
-    .msg{margin:.75rem 0 0;font-size:.875rem;color:#A02B20;min-height:1.4em}
-    .off{background:#FBE7E4;border:1px solid #EFC6C0;color:#8A2018;border-radius:10px;
-         padding:.9375rem 1.125rem;font-size:.875rem;margin-bottom:1.25rem}
-    .warnbar{background:var(--warn-soft);border:1px solid #EFDCB6;color:#6E4700;border-radius:10px;
-             padding:.8125rem 1.0625rem;font-size:.8125rem;margin:1.5rem 0 0}
-
-    #out{display:none} #out.on{display:block}
-    h2{font-size:1rem;margin:2.25rem 0 .75rem}
-    .tags{display:flex;flex-wrap:wrap;gap:.4375rem;margin:0;padding:0;list-style:none}
-    .tags li{background:var(--herb-soft);color:var(--herb-deep);border-radius:999px;padding:.25rem .75rem;font-size:.8125rem}
-    .fm{border:1px solid var(--line);border-radius:11px;padding:1.125rem 1.25rem;margin-bottom:.75rem;background:var(--panel)}
-    .fm .hd{display:flex;align-items:baseline;gap:.625rem;flex-wrap:wrap}
-    .fm code{font-family:ui-monospace,monospace;font-size:1rem;font-weight:700}
-    .fm .cat{font-size:.75rem;color:var(--faint)}
-    .fm .sm{font-size:.6875rem;background:var(--warn-soft);color:var(--warn);border-radius:4px;padding:.0625rem .375rem}
-    .fm .ben{display:flex;gap:.3125rem;flex-wrap:wrap;margin-top:.5rem}
-    .fm .ben span{font-size:.75rem;background:var(--sunk);border-radius:4px;padding:.0625rem .4375rem;color:var(--soft)}
-    .fm .act{margin-top:.5rem;font-size:.8125rem;color:var(--soft)}
-    .fm .spec{margin-top:.625rem;padding-top:.625rem;border-top:1px solid var(--line);
-              display:flex;gap:1.25rem;flex-wrap:wrap;font-size:.75rem;color:var(--faint)}
-    .fm .spec b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
-    .adv{white-space:pre-wrap;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:1.125rem 1.25rem}
-    .acts{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:1.5rem}
-    .cta{display:inline-block;padding:.8125rem 1.5rem;background:var(--herb);color:#fff;
-         text-decoration:none;border-radius:9px;font-weight:600}
-    .ghost{display:inline-block;padding:.8125rem 1.5rem;border:1px solid var(--line);
-           color:var(--soft);text-decoration:none;border-radius:9px;background:var(--panel);cursor:pointer;font:inherit}
-    @media (prefers-reduced-motion: reduce){*{transition:none!important}}
-  </style>
-</head>
-<body>
-  <div class="wrap">
+  <main id="main" class="wrap">
     <p class="eyebrow">{T.eyebrow}</p>
     <h1>{T.title}</h1>
     <p class="lead">{T.lead}</p>
@@ -169,7 +130,87 @@ const dir = ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr';
         <button class="ghost" id="reset">{T.again}</button>
       </div>
     </div>
-  </div>
+  </main>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+
+  <style>
+    /* 同 skin 页:只写组件样式,配色走全站令牌 */
+
+    .wrap { max-width: var(--ck-maxw, 72rem); margin: 0 auto;
+            padding: clamp(2rem, 5vw, 4rem) var(--ck-gutter, 1.25rem) 5rem; }
+    .eyebrow { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase;
+               color: var(--ck-accent); margin: 0 0 .625rem; }
+    .wrap > h1 { max-width: 20ch; line-height: 1.1; letter-spacing: -0.025em;
+                 margin: 0 0 .875rem; text-wrap: balance; }
+    .lead { color: var(--ck-ink-soft); margin: 0 0 2rem;
+            max-width: var(--ck-maxw-prose); font-size: 1.0625rem; }
+    .msg { margin: .875rem 0 0; font-size: var(--ck-small); color: #A02B20; min-height: 1.4em; }
+    .off { background: #FBE7E4; border: 1px solid #EFC6C0; color: #8A2018;
+           border-radius: var(--ck-radius); padding: .9375rem 1.125rem;
+           font-size: var(--ck-small); margin-bottom: 1.25rem; max-width: 44rem; }
+    button.go { font: inherit; font-size: 1rem; font-weight: var(--ck-cta-weight); width: 100%;
+                padding: .9375rem; border: 0; border-radius: var(--ck-cta-radius);
+                background: var(--ck-accent); color: var(--ck-on-accent); cursor: pointer;
+                letter-spacing: var(--ck-cta-tracking); text-transform: var(--ck-cta-transform); }
+    button.go:hover:not(:disabled) { background: var(--ck-accent-deep); }
+    button.go:disabled { opacity: .45; cursor: not-allowed; }
+    .cta { display: inline-block; padding: .8125rem 1.5rem; background: var(--ck-accent);
+           color: var(--ck-on-accent); text-decoration: none;
+           border-radius: var(--ck-cta-radius); font-weight: var(--ck-cta-weight); }
+    .fm { border: var(--ck-border-w) solid var(--ck-line); border-radius: var(--ck-radius);
+          padding: 1.0625rem 1.125rem; margin-bottom: .625rem; background: var(--ck-surface); }
+    #out { display: none; max-width: 48rem; }
+    #out.on { display: block; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+    .box { background: var(--ck-surface); border: var(--ck-border-w) solid var(--ck-line);
+           border-radius: var(--ck-radius); padding: 1.375rem; max-width: 44rem; }
+    textarea { font: inherit; font-size: 1rem; line-height: 1.7; width: 100%; min-height: 7rem;
+               resize: vertical; padding: .875rem 1rem;
+               border: var(--ck-border-w) solid var(--ck-line); border-radius: var(--ck-radius);
+               background: var(--ck-bg); color: var(--ck-ink); }
+    textarea:focus { outline: none; border-color: var(--ck-accent);
+                     box-shadow: 0 0 0 3px color-mix(in srgb, var(--ck-accent) 18%, transparent); }
+    .egs { display: flex; gap: .4375rem; flex-wrap: wrap; margin: .875rem 0 0; align-items: baseline; }
+    .egs .t { font-size: .75rem; color: var(--ck-ink-faint); }
+    .eg { font: inherit; font-size: var(--ck-small); background: var(--ck-bg);
+          border: var(--ck-border-w) solid var(--ck-line); color: var(--ck-ink-soft);
+          border-radius: 999px; padding: .25rem .75rem; cursor: pointer; text-align: start; }
+    .eg:hover { border-color: var(--ck-accent); color: var(--ck-accent); }
+    .warnbar { background: #FBF0DC; border: 1px solid #EFDCB6; color: #6E4700;
+               border-radius: var(--ck-radius); padding: .8125rem 1.0625rem;
+               font-size: var(--ck-small); margin: 1.5rem 0 0; max-width: 44rem; }
+    #out h2 { font-size: 1.0625rem; margin: 2.25rem 0 .75rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: .4375rem; margin: 0; padding: 0; list-style: none; }
+    .tags li { background: color-mix(in srgb, var(--ck-accent) 12%, transparent);
+               color: var(--ck-accent-deep); border-radius: 999px;
+               padding: .25rem .75rem; font-size: var(--ck-small); }
+    .fm .hd { display: flex; align-items: baseline; gap: .625rem; flex-wrap: wrap; }
+    .fm code { font-family: ui-monospace, monospace; font-size: 1rem; font-weight: 700; }
+    .fm .cat { font-size: .75rem; color: var(--ck-ink-faint); }
+    .fm .sm { font-size: .6875rem; background: #FBF0DC; color: #8A5A00;
+              border-radius: 4px; padding: .0625rem .375rem; }
+    .fm .ben { display: flex; gap: .3125rem; flex-wrap: wrap; margin-top: .5rem; }
+    .fm .ben span { font-size: .75rem; background: var(--ck-bg); border-radius: 4px;
+                    padding: .0625rem .4375rem; color: var(--ck-ink-soft); }
+    .fm .act { margin-top: .5rem; font-size: var(--ck-small); color: var(--ck-ink-soft); }
+    .fm .spec { margin-top: .625rem; padding-top: .625rem;
+                border-top: var(--ck-border-w) solid var(--ck-line);
+                display: flex; gap: 1.25rem; flex-wrap: wrap;
+                font-size: .75rem; color: var(--ck-ink-faint); }
+    .fm .spec b { color: var(--ck-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .adv { white-space: pre-wrap; background: var(--ck-surface);
+           border: var(--ck-border-w) solid var(--ck-line); border-radius: var(--ck-radius);
+           padding: 1.125rem 1.25rem; line-height: 1.75; }
+    .acts { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: 1.5rem; }
+    .ghost { display: inline-block; padding: .8125rem 1.5rem;
+             border: var(--ck-border-w) solid var(--ck-line); color: var(--ck-ink-soft);
+             text-decoration: none; border-radius: var(--ck-cta-radius);
+             background: var(--ck-surface); cursor: pointer; font: inherit; }
+  </style>
 
   <script is:inline define:vars={{ lang, T }}>
   (() => {
@@ -265,5 +306,4 @@ const dir = ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr';
     });
   })();
   </script>
-</body>
-</html>
+</BaseLayout>

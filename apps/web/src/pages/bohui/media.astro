@@ -71,6 +71,7 @@ const qs = (p: number) => {
       {folders.map((f) => <option value={f.folder} selected={f.folder === folder}>{f.folder}({f.n})</option>)}
     </select>
     <button class="btn" type="submit">筛选</button>
+    <a class="btn pri" href="/bohui/media/stock/" style="margin-left:auto">从免费图库找图</a>
     {(q || folder) && <a class="btn" href="/bohui/media/">清空</a>}
     <span class="sel-info" id="selinfo"></span>
     <button class="btn danger" type="button" id="del" hidden>删除所选</button>

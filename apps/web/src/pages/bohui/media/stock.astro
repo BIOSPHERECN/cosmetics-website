@@ -1,0 +1,172 @@
+---
+/**
+ * 免费图库 —— 搜、挑、一键入库。
+ *
+ * 做成功能而不是我手动下几张:
+ *   我下的那几张,下次换风格、加页面、开新站又不够用,又得找我。
+ *   做成页面,你和运营随时能自己搜、自己换 —— 这才叫「自己可以上传图片自行修改」。
+ *
+ * 只放行 CC0 与公有领域:可商用、可改、免署名。
+ * 搜索引擎搜到的图默认有版权,贴到对外的商业站上是给公司留尾巴。
+ */
+import AdminShell from '../../../layouts/AdminShell.astro';
+import { pageGuard } from '../../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const n = (await c.db.prepare(`SELECT COUNT(*) n FROM media`).first<{ n: number }>())?.n ?? 0;
+
+/** 按帛卉真实需要给的预设词。
+ *  成品广告图在 CC0 池里几乎没有(实测 1-2 条),但车间、产线、草本、实验室有货 ——
+ *  所以预设词只给「有货且对得上业务」的方向,不让人白搜一圈。 */
+const PRESETS = [
+  { zh: '草本植物', q: 'herbal plant leaves', n: 240 },
+  { zh: '工厂产线', q: 'factory production line', n: 107 },
+  { zh: '洁净车间', q: 'clean room industry', n: 68 },
+  { zh: '实验室器皿', q: 'laboratory glassware', n: 32 },
+  { zh: '药材种植', q: 'medicinal herb field', n: 0 },
+  { zh: '玻璃瓶容器', q: 'glass bottle container', n: 0 },
+  { zh: '植物标本', q: 'botanical illustration', n: 0 },
+  { zh: '质地纹理', q: 'texture macro white', n: 0 },
+];
+---
+
+<AdminShell title="免费图库" active="media" email={c.sess.email}>
+  <nav class="crumb">
+    <a href="/bohui/">仪表盘</a><span>›</span><a href="/bohui/media/">媒体库</a><span>›</span><b>免费图库</b>
+  </nav>
+
+  <h1>免费图库</h1>
+  <p class="lead">
+    搜索 <b>CC0 与公有领域</b>授权的图片 —— 可商用、可修改、免署名,挑好一键入库。
+    媒体库现有 {n} 个文件。
+  </p>
+
+  <div class="note info">
+    <b>为什么不用搜索引擎随手搜的图:</b>那些默认受版权保护。贴到对外的商业站上,
+    风险不会立刻爆,而是等站点做起来、被人注意到之后才爆 —— 那时更难收拾。
+    这里只放行 CC0 / 公有领域,效果一样、没有尾巴,来源与授权也会一并存进库里备查。
+  </div>
+
+  <form class="bar" id="sf">
+    <input id="q" placeholder="用英文搜效果最好,如 herbal plant / factory line…" style="max-width:24rem" />
+    <button class="btn pri" type="submit">搜索</button>
+    <span class="msg" id="msg"></span>
+  </form>
+
+  <div class="presets">
+    <span class="t">常用方向:</span>
+    {PRESETS.map((p) => (
+      <button type="button" class="ps" data-q={p.q}>
+        {p.zh}{p.n > 0 && <i>{p.n}</i>}
+      </button>
+    ))}
+  </div>
+
+  <div class="opsbar" id="opsbar" hidden>
+    <span id="selinfo"></span>
+    <label class="fold">存到分组 <input id="folder" value="stock" /></label>
+    <button class="btn pri" id="imp">导入所选</button>
+  </div>
+
+  <div id="grid" class="grid"></div>
+  <div id="empty" class="empty">输入检索词,或点上面的常用方向。</div>
+  <div id="toast" class="toast" hidden></div>
+
+  <style>
+    .crumb { display:flex; align-items:center; gap:.4375rem; font-size:.8125rem; color:var(--ad-faint); margin-bottom:.875rem }
+    .crumb a { color:var(--ad-accent); text-decoration:none }
+    .crumb b { color:var(--ad-ink) }
+    .msg { font-size:.8125rem; color:var(--ad-bad) }
+    .presets { display:flex; gap:.4375rem; flex-wrap:wrap; align-items:center; margin-bottom:1.25rem }
+    .presets .t { font-size:.75rem; color:var(--ad-faint) }
+    .ps { font:inherit; font-size:.8125rem; background:var(--ad-panel); border:1px solid var(--ad-line);
+          color:var(--ad-soft); border-radius:999px; padding:.25rem .75rem; cursor:pointer }
+    .ps:hover { border-color:var(--ad-accent); color:var(--ad-accent) }
+    .ps i { font-style:normal; margin-left:.375rem; font-size:.6875rem; color:var(--ad-faint);
+            font-variant-numeric:tabular-nums }
+    .opsbar { display:flex; gap:.875rem; align-items:center; flex-wrap:wrap; margin-bottom:1rem;
+              background:var(--ad-accent-soft); border:1px solid #C4DEDA; border-radius:8px; padding:.625rem .875rem;
+              font-size:.8125rem; color:var(--ad-accent-deep) }
+    .opsbar .fold { display:flex; align-items:center; gap:.4375rem; margin-left:auto }
+    .opsbar .fold input { width:8rem }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(11rem,1fr)); gap:.875rem }
+    .it { position:relative; background:var(--ad-panel); border:1px solid var(--ad-line);
+          border-radius:8px; overflow:hidden; cursor:pointer; transition:border-color .12s }
+    .it:hover { border-color:var(--ad-accent) }
+    .it.on { border-color:var(--ad-accent); box-shadow:0 0 0 2px var(--ad-accent-soft) }
+    .it img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; background:var(--ad-sunk) }
+    .it .cap { padding:.5rem .625rem; display:grid; gap:.125rem }
+    .it .cap b { font-size:.75rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+    .it .cap span { font-size:.6875rem; color:var(--ad-faint) }
+    .it .tick { position:absolute; top:.4375rem; right:.4375rem; width:1.25rem; height:1.25rem;
+                border-radius:50%; background:var(--ad-panel); border:1px solid var(--ad-line);
+                display:grid; place-items:center; font-size:.75rem; color:transparent }
+    .it.on .tick { background:var(--ad-accent); border-color:var(--ad-accent); color:#fff }
+    [hidden] { display:none !important }
+  </style>
+
+  <script is:inline>
+  (() => {
+    const $ = (i) => document.getElementById(i);
+    const grid = $('grid'), toast = $('toast'), empty = $('empty');
+    const say = (m, bad) => { toast.textContent = m; toast.classList.toggle('bad', !!bad);
+      toast.hidden = false; clearTimeout(say.t); say.t = setTimeout(() => { toast.hidden = true; }, 3200); };
+    let list = [], sel = new Set();
+
+    const sync = () => {
+      $('opsbar').hidden = sel.size === 0;
+      $('selinfo').textContent = '已选 ' + sel.size + ' 张';
+    };
+
+    async function search(q) {
+      $('q').value = q;
+      $('msg').textContent = ''; grid.innerHTML = ''; sel.clear(); sync();
+      empty.hidden = false; empty.textContent = '检索中…';
+      try {
+        const d = await (await fetch('/api/admin/stock?q=' + encodeURIComponent(q))).json();
+        if (!d.ok) throw new Error(d.msg);
+        list = d.list || [];
+        if (!list.length) { empty.textContent = '这个词在 CC0 池里没有结果。换个说法,或试试上面的常用方向。'; return; }
+        empty.hidden = true;
+        list.forEach((x, i) => {
+          const el = document.createElement('div');
+          el.className = 'it'; el.dataset.i = i;
+          el.innerHTML = '<span class="tick">✓</span><img loading="lazy" alt=""><div class="cap"><b></b><span></span></div>';
+          el.querySelector('img').src = x.thumb;
+          el.querySelector('b').textContent = x.title || '(无标题)';
+          el.querySelector('.cap span').textContent =
+            (x.w && x.h ? x.w + '×' + x.h + ' · ' : '') + x.license.toUpperCase();
+          el.addEventListener('click', () => {
+            el.classList.toggle('on');
+            el.classList.contains('on') ? sel.add(i) : sel.delete(i);
+            sync();
+          });
+          grid.appendChild(el);
+        });
+      } catch (e) { empty.textContent = ''; $('msg').textContent = e.message || '检索失败'; }
+    }
+
+    $('sf').addEventListener('submit', (e) => { e.preventDefault(); const q = $('q').value.trim(); if (q) search(q); });
+    document.querySelectorAll('.ps').forEach((b) => b.addEventListener('click', () => search(b.dataset.q)));
+
+    $('imp').addEventListener('click', async () => {
+      const btn = $('imp'); btn.disabled = true; btn.textContent = '导入中…';
+      try {
+        const items = [...sel].map((i) => list[i]);
+        const d = await (await fetch('/api/admin/stock', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items, folder: $('folder').value.trim() || 'stock' }),
+        })).json();
+        if (!d.ok) throw new Error(d.msg);
+        const bad = (d.failed || []).length;
+        say('已导入 ' + d.imported + ' 张' + (bad ? ',' + bad + ' 张失败(多为体积超限)' : ''));
+        if (d.imported) setTimeout(() => { location.href = '/bohui/media/'; }, 1500);
+      } catch (e) { say(e.message || '导入失败', true); }
+      btn.disabled = false; btn.textContent = '导入所选';
+    });
+  })();
+  </script>
+</AdminShell>

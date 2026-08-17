@@ -14,6 +14,11 @@
  *    把免责声明放到最下面等于知道有问题还藏着。
  */
 import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../lib/shell';
+
 import { LANG_GROUPS } from '../../lib/db';
 
 export const prerender = false;
@@ -69,73 +74,30 @@ const T = zh ? {
   notReady: 'Not available yet: no vision-capable model has been configured in the admin.',
   noFormula: 'The formula library has no real formulas yet, so no quotable recommendation can be produced.',
 };
-const dir = ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr';
+/* 外壳来自与全站同一处 —— 这两页的内容是写死的,但它们仍是这个站的页面,
+   必须共用页头、导航与页脚,否则点进去像掉到了别人网站上。 */
+const shell = await pageShell(db, Astro.url, lang);
+const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
 ---
 
-<html lang={lang} dir={dir}>
-<head>
-  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{T.title} · 帛卉</title>
-  <meta name="description" content={T.lead} />
-  <style>
-    :root {
-      --ink: #10201C; --soft: #4A5A56; --faint: #7C8C88;
-      --ground: #F5F7F5; --panel: #FFFFFF; --line: #E0E7E4;
-      --accent: #0E6B62; --accent-deep: #0A544D; --accent-soft: #E3F0EE;
-      --warn: #8A5A00; --warn-soft: #FBF0DC;
-      font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--ground); color: var(--ink); line-height: 1.7; }
-    .wrap { max-width: 46rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
-    .eyebrow { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); margin: 0 0 .625rem; }
-    h1 { font-size: clamp(1.5rem, 1.1rem + 1.8vw, 2.125rem); line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 .75rem; text-wrap: balance; }
-    .lead { color: var(--soft); margin: 0 0 2rem; }
+<BaseLayout
+  locale={lang}
+  school={shell.variant?.school ?? 'atelier'}
+  variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? 'beauty2oem'}
+  title={T.title}
+  description={T.lead}
+  siteName={shell.site?.name ?? '帛卉'}
+  siteUrl={`https://${shell.site?.domain ?? 'bohui.group'}`}
+  path={path}
+  indexable={shell.site?.is_live === 1}
+  brandColor={shell.site?.brand_color}
+>
+  <a class="ck-skip-link" href="#main">跳到主内容</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
 
-    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
-    .shot { display: grid; gap: 1rem; justify-items: center; text-align: center; }
-    .drop {
-      width: 100%; aspect-ratio: 4/3; border: 2px dashed var(--line); border-radius: 10px;
-      display: grid; place-items: center; cursor: pointer; background: #FBFCFB; overflow: hidden;
-      color: var(--faint); font-size: .875rem; transition: border-color .15s;
-    }
-    .drop:hover { border-color: var(--accent); }
-    .drop img { width: 100%; height: 100%; object-fit: cover; }
-    .tips { font-size: .8125rem; color: var(--faint); margin: 0; }
-
-    .consent { display: flex; gap: .5rem; align-items: center; justify-content: center;
-               font-size: .8125rem; color: var(--soft); margin: 1.125rem 0 .875rem; cursor: pointer; }
-    .consent input { margin: 0; accent-color: var(--accent); flex: none; width: .9375rem; height: .9375rem; }
-
-    button.go {
-      font: inherit; font-size: 1rem; font-weight: 600; width: 100%;
-      padding: .9375rem; border: 0; border-radius: 9px;
-      background: var(--accent); color: #fff; cursor: pointer;
-    }
-    button.go:hover:not(:disabled) { background: var(--accent-deep); }
-    button.go:disabled { opacity: .45; cursor: not-allowed; }
-    .msg { margin: .875rem 0 0; font-size: .875rem; color: #A02B20; min-height: 1.4em; }
-
-    .fine { margin: .875rem 0 0; font-size: .75rem; line-height: 1.65; color: var(--faint); text-align: center; }
-
-    #out { display: none; }
-    #out.on { display: block; }
-    h2.sec { font-size: 1rem; margin: 2rem 0 .75rem; }
-    .traits { display: flex; flex-wrap: wrap; gap: .4375rem; margin: 0 0 1rem; padding: 0; list-style: none; }
-    .traits li { background: var(--accent-soft); color: var(--accent-deep); border-radius: 999px; padding: .25rem .75rem; font-size: .8125rem; }
-    .fm { border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.125rem; margin-bottom: .625rem; background: var(--panel); }
-    .fm b { font-family: ui-monospace, monospace; font-size: .9375rem; }
-    .fm .meta { font-size: .8125rem; color: var(--soft); margin-top: .25rem; }
-    .advice { white-space: pre-wrap; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 1.125rem 1.25rem; }
-    .disc { font-size: .75rem; color: var(--faint); margin-top: 1rem; line-height: 1.7; }
-    .cta { display: inline-block; margin-top: 1.25rem; padding: .8125rem 1.5rem; background: var(--accent); color: #fff;
-           text-decoration: none; border-radius: 8px; font-weight: 600; }
-    .off { background: #FBE7E4; border: 1px solid #EFC6C0; color: #8A2018; border-radius: 10px; padding: .9375rem 1.125rem; font-size: .875rem; margin-bottom: 1.25rem; }
-    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-  </style>
-</head>
-<body>
-  <div class="wrap">
+  <main id="main" class="wrap">
     <p class="eyebrow">{T.eyebrow}</p>
     <h1>{T.title}</h1>
     <p class="lead">{T.lead}</p>
@@ -173,7 +135,72 @@ const dir = ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr';
       <p class="disc" id="disc"></p>
       <a class="cta" id="cta" href={`/${lang}/contact/`}>{T.inquiry}</a>
     </div>
-  </div>
+  </main>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+
+  <style>
+    /* 只写本页组件样式;配色一律走全站 --ck-* 令牌 ——
+       之前这页自带一套颜色变量,换站点风格时它纹丝不动,像贴上去的。 */
+
+    .wrap { max-width: var(--ck-maxw, 72rem); margin: 0 auto;
+            padding: clamp(2rem, 5vw, 4rem) var(--ck-gutter, 1.25rem) 5rem; }
+    .eyebrow { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase;
+               color: var(--ck-accent); margin: 0 0 .625rem; }
+    .wrap > h1 { max-width: 20ch; line-height: 1.1; letter-spacing: -0.025em;
+                 margin: 0 0 .875rem; text-wrap: balance; }
+    .lead { color: var(--ck-ink-soft); margin: 0 0 2rem;
+            max-width: var(--ck-maxw-prose); font-size: 1.0625rem; }
+    .msg { margin: .875rem 0 0; font-size: var(--ck-small); color: #A02B20; min-height: 1.4em; }
+    .off { background: #FBE7E4; border: 1px solid #EFC6C0; color: #8A2018;
+           border-radius: var(--ck-radius); padding: .9375rem 1.125rem;
+           font-size: var(--ck-small); margin-bottom: 1.25rem; max-width: 44rem; }
+    button.go { font: inherit; font-size: 1rem; font-weight: var(--ck-cta-weight); width: 100%;
+                padding: .9375rem; border: 0; border-radius: var(--ck-cta-radius);
+                background: var(--ck-accent); color: var(--ck-on-accent); cursor: pointer;
+                letter-spacing: var(--ck-cta-tracking); text-transform: var(--ck-cta-transform); }
+    button.go:hover:not(:disabled) { background: var(--ck-accent-deep); }
+    button.go:disabled { opacity: .45; cursor: not-allowed; }
+    .cta { display: inline-block; padding: .8125rem 1.5rem; background: var(--ck-accent);
+           color: var(--ck-on-accent); text-decoration: none;
+           border-radius: var(--ck-cta-radius); font-weight: var(--ck-cta-weight); }
+    .fm { border: var(--ck-border-w) solid var(--ck-line); border-radius: var(--ck-radius);
+          padding: 1.0625rem 1.125rem; margin-bottom: .625rem; background: var(--ck-surface); }
+    #out { display: none; max-width: 48rem; }
+    #out.on { display: block; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+    .card { background: var(--ck-surface); border: var(--ck-border-w) solid var(--ck-line);
+            border-radius: var(--ck-radius); padding: 1.5rem; max-width: 34rem; }
+    .shot { display: grid; gap: 1rem; justify-items: center; text-align: center; }
+    .drop { width: 100%; aspect-ratio: 4/3; border: 2px dashed var(--ck-line);
+            border-radius: var(--ck-radius); display: grid; place-items: center;
+            cursor: pointer; overflow: hidden; color: var(--ck-ink-faint);
+            font-size: var(--ck-small); transition: border-color .15s; }
+    .drop:hover { border-color: var(--ck-accent); }
+    .drop img { width: 100%; height: 100%; object-fit: cover; }
+    .tips { font-size: var(--ck-small); color: var(--ck-ink-faint); margin: 0; }
+    .consent { display: flex; gap: .5rem; align-items: center; justify-content: center;
+               font-size: var(--ck-small); color: var(--ck-ink-soft);
+               margin: 1.125rem 0 .875rem; cursor: pointer; }
+    .consent input { margin: 0; accent-color: var(--ck-accent); flex: none;
+                     width: .9375rem; height: .9375rem; }
+    .fine { margin: .875rem 0 0; font-size: .75rem; line-height: 1.65;
+            color: var(--ck-ink-faint); max-width: 34rem; }
+    h2.sec { font-size: 1.0625rem; margin: 2.25rem 0 .75rem; }
+    .traits { display: flex; flex-wrap: wrap; gap: .4375rem; margin: 0 0 1rem; padding: 0; list-style: none; }
+    .traits li { background: color-mix(in srgb, var(--ck-accent) 12%, transparent);
+                 color: var(--ck-accent-deep); border-radius: 999px;
+                 padding: .25rem .75rem; font-size: var(--ck-small); }
+    .fm b { font-family: ui-monospace, monospace; font-size: .9375rem; }
+    .fm .meta { font-size: var(--ck-small); color: var(--ck-ink-soft); margin-top: .25rem; }
+    .advice { white-space: pre-wrap; background: var(--ck-surface);
+              border: var(--ck-border-w) solid var(--ck-line); border-radius: var(--ck-radius);
+              padding: 1.125rem 1.25rem; line-height: 1.75; }
+    .disc { font-size: .75rem; color: var(--ck-ink-faint); margin-top: 1rem; line-height: 1.7; }
+  </style>
 
   <script is:inline define:vars={{ lang, T }}>
   (() => {
@@ -254,5 +281,4 @@ const dir = ['ar', 'he', 'fa', 'ur'].includes(lang) ? 'rtl' : 'ltr';
     });
   })();
   </script>
-</body>
-</html>
+</BaseLayout>
