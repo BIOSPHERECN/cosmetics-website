@@ -51,7 +51,7 @@ const siteName = new Map(SITES.map((s) => [s.id, s.name])).get(pg.site_id) ?? pg
 const BTYPE: Record<string, string> = {
   hero: '首屏', workshop: '车间实拍', certs: '资质证书', matrix: '品类矩阵',
   process: '服务流程', evidence: '能力佐证', proof: '数字实证', form: '询盘表单',
-  inquiry: '询盘引导', prose: '正文段落', statwall: '数字墙', bases: '生产基地', stages: '叙事流程',
+  inquiry: '询盘引导', prose: '正文段落', statwall: '数字墙', bases: '生产基地', stages: '叙事流程', banner: '超大首屏图',
 };
 const PICK = ['zh-cn', 'en', 'zh-tw', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'ar', 'pt', 'id'];
 
@@ -81,7 +81,7 @@ const view = blocks.map((b: any) => {
 const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
 ---
 
-<AdminShell title="编辑页面" active="pages" email={c.sess.email}>
+<AdminShell title="编辑页面" active="pages" email={c.sess.email} tenant={c.tenant}>
   <nav class="crumb">
     <a href="/bohui/">仪表盘</a><span>›</span><a href="/bohui/pages/">页面与版块</a><span>›</span>
     <b>{zhTitle ?? `/${pg.slug}`}</b>
@@ -174,9 +174,39 @@ const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
     </details>
   ))}
 
+  {/* 选图弹层 —— 所有图片字段共用一个。
+      这一件事决定了运营是「自己能换图」还是「得来找我」。 */}
+  <dialog id="picker">
+    <div class="pk-h">
+      <b>选择图片</b>
+      <input id="pk-q" placeholder="搜文件名 / 分组 / 说明…" />
+      <a class="btn" href="/bohui/media/" target="_blank">去媒体库上传</a>
+      <button type="button" class="btn" id="pk-x">关闭</button>
+    </div>
+    <div id="pk-grid" class="pk-grid"></div>
+    <p id="pk-empty" class="pk-empty" hidden>媒体库还没有图片。先去媒体库拖几张进去。</p>
+  </dialog>
+
   <div id="toast" class="toast" hidden></div>
 
   <style>
+    dialog#picker { border: 0; border-radius: 12px; padding: 0; width: min(60rem, 94vw);
+                    max-height: 84vh; box-shadow: 0 24px 64px -20px rgb(0 0 0 / .45); }
+    dialog#picker::backdrop { background: rgb(0 0 0 / .45); }
+    .pk-h { display: flex; gap: .625rem; align-items: center; padding: .875rem 1.125rem;
+            border-bottom: 1px solid var(--ad-line); background: #fafbfc; position: sticky; top: 0; }
+    .pk-h b { font-size: .9375rem; }
+    .pk-h input { flex: 1; max-width: 20rem; }
+    .pk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+               gap: .75rem; padding: 1.125rem; overflow-y: auto; max-height: calc(84vh - 4rem); }
+    .pk-it { border: 1px solid var(--ad-line); border-radius: 8px; overflow: hidden; cursor: pointer;
+             background: var(--ad-panel); transition: border-color .12s; }
+    .pk-it:hover { border-color: var(--ad-accent); box-shadow: 0 0 0 2px var(--ad-accent-soft); }
+    .pk-it img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; background: var(--ad-sunk); }
+    .pk-it span { display: block; padding: .375rem .5rem; font-size: .6875rem; color: var(--ad-faint);
+                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pk-empty { padding: 2.5rem; text-align: center; color: var(--ad-faint); font-size: .875rem; }
+
     .crumb { display: flex; align-items: center; gap: .4375rem; font-size: .8125rem; color: var(--ad-faint); margin-bottom: .875rem; }
     .crumb a { color: var(--ad-accent); text-decoration: none; }
     .crumb a:hover { text-decoration: underline; }
@@ -229,6 +259,56 @@ const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
   <script is:inline>
   (() => {
     const toast = document.getElementById('toast');
+
+    /* ── 图片选择器 ────────────────────────────────────
+       点「选择图片」→ 弹媒体库 → 点一张就填进去。
+       运营不需要知道 /media/12 是什么意思。 */
+    const dlg = document.getElementById('picker');
+    let target = null;
+
+    async function loadMedia(q) {
+      const grid = document.getElementById('pk-grid');
+      const empty = document.getElementById('pk-empty');
+      grid.innerHTML = '';
+      const d = await (await fetch('/api/admin/media-list?q=' + encodeURIComponent(q || ''))).json();
+      const list = d.list || [];
+      empty.hidden = list.length > 0;
+      list.forEach((m) => {
+        const el = document.createElement('div');
+        el.className = 'pk-it';
+        el.innerHTML = '<img loading="lazy" alt=""><span></span>';
+        el.querySelector('img').src = '/media/' + m.id;
+        el.querySelector('span').textContent = m.filename;
+        el.addEventListener('click', () => {
+          if (!target) return;
+          const inp = target.querySelector('input');
+          inp.value = '/media/' + m.id;
+          const th = target.querySelector('[data-thumb]');
+          th.innerHTML = '';
+          const im = document.createElement('img'); im.src = inp.value; im.alt = '';
+          th.appendChild(im);
+          dlg.close();
+        });
+        grid.appendChild(el);
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      const pick = e.target.closest('.ft-pick');
+      if (pick) { target = pick.closest('.ft-img'); loadMedia(''); dlg.showModal(); return; }
+      const clr = e.target.closest('.ft-clear');
+      if (clr) {
+        const f = clr.closest('.ft-img');
+        f.querySelector('input').value = '';
+        f.querySelector('[data-thumb]').innerHTML = '';
+      }
+    });
+    document.getElementById('pk-x')?.addEventListener('click', () => dlg.close());
+    let t;
+    document.getElementById('pk-q')?.addEventListener('input', (e) => {
+      clearTimeout(t); t = setTimeout(() => loadMedia(e.target.value), 260);
+    });
+
     const say = (m, bad) => {
       toast.textContent = m; toast.classList.toggle('bad', !!bad); toast.hidden = false;
       clearTimeout(say.t); say.t = setTimeout(() => { toast.hidden = true; }, 3000);

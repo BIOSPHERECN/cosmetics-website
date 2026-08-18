@@ -34,12 +34,19 @@ const LABELS: Record<string, string> = {
   bases: '基地数', species: '品种数',
   // 叙事流程
   stages: '阶段', code: '英文短标', points: '要点', ctaLabel: '底部行动号召',
+  // 超大首屏图
+  height: '首屏高度', imageAlt: '图片说明(无障碍)',
 };
 const L = (k?: string) => (k ? LABELS[k] ?? k : '');
 
 /** 长文本给 textarea。判据同时看键名与实际长度 —— 只看键名会漏掉写长了的标题 */
 const LONG = new Set(['lead', 'body', 'text', 'desc', 'intro', 'outro', 'quote', 'note', 'seo_desc']);
 const isLong = (k?: string, v = '') => (k ? LONG.has(k) : false) || v.length > 48;
+
+/** 图片类字段:渲染成「缩略图 + 选择」,不让人手打 /media/12 这种路径。
+ *  这是「自己能操作」和「得找程序员」的分界线 —— Shopify 的交付就赢在这里。 */
+const IMG_KEYS = new Set(['image', 'src', 'cover', 'photo', 'banner', 'imageUrl', 'bg']);
+const isImg = (k?: string) => !!k && IMG_KEYS.has(k);
 
 const kind = Array.isArray(data) ? 'arr' : data !== null && typeof data === 'object' ? 'obj' : 'val';
 /** 新增行的空白模板:照第一条的形状生成,而不是给一个空字符串 */
@@ -50,7 +57,25 @@ const blank = (sample: unknown): unknown =>
     : '';
 ---
 
-{kind === 'val' && (
+{kind === 'val' && isImg(name) && (
+  <div class="ft-f ft-img" data-key={name}>
+    <label>{L(name) || '图片'}</label>
+    <div class="ft-img-row">
+      <span class="ft-thumb" data-thumb>
+        {String(data ?? '') && <img src={String(data)} alt="" />}
+      </span>
+      <div class="ft-img-ops">
+        <input value={String(data ?? '')} placeholder="未选择图片" readonly />
+        <span class="ft-img-btns">
+          <button type="button" class="ft-mini ft-pick">选择图片</button>
+          <button type="button" class="ft-mini ft-clear">清除</button>
+        </span>
+      </div>
+    </div>
+  </div>
+)}
+
+{kind === 'val' && !isImg(name) && (
   <div class="ft-f" data-key={name} data-scalar={name === undefined ? '' : undefined}>
     <label>{L(name) || '内容'}</label>
     {isLong(name, String(data ?? '')) ? (
@@ -164,6 +189,20 @@ const blank = (sample: unknown): unknown =>
     background: #f1f3f5; border-radius: 4px; padding: 0.0625rem 0.375rem;
   }
   .ft-item-h .ft-rm { margin-left: auto; }
+  /* ── 图片字段 ─────────────────────────────────── */
+  .ft-img-row { display: flex; gap: 0.625rem; align-items: flex-start; }
+  .ft-thumb {
+    width: 5rem; height: 3.75rem; flex: none; border-radius: 6px; overflow: hidden;
+    border: 1px solid var(--ad-line); background: var(--ad-sunk);
+    display: grid; place-items: center;
+  }
+  .ft-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .ft-thumb:empty::after { content: '无图'; font-size: 0.6875rem; color: var(--ad-faint); }
+  .ft-img-ops { flex: 1; min-width: 0; display: grid; gap: 0.375rem; }
+  .ft-img-ops input { background: var(--ad-sunk); color: var(--ad-faint); font-size: 0.75rem;
+                      font-family: var(--ad-mono); }
+  .ft-img-btns { display: flex; gap: 0.375rem; }
+
   .ft-item .ft-f:last-child { margin-bottom: 0.75rem; }
   .ft-item .ft-grp:last-child { margin-bottom: 0.75rem; }
 </style>

@@ -48,7 +48,7 @@ const qs = (p: number) => {
 };
 ---
 
-<AdminShell title="媒体库" active="media" email={c.sess.email}>
+<AdminShell title="媒体库" active="media" email={c.sess.email} tenant={c.tenant}>
   <h1>媒体库</h1>
   <p class="lead">
     拖进来就能传。上传前浏览器会自动转成 WebP、长边压到 1600px —— 手机原图直接拖也没问题。

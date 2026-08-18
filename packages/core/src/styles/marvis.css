@@ -1,0 +1,233 @@
+/**
+ * 复刻层 —— 照抄创始人认可的那版站(marvis-bohui,自有账号自有站点)。
+ *
+ * 这一层不做「借鉴」也不做「重新诠释」,就是把量到的值原样搬过来:
+ * 三套主题令牌、栅格档位、卡片形态、版块留白、字体配对,全部按实测值写。
+ * 上一版我拿设计方法另做了一套结构,那是我在秀方法,不是在执行要求。
+ *
+ * 实测来源:https://marvis-bohui.pages.dev/ 的内联样式表(该站在创始人自己的
+ * Cloudflare 账号下,为本项目而建)。
+ *
+ * 一个关键发现:那页顶部的「✦ 黑金奢华 / ◻ 极简白 / ◆ 科技深蓝」不是导航,
+ * 是**主题切换胶囊** —— 整页带三套配色,能当场切着看。
+ * 创始人喜欢它,多半就是因为这个:一次看三种可能,而不是听人描述。
+ * 所以这一层也把切换器一并搬过来。
+ */
+
+/* ── 主题一 · 黑金奢华(默认)──────────────────────────── */
+html[data-marvis][data-brand],
+html[data-marvis='noir'][data-brand] {
+  --mv-bg: #0a0a0a;
+  --mv-fg: #f5f0eb;
+  --mv-fd: rgba(245, 240, 235, 0.55);
+  --mv-s: #141414;
+  --mv-sr: #1c1c1c;
+  --mv-bd: rgba(245, 240, 235, 0.08);
+  --mv-g: #c8a45c;
+  --mv-gd: rgba(200, 164, 92, 0.12);
+}
+
+/* ── 主题二 · 极简白 ──────────────────────────────────── */
+html[data-marvis='light'][data-brand] {
+  --mv-bg: #fafaf8;
+  --mv-fg: #1a1a1a;
+  --mv-fd: rgba(26, 26, 26, 0.5);
+  --mv-s: #ffffff;
+  --mv-sr: #f5f3f0;
+  --mv-bd: rgba(0, 0, 0, 0.06);
+  --mv-g: #b8860b;
+  --mv-gd: rgba(184, 134, 11, 0.08);
+}
+
+/* ── 主题三 · 科技深蓝 ────────────────────────────────── */
+html[data-marvis='tech'][data-brand] {
+  --mv-bg: #030712;
+  --mv-fg: #e2e8f0;
+  --mv-fd: rgba(226, 232, 240, 0.55);
+  --mv-s: #0f172a;
+  --mv-sr: #1e293b;
+  --mv-bd: rgba(100, 116, 139, 0.12);
+  --mv-g: #f59e0b;
+  --mv-gd: rgba(245, 158, 11, 0.12);
+}
+
+/* ── 把复刻令牌接到全站的 --ck-* 上 ───────────────────────
+   这样所有既有组件不改一行代码就跟着换 —— 复刻的是外观,不是重写整套页面。 */
+html[data-marvis][data-brand] {
+  --ck-bg: var(--mv-bg);
+  --ck-surface: var(--mv-s);
+  --ck-surface-raised: var(--mv-sr);
+  --ck-ink: var(--mv-fg);
+  --ck-ink-soft: var(--mv-fd);
+  --ck-ink-faint: var(--mv-fd);
+  --ck-line: var(--mv-bd);
+  --ck-line-strong: var(--mv-bd);
+  --ck-accent: var(--mv-g);
+  --ck-accent-deep: var(--mv-g);
+  --ck-accent-soft: var(--mv-gd);
+  --ck-on-accent: var(--mv-bg);
+
+  /* 字体:Playfair Display(display)+ Inter(body)—— 实测所用 */
+  --ck-font-head: 'Playfair Display', var(--ck-cjk), Georgia, serif;
+  --ck-font-body: 'Inter Variable', Inter, var(--ck-cjk), system-ui, sans-serif;
+  --ck-weight-head: 700;
+  --ck-tracking-head: -0.02em;
+
+  /* 尺度:实测 4.5 / 4 / 3 / 2.5 / 2rem 五档 */
+  --ck-h1: clamp(2.5rem, 1.6rem + 3.6vw, 4.5rem);
+  --ck-h2: clamp(2rem, 1.4rem + 2.4vw, 3rem);
+  --ck-h3: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
+
+  /* 圆角:实测 1.5rem 卡片 / 999px 胶囊 */
+  --ck-radius: 1.5rem;
+  --ck-radius-lg: 1.5rem;
+  --ck-cta-radius: 999px;
+  --ck-border-w: 1px;
+
+  /* 版块留白:实测 5rem 上下 */
+  --ck-section-py: clamp(3rem, 6vw, 5rem);
+  --ck-maxw: 80rem;
+  --ck-gutter: 1.5rem;
+}
+
+/* ── 版块背景交替 —— 实测的三种 ──────────────────────── */
+html[data-marvis][data-brand] .ck-section:nth-of-type(3n + 1) {
+  background: var(--mv-s);
+}
+html[data-marvis][data-brand] .ck-section:nth-of-type(3n + 2) {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--mv-g) 2%, var(--mv-bg)) 0%, var(--mv-bg) 100%);
+}
+html[data-marvis][data-brand] .ck-section:nth-of-type(3n) {
+  background: linear-gradient(180deg, var(--mv-bg) 0%, color-mix(in srgb, var(--mv-g) 2%, var(--mv-bg)) 100%);
+}
+/* 首屏:自上而下从底色淡入 4% 金 —— 实测值 */
+html[data-marvis][data-brand] .hero {
+  background: linear-gradient(180deg, var(--mv-bg) 0%, color-mix(in srgb, var(--mv-g) 4%, var(--mv-bg)) 100%);
+}
+
+/* ── 卡片:1px 边 + 1.5rem 圆角 + 1.5rem 内边距 + .4s 过渡 ── */
+html[data-marvis][data-brand] .matrix .cell,
+html[data-marvis][data-brand] .pg .card,
+html[data-marvis][data-brand] .base,
+html[data-marvis][data-brand] .certs li,
+html[data-marvis][data-brand] .steps li,
+html[data-marvis][data-brand] .ev .row {
+  border: 1px solid var(--mv-bd);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  background: transparent;
+  transition: all 0.4s;
+}
+html[data-marvis][data-brand] .matrix .cell:hover,
+html[data-marvis][data-brand] .pg .card:hover,
+html[data-marvis][data-brand] .base:hover,
+html[data-marvis][data-brand] .certs li:hover {
+  border-color: color-mix(in srgb, var(--mv-g) 50%, var(--mv-bd));
+  background: var(--mv-gd);
+}
+
+/* ── 栅格档位 g2 / g3 / g4 / g6 —— 实测的三级响应 ───────── */
+html[data-marvis][data-brand] .matrix .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+html[data-marvis][data-brand] .steps .list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+html[data-marvis][data-brand] .certs .list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+
+@media (min-width: 40rem) {
+  html[data-marvis][data-brand] .matrix .grid,
+  html[data-marvis][data-brand] .steps .list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-marvis][data-brand] .certs .list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 64rem) {
+  html[data-marvis][data-brand] .matrix .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  html[data-marvis][data-brand] .steps .list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html[data-marvis][data-brand] .certs .list { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+/* ── 首屏:居中大字,与实测一致 ───────────────────────── */
+html[data-marvis][data-brand] .hero .inner { text-align: center; }
+html[data-marvis][data-brand] .hero h1 {
+  max-width: 18ch;
+  margin-inline: auto;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+html[data-marvis][data-brand] .hero .lead {
+  margin-inline: auto;
+  max-width: 42ch;
+  line-height: 1.6;
+}
+html[data-marvis][data-brand] .hero .actions { justify-content: center; }
+html[data-marvis][data-brand] .hero .hl {
+  margin-inline: auto;
+  max-width: none;
+  text-align: center;
+}
+/* 复刻版首屏不用右半幅质地 —— 原站是纯排版 + 渐变 */
+html[data-marvis][data-brand] .hero .texwrap { display: none; }
+
+/* 版块标题居中 —— 原站的做法 */
+html[data-marvis][data-brand] .ck-section > .ck-wrap > header,
+html[data-marvis][data-brand] .ck-section > .ck-wrap > .head {
+  text-align: center;
+  margin-inline: auto;
+  max-width: 46ch;
+}
+
+/* ── 主题切换胶囊 —— 原站顶部那个悬浮条 ───────────────── */
+.mv-switch {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.3125rem;
+  border-radius: 999px;
+  border: 1px solid var(--mv-bd, rgba(255, 255, 255, 0.1));
+  background: color-mix(in srgb, var(--mv-bg, #0a0a0a) 72%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.mv-switch button {
+  font: inherit;
+  font-size: 0.75rem;
+  font-family: var(--ck-font-body);
+  color: var(--mv-fd);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.4375rem 0.875rem;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 2.25rem;
+  transition: all 0.3s;
+}
+.mv-switch button:hover { color: var(--mv-fg); }
+.mv-switch button[aria-pressed='true'] {
+  color: var(--mv-bg);
+  background: var(--mv-g);
+}
+.mv-switch button:focus-visible { outline: 2px solid var(--mv-g); outline-offset: 2px; }
+
+/* 切换器悬浮在页头之上,给页头留出让位 */
+html[data-marvis] body { padding-top: 4.5rem; }
+
+@media (max-width: 30rem) {
+  .mv-switch { top: 10px; padding: 0.25rem; }
+  .mv-switch button { font-size: 0.6875rem; padding: 0.375rem 0.625rem; }
+}
+
+/* ── 极简白下的 banner:遮罩改浅、文字改深 ─────────────────
+   白底站配深色遮罩会显脏,而白字压在浅色大图上直接读不清。
+   所以遮罩转成「自下而上的白」,文字用墨色 —— 同一个组件,两种底都成立。 */
+html[data-marvis='light'] .bb-scrim {
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.1) 0%,
+    rgb(255 255 255 / 0.02) 30%,
+    rgb(255 255 255 / 0.72) 74%,
+    rgb(255 255 255 / 0.94) 100%
+  );
+}
+html[data-marvis='light'] .bb-in { color: var(--mv-fg); }
+html[data-marvis='light'] .bb-ghost:hover { background: rgb(0 0 0 / 0.05); }

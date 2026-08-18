@@ -25,7 +25,7 @@ const nAdmin = users.filter((u: any) => u.role === 'admin').length;
 const ROLE: Record<string, string> = { admin: '管理员', editor: '编辑' };
 ---
 
-<AdminShell title="账号与权限" active="users" email={c.sess.email}>
+<AdminShell title="账号与权限" active="users" email={c.sess.email} tenant={c.tenant}>
   <h1>账号与权限</h1>
   <p class="lead">
     管理员可以管所有内容与系统设置;编辑只能改内容,不能动模型配置与账号。

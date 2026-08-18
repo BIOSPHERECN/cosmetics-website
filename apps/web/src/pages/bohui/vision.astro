@@ -21,7 +21,7 @@ const withKey = rows.filter((r: any) => r.has_key);
 const visionReady = rows.filter((r: any) => r.has_key && r.can_vision);
 ---
 
-<AdminShell title="视觉模型横评" active="models" email={c.sess.email}>
+<AdminShell title="视觉模型横评" active="models" email={c.sess.email} tenant={c.tenant}>
   <h1>视觉模型横评</h1>
   <p class="lead">
     传一张照片,<b>所有已配 key 的供应商同时跑一遍</b>,并排看谁读得准、谁吐得稳、谁快。

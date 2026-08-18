@@ -18,7 +18,7 @@ const url = new URL(Astro.request.url);
 const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
 const onlyLead = url.searchParams.get('lead') === '1';
 const PER = 25;
-const W = onlyLead ? `WHERE contact_email IS NOT NULL AND contact_email <> ''` : '';
+const W = `WHERE site_id = '${c.tenant.siteId.replace(/'/g, "''")}'` + (onlyLead ? ` AND contact_email IS NOT NULL AND contact_email <> ''` : '');
 
 const total = (await c.db.prepare(`SELECT COUNT(*) n FROM studio_sessions ${W}`).first<{ n: number }>())?.n ?? 0;
 const leads = (await c.db.prepare(`SELECT COUNT(*) n FROM studio_sessions WHERE contact_email IS NOT NULL AND contact_email <> ''`).first<{ n: number }>())?.n ?? 0;
@@ -32,7 +32,7 @@ const pages = Math.max(1, Math.ceil(total / PER));
 const j = (s: string | null) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
 ---
 
-<AdminShell title="AI 共创记录" active="studio" email={c.sess.email}>
+<AdminShell title="AI 共创记录" active="studio" email={c.sess.email} tenant={c.tenant}>
   <h1>AI 共创记录</h1>
   <p class="lead">
     客户用自然语言描述需求 → AI 从配方库检索候选 → 生成卖点文案与包装图。

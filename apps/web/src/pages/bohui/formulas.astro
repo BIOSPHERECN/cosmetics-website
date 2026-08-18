@@ -44,7 +44,7 @@ const link = (p: number) => {
 const acts = (s: string) => { try { return JSON.parse(s) as { name: string; pct: string }[]; } catch { return []; } };
 ---
 
-<AdminShell title="配方库" active="formulas" email={c.sess.email}>
+<AdminShell title="配方库" active="formulas" email={c.sess.email} tenant={c.tenant}>
   <h1>配方库</h1>
   <p class="lead">
     共 {total} 条。客户在前台用自然语言描述需求时,AI 先从这张表里检索候选,再解释为什么推荐 ——

@@ -17,7 +17,7 @@ const q = (url.searchParams.get('q') ?? '').trim();
 const site = url.searchParams.get('site') ?? '';
 
 const where: string[] = [], bind: unknown[] = [];
-if (site) { where.push('p.site_id=?'); bind.push(site); }
+where.push('p.site_id=?'); bind.push(c.tenant.siteId);
 if (q) { where.push('(p.slug LIKE ? OR EXISTS (SELECT 1 FROM product_i18n x WHERE x.product_id=p.id AND x.name LIKE ?))'); bind.push(`%${q}%`, `%${q}%`); }
 const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
@@ -34,7 +34,7 @@ const CAT: Record<string, string> = { skincare: '护肤', makeup: '彩妆', clea
 const nMedia = (await c.db.prepare(`SELECT COUNT(*) n FROM media`).first<{ n: number }>())?.n ?? 0;
 ---
 
-<AdminShell title="产品与剂型" active="products" email={c.sess.email}>
+<AdminShell title="产品与剂型" active="products" email={c.sess.email} tenant={c.tenant}>
   <h1>产品与剂型</h1>
   <p class="lead">前台「产品目录」页读的就是这张表。共 {rows.length} 个产品。</p>
 

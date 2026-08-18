@@ -51,7 +51,7 @@ function diff(before: string | null, after: string): { k: string; a: string; b: 
 }
 ---
 
-<AdminShell title="修订记录" active="log" email={c.sess.email}>
+<AdminShell title="修订记录" active="log" email={c.sess.email} tenant={c.tenant}>
   <h1>修订记录</h1>
   <p class="lead">共 {total} 条。每次保存都会留痕,展开可看改前改后的逐字段对比。</p>
 

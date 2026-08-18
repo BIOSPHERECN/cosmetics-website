@@ -26,6 +26,11 @@ import '../styles/editorial.css';
 // 相邻版块背景交替 + 卡片圆角与悬停。不用图片就能造出层次,
 // 这是创始人认可的那版深金站真正在做的事(实测,不是感觉)。
 import '../styles/rhythm.css';
+// 复刻层 —— 照抄创始人认可的那版站(自有账号自有站点),放在最后压过其它层
+import '@fontsource/playfair-display/400.css';
+import '@fontsource/playfair-display/700.css';
+import '@fontsource-variable/inter';
+import '../styles/marvis.css';
 import '../styles/base.css';
 
 export interface Props {
@@ -53,13 +58,13 @@ export interface Props {
    * 而创始人认可的正是深金那版。写死主题等于把风格决定权焊在代码里,
    * 那本该是后台一个下拉框的事。
    */
-  theme?: 'noir' | 'summer';
+  theme?: 'noir' | 'summer' | 'marvis';
 }
 
 const {
   locale, school, variant, brand, title, description,
   siteName, siteUrl, path, indexable = true, brandColor = '#1f4e79',
-  theme = 'noir',
+  theme = 'marvis',
 } = Astro.props;
 
 /**
@@ -96,6 +101,7 @@ const allowIndex = indexable && liveIndexing;
   data-editorial
   data-summer={theme === 'summer' ? '' : undefined}
   data-noir={theme === 'noir' ? '' : undefined}
+  data-marvis={theme === 'marvis' ? 'light' : undefined}
 >
   <head>
     <meta charset="utf-8" />

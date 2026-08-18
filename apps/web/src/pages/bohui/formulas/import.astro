@@ -32,7 +32,7 @@ const FIELDS = [
 ];
 ---
 
-<AdminShell title="导入配方" active="formulas" email={c.sess.email}>
+<AdminShell title="导入配方" active="formulas" email={c.sess.email} tenant={c.tenant}>
   <nav class="crumb">
     <a href="/bohui/">仪表盘</a><span>›</span><a href="/bohui/formulas/">配方库</a><span>›</span><b>批量导入</b>
   </nav>

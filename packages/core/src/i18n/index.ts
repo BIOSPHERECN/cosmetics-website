@@ -4,7 +4,10 @@
  * 每站可通过 t(locale, overrides) 覆盖个别词条。
  */
 
-export const LOCALES = ['zh-cn', 'zh-tw', 'en', 'ja'] as const;
+// 语种清单 —— 繁体按创始人要求移除。
+// 保留日语是因为日本是既定目标市场;若不需要,删掉 'ja' 即可,
+// 各处都是从这一处读的,不会漏。
+export const LOCALES = ['zh-cn', 'en', 'ja'] as const;
 export type Locale = (typeof LOCALES)[number];
 
 export const DEFAULT_LOCALE: Locale = 'zh-cn';
@@ -12,7 +15,6 @@ export const DEFAULT_LOCALE: Locale = 'zh-cn';
 /** hreflang 属性值(SEOHead 与 sitemap i18n 共用同一张表,保持一致) */
 export const HREFLANG: Record<Locale, string> = {
   'zh-cn': 'zh-CN',
-  'zh-tw': 'zh-TW',
   en: 'en',
   ja: 'ja',
 };
@@ -20,7 +22,6 @@ export const HREFLANG: Record<Locale, string> = {
 /** og:locale 值 */
 export const OG_LOCALE: Record<Locale, string> = {
   'zh-cn': 'zh_CN',
-  'zh-tw': 'zh_TW',
   en: 'en_US',
   ja: 'ja_JP',
 };
@@ -28,7 +29,6 @@ export const OG_LOCALE: Record<Locale, string> = {
 /** 语言切换器完整名 */
 export const LOCALE_LABELS: Record<Locale, string> = {
   'zh-cn': '简体中文',
-  'zh-tw': '繁體中文',
   en: 'English',
   ja: '日本語',
 };
@@ -36,7 +36,6 @@ export const LOCALE_LABELS: Record<Locale, string> = {
 /** 语言切换器紧凑名(头部横排用) */
 export const LOCALE_SHORT: Record<Locale, string> = {
   'zh-cn': '简',
-  'zh-tw': '繁',
   en: 'EN',
   ja: '日',
 };
@@ -155,7 +154,6 @@ const ja: Record<UiKey, string> = {
 
 export const ui: Record<Locale, Record<UiKey, string>> = {
   'zh-cn': zhCN,
-  'zh-tw': zhTW,
   en,
   ja,
 };

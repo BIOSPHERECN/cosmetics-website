@@ -19,6 +19,7 @@ import ProcessSteps from '@cosmetic/core/components/ProcessSteps.astro';
 import EvidenceGrid from '@cosmetic/core/components/EvidenceGrid.astro';
 import ProductionBases from '@cosmetic/core/components/ProductionBases.astro';
 import NarrativeStages from '@cosmetic/core/components/NarrativeStages.astro';
+import BigBanner from '@cosmetic/core/components/BigBanner.astro';
 import MastheadNav from '@cosmetic/core/components/MastheadNav.astro';
 import StatementFooter from '@cosmetic/core/components/StatementFooter.astro';
 import SocialProof from '@cosmetic/core/components/SocialProof.astro';
@@ -176,6 +177,32 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
   theme={(site as any)!.theme ?? 'noir'}
 >
   <a class="ck-skip-link" href="#main">跳到主内容</a>
+
+  {/* 主题切换胶囊 —— 原站顶部那个悬浮条。三套配色当场切,
+      比听人描述「黑金 / 极简白 / 科技蓝哪个好」有效得多 */}
+  {((site as any)!.theme ?? 'marvis') === 'marvis' && (
+    <div class="mv-switch" role="group" aria-label="配色方案">
+      <button type="button" data-mv="light" aria-pressed="true">◻ 极简白</button>
+      <button type="button" data-mv="noir" aria-pressed="false">✦ 黑金奢华</button>
+      <button type="button" data-mv="tech" aria-pressed="false">◆ 科技深蓝</button>
+    </div>
+    <script is:inline>
+      (() => {
+        const root = document.documentElement;
+        const saved = localStorage.getItem('mv-theme');
+        if (saved) root.setAttribute('data-marvis', saved);
+        document.querySelectorAll('.mv-switch button').forEach((b) => {
+          b.setAttribute('aria-pressed', String(root.getAttribute('data-marvis') === b.dataset.mv));
+          b.addEventListener('click', () => {
+            root.setAttribute('data-marvis', b.dataset.mv);
+            localStorage.setItem('mv-theme', b.dataset.mv);
+            document.querySelectorAll('.mv-switch button').forEach((x) =>
+              x.setAttribute('aria-pressed', String(x === b)));
+          });
+        });
+      })();
+    </script>
+  )}
   {/* 深金主题走报头式导航(N6);白底主题保留原导航 —— 两套并存,不互相破坏 */}
   {((site as any)!.theme ?? 'noir') === 'noir' ? (
     <MastheadNav locale={lang} path={path} siteName={site!.name}
@@ -231,6 +258,17 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
           return <ProcessSteps title={d.title} intro={d.intro} steps={d.steps ?? []} />;
         case 'evidence':
           return <EvidenceGrid title={d.title} intro={d.intro} items={d.items ?? []} pendingLabel={pick(PENDING, lang)} />;
+        case 'banner':
+          // 超大首屏 banner —— 图从媒体库来,创始人自己换
+          return (
+            <BigBanner
+              image={d.image} imageAlt={d.imageAlt}
+              eyebrow={d.eyebrow} title={d.title} lead={d.lead}
+              ctaPrimary={d.ctaPrimary} ctaHref={`/${lang}/contact/`}
+              ctaSecondary={d.ctaSecondary} ctaSecondaryHref={`/${lang}/products/`}
+              height={d.height}
+            />
+          );
         case 'stages':
           // 叙事流程 —— 六道工序是一条链,不是六个并列卖点
           return (

@@ -19,8 +19,13 @@ export interface Props {
   email: string;
   /** 侧栏计数徽标,如询盘未读数 */
   badges?: Record<string, number>;
+  /**
+   * 当前管理的站点。一域名一后台 —— 运营必须一眼看到自己在管哪个品牌,
+   * 否则改错站是迟早的事(5 个品牌的页面标题都长得差不多)。
+   */
+  tenant?: { siteId: string; siteName: string; isGroup: boolean; options: { id: string; name: string }[] };
 }
-const { title, active, email, badges = {} } = Astro.props;
+const { title, active, email, badges = {}, tenant } = Astro.props;
 
 const NAV = [
   { group: '内容', items: [
@@ -84,6 +89,21 @@ const NAV = [
       font-size: .625rem;
       letter-spacing: .18em;
       margin-top: .1875rem;
+    }
+
+    .site-pick, .site-fixed {
+      display: block; width: 100%; margin-top: .75rem;
+      font-size: .8125rem; border-radius: var(--ad-r-s);
+      padding: .375rem .5rem;
+    }
+    .site-pick {
+      background: var(--ad-side-active); color: var(--ad-side-on);
+      border: 1px solid var(--ad-side-line);
+    }
+    .site-fixed {
+      background: var(--ad-side-hover); color: var(--ad-side-ink);
+      border: 1px solid var(--ad-side-line);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
 
     nav { flex: 1; overflow-y: auto; padding: .875rem 0; }
@@ -192,6 +212,17 @@ const NAV = [
     <div class="brand">
       <b>帛卉后台</b>
       <span>BOHUI CONSOLE</span>
+      {tenant && (
+        tenant.isGroup && tenant.options.length > 1 ? (
+          <select class="site-pick" aria-label="当前管理的站点">
+            {tenant.options.map((o) => (
+              <option value={o.id} selected={o.id === tenant.siteId}>{o.name}</option>
+            ))}
+          </select>
+        ) : (
+          <span class="site-fixed" title="你的账号只能管理这个站点">{tenant.siteName}</span>
+        )
+      )}
     </div>
     <nav>
       {NAV.map((g) => (
@@ -218,6 +249,13 @@ const NAV = [
   </main>
 
   <script is:inline>
+    /* 切站:把 ?site= 写进地址再重载。只有集团管理员看得到这个下拉 */
+    document.querySelector('.site-pick')?.addEventListener('change', (e) => {
+      const u = new URL(location.href);
+      u.searchParams.set('site', e.target.value);
+      location.href = u.toString();
+    });
+
     document.getElementById('logout')?.addEventListener('click', async () => {
       await fetch('/api/admin/login', { method: 'DELETE' });
       location.href = '/bohui/login/';

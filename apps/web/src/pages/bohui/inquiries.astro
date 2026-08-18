@@ -21,7 +21,7 @@ const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
 const PER = 25;
 
 const where: string[] = [], bind: unknown[] = [];
-if (site) { where.push('i.site_id=?'); bind.push(site); }
+where.push('i.site_id=?'); bind.push(c.tenant.siteId);
 if (status) { where.push('i.status=?'); bind.push(status); }
 if (q) { where.push('(i.name LIKE ? OR i.email LIKE ? OR i.company LIKE ? OR i.message LIKE ?)'); bind.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
 const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -60,7 +60,7 @@ const link = (p: number) => {
 };
 ---
 
-<AdminShell title="询盘线索" active="inquiries" email={c.sess.email} badges={{ inquiries: cnt.new ?? 0 }}>
+<AdminShell title="询盘线索" active="inquiries" email={c.sess.email} tenant={c.tenant} badges={{ inquiries: cnt.new ?? 0 }}>
   <h1>询盘线索</h1>
   <p class="lead">共 {total} 条 · 待处理 {cnt.new ?? 0} · 已回复 {cnt.replied ?? 0} · 已归档 {cnt.archived ?? 0}。未处理的排在最前。</p>
 

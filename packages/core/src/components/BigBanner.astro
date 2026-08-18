@@ -1,0 +1,223 @@
+---
+/**
+ * 超大首屏 banner —— 创始人指定的那种:一整张大图压满首屏,文字压在图上。
+ *
+ * 三个刻意的决定:
+ *
+ *  ① 图从媒体库来(/media/<id>),不写死在代码里。
+ *     创始人把图拖进后台就换,不用找我改一行代码 —— 这才叫「自己能改」。
+ *
+ *  ② 没有图时不留空、也不装作有图。显示一块标注清楚的占位区,
+ *     写明「这里需要一张 banner」并给出后台入口。
+ *     假装有图(灰色方块 + 假图标)比空着更糟:它会让人以为做完了。
+ *
+ *  ③ 文字压在图上时必须有可读性兜底 —— 自下而上的暗渐变遮罩。
+ *     不是为了好看,是因为大图的下半部分亮度不可控,
+ *     换一张图文字就可能读不清,而换图这件事我们希望它天天发生。
+ */
+export interface Props {
+  /** 图片地址,通常是 /media/<id> */
+  image?: string;
+  imageAlt?: string;
+  eyebrow?: string;
+  title: string;
+  lead?: string;
+  ctaPrimary?: string;
+  ctaHref?: string;
+  ctaSecondary?: string;
+  ctaSecondaryHref?: string;
+  /** 首屏占视口高度的比例,默认 82% —— 留一线让人知道下面还有内容 */
+  height?: string;
+  /** 后台媒体库地址,占位状态下给运营一个直达入口 */
+  adminHref?: string;
+}
+
+const {
+  image, imageAlt = '', eyebrow, title, lead,
+  ctaPrimary, ctaHref, ctaSecondary, ctaSecondaryHref,
+  height = '82vh', adminHref = '/bohui/media/',
+} = Astro.props;
+---
+
+<section class="bb" style={`--bb-h:${height}`} aria-label={title}>
+  {image ? (
+    <img class="bb-img" src={image} alt={imageAlt} fetchpriority="high" decoding="async" />
+  ) : (
+    <div class="bb-empty">
+      <p class="bb-empty-t">此处需要一张首屏大图</p>
+      <p class="bb-empty-d">
+        建议横图、长边 ≥ 2000px。到<a href={adminHref}>媒体库</a>上传后,
+        在页面编辑器里把图片路径填进本版块即可。
+      </p>
+    </div>
+  )}
+
+  {/* 可读性兜底:换任何一张图,文字都还读得清 */}
+  <div class="bb-scrim" aria-hidden="true"></div>
+
+  <div class="bb-in ck-wrap">
+    {eyebrow && <p class="bb-eyebrow">{eyebrow}</p>}
+    <h1 class="bb-title">{title}</h1>
+    {lead && <p class="bb-lead">{lead}</p>}
+    {(ctaPrimary || ctaSecondary) && (
+      <p class="bb-acts">
+        {ctaPrimary && ctaHref && <a class="bb-cta" href={ctaHref}>{ctaPrimary}</a>}
+        {ctaSecondary && ctaSecondaryHref && <a class="bb-ghost" href={ctaSecondaryHref}>{ctaSecondary}</a>}
+      </p>
+    )}
+  </div>
+</section>
+
+<style>
+  .bb {
+    position: relative;
+    min-height: var(--bb-h, 82vh);
+    display: grid;
+    align-items: end;
+    overflow: hidden;
+    background: var(--ck-bg);
+    /* 满幅出血:挣脱容器,贴到视口两边 —— 超大 banner 的「超大」在这里 */
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+  }
+
+  .bb-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    /* 首屏图是 LCP 元素,绝不加 lazy */
+  }
+
+  .bb-empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 0.5rem;
+    text-align: center;
+    padding: 2rem;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--ck-accent) 6%, var(--ck-bg)) 0%, var(--ck-bg) 100%);
+    border-bottom: 1px solid var(--ck-line);
+  }
+  .bb-empty-t {
+    margin: 0;
+    font-family: var(--ck-font-head);
+    font-size: clamp(1.125rem, 0.9rem + 1vw, 1.5rem);
+    color: var(--ck-ink-soft);
+  }
+  .bb-empty-d {
+    margin: 0;
+    max-width: 34ch;
+    font-size: var(--ck-small);
+    line-height: 1.7;
+    color: var(--ck-ink-faint);
+  }
+  .bb-empty-d a { color: var(--ck-accent); }
+
+  /* 自下而上的暗渐变 —— 只在有图时铺 */
+  .bb-scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgb(0 0 0 / 0.28) 0%,
+      rgb(0 0 0 / 0.06) 34%,
+      rgb(0 0 0 / 0.62) 78%,
+      rgb(0 0 0 / 0.86) 100%
+    );
+    pointer-events: none;
+  }
+  .bb:has(.bb-empty) .bb-scrim { display: none; }
+
+  .bb-in {
+    position: relative;
+    padding-block: clamp(2.5rem, 6vh, 5rem);
+    display: grid;
+    justify-items: start;
+    gap: 0;
+    /* 有图时文字一律用白,不跟主题走 —— 图的亮度不可控,主题色可能读不清 */
+    color: #fff;
+  }
+  .bb:has(.bb-empty) .bb-in { color: var(--ck-ink); }
+
+  .bb-eyebrow {
+    margin: 0 0 0.875rem;
+    font-size: var(--ck-tiny, 0.6875rem);
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--ck-accent);
+  }
+  .bb-title {
+    margin: 0;
+    font-family: var(--ck-font-head);
+    font-weight: var(--ck-weight-head);
+    font-size: clamp(2.25rem, 1.2rem + 5vw, 5.5rem);
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    max-width: 15ch;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+  .bb-lead {
+    margin: 1.125rem 0 0;
+    max-width: 40ch;
+    font-size: clamp(0.9375rem, 0.85rem + 0.4vw, 1.125rem);
+    line-height: 1.7;
+    color: color-mix(in srgb, currentColor 78%, transparent);
+  }
+
+  .bb-acts {
+    margin: clamp(1.75rem, 4vh, 2.75rem) 0 0;
+    display: flex;
+    gap: 0.875rem;
+    flex-wrap: wrap;
+  }
+  .bb-cta,
+  .bb-ghost {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0.875rem 1.875rem;
+    border-radius: var(--ck-cta-radius);
+    text-decoration: none;
+    font-weight: var(--ck-cta-weight, 600);
+    letter-spacing: var(--ck-cta-tracking, 0);
+    white-space: nowrap;
+    transition: background 0.3s, border-color 0.3s, color 0.3s;
+  }
+  .bb-cta {
+    background: var(--ck-accent);
+    color: var(--ck-on-accent);
+    border: 1px solid var(--ck-accent);
+  }
+  .bb-cta:hover { background: transparent; color: var(--ck-accent); }
+  .bb-ghost {
+    border: 1px solid color-mix(in srgb, currentColor 42%, transparent);
+    color: inherit;
+  }
+  .bb-ghost:hover { border-color: currentColor; background: rgb(255 255 255 / 0.08); }
+  .bb-cta:focus-visible,
+  .bb-ghost:focus-visible { outline: 2px solid var(--ck-accent); outline-offset: 3px; }
+
+  @media (max-width: 40rem) {
+    .bb { min-height: min(var(--bb-h, 82vh), 34rem); }
+    .bb-title { max-width: 100%; }
+  }
+
+  /* 图片缓慢推近 —— 只在允许动效时,且只动 transform */
+  @media (prefers-reduced-motion: no-preference) {
+    .bb-img {
+      animation: bb-drift 22s var(--ck-ease, ease-out) forwards;
+    }
+    @keyframes bb-drift {
+      from { transform: scale(1.06); }
+      to { transform: scale(1); }
+    }
+  }
+</style>
