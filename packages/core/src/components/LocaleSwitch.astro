@@ -1,0 +1,203 @@
+---
+/**
+ * 语言切换器 —— 全站唯一一处实现,页头 / 报头 / 页脚都用它。
+ *
+ * 为什么改成下拉:
+ *   原来是一排横向互链。三种语言时还行,六种就把页头挤爆了 ——
+ *   而且语种只会继续加。横排的宽度随语种数线性增长,下拉不增长,
+ *   这是结构性差别,不是审美偏好。国际站(欧莱雅、资生堂、Intercos)
+ *   一律是右上角一个下拉,访客的肌肉记忆就长在那儿。
+ *
+ * 为什么用 <details> 而不是自己写 JS 开合:
+ *   原生元素自带键盘可达(Enter/空格开合)、自带 Esc 关闭语义、
+ *   自带无障碍角色。自己用 div 造一遍,十有八九漏掉键盘那条。
+ *   零 JS 也能开合 —— 下面那点脚本只做两件锦上添花的事:
+ *   点外面关掉、记住选择的 cookie。脚本挂了,切语言照样能用。
+ *
+ * 为什么按钮上写「JP」而地址栏是 /ja/:
+ *   ja 是 ISO 639-1 的语言码,Google 的 hreflang 只认它,写 jp 会失效。
+ *   但访客眼里日本就是 JP。所以机器读 ja、人看 JP,两边都不将就。
+ */
+import { LOCALES, LOCALE_LABELS, LOCALE_SHORT, HREFLANG, switchLocalePath, t, type Locale } from '../i18n/index.ts';
+
+export interface Props {
+  locale: Locale;
+  /** 当前路径(含语言前缀),用来生成同页他语链接 */
+  path: string;
+  /**
+   * 展开方向。页头在顶部 → 向下展开;页脚在底部 → 向上展开,
+   * 否则菜单会掉到视口外面,得滚动才看得见。
+   */
+  drop?: 'down' | 'up';
+  /** 紧凑档:报头那种细窄条用,字号与内边距收一档 */
+  dense?: boolean;
+}
+
+const { locale, path, drop = 'down', dense = false } = Astro.props;
+const tr = t(locale);
+---
+
+<details class:list={['ls', drop === 'up' && 'up', dense && 'dense']}>
+  <summary aria-label={tr('lang.label')}>
+    {/* 地球仪:全世界通用的「换语言」符号,不用国旗 ——
+        国旗代表国家不代表语言(法语不只法国、马来语不只马来西亚),
+        而且在某些市场会引出与生意无关的联想。 */}
+    <svg class="ls-globe" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5" />
+      <path d="M3 12h18M12 3c2.4 2.5 3.6 5.6 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.6-3.6-9S9.6 5.5 12 3z"
+            fill="none" stroke="currentColor" stroke-width="1.5" />
+    </svg>
+    <span class="ls-now">{LOCALE_SHORT[locale]}</span>
+    <svg class="ls-caret" viewBox="0 0 10 6" aria-hidden="true" focusable="false">
+      <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+    </svg>
+  </summary>
+
+  <ul class="ls-menu" role="list">
+    {LOCALES.map((l) => (
+      <li>
+        <a
+          class:list={['ls-item', l === locale && 'on']}
+          href={switchLocalePath(path, l)}
+          hreflang={HREFLANG[l]}
+          lang={HREFLANG[l]}
+          aria-current={l === locale ? 'true' : undefined}
+        >
+          <span class="ls-name">{LOCALE_LABELS[l]}</span>
+          <span class="ls-code">{LOCALE_SHORT[l]}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</details>
+
+<style>
+  .ls {
+    position: relative;
+    flex: none;
+  }
+  /* 去掉 Safari/Chrome 默认的三角箭头 —— 我们自己画了一个 */
+  .ls > summary::-webkit-details-marker { display: none; }
+  .ls > summary::marker { content: ''; }
+
+  .ls > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.3125rem 0.5625rem;
+    font-size: 0.75rem;
+    line-height: 1;
+    color: var(--ck-ink-soft);
+    background: transparent;
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-radius: var(--ck-radius);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: color var(--ck-dur) var(--ck-ease), border-color var(--ck-dur) var(--ck-ease);
+  }
+  .ls > summary:hover { color: var(--ck-ink); border-color: var(--ck-line-strong); }
+  .ls > summary:focus-visible {
+    outline: 2px solid var(--ck-accent);
+    outline-offset: 2px;
+  }
+  .ls[open] > summary { color: var(--ck-ink); border-color: var(--ck-line-strong); }
+
+  .ls-globe { width: 0.9375rem; height: 0.9375rem; flex: none; opacity: 0.75; }
+  .ls-now { font-weight: 600; letter-spacing: 0.02em; }
+  .ls-caret {
+    width: 0.5rem;
+    height: 0.3125rem;
+    flex: none;
+    opacity: 0.6;
+    transition: transform 0.18s var(--ck-ease);
+  }
+  .ls[open] .ls-caret { transform: rotate(180deg); }
+
+  /* ── 菜单本体 ─────────────────────────────────────────
+     右对齐:切换器本身贴在页面右上角,菜单向左展开才不会顶出视口。 */
+  .ls-menu {
+    position: absolute;
+    top: calc(100% + 0.375rem);
+    right: 0;
+    z-index: 60;
+    min-width: 11.5rem;
+    margin: 0;
+    padding: 0.3125rem;
+    list-style: none;
+    background: var(--ck-surface);
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-radius: var(--ck-radius);
+    box-shadow: 0 14px 34px -14px rgb(0 0 0 / 0.3);
+  }
+  .ls.up .ls-menu {
+    top: auto;
+    bottom: calc(100% + 0.375rem);
+  }
+
+  .ls-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.4375rem 0.625rem;
+    border-radius: calc(var(--ck-radius) - 2px);
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    text-decoration: none;
+    color: var(--ck-ink-soft);
+  }
+  .ls-item:hover { background: var(--ck-surface-alt); color: var(--ck-ink); }
+  .ls-item.on { color: var(--ck-accent); font-weight: 600; }
+  .ls-item:focus-visible {
+    outline: 2px solid var(--ck-accent);
+    outline-offset: -2px;
+  }
+  .ls-code {
+    font-family: var(--ck-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.08em;
+    color: var(--ck-ink-faint);
+    flex: none;
+  }
+  .ls-item.on .ls-code { color: var(--ck-accent); }
+
+  /* 紧凑档:报头那条细窄的期次行 */
+  .ls.dense > summary {
+    padding: 0.125rem 0.375rem;
+    font-size: 0.6875rem;
+    border-color: transparent;
+  }
+  .ls.dense > summary:hover { border-color: var(--ck-line); }
+  .ls.dense .ls-globe { width: 0.8125rem; height: 0.8125rem; }
+</style>
+
+<script is:inline>
+  /* 只做两件锦上添花的事;脚本挂了切换器照样能用(<details> 是原生开合)。 */
+  (() => {
+    /* ① 点到菜单外面就收起来。
+          原生 <details> 不会自己关,六个语种的面板一直摊在那儿会挡住内容。 */
+    document.addEventListener('click', (e) => {
+      document.querySelectorAll('details.ls[open]').forEach((d) => {
+        if (!d.contains(e.target)) d.open = false;
+      });
+    });
+    /* Esc 关闭 —— 键盘用户的通用退出手势 */
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      document.querySelectorAll('details.ls[open]').forEach((d) => {
+        d.open = false;
+        d.querySelector('summary')?.focus();
+      });
+    });
+
+    /* ② 手动选语言 = 明确表态,记一年;中间件读到这个 cookie 就不再按地区自动跳。
+          不记的话:海外同事把英文链接发给国内客户,客户点开又被跳成中文 —— 看着像坏了。 */
+    document.querySelectorAll('a[hreflang]').forEach((a) => {
+      a.addEventListener('click', () => {
+        document.cookie = 'bohui_lang=' + a.getAttribute('hreflang') +
+          ';path=/;max-age=31536000;samesite=lax';
+      });
+    });
+  })();
+</script>

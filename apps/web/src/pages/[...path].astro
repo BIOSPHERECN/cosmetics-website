@@ -29,7 +29,8 @@ import Motion from '../components/Motion.astro';
 import BrandEcosystem from '../components/BrandEcosystem.astro';
 import ProductGrid from '../components/ProductGrid.astro';
 import InquiryCart from '../components/InquiryCart.astro';
-import { getSiteByHost, getSiteById, getPageBundle, getEcosystem, isLang, DEFAULT_LANG, type Lang } from '../lib/db';
+import { getSiteByHost, getSiteById, getPageBundle, getEcosystem, DEFAULT_LANG, type Lang } from '../lib/db';
+import { isLocale } from '@cosmetic/core/i18n';
 import { getVariant, getSite as getStaticSite } from '@cosmetic/core/registry';
 // Astro v6 起 Astro.locals.runtime.env 已移除,绑定改从 cloudflare:workers 取
 import { env } from 'cloudflare:workers';
@@ -41,7 +42,16 @@ const db = (env as any)?.DB as D1Database | undefined;
 /* ── 解析语言与路径 ───────────────────────────────────────────── */
 const raw = (Astro.params.path ?? '').replace(/^\/+|\/+$/g, '');
 const segs = raw ? raw.split('/') : [];
-const lang: Lang = isLang(segs[0]) ? (segs.shift() as Lang) : DEFAULT_LANG;
+/*
+ * 这里判的是 isLocale(**已上线**的 6 种)而不是 isLang(库里能存的 36 种)。
+ * 两张表各管一件事,不该混:
+ *   i18n/LOCALES —— 对外公布哪几种语言:决定下拉里有谁、hreflang 指向谁、地区自动跳到谁。
+ *   db.ts/LANGS  —— 库里允许存哪几种译文:后台可以提前把德语翻好再决定上不上线。
+ * 混用的后果是实打实的:/de/ 会渲染出一个没有 hreflang、UI 骨架取不到词条的半成品页,
+ * 既让搜索引擎收进重复内容,又直接 500(ui['de'] 是 undefined)。
+ * 判 isLocale 之后,/de/ 会被当成普通路径,查无此页 → 正常 404,这才是对的。
+ */
+const lang: Lang = isLocale(segs[0]) ? (segs.shift() as Lang) : DEFAULT_LANG;
 const slug = segs.join('/');
 
 /* ── 解析站点:线上按域名;预览域名/本地按 ?site= 回退 ─────────── */
@@ -178,9 +188,17 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
 >
   <a class="ck-skip-link" href="#main">跳到主内容</a>
 
-  {/* 主题切换胶囊 —— 原站顶部那个悬浮条。三套配色当场切,
-      比听人描述「黑金 / 极简白 / 科技蓝哪个好」有效得多 */}
-  {((site as any)!.theme ?? 'marvis') === 'marvis' && (
+  {/*
+   * 主题切换胶囊 —— 评审工具,不是站点功能,所以默认不出。
+   *
+   * 它当初是给创始人当场比三套配色用的,配色已经定了(极简白)。
+   * 留在页面上有两个实打实的坏处:
+   *   ① 它占掉首屏最上面 81px —— 页头被顶下去,右上角的语言下拉不在「上角」。
+   *   ② 客户会点它。一个海外采购把公司官网点成黑金版,再截图问「你们网站怎么变了」,
+   *      这是自己给自己制造的疑问。
+   * 加 ?pick 才出:你要复看随时能看,访客看不到。
+   */}
+  {((site as any)!.theme ?? 'marvis') === 'marvis' && Astro.url.searchParams.has('pick') && (
     <div class="mv-switch" role="group" aria-label="配色方案">
       <button type="button" data-mv="light" aria-pressed="true">◻ 极简白</button>
       <button type="button" data-mv="noir" aria-pressed="false">✦ 黑金奢华</button>
@@ -219,7 +237,10 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
       对搜索引擎和读屏器来说,这样的页面等于没说自己是讲什么的 ——
       而这条产品线的打法正是 SEO/GEO,内页没有 h1 是直接漏分的。
     */}
-    {!bundle!.blocks.some((b) => b.type === 'hero') && (
+    {/* banner 与 hero 一样自带 <h1>(BigBanner 第 66 行),所以两者任一存在都不再出页头带。
+        漏掉 banner 的后果是双重的:首页同时有两个 h1(搜索引擎不知道该信哪个),
+        版式上还多出一条 400px 的标题带把首屏大图整个压到折叠线以下 —— 大图看不见就白做了。 */}
+    {!bundle!.blocks.some((b) => b.type === 'hero' || b.type === 'banner') && (
       <section class="ck-section pagehead">
         <div class="ck-wrap">
           <h1>{bundle!.page.title}</h1>

@@ -1,0 +1,192 @@
+---
+/**
+ * 翻译中心 —— 多语站真正会烂尾的地方,所以单独给它一个页面。
+ *
+ * 多语站的失败方式从来不是「翻错了」,是**某个语种翻了一半没人知道**:
+ * 访客点进印尼语版,前三屏是印尼语,第四屏突然变英文 —— 看着像网站坏了,
+ * 而后台里没有任何地方会提醒你这件事。所以第一件事是把缺口做成一眼可见的数字。
+ *
+ * 第二件事是让缺口能被一键补上。5 站 × 17 页 × 6 语 ≈ 上千条,
+ * 人工翻不是慢,是根本翻不完。所以翻译必须是产品功能,不是人工活。
+ *
+ * 机器译一律打 mt 标记:可用,但要人校。不标的话三个月后没人分得清
+ * 哪句是人写的、哪句是模型补的,校对就只能整篇重读 —— 那等于没翻。
+ */
+import AdminShell from '../../../layouts/AdminShell.astro';
+import { pageGuard } from '../../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const hasKey = (await c.db.prepare(
+  `SELECT COUNT(*) n FROM providers WHERE enabled=1 AND api_keys<>''`
+).first<{ n: number }>())?.n ?? 0;
+---
+
+<AdminShell title="翻译中心" active="i18n" email={c.sess.email} tenant={c.tenant}>
+  <h1>翻译中心</h1>
+  <p class="lead">
+    当前站点:<b>{c.tenant.siteName}</b>。下表是每个语种的真实翻译进度 ——
+    分母是本站全部内容条数(站点介绍 + 页面 + 版块 + 产品),分子是该语种已有译文的条数。
+  </p>
+
+  {hasKey === 0 && (
+    <div class="note bad">
+      还没有任何一家模型配了 key,机器翻译跑不起来。先去<a href="/bohui/models/">模型舰队</a>填一个。
+    </div>
+  )}
+
+  <div class="note info">
+    <b>访客看到的是回退,不是 404。</b>某个语种缺译文时,前台会自动退回英文、再退回中文 ——
+    页面不会坏,但会中英混排。所以缺口不是紧急故障,是**必须清干净的账**。
+  </div>
+
+  <div id="matrix" class="loading">正在统计…</div>
+
+  <div class="runbar" id="runbar" hidden>
+    <div class="rb-head">
+      <b id="rb-title"></b>
+      <span id="rb-info" class="rb-info"></span>
+    </div>
+    <div class="bar"><i id="rb-fill"></i></div>
+    <ul class="rb-log" id="rb-log"></ul>
+    <div class="rb-ops">
+      <button class="btn" id="rb-stop">停止</button>
+      <span class="tip">可以随时停 —— 已经翻好的都已入库,下次从断点接着来。</span>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <style>
+    .loading { color: var(--ad-faint); font-size: .875rem; padding: 2rem 0 }
+
+    .langs { display: grid; gap: .625rem }
+    .lg { display: grid; grid-template-columns: 11rem minmax(0,1fr) 8rem 7rem;
+          gap: 1rem; align-items: center;
+          background: var(--ad-panel); border: 1px solid var(--ad-line);
+          border-radius: 10px; padding: .875rem 1.125rem }
+    .lg-name { display: grid; gap: .1875rem }
+    .lg-name b { font-size: .9375rem }
+    .lg-name code { font-size: .6875rem; color: var(--ad-faint) }
+    .bar { height: .5rem; background: var(--ad-sunk); border-radius: 999px; overflow: hidden }
+    .bar i { display: block; height: 100%; background: var(--ad-accent); border-radius: 999px;
+             transition: width .3s ease }
+    .bar i.full { background: var(--ad-ok) }
+    .lg-num { font-variant-numeric: tabular-nums; font-size: .8125rem; color: var(--ad-soft);
+              text-align: right; white-space: nowrap }
+    .lg-num b { color: var(--ad-ink) }
+    .lg-num span { color: var(--ad-warn) }
+    .lg-act { text-align: right }
+    .mtflag { display: inline-block; margin-top: .1875rem; font-size: .6875rem; color: var(--ad-faint) }
+
+    .runbar { margin-top: 1.5rem; background: var(--ad-panel); border: 1px solid var(--ad-accent);
+              border-radius: 10px; padding: 1.125rem 1.25rem; display: grid; gap: .75rem }
+    .rb-head { display: flex; align-items: baseline; gap: .75rem; flex-wrap: wrap }
+    .rb-info { font-size: .8125rem; color: var(--ad-soft); font-variant-numeric: tabular-nums }
+    .rb-log { list-style: none; margin: 0; padding: 0; max-height: 11rem; overflow: auto;
+              font-size: .75rem; color: var(--ad-soft); display: grid; gap: .1875rem }
+    .rb-log li::before { content: '✓ '; color: var(--ad-ok) }
+    .rb-log li.bad::before { content: '× '; color: var(--ad-bad) }
+    .rb-ops { display: flex; align-items: center; gap: .875rem }
+    .tip { font-size: .75rem; color: var(--ad-faint) }
+    [hidden] { display: none !important }
+  </style>
+
+  <script is:inline>
+  (() => {
+    const $ = (i) => document.getElementById(i);
+    const box = $('matrix'), toast = $('toast');
+    let running = null; // 当前正在翻的语种;非空时禁止再开一个
+
+    const say = (m, bad) => { toast.textContent = m; toast.classList.toggle('bad', !!bad);
+      toast.hidden = false; clearTimeout(say.t); say.t = setTimeout(() => { toast.hidden = true; }, 3600); };
+
+    async function load() {
+      const d = await (await fetch('/api/admin/translate')).json();
+      if (!d.ok) { box.className = ''; box.textContent = d.msg || '统计失败'; return; }
+      box.className = 'langs'; box.innerHTML = '';
+      d.langs.forEach((L) => {
+        const pct = L.total ? Math.round((L.have / L.total) * 100) : 0;
+        const el = document.createElement('div');
+        el.className = 'lg';
+        el.innerHTML =
+          '<div class="lg-name"><b></b><code></code></div>' +
+          '<div><div class="bar"><i></i></div><span class="mtflag"></span></div>' +
+          '<div class="lg-num"></div>' +
+          '<div class="lg-act"></div>';
+        el.querySelector('b').textContent = L.name;
+        el.querySelector('code').textContent = L.lang + ' · ' + pct + '%';
+        const fill = el.querySelector('.bar i');
+        fill.style.width = pct + '%';
+        if (!L.missing) fill.classList.add('full');
+        el.querySelector('.mtflag').textContent = L.mt ? ('其中 ' + L.mt + ' 条是机器译,待人工校对') : '';
+        el.querySelector('.lg-num').innerHTML = L.missing
+          ? ('<b>' + L.have + '</b> / ' + L.total + ' · <span>缺 ' + L.missing + '</span>')
+          : ('<b>' + L.have + '</b> / ' + L.total + ' · 齐全');
+        const act = el.querySelector('.lg-act');
+        if (L.missing) {
+          const b = document.createElement('button');
+          b.className = 'btn pri'; b.textContent = '补齐 ' + L.missing + ' 条';
+          b.addEventListener('click', () => run(L.lang, L.name, L.missing));
+          act.appendChild(b);
+        }
+        box.appendChild(el);
+      });
+    }
+
+    async function run(lang, name, total) {
+      if (running) { say('「' + running + '」还在翻,等它跑完或先停掉', true); return; }
+      running = name;
+      const rb = $('runbar'); rb.hidden = false;
+      $('rb-title').textContent = '正在补齐:' + name;
+      $('rb-log').innerHTML = '';
+      let doneN = 0, stop = false;
+      $('rb-stop').onclick = () => { stop = true; $('rb-stop').textContent = '正在停…'; };
+      $('rb-stop').textContent = '停止';
+      rb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      while (!stop) {
+        let d;
+        try {
+          d = await (await fetch('/api/admin/translate', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lang, limit: 4 }),
+          })).json();
+        } catch (e) { d = { ok: false, msg: '网络中断' }; }
+
+        if (!d.ok) {
+          const li = document.createElement('li'); li.className = 'bad';
+          li.textContent = d.msg || '这一批失败';
+          $('rb-log').prepend(li);
+          break;
+        }
+        (d.items || []).forEach((it) => {
+          const li = document.createElement('li'); li.textContent = it.label;
+          $('rb-log').prepend(li);
+        });
+        doneN += d.done;
+        const left = d.remaining;
+        const pct = total ? Math.round(((total - left) / total) * 100) : 100;
+        $('rb-fill').style.width = Math.min(100, Math.max(0, pct)) + '%';
+        $('rb-info').textContent = '本轮已翻 ' + doneN + ' 条,还剩 ' + left + ' 条';
+        if (left <= 0) { say(name + ' 已补齐 —— 记得抽查一遍机器译'); break; }
+        // 一批一条都没翻成(比如源语言也缺),再循环就是死转,停下来说清楚
+        if (d.done === 0) {
+          const li = document.createElement('li'); li.className = 'bad';
+          li.textContent = '还剩 ' + left + ' 条,但这一批一条都没能翻 —— 多半是这些内容连英文和中文源都没有,得先补源文。';
+          $('rb-log').prepend(li);
+          break;
+        }
+      }
+
+      running = null;
+      $('rb-stop').textContent = '已结束';
+      await load();
+    }
+
+    load();
+  })();
+  </script>
+</AdminShell>

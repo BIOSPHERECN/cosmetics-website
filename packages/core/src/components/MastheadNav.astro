@@ -10,7 +10,8 @@
  *   而且它容得下 7-8 个栏目而不显拥挤 —— 我们有能力/产品/质量/基地/AI 检测/共创/关于/询盘,
  *   塞进「字标 + 三个链接」的形态里只能砍掉一半。
  */
-import { LOCALES, switchLocalePath, t as tr0, type Locale } from '../i18n/index.ts';
+import { t as tr0, type Locale } from '../i18n/index.ts';
+import LocaleSwitch from './LocaleSwitch.astro';
 
 export interface NavNode {
   slug: string;
@@ -42,16 +43,7 @@ const isOn = (slug: string) => path === href(slug);
   <div class="mh-issue">
     <div class="ck-wrap mh-issue-in">
       <span class="mh-standfirst">{standfirst ?? siteNameZh}</span>
-      <nav class="mh-langs" aria-label={tr('lang.label')}>
-        {LOCALES.map((l) => (
-          <a
-            href={switchLocalePath(path, l)}
-            class:list={['mh-lang', l === locale && 'on']}
-            hreflang={l}
-            aria-current={l === locale ? 'true' : undefined}
-          >{tr0(l, 'lang.short' as any)}</a>
-        ))}
-      </nav>
+      <LocaleSwitch locale={locale} path={path} dense />
     </div>
   </div>
 
@@ -96,21 +88,6 @@ const isOn = (slug: string) => path === href(slug);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .mh-langs { display: flex; gap: 0.75rem; flex: none; }
-  .mh-lang {
-    color: var(--ck-ink-faint);
-    text-decoration: none;
-    letter-spacing: 0.1em;
-    /* 触达目标 44px:窄屏上一排小字最容易点不中。
-       之前写的 2.25rem 只有 36px,自己定的底线自己没守住 */
-    display: inline-flex;
-    align-items: center;
-    min-height: 2.75rem;
-    padding-inline: 0.125rem;
-    white-space: nowrap;
-  }
-  .mh-lang.on { color: var(--ck-accent); }
-  .mh-lang:hover { color: var(--ck-ink); }
 
   .mh-name {
     padding-block: clamp(1.25rem, 3vw, 2.25rem) clamp(0.875rem, 2vw, 1.5rem);
@@ -179,13 +156,3 @@ const isOn = (slug: string) => path === href(slug);
   }
 </style>
 
-  <script is:inline>
-    /* 手动选语言 = 明确表态,记一年。中间件读到这个 cookie 就不再自动跳。
-       不记的话:海外同事把中文链接发给国内客户,客户点开又被跳成中文 —— 看着像坏了。 */
-    document.querySelectorAll('a[hreflang]').forEach((a) => {
-      a.addEventListener('click', () => {
-        document.cookie = 'bohui_lang=' + a.getAttribute('hreflang') +
-          ';path=/;max-age=31536000;samesite=lax';
-      });
-    });
-  </script>

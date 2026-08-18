@@ -10,7 +10,8 @@
  * 对受托制造尤其合适:访客滚到底,最后记住的应该是一句能复述的话,
  * 而不是四列他不会点的链接。
  */
-import { LOCALES, switchLocalePath, t as tr0, type Locale } from '../i18n/index.ts';
+import { t as tr0, type Locale } from '../i18n/index.ts';
+import LocaleSwitch from './LocaleSwitch.astro';
 
 export interface NavNode { slug: string; label: string }
 
@@ -49,13 +50,7 @@ const year = new Date().getFullYear();
         </nav>
       )}
 
-      <nav class="sf-langs" aria-label={tr('lang.label')}>
-        {LOCALES.map((l) => (
-          <a href={switchLocalePath(path, l)} class:list={[l === locale && 'on']} hreflang={l}>
-            {tr0(l, 'lang.short' as any)}
-          </a>
-        ))}
-      </nav>
+      <LocaleSwitch locale={locale} path={path} drop="up" />
     </div>
 
     {siblings.length > 0 && (
@@ -116,29 +111,10 @@ const year = new Date().getFullYear();
   .sf-mail:hover { border-bottom-color: var(--ck-accent); }
 
   .sf-links,
-  .sf-langs { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; }
-  .sf-langs { margin-left: auto; }
 
   .sf-links a,
-  .sf-langs a {
-    color: var(--ck-ink-soft);
-    text-decoration: none;
-    /* 页脚链接同样不许折两行 */
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    min-height: 2.75rem;
-    transition: color var(--ck-dur) var(--ck-ease);
-  }
   .sf-links a:hover,
-  .sf-langs a:hover { color: var(--ck-ink); }
-  .sf-langs a.on { color: var(--ck-accent); }
   .sf-links a:focus-visible,
-  .sf-langs a:focus-visible,
-  .sf-mail:focus-visible {
-    outline: 2px solid var(--ck-accent);
-    outline-offset: 2px;
-  }
 
   .sf-sib {
     margin: 1.25rem 0 0;
@@ -160,17 +136,6 @@ const year = new Date().getFullYear();
   }
 
   @media (max-width: 40rem) {
-    .sf-langs { margin-left: 0; }
   }
 </style>
 
-  <script is:inline>
-    /* 手动选语言 = 明确表态,记一年。中间件读到这个 cookie 就不再自动跳。
-       不记的话:海外同事把中文链接发给国内客户,客户点开又被跳成中文 —— 看着像坏了。 */
-    document.querySelectorAll('a[hreflang]').forEach((a) => {
-      a.addEventListener('click', () => {
-        document.cookie = 'bohui_lang=' + a.getAttribute('hreflang') +
-          ';path=/;max-age=31536000;samesite=lax';
-      });
-    });
-  </script>

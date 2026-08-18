@@ -210,8 +210,12 @@ html[data-marvis][data-brand] .ck-section > .ck-wrap > .head {
 }
 .mv-switch button:focus-visible { outline: 2px solid var(--mv-g); outline-offset: 2px; }
 
-/* 切换器悬浮在页头之上,给页头留出让位 */
-html[data-marvis] body { padding-top: 4.5rem; }
+/* 切换器悬浮在页头之上,给页头留出让位。
+   :has 是关键 —— 让位必须跟着切换器的有无走。
+   写死成无条件的 padding 之后,评审胶囊一收起来,
+   每个页面顶上就多了一条 81px 的空带:页头被顶下去,
+   右上角的语言下拉也就不在「上角」了。空白最难被发现,因为它不长得像 bug。 */
+html[data-marvis] body:has(> .mv-switch) { padding-top: 4.5rem; }
 
 @media (max-width: 30rem) {
   .mv-switch { top: 10px; padding: 0.25rem; }

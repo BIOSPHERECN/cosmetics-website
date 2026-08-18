@@ -3,9 +3,10 @@
  * 站点页头 —— 5 站共用一具外壳,风格差异全部由令牌承担。
  * 品牌标识:当前用「字标 + 站内绘制几何符号」占位(零外链、零图片依赖);
  * 创始人提供正式 logo 后,只需替换 <Wordmark> 内的 SVG,不动任何版式。
- * 语言切换:纯静态四语互链,零 JS。
+ * 语言切换:右上角下拉(LocaleSwitch),全站唯一一处实现。
  */
-import { LOCALES, LOCALE_SHORT, LOCALE_LABELS, HREFLANG, switchLocalePath, t, type Locale } from '../i18n/index.ts';
+import { t, type Locale } from '../i18n/index.ts';
+import LocaleSwitch from './LocaleSwitch.astro';
 
 export interface Props {
   locale: Locale;
@@ -44,6 +45,26 @@ const items: NavNode[] = nav?.length
 ---
 
 <header class="hdr">
+  {/*
+   * 顶部工具条 —— 语言切换单独占一行,而不是挤在主导航那一排。
+   *
+   * 这不是为了好看,是实测逼出来的:本站一级导航有 8 项(783px),
+   * 加字标 170px、语言 89px、询盘按钮 110px,再算两道 39px 的间距,
+   * 合计 1247px > 可用的 1199px —— 于是「语言 + 询盘」整块被挤到第二行的**左边**,
+   * 正好落在最不该出现的位置。
+   *
+   * 而且这条只会越来越挤:语种还要加、栏目还要加。
+   * 把语言提到独立的一条,主导航就永远不必和它抢宽度 ——
+   * 国际站(欧莱雅、资生堂、Intercos)都是这个两层结构,原因是一样的。
+   */}
+  {showLocaleSwitch && (
+    <div class="util">
+      <div class="ck-wrap util-in">
+        <LocaleSwitch locale={locale} path={path} />
+      </div>
+    </div>
+  )}
+
   <div class="ck-wrap bar">
     <a class="mark" href={L('/')} aria-label={siteName}>
       {/* 站内绘制的几何标记:同心方 + 斜线,任何流派下都成立;正式 logo 到位后替换 */}
@@ -77,19 +98,6 @@ const items: NavNode[] = nav?.length
     </nav>
 
     <div class="right">
-      {showLocaleSwitch && (
-        <nav class="langs" aria-label={tr('lang.label')}>
-          {LOCALES.map((l) => (
-            <a
-              class:list={['lang', l === locale && 'on']}
-              href={switchLocalePath(path, l)}
-              hreflang={HREFLANG[l]}
-              title={LOCALE_LABELS[l]}
-              aria-current={l === locale ? 'true' : undefined}
-            >{LOCALE_SHORT[l]}</a>
-          ))}
-        </nav>
-      )}
       <a class="cta" href={L('/contact/')}>{tr('cta.inquiry')}</a>
     </div>
   </div>
@@ -204,27 +212,22 @@ const items: NavNode[] = nav?.length
     gap: 1rem;
   }
 
-  /* ── 语言切换(纯静态互链)──────────────── */
-  .langs {
+  /* ── 顶部工具条 ─────────────────────────────
+     贴着页面最上沿,底色比页面深一格、字更小 ——
+     让它读起来是「工具」而不是「内容」,眼睛会自动略过,
+     需要时才在右上角找到它。 */
+  .util {
+    background: var(--ck-surface-alt);
+    border-bottom: var(--ck-border-w) solid var(--ck-line);
+  }
+  .util-in {
     display: flex;
+    justify-content: flex-end;
     align-items: center;
-    border: var(--ck-border-w) solid var(--ck-line);
-    border-radius: var(--ck-radius);
-    overflow: hidden;
+    min-height: 2.125rem;
+    padding-block: 0.25rem;
   }
-  .lang {
-    padding: 0.3125rem 0.5625rem;
-    font-size: 0.75rem;
-    text-decoration: none;
-    color: var(--ck-ink-faint);
-    border-right: var(--ck-border-w) solid var(--ck-line);
-  }
-  .lang:last-child { border-right: 0; }
-  .lang:hover { color: var(--ck-ink); background: var(--ck-surface-alt); }
-  .lang.on {
-    background: var(--ck-accent);
-    color: var(--ck-on-accent);
-  }
+
 
   .cta {
     display: inline-block;
@@ -250,13 +253,3 @@ const items: NavNode[] = nav?.length
   }
 </style>
 
-  <script is:inline>
-    /* 手动选语言 = 明确表态,记一年。中间件读到这个 cookie 就不再自动跳。
-       不记的话:海外同事把中文链接发给国内客户,客户点开又被跳成中文 —— 看着像坏了。 */
-    document.querySelectorAll('a[hreflang]').forEach((a) => {
-      a.addEventListener('click', () => {
-        document.cookie = 'bohui_lang=' + a.getAttribute('hreflang') +
-          ';path=/;max-age=31536000;samesite=lax';
-      });
-    });
-  </script>

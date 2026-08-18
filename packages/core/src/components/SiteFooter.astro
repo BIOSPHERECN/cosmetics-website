@@ -5,7 +5,8 @@
  * 四个平台品牌互为生态。5 站互链既服务真实客户动线,也是矩阵站的自然内链结构。
  * 纪律:互链只指向本集团自有域名,不外链任何第三方。
  */
-import { LOCALES, LOCALE_LABELS, HREFLANG, switchLocalePath, t, type Locale } from '../i18n/index.ts';
+import { t, type Locale } from '../i18n/index.ts';
+import LocaleSwitch from './LocaleSwitch.astro';
 import type { SiteDef } from '../registry.ts';
 
 export interface Props {
@@ -87,15 +88,7 @@ const items = nav?.length
 
   <div class="ck-wrap bottom">
     <p class="rights">© {year} {site.name}. {tr('footer.rights')}</p>
-    {showLocaleSwitch && (
-      <nav class="langs" aria-label={tr('lang.label')}>
-        {LOCALES.map((l) => (
-          <a class:list={['lang', l === locale && 'on']} href={switchLocalePath(path, l)} hreflang={HREFLANG[l]}>
-            {LOCALE_LABELS[l]}
-          </a>
-        ))}
-      </nav>
-    )}
+    {showLocaleSwitch && <LocaleSwitch locale={locale} path={path} drop="up" />}
   </div>
 </footer>
 
@@ -185,10 +178,6 @@ const items = nav?.length
     color: var(--ck-ink-faint);
   }
   .rights { margin: 0; }
-  .langs { display: flex; gap: 1rem; }
-  .lang { text-decoration: none; }
-  .lang:hover { color: var(--ck-ink); }
-  .lang.on { color: var(--ck-accent); font-weight: 600; }
 
   @media (max-width: 52rem) {
     .top { grid-template-columns: 1fr 1fr; }

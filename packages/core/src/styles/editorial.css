@@ -69,13 +69,14 @@ html[data-editorial][data-brand] .matrix .grid {
   grid-template-columns: 1.6fr 1fr 1fr 1fr;
   align-items: start;
 }
-html[data-editorial][data-brand] .matrix .cell:first-child {
-  padding-top: 0;
-}
-/* 后面几格逐个下沉,形成阶梯而不是一条水平线 */
-html[data-editorial][data-brand] .matrix .cell:nth-child(2) { margin-top: 3rem; }
-html[data-editorial][data-brand] .matrix .cell:nth-child(3) { margin-top: 6rem; }
-html[data-editorial][data-brand] .matrix .cell:nth-child(4) { margin-top: 9rem; }
+/* 这里原本让第 2/3/4 格依次下沉 3/6/9rem,做成阶梯 —— 已删除。
+   删的理由不是口味,是它读错了内容:
+   ① 「四项核心能力」是**并列**的四件事,不是有先后的四步。
+      阶梯是时间轴的语言,用在并列内容上,等于告诉访客第一项最重要、第四项最次要。
+   ② 四张卡文案长短不一(实测高 457/457/443/415px),顶边被人为错开、
+      底边又本来就不齐 —— 上下都不对齐,眼睛读到的不是「编排」,是「坏了」。
+   杂志式错落成立有个前提:错落的东西彼此没有可比性(图配文、引言配正文)。
+   四个同构的能力卡是最有可比性的一组,必须对齐,让人一眼横着扫完。 */
 
 /* ── ⑥ 产品网格:第一张占两格,做成杂志式主次 ───────────────── */
 html[data-editorial][data-brand] .pg .grid {
@@ -109,7 +110,6 @@ html[data-editorial][data-brand] .proof .v {
   html[data-editorial][data-brand] .matrix .grid,
   html[data-editorial][data-brand] .statwall .grid,
   html[data-editorial][data-brand] .proof .nums { grid-template-columns: 1fr 1fr; }
-  html[data-editorial][data-brand] .matrix .cell { margin-top: 0 !important; }
   html[data-editorial][data-brand] .pg .card,
   html[data-editorial][data-brand] .pg .card:nth-child(1),
   html[data-editorial][data-brand] .pg .card:nth-child(6) { grid-column: span 6; }
