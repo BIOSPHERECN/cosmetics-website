@@ -30,7 +30,7 @@ import BrandEcosystem from '../components/BrandEcosystem.astro';
 import ProductGrid from '../components/ProductGrid.astro';
 import InquiryCart from '../components/InquiryCart.astro';
 import { getSiteByHost, getSiteById, getPageBundle, getEcosystem, DEFAULT_LANG, type Lang } from '../lib/db';
-import { isLocale } from '@cosmetic/core/i18n';
+import { isLocale, t as uiT, isLocale as _l } from '@cosmetic/core/i18n';
 import { getVariant, getSite as getStaticSite } from '@cosmetic/core/registry';
 // Astro v6 起 Astro.locals.runtime.env 已移除,绑定改从 cloudflare:workers 取
 import { env } from 'cloudflare:workers';
@@ -52,6 +52,8 @@ const segs = raw ? raw.split('/') : [];
  * 判 isLocale 之后,/de/ 会被当成普通路径,查无此页 → 正常 404,这才是对的。
  */
 const lang: Lang = isLocale(segs[0]) ? (segs.shift() as Lang) : DEFAULT_LANG;
+/** 无障碍跳转链接的文案 —— 以前写死中文,外语版第一个 Tab 停在一句中文上 */
+const tSkip = uiT(lang as any)('a11y.skip');
 const slug = segs.join('/');
 
 /* ── 解析站点:线上按域名;预览域名/本地按 ?site= 回退 ─────────── */
@@ -116,22 +118,36 @@ const eco = db && bundle ? await getEcosystem(db, lang).catch(() => null) : null
  * demo 用剂型数据 —— 证明「逛→选规格→加入询盘→攒车→提交」这条动线通。
  * 真产品入库后从 products 表读,这张表即可删除。
  */
+/*
+ * 剂型样例。
+ *
+ * 配图曾经是「按主题抓一批,再按顺序发下去」—— 结果面霜配了一张多孔菌特写、
+ * 面膜配了浴室置物架、精华油配了一片叶子。创始人一眼看出「货不对板」,判断没错:
+ * B 端采购看产品目录是在确认「你到底能做什么」,图不对等于在答非所问。
+ *
+ * 现在这八张是 tools/product-shots.mjs 抓的,每一张都先让**视觉模型看过**
+ * 「这主体是不是滴管瓶装的精华」才留下,对不上的直接淘汰(实测淘汰率过半)。
+ * 图已入媒体库(/media/10 … /media/17),运营在后台换图即刻生效,不必改这里。
+ *
+ * 仍是占位:CC0 池里的美妆摄影质量参差,真正该上的是帛卉自己的产品实拍。
+ * 但「对得上号的占位图」和「一张多孔菌」是两回事。
+ */
 const DEMO_PRODUCTS = [
-  { id: 'serum', name: '精华液', summary: '水感或油感基质,活性物浓度可定制', image: '/media/shots/skin-02.jpg', moq: '3,000 支起',
+  { id: 'serum', name: '精华液', summary: '水感或油感基质,活性物浓度可定制', image: '/media/16', moq: '3,000 支起',
     options: { 容量: ['30ml', '50ml'], 包材: ['玻璃滴管瓶', '真空泵瓶'] } },
-  { id: 'cream', name: '面霜', summary: '真空乳化,常温与冷制工艺可选', image: '/media/shots/texture-02.jpg', moq: '3,000 罐起',
+  { id: 'cream', name: '面霜', summary: '真空乳化,常温与冷制工艺可选', image: '/media/10', moq: '3,000 罐起',
     options: { 容量: ['30g', '50g'], 包材: ['玻璃罐', 'PP 罐'] } },
-  { id: 'mask', name: '面膜', summary: '水洗式与贴片式,精华液配比可调', image: '/media/shots/life-01.jpg', moq: '10,000 片起',
+  { id: 'mask', name: '面膜', summary: '水洗式与贴片式,精华液配比可调', image: '/media/17', moq: '10,000 片起',
     options: { 规格: ['单片装', '盒装 5 片'], 基布: ['天丝', '生物纤维'] } },
-  { id: 'cleanser', name: '洁面', summary: '氨基酸与皂基两条路线', image: '/media/shots/skin-03.jpg', moq: '5,000 支起',
+  { id: 'cleanser', name: '洁面', summary: '氨基酸与皂基两条路线', image: '/media/11', moq: '5,000 支起',
     options: { 容量: ['100ml', '150ml'], 形态: ['膏状', '慕斯'] } },
-  { id: 'toothpaste', name: '牙膏', summary: '低研磨配方,益生菌可添加', image: '/media/shots/oral-02.jpg', moq: '10,000 支起',
+  { id: 'toothpaste', name: '牙膏', summary: '低研磨配方,益生菌可添加', image: '/media/12', moq: '10,000 支起',
     options: { 容量: ['100g', '120g'], 管材: ['铝塑复合管', '可回收单材质管'] } },
-  { id: 'powder', name: '粉体彩妆', summary: '压粉与散粉,色号按 Pantone 打样', image: '/media/shots/makeup-01.jpg', moq: '5,000 盒起',
+  { id: 'powder', name: '粉体彩妆', summary: '压粉与散粉,色号按 Pantone 打样', image: '/media/13', moq: '5,000 盒起',
     options: { 形态: ['压粉饼', '散粉'], 盘型: ['单色', '四色'] } },
-  { id: 'oil', name: '精华油', summary: '植物基油相,冷压原料可溯源', image: '/media/shots/botany-02.jpg', moq: '3,000 支起',
+  { id: 'oil', name: '精华油', summary: '植物基油相,冷压原料可溯源', image: '/media/14', moq: '3,000 支起',
     options: { 容量: ['20ml', '30ml'], 包材: ['滴管瓶', '按压瓶'] } },
-  { id: 'balm', name: '膏体唇部', summary: '润唇与有色唇膏,蜡体配比可调', image: '/media/shots/makeup-02.jpg', moq: '8,000 支起',
+  { id: 'balm', name: '膏体唇部', summary: '润唇与有色唇膏,蜡体配比可调', image: '/media/15', moq: '8,000 支起',
     options: { 形态: ['管状', '罐装'], 色号: ['单色', '定制'] } },
 ];
 
@@ -186,7 +202,7 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
   brandColor={site!.brand_color}
   theme={(site as any)!.theme ?? 'noir'}
 >
-  <a class="ck-skip-link" href="#main">跳到主内容</a>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
 
   {/*
    * 主题切换胶囊 —— 评审工具,不是站点功能,所以默认不出。
@@ -303,6 +319,7 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
           // 生产基地 —— 从种植端到成品端,是帛卉区别于普通代工厂的地方
           return (
             <ProductionBases
+              locale={lang}
               eyebrow={d.eyebrow} title={d.title} intro={d.intro}
               items={d.items ?? []} labels={d.labels} footnote={d.footnote}
             />
@@ -344,6 +361,7 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
 
   {eco?.hub && (
     <BrandEcosystem
+      locale={lang}
       hub={eco.hub}
       children={eco.children}
       currentId={site!.id}

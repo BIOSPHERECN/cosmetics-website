@@ -10,8 +10,11 @@
  * 大脑单独居上,四个平台在下,中间用一条竖线连起来(纯 CSS,零图片)。
  */
 import type { EcoNode } from '../lib/db';
+import { t, type Locale } from '@cosmetic/core/i18n';
 
 export interface Props {
+  /** 当前语言 —— 角色名与「当前站点」按它取词 */
+  locale: Locale;
   hub: EcoNode | null;
   children: EcoNode[];
   title: string;
@@ -19,11 +22,12 @@ export interface Props {
   /** 当前站点 id —— 自己那一格不做成链接,标为「当前」 */
   currentId?: string;
 }
-const { hub, children, title, intro, currentId } = Astro.props;
+const { locale, hub, children, title, intro, currentId } = Astro.props;
+const tr = t(locale);
 const ROLE: Record<string, string> = {
-  manufacturing: '智造平台',
-  brand: '自有品牌',
-  hub: '科技大脑',
+  manufacturing: 'eco.manufacturing',
+  brand: 'eco.brand',
+  hub: 'eco.hub',
 };
 ---
 
@@ -41,7 +45,7 @@ const ROLE: Record<string, string> = {
         <a class:list={['node', 'hub', currentId === hub.id && 'self']}
            href={currentId === hub.id ? undefined : `https://${hub.domain}`}
            rel={currentId === hub.id ? undefined : 'noopener'}>
-          <span class="role">{ROLE.hub}</span>
+          <span class="role">{tr(ROLE.hub as any)}</span>
           <strong class="nm">{hub.name}</strong>
           <span class="dom">{hub.domain}</span>
           {hub.tagline && <span class="tag">{hub.tagline}</span>}
@@ -59,10 +63,10 @@ const ROLE: Record<string, string> = {
                href={currentId === c.id ? undefined : `https://${c.domain}`}
                rel={currentId === c.id ? undefined : 'noopener'}>
               <span class="stem" aria-hidden="true"></span>
-              <span class="role">{ROLE[c.role] ?? c.role}</span>
+              <span class="role">{ROLE[c.role] ? tr(ROLE[c.role] as any) : c.role}</span>
               <strong class="nm">{c.name}</strong>
               <span class="dom">{c.domain}</span>
-              {currentId === c.id && <span class="here">当前站点</span>}
+              {currentId === c.id && <span class="here">{tr('eco.here')}</span>}
             </a>
           </li>
         ))}

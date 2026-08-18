@@ -18,7 +18,7 @@
  *   ja 是 ISO 639-1 的语言码,Google 的 hreflang 只认它,写 jp 会失效。
  *   但访客眼里日本就是 JP。所以机器读 ja、人看 JP,两边都不将就。
  */
-import { LOCALES, LOCALE_LABELS, LOCALE_SHORT, HREFLANG, switchLocalePath, t, type Locale } from '../i18n/index.ts';
+import { LOCALE_GROUPS, LOCALE_LABELS, LOCALE_SHORT, HREFLANG, isRtl, switchLocalePath, t, type Locale } from '../i18n/index.ts';
 
 export interface Props {
   locale: Locale;
@@ -53,22 +53,33 @@ const tr = t(locale);
     </svg>
   </summary>
 
-  <ul class="ls-menu" role="list">
-    {LOCALES.map((l) => (
-      <li>
-        <a
-          class:list={['ls-item', l === locale && 'on']}
-          href={switchLocalePath(path, l)}
-          hreflang={HREFLANG[l]}
-          lang={HREFLANG[l]}
-          aria-current={l === locale ? 'true' : undefined}
-        >
-          <span class="ls-name">{LOCALE_LABELS[l]}</span>
-          <span class="ls-code">{LOCALE_SHORT[l]}</span>
-        </a>
-      </li>
+  <div class="ls-menu">
+    {LOCALE_GROUPS.map((g) => (
+      <section class="ls-grp">
+        {/* 大区标题不是装饰:36 个语种平铺成一列,人只会在里面上下乱扫。
+            按大区分组之后,访客先定位「我在哪个洲」,再在 3-16 个里挑 —— 这是能扫完的量。 */}
+        <h3 class="ls-gt">{g.group}</h3>
+        <ul role="list">
+          {g.codes.map((l) => (
+            <li>
+              <a
+                class:list={['ls-item', l === locale && 'on']}
+                href={switchLocalePath(path, l)}
+                hreflang={HREFLANG[l]}
+                data-locale={l}
+                lang={HREFLANG[l]}
+                dir={isRtl(l) ? 'rtl' : undefined}
+                aria-current={l === locale ? 'true' : undefined}
+              >
+                <span class="ls-name">{LOCALE_LABELS[l]}</span>
+                <span class="ls-code">{LOCALE_SHORT[l]}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
     ))}
-  </ul>
+  </div>
 </details>
 
 <style>
@@ -115,21 +126,43 @@ const tr = t(locale);
   .ls[open] .ls-caret { transform: rotate(180deg); }
 
   /* ── 菜单本体 ─────────────────────────────────────────
-     右对齐:切换器本身贴在页面右上角,菜单向左展开才不会顶出视口。 */
+     贴着切换器的「行末」那一侧展开,不顶出视口。
+     用 inset-inline-end 而不是 right —— 阿拉伯语页面整体镜像后切换器在左上角,
+     写死 right:0 会让菜单整块掉到视口左外(实测左边界 -702px,只能横向拖才看得见)。 */
   .ls-menu {
     position: absolute;
     top: calc(100% + 0.375rem);
-    right: 0;
+    inset-inline-end: 0;
     z-index: 60;
-    min-width: 11.5rem;
-    margin: 0;
-    padding: 0.3125rem;
-    list-style: none;
+    /* 三栏并排:36 个语种单栏要 36 行、竖着 1500px,一屏放不下必然滚动;
+       分三栏后一屏看得完,眼睛横向扫比纵向滚快得多。 */
+    width: min(46rem, calc(100vw - 2.5rem));
+    columns: 3;
+    column-gap: 1.25rem;
+    max-height: min(30rem, 70vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.75rem 0.875rem;
     background: var(--ck-surface);
     border: var(--ck-border-w) solid var(--ck-line);
     border-radius: var(--ck-radius);
     box-shadow: 0 14px 34px -14px rgb(0 0 0 / 0.3);
   }
+  .ls-grp {
+    /* 一个大区不许被断到两栏里 —— 断了「欧洲」的标题就落在上一栏的末尾,读不通 */
+    break-inside: avoid;
+    margin-bottom: 0.875rem;
+  }
+  .ls-gt {
+    margin: 0 0 0.25rem;
+    padding: 0 0.625rem;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ck-ink-faint);
+  }
+  .ls-menu ul { margin: 0; padding: 0; list-style: none; }
   .ls.up .ls-menu {
     top: auto;
     bottom: calc(100% + 0.375rem);
@@ -162,6 +195,11 @@ const tr = t(locale);
   }
   .ls-item.on .ls-code { color: var(--ck-accent); }
 
+  /* 手机上三栏挤不下,回单栏;面板改成贴着右边缘的窄条 */
+  @media (max-width: 44rem) {
+    .ls-menu { columns: 1; width: min(17rem, calc(100vw - 2rem)); }
+  }
+
   /* 紧凑档:报头那条细窄的期次行 */
   .ls.dense > summary {
     padding: 0.125rem 0.375rem;
@@ -193,9 +231,12 @@ const tr = t(locale);
 
     /* ② 手动选语言 = 明确表态,记一年;中间件读到这个 cookie 就不再按地区自动跳。
           不记的话:海外同事把英文链接发给国内客户,客户点开又被跳成中文 —— 看着像坏了。 */
-    document.querySelectorAll('a[hreflang]').forEach((a) => {
+    /* 存的是**语种码**(zh-cn / pt-br),不是 hreflang 值(zh-CN / pt-BR)——
+       两者大小写不一致,靠中间件 toLowerCase 兜底能work但太脆:
+       哪天多一个 sr-Latn 这样的写法就对不上了。存什么读什么,不做隐式转换。 */
+    document.querySelectorAll('a[data-locale]').forEach((a) => {
       a.addEventListener('click', () => {
-        document.cookie = 'bohui_lang=' + a.getAttribute('hreflang') +
+        document.cookie = 'bohui_lang=' + a.dataset.locale +
           ';path=/;max-age=31536000;samesite=lax';
       });
     });

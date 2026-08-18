@@ -9,7 +9,7 @@ import { env } from 'cloudflare:workers';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async ({ params, request }) => {
   const db = (env as any).DB as D1Database | undefined;
   const id = Number(params.id);
   if (!db || !Number.isFinite(id)) return new Response('Not found', { status: 404 });
@@ -18,8 +18,13 @@ export const GET: APIRoute = async ({ params }) => {
     .first<{ mime: string; data: unknown; url: string | null; driver: string }>();
   if (!row) return new Response('Not found', { status: 404 });
 
-  // 外链驱动(将来 R2)只做 302,不代理流量
-  if (row.driver !== 'd1' && row.url) return Response.redirect(row.url, 302);
+  // 外链驱动(R2 / 站内静态)只做 302,不代理流量。
+  // 注意 Response.redirect 只吃绝对地址,给它 '/media/shots/x.jpg' 会直接抛 —— 
+  // 而抛在这里的表现是整张图 500,页面上只剩一个破图标,不容易联想到是这一行。
+  if (row.driver !== 'd1' && row.url) {
+    const to = new URL(row.url, request.url).toString();
+    return new Response(null, { status: 302, headers: { Location: to, 'Cache-Control': 'public, max-age=3600' } });
+  }
 
   // D1 取回 BLOB 时给的是**数字数组**,不是 ArrayBuffer。
   // 直接塞进 Response 会得到一个 0 字节的空体 —— 存进去是对的、传出来是空的,

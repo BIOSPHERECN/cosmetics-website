@@ -94,9 +94,16 @@ a {
 
 /* 跳转主内容链接(屏幕阅读器/键盘用户) */
 .ck-skip-link {
+  /* 用「一像素 + 裁切」藏,不用 left:-9999px。
+     后者在阿拉伯语这类 RTL 页面里会把文档撑出上万像素的横向滚动条 ——
+     实测 scrollWidth 11288px,而访客只会看到"页面能左右乱拖",查不到是这一行。
+     裁切法不占任何布局空间,读屏器与键盘 Tab 照样能拿到它。 */
   position: absolute;
-  left: -9999px;
-  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
   z-index: 100;
   padding: 0.5rem 1rem;
   background: var(--ck-surface);
@@ -104,8 +111,12 @@ a {
   border: 1px solid var(--ck-line);
 }
 .ck-skip-link:focus {
-  left: 0.5rem;
-  top: 0.5rem;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  inset-block-start: 0.5rem;
+  inset-inline-start: 0.5rem;
 }
 
 /* —— 克制动效:加载期淡入 + 轻位移(零 JS)—— */
@@ -126,3 +137,41 @@ a {
     }
   }
 }
+
+/* ── 多语种版式安全网 ─────────────────────────────────────────
+   36 个语种同一套版式,排版必须按**最长的那门语言**成立,
+   不能按中文看着行就放行。三条兜底,写在基座上,新组件自动继承:
+
+   ① 任何标题都不许冲出容器。
+      踩过的坑:品类卡标题用 inline-block(为了让强调线只在文字下方),
+      inline-block 按「最长不换行内容」定宽 —— 中文「供应链整合」6 字看不出问题,
+      法语 Intégration de la chaîne d'approvisionnement 实测 338px,
+      而卡片内容区只有 172px,整块压进右边那张卡。
+   ② 允许断词。德语、荷兰语、芬兰语的复合词单个就可能比栏宽,
+      不断词就一定溢出(Lebensmittelkennzeichnung 这类)。
+   ③ 数字与代号不断行。断了「ISO 22716」「3,000 支起」就成了错的信息。 */
+h1, h2, h3, h4, h5, h6,
+.ck-eyebrow, dt, figcaption {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+/* 拉丁系长复合词允许连字符断行;CJK 与阿拉伯语不需要,浏览器会自行忽略 */
+h1, h2, h3, h4 { hyphens: auto; }
+/* 证书号、起订量这类不能被拆开 */
+.mk, .num, time, [data-nowrap] { overflow-wrap: normal; word-break: keep-all; }
+
+/* ── RTL 纪律 ────────────────────────────────────────────────
+   站点有阿拉伯语/乌尔都语/波斯语/希伯来语四门右起语言。
+   版式一律写**逻辑属性**,不写物理左右:
+     margin-inline-start  不是 margin-left
+     inset-inline-end     不是 right
+     text-align: start    不是 text-align: left
+     padding-inline       不是 padding-left/right
+   写死物理方向的后果不是"稍微歪一点",是整页读不通:
+   导航跑到反侧、引号挂在词尾、序号线落在文字另一边。
+   而这四门语言占了中东与南亚 —— 恰恰是化妆品代工询盘最多的两块地方。
+
+   例外:确实与方向绑定的图形(如指向右的箭头图标)可以写物理属性,
+   但要在 RTL 下显式翻转。 */
+[dir='rtl'] .ck-arrow,
+[dir='rtl'] .ck-flip { transform: scaleX(-1); }

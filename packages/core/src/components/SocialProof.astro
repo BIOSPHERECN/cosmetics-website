@@ -64,7 +64,7 @@ const { title, intro, stats, testimonials } = Astro.props;
     border-bottom: var(--ck-border-w) solid var(--ck-line);
   }
   .num {
-    padding-left: 1.125rem;
+    padding-inline-start: 1.125rem;
     border-left: var(--ck-rule-w) solid var(--ck-accent);
   }
   .v {
@@ -103,7 +103,7 @@ const { title, intro, stats, testimonials } = Astro.props;
     /* 正文行宽 ≤72 字符(PDF 版式规范) */
     max-width: 72ch;
   }
-  .text::before { content: '“'; color: var(--ck-accent); margin-right: 0.125rem; }
+  .text::before { content: '“'; color: var(--ck-accent); margin-inline-end: 0.125rem; }
   .text::after { content: '”'; color: var(--ck-accent); }
   .from {
     margin-top: 0.875rem;

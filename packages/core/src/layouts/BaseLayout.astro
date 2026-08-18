@@ -7,7 +7,7 @@
  *   data-brand   → 品牌色微调(sites/<id>/src/styles/brand.css)
  * 所以「换风格」= 换一个属性值,不动任何页面代码。这是 5 域名 × 4 风格能在一套模板里跑的原因。
  */
-import { HREFLANG, OG_LOCALE, LOCALES, switchLocalePath, type Locale } from '../i18n/index.ts';
+import { HREFLANG, OG_LOCALE, LOCALES, isRtl, switchLocalePath, type Locale } from '../i18n/index.ts';
 import '../styles/tokens.css';
 // 字体层放在中性令牌之后、流派之前:它改写字体族与字号阶梯,
 // 但仍允许各流派/风格在其上继续覆盖(如奢华系改用衬线)。
@@ -95,6 +95,10 @@ const allowIndex = indexable && liveIndexing;
 <!doctype html>
 <html
   lang={HREFLANG[locale]}
+  {/* 阿拉伯语/波斯语/希伯来语整页镜像。少这一个属性,那三门语言的页面
+      导航跑左边、正文右起、标点全落错位置 —— 不是"不太好看",是读不了。
+      版式用逻辑属性(margin-inline / padding-inline)写,加了 dir 自动翻。 */}
+  dir={isRtl(locale) ? 'rtl' : 'ltr'}
   data-school={school}
   data-variant={variant}
   data-brand={brand}

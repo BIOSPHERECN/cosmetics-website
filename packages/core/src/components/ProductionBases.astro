@@ -1,4 +1,5 @@
 ---
+import { t, type Locale } from '../i18n/index.ts';
 /**
  * 生产基地 —— 制造基地 + 植物药材种植基地。
  *
@@ -19,6 +20,8 @@
 import type { BaseItem } from '../types.ts';
 
 export interface Props {
+  /** 当前语言 —— 汇总行的字段名(面积/产能/主要品种)按它取词 */
+  locale: Locale;
   eyebrow?: string;
   title: string;
   intro?: string;
@@ -30,9 +33,10 @@ export interface Props {
 }
 
 const {
-  eyebrow, title, intro, items = [], footnote,
+  locale, eyebrow, title, intro, items = [], footnote,
   labels = { bases: '基地', area: '种植面积', species: '在培品种' },
 } = Astro.props;
+const tr = t(locale);
 
 /**
  * 从「1,200 亩」这类写法里拆出数值与单位。
@@ -83,8 +87,8 @@ const species = new Set(
           <h3>{b.name}</h3>
           {b.region && <p class="region">{b.region}</p>}
           <dl class="spec">
-            {b.area && <div><dt>{b.type === 'grow' ? '面积' : '产能'}</dt><dd>{b.area}</dd></div>}
-            {b.focus && <div><dt>{b.type === 'grow' ? '主要品种' : '主要能力'}</dt><dd>{b.focus}</dd></div>}
+            {b.area && <div><dt>{b.type === 'grow' ? tr('bases.area') : tr('bases.capacity')}</dt><dd>{b.area}</dd></div>}
+            {b.focus && <div><dt>{b.type === 'grow' ? tr('bases.crops') : tr('bases.capability')}</dt><dd>{b.focus}</dd></div>}
             {b.cert && <div><dt>规范</dt><dd>{b.cert}</dd></div>}
           </dl>
           {b.note && <p class="note">{b.note}</p>}
@@ -121,7 +125,7 @@ const species = new Set(
   .sum .v i {
     font-style: normal;
     font-size: 0.4em;
-    margin-left: 0.25em;
+    margin-inline-start: 0.25em;
     letter-spacing: 0;
   }
   .sum dd {

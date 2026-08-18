@@ -25,24 +25,11 @@
  */
 export const LANG_GROUPS: { group: string; langs: [string, string][] }[] = [
   { group: 'Global', langs: [['en', 'English']] },
-  { group: '亚太 Asia-Pacific', langs: [
-    ['zh-cn', '简体中文'], ['zh-tw', '繁體中文'], ['ja', '日本語'], ['ko', '한국어'],
-    ['id', 'Bahasa Indonesia'], ['ms', 'Bahasa Melayu'], ['th', 'ไทย'], ['vi', 'Tiếng Việt'],
-    ['hi', 'हिन्दी'], ['bn', 'বাংলা'], ['tl', 'Filipino'],
-  ] },
-  { group: '欧洲 Europe', langs: [
-    ['fr', 'Français'], ['de', 'Deutsch'], ['es', 'Español'], ['it', 'Italiano'],
-    ['pt-PT', 'Português'], ['nl', 'Nederlands'], ['pl', 'Polski'], ['sv', 'Svenska'],
-    ['da', 'Dansk'], ['fi', 'Suomi'], ['no', 'Norsk'], ['cs', 'Čeština'],
-    ['el', 'Ελληνικά'], ['hu', 'Magyar'], ['ro', 'Română'], ['uk', 'Українська'],
-  ] },
-  { group: '美洲 Americas', langs: [
-    ['pt-BR', 'Português (BR)'], ['es-MX', 'Español (MX)'],
-  ] },
-  { group: '中东与非洲 MEA', langs: [
-    ['ar', 'العربية'], ['tr', 'Türkçe'], ['fa', 'فارسی'], ['he', 'עברית'], ['sw', 'Kiswahili'],
-  ] },
-  { group: '独联体 CIS', langs: [['ru', 'Русский'], ['kk', 'Қазақша']] },
+  { group: '亚太', langs: [['zh-cn', '中文'], ['ja', '日本語'], ['ko', '한국어'], ['id', 'Indonesia'], ['ms', 'Melayu'], ['th', 'ไทย'], ['vi', 'Tiếng Việt'], ['hi', 'हिन्दी'], ['bn', 'বাংলা'], ['tl', 'Filipino']] },
+  { group: '欧洲', langs: [['fr', 'Français'], ['de', 'Deutsch'], ['es', 'Español'], ['it', 'Italiano'], ['pt', 'Português'], ['nl', 'Nederlands'], ['pl', 'Polski'], ['sv', 'Svenska'], ['da', 'Dansk'], ['fi', 'Suomi'], ['no', 'Norsk'], ['cs', 'Čeština'], ['el', 'Ελληνικά'], ['hu', 'Magyar'], ['ro', 'Română'], ['uk', 'Українська'], ['ru', 'Русский']] },
+  { group: '美洲', langs: [['pt-br', 'Português (BR)'], ['es-mx', 'Español (MX)']] },
+  { group: '中东非洲', langs: [['ar', 'العربية'], ['tr', 'Türkçe'], ['fa', 'فارسی'], ['he', 'עברית'], ['sw', 'Kiswahili']] },
+  { group: '独联体', langs: [['kk', 'Қазақша']] },
 ];
 
 export type Lang = string;
@@ -58,7 +45,9 @@ export const RTL = new Set(['ar', 'fa', 'he']);
 
 /** hreflang:多数语言码即规范码,少数需要映射 */
 export function hreflangOf(lang: Lang): string {
-  return ({ 'zh-cn': 'zh-Hans', 'zh-tw': 'zh-Hant' } as Record<string, string>)[lang] ?? lang;
+  // 与 packages/core/src/i18n 的 HREFLANG 保持一致 —— 以前这里写 zh-Hans、
+  // 那边写 zh-CN,同一个语种在两处得出两个 hreflang,搜索引擎只会信其中一个。
+  return ({ 'zh-cn': 'zh-CN', 'pt-br': 'pt-BR', 'es-mx': 'es-MX' } as Record<string, string>)[lang] ?? lang;
 }
 
 /**

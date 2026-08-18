@@ -1,0 +1,416 @@
+[
+ {
+  "code": "en",
+  "label": "English",
+  "short": "EN",
+  "hreflang": "en",
+  "og": "en_US",
+  "group": "Global",
+  "rtl": false
+ },
+ {
+  "code": "zh-cn",
+  "label": "中文",
+  "short": "中文",
+  "hreflang": "zh-CN",
+  "og": "zh_CN",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "ja",
+  "label": "日本語",
+  "short": "JP",
+  "hreflang": "ja",
+  "og": "ja_JP",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "ko",
+  "label": "한국어",
+  "short": "KR",
+  "hreflang": "ko",
+  "og": "ko_KR",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "id",
+  "label": "Indonesia",
+  "short": "ID",
+  "hreflang": "id",
+  "og": "id_ID",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "ms",
+  "label": "Malaysia",
+  "short": "MY",
+  "hreflang": "ms",
+  "og": "ms_MY",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "th",
+  "label": "ไทย",
+  "short": "TH",
+  "hreflang": "th",
+  "og": "th_TH",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "vi",
+  "label": "Tiếng Việt",
+  "short": "VN",
+  "hreflang": "vi",
+  "og": "vi_VN",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "hi",
+  "label": "हिन्दी",
+  "short": "IN",
+  "hreflang": "hi",
+  "og": "hi_IN",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "bn",
+  "label": "বাংলা",
+  "short": "BD",
+  "hreflang": "bn",
+  "og": "bn_BD",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "tl",
+  "label": "Filipino",
+  "short": "PH",
+  "hreflang": "tl",
+  "og": "tl_PH",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "ur",
+  "label": "اردو",
+  "short": "PK",
+  "hreflang": "ur",
+  "og": "ur_PK",
+  "group": "亚太",
+  "rtl": true
+ },
+ {
+  "code": "pa",
+  "label": "ਪੰਜਾਬੀ",
+  "short": "PA",
+  "hreflang": "pa",
+  "og": "pa_IN",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "te",
+  "label": "తెలుగు",
+  "short": "TE",
+  "hreflang": "te",
+  "og": "te_IN",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "ta",
+  "label": "தமிழ்",
+  "short": "TA",
+  "hreflang": "ta",
+  "og": "ta_IN",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "mr",
+  "label": "मराठी",
+  "short": "MR",
+  "hreflang": "mr",
+  "og": "mr_IN",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "gu",
+  "label": "ગુજરાતી",
+  "short": "GU",
+  "hreflang": "gu",
+  "og": "gu_IN",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "jv",
+  "label": "Jawa",
+  "short": "JV",
+  "hreflang": "jv",
+  "og": "jv_ID",
+  "group": "亚太",
+  "rtl": false
+ },
+ {
+  "code": "fr",
+  "label": "Français",
+  "short": "FR",
+  "hreflang": "fr",
+  "og": "fr_FR",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "de",
+  "label": "Deutsch",
+  "short": "DE",
+  "hreflang": "de",
+  "og": "de_DE",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "es",
+  "label": "Español",
+  "short": "ES",
+  "hreflang": "es",
+  "og": "es_ES",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "it",
+  "label": "Italiano",
+  "short": "IT",
+  "hreflang": "it",
+  "og": "it_IT",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "pt",
+  "label": "Português",
+  "short": "PT",
+  "hreflang": "pt",
+  "og": "pt_PT",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "nl",
+  "label": "Nederlands",
+  "short": "NL",
+  "hreflang": "nl",
+  "og": "nl_NL",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "pl",
+  "label": "Polski",
+  "short": "PL",
+  "hreflang": "pl",
+  "og": "pl_PL",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "sv",
+  "label": "Svenska",
+  "short": "SE",
+  "hreflang": "sv",
+  "og": "sv_SE",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "da",
+  "label": "Dansk",
+  "short": "DK",
+  "hreflang": "da",
+  "og": "da_DK",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "fi",
+  "label": "Suomi",
+  "short": "FI",
+  "hreflang": "fi",
+  "og": "fi_FI",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "no",
+  "label": "Norsk",
+  "short": "NO",
+  "hreflang": "no",
+  "og": "nb_NO",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "cs",
+  "label": "Čeština",
+  "short": "CZ",
+  "hreflang": "cs",
+  "og": "cs_CZ",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "el",
+  "label": "Ελληνικά",
+  "short": "GR",
+  "hreflang": "el",
+  "og": "el_GR",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "hu",
+  "label": "Magyar",
+  "short": "HU",
+  "hreflang": "hu",
+  "og": "hu_HU",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "ro",
+  "label": "Română",
+  "short": "RO",
+  "hreflang": "ro",
+  "og": "ro_RO",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "uk",
+  "label": "Українська",
+  "short": "UA",
+  "hreflang": "uk",
+  "og": "uk_UA",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "ru",
+  "label": "Русский",
+  "short": "RU",
+  "hreflang": "ru",
+  "og": "ru_RU",
+  "group": "欧洲",
+  "rtl": false
+ },
+ {
+  "code": "pt-br",
+  "label": "Português (BR)",
+  "short": "BR",
+  "hreflang": "pt-BR",
+  "og": "pt_BR",
+  "group": "美洲",
+  "rtl": false
+ },
+ {
+  "code": "es-mx",
+  "label": "Español (MX)",
+  "short": "MX",
+  "hreflang": "es-MX",
+  "og": "es_MX",
+  "group": "美洲",
+  "rtl": false
+ },
+ {
+  "code": "ar",
+  "label": "العربية",
+  "short": "AR",
+  "hreflang": "ar",
+  "og": "ar_AR",
+  "group": "中东非洲",
+  "rtl": true
+ },
+ {
+  "code": "tr",
+  "label": "Türkçe",
+  "short": "TR",
+  "hreflang": "tr",
+  "og": "tr_TR",
+  "group": "中东非洲",
+  "rtl": false
+ },
+ {
+  "code": "fa",
+  "label": "فارسی",
+  "short": "IR",
+  "hreflang": "fa",
+  "og": "fa_IR",
+  "group": "中东非洲",
+  "rtl": true
+ },
+ {
+  "code": "he",
+  "label": "עברית",
+  "short": "IL",
+  "hreflang": "he",
+  "og": "he_IL",
+  "group": "中东非洲",
+  "rtl": true
+ },
+ {
+  "code": "sw",
+  "label": "Kiswahili",
+  "short": "KE",
+  "hreflang": "sw",
+  "og": "sw_KE",
+  "group": "中东非洲",
+  "rtl": false
+ },
+ {
+  "code": "ha",
+  "label": "Hausa",
+  "short": "HA",
+  "hreflang": "ha",
+  "og": "ha_NG",
+  "group": "中东非洲",
+  "rtl": false
+ },
+ {
+  "code": "am",
+  "label": "አማርኛ",
+  "short": "AM",
+  "hreflang": "am",
+  "og": "am_ET",
+  "group": "中东非洲",
+  "rtl": false
+ },
+ {
+  "code": "kk",
+  "label": "Қазақша",
+  "short": "KZ",
+  "hreflang": "kk",
+  "og": "kk_KZ",
+  "group": "独联体",
+  "rtl": false
+ },
+ {
+  "code": "uz",
+  "label": "Oʻzbek",
+  "short": "UZ",
+  "hreflang": "uz",
+  "og": "uz_UZ",
+  "group": "独联体",
+  "rtl": false
+ }
+]

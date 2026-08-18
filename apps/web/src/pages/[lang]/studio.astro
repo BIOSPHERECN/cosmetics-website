@@ -1,4 +1,5 @@
 ---
+import { t as uiT } from '@cosmetic/core/i18n';
 /**
  * AI 共创工作台 —— 一句话说需求,拿到可打样的配方方案。
  *
@@ -20,6 +21,8 @@ import { pageShell } from '../../lib/shell';
 export const prerender = false;
 
 const lang = Astro.params.lang ?? 'zh-cn';
+/** 无障碍跳转链接的文案 —— 以前写死中文,外语版第一个 Tab 停在一句中文上 */
+const tSkip = uiT(lang as any)('a11y.skip');
 const zh = lang.startsWith('zh');
 const db = (env as any).DB as D1Database | undefined;
 
@@ -97,7 +100,7 @@ const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
   brandColor={shell.site?.brand_color}
   theme={shell.site?.theme ?? 'noir'}
 >
-  <a class="ck-skip-link" href="#main">跳到主内容</a>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
   <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
               siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
 

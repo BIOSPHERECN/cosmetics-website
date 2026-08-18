@@ -33,15 +33,15 @@ html[data-editorial][data-brand] .hero h1 {
 }
 html[data-editorial][data-brand] .hero .lead {
   max-width: 34ch;
-  margin-left: 0;
+  margin-inline-start: 0;
 }
 /* 首屏数字墙保持在文字栏内。
    原来让它靠右对齐,结果和右半幅的图片重叠、数字完全读不清 ——
    编辑式版面追求的是不对称,不是让元素互相压住。 */
 html[data-editorial][data-brand] .hero .hl {
-  margin-left: 0;
+  margin-inline-start: 0;
   max-width: min(38rem, 52%);
-  text-align: left;
+  text-align: start;
 }
 
 /* ── ② 图片出血:破出容器贴到视口边缘 ──────────────────────── */
@@ -54,14 +54,14 @@ html[data-editorial][data-brand] .hero .texwrap {
 /* ── ③ 版块标题:不居中,退回左对齐并加大 ───────────────────── */
 html[data-editorial][data-brand] .ck-section > .ck-wrap > header,
 html[data-editorial][data-brand] .ck-section > .ck-wrap > .head {
-  text-align: left;
+  text-align: start;
   max-width: 24ch;
   margin-inline: 0;
 }
 
 /* ── ④ 交替偏置:偶数版块整体右移两栏,打破一柱到底 ──────────── */
 html[data-editorial][data-brand] .ck-section:nth-of-type(even) > .ck-wrap {
-  padding-left: calc(var(--ed-col) * 2 + var(--ed-gutter));
+  padding-inline-start: calc(var(--ed-col) * 2 + var(--ed-gutter));
 }
 
 /* ── ⑤ 网格改成不等宽:第一格占两倍,后面依次收窄 ───────────── */
@@ -106,12 +106,12 @@ html[data-editorial][data-brand] .proof .v {
 
 /* 窄屏回归单列 —— 编辑式版面在手机上会挤,不硬撑 */
 @media (max-width: 60rem) {
-  html[data-editorial][data-brand] .ck-section:nth-of-type(even) > .ck-wrap { padding-left: var(--ed-gutter); }
+  html[data-editorial][data-brand] .ck-section:nth-of-type(even) > .ck-wrap { padding-inline-start: var(--ed-gutter); }
   html[data-editorial][data-brand] .matrix .grid,
   html[data-editorial][data-brand] .statwall .grid,
   html[data-editorial][data-brand] .proof .nums { grid-template-columns: 1fr 1fr; }
   html[data-editorial][data-brand] .pg .card,
   html[data-editorial][data-brand] .pg .card:nth-child(1),
   html[data-editorial][data-brand] .pg .card:nth-child(6) { grid-column: span 6; }
-  html[data-editorial][data-brand] .hero .hl { text-align: left; margin-left: 0; }
+  html[data-editorial][data-brand] .hero .hl { text-align: start; margin-inline-start: 0; }
 }

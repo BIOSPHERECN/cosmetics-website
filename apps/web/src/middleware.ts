@@ -13,7 +13,57 @@
  */
 import { defineMiddleware } from 'astro:middleware';
 
-const LOCALES = ['zh-cn', 'en', 'ja', 'id', 'ms', 'fr'] as const;
+// 与 packages/core/src/i18n 的 LOCALES 一一对应(36 语)。
+// 中间件跑在请求最前面,不能 import 组件包 —— 所以这里是复制的一份,
+// 由 tools/gen-i18n.mjs 从 tools/locales.json 同步生成,不手抄。
+const LOCALES = [
+  'en',
+  'zh-cn',
+  'ja',
+  'ko',
+  'id',
+  'ms',
+  'th',
+  'vi',
+  'hi',
+  'bn',
+  'tl',
+  'ur',
+  'pa',
+  'te',
+  'ta',
+  'mr',
+  'gu',
+  'jv',
+  'fr',
+  'de',
+  'es',
+  'it',
+  'pt',
+  'nl',
+  'pl',
+  'sv',
+  'da',
+  'fi',
+  'no',
+  'cs',
+  'el',
+  'hu',
+  'ro',
+  'uk',
+  'ru',
+  'pt-br',
+  'es-mx',
+  'ar',
+  'tr',
+  'fa',
+  'he',
+  'sw',
+  'ha',
+  'am',
+  'kk',
+  'uz',
+] as const;
 type L = (typeof LOCALES)[number];
 const DEFAULT: L = 'en'; // 兜底用英文:这是外贸站,判不出来时按海外访客处理
 
@@ -34,26 +84,86 @@ const ALIAS: Record<string, L> = {
   zh: 'zh-cn', cn: 'zh-cn', 'zh-hans': 'zh-cn', 'zh-hant': 'zh-cn', 'zh-tw': 'zh-cn',
   in: 'id',
   my: 'ms',
+  iw: 'he', ph: 'tl', fil: 'tl', se: 'sv', dk: 'da',
+  nb: 'no', nn: 'no', sk: 'cs', br: 'pt-br', mx: 'es-mx',
   'en-us': 'en', 'en-gb': 'en',
   'fr-fr': 'fr',
 };
 
-/** 国家 → 语言。只列有把握的,其余走 Accept-Language 或英文 */
+/** 国家 → 语言。只列有把握的;多语并存的国家(比利时/瑞士/加拿大/印度英语区)
+ *  故意不列 —— 按国家硬判会得罪一半人,交给 Accept-Language 更准。 */
 const BY_COUNTRY: Record<string, L> = {
-  // 中文圈
-  CN: 'zh-cn', HK: 'zh-cn', MO: 'zh-cn', TW: 'zh-cn', SG: 'zh-cn',
-  JP: 'ja',
-  ID: 'id',
-  MY: 'ms', BN: 'ms',
-  // 法语区:法国本土 + 摩纳哥 + 法语非洲(美妆贸易商基数不小的几个)
-  FR: 'fr', MC: 'fr',
-  SN: 'fr', CI: 'fr', CM: 'fr', ML: 'fr', BF: 'fr', NE: 'fr',
-  TG: 'fr', BJ: 'fr', GA: 'fr', CG: 'fr', CD: 'fr', MG: 'fr', GN: 'fr',
-  // 比利时/瑞士/加拿大/卢森堡故意不列:境内多语言并存,
-  // 按国家硬判会得罪一半人,交给 Accept-Language 更准。
+  AE: 'ar', AF: 'fa', AO: 'pt', AR: 'es-mx', AT: 'de', BD: 'bn',
+  BF: 'fr', BH: 'ar', BJ: 'fr', BN: 'ms', BO: 'es-mx', BR: 'pt-br',
+  BY: 'ru', CD: 'fr', CG: 'fr', CI: 'fr', CL: 'es-mx', CM: 'fr',
+  CN: 'zh-cn', CO: 'es-mx', CR: 'es-mx', CU: 'es-mx', CV: 'pt', CY: 'el',
+  CZ: 'cs', DE: 'de', DJ: 'fr', DK: 'da', DO: 'es-mx', DZ: 'ar',
+  EC: 'es-mx', EG: 'ar', ES: 'es', FI: 'fi', FR: 'fr', GA: 'fr',
+  GN: 'fr', GR: 'el', GT: 'es-mx', HK: 'zh-cn', HN: 'es-mx', HU: 'hu',
+  ID: 'id', IL: 'he', IN: 'hi', IQ: 'ar', IR: 'fa', IT: 'it',
+  JO: 'ar', JP: 'ja', KE: 'sw', KP: 'ko', KR: 'ko', KW: 'ar',
+  KZ: 'kk', LB: 'ar', LY: 'ar', MA: 'ar', MC: 'fr', MD: 'ro',
+  MG: 'fr', ML: 'fr', MO: 'zh-cn', MR: 'ar', MX: 'es-mx', MY: 'ms',
+  MZ: 'pt', NE: 'fr', NI: 'es-mx', NL: 'nl', NO: 'no', OM: 'ar',
+  PA: 'es-mx', PE: 'es-mx', PH: 'tl', PL: 'pl', PS: 'ar', PT: 'pt',
+  PY: 'es-mx', QA: 'ar', RO: 'ro', RU: 'ru', RW: 'sw', SA: 'ar',
+  SD: 'ar', SE: 'sv', SG: 'zh-cn', SK: 'cs', SM: 'it', SN: 'fr',
+  SV: 'es-mx', SY: 'ar', TD: 'fr', TG: 'fr', TH: 'th', TN: 'ar',
+  TR: 'tr', TW: 'zh-cn', TZ: 'sw', UA: 'uk', UG: 'sw', UY: 'es-mx',
+  VA: 'it', VE: 'es-mx', VN: 'vi', YE: 'ar',
 };
 
-/** Accept-Language 里挑第一个我们支持的 */
+/**
+ * Accept-Language 里挑第一个我们支持的。
+ * 前缀表按长度倒序匹配 —— pt-BR 必须压过 pt,否则巴西访客会被送去葡萄牙版;
+ * 同理 es-MX 压过 es。这一条在只有三种语言时不存在,语种一多就必须显式处理。
+ */
+const PREFIX: [string, L][] = [
+  ['es-419', 'es-mx'],
+  ['pt-br', 'pt-br'],
+  ['es-mx', 'es-mx'],
+  ['fil', 'tl'],
+  ['zh', 'zh-cn'],
+  ['ja', 'ja'],
+  ['ko', 'ko'],
+  ['id', 'id'],
+  ['in', 'id'],
+  ['ms', 'ms'],
+  ['th', 'th'],
+  ['vi', 'vi'],
+  ['hi', 'hi'],
+  ['bn', 'bn'],
+  ['tl', 'tl'],
+  ['pt', 'pt'],
+  ['es', 'es'],
+  ['fr', 'fr'],
+  ['de', 'de'],
+  ['it', 'it'],
+  ['nl', 'nl'],
+  ['pl', 'pl'],
+  ['sv', 'sv'],
+  ['da', 'da'],
+  ['fi', 'fi'],
+  ['nb', 'no'],
+  ['nn', 'no'],
+  ['no', 'no'],
+  ['cs', 'cs'],
+  ['sk', 'cs'],
+  ['el', 'el'],
+  ['hu', 'hu'],
+  ['ro', 'ro'],
+  ['uk', 'uk'],
+  ['ru', 'ru'],
+  ['kk', 'kk'],
+  ['ar', 'ar'],
+  ['tr', 'tr'],
+  ['fa', 'fa'],
+  ['he', 'he'],
+  ['iw', 'he'],
+  ['sw', 'sw'],
+  ['en', 'en'],
+];
+
 function fromHeader(h: string | null): L | null {
   if (!h) return null;
   const tags = h.split(',').map((p) => {
@@ -61,12 +171,7 @@ function fromHeader(h: string | null): L | null {
     return { tag: tag.toLowerCase(), q: q ? parseFloat(q) : 1 };
   }).sort((a, b) => b.q - a.q);
   for (const { tag } of tags) {
-    if (tag.startsWith('zh')) return 'zh-cn';   // 繁简都归简中(繁体已下线)
-    if (tag.startsWith('ja')) return 'ja';
-    if (tag.startsWith('id') || tag.startsWith('in')) return 'id'; // in 是印尼语的旧码
-    if (tag.startsWith('ms')) return 'ms';
-    if (tag.startsWith('fr')) return 'fr';
-    if (tag.startsWith('en')) return 'en';
+    for (const [pre, loc] of PREFIX) if (tag === pre || tag.startsWith(pre + '-')) return loc;
   }
   return null;
 }

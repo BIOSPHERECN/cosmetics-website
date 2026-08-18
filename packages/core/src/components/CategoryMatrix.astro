@@ -82,6 +82,19 @@ const { title, intro, items } = Astro.props;
     border-bottom: var(--ck-rule-w) solid var(--ck-accent);
     /* 短线只在标题文字宽度下方,不横贯整卡 */
     display: inline-block;
+    /* ★ max-width 不是可选项 ★
+       inline-block 的宽度按「最长不换行内容」算,长标题会直接冲出卡片。
+       中文「供应链整合」6 个字看不出问题,法语同一句是
+       Intégration de la chaîne d'approvisionnement —— 实测标题宽 338px,
+       而卡片内容区只有 172px,整整压进右边那张卡里。
+       多语站的排版必须按**最长的那门语言**校验,不能按中文看着行就放行。 */
+    max-width: 100%;
+    /* 德语、荷兰语的复合词单词本身就可能比卡片宽,允许断词 */
+    overflow-wrap: break-word;
+    /* 四联卡里的小标题不该用通栏大标题的字号:
+       卡片内容区 172px 配 36px 字,一行只放得下两三个词,读起来像被挤碎的。 */
+    font-size: clamp(1.125rem, 0.9rem + 0.6vw, 1.5rem);
+    line-height: 1.2;
   }
   .d {
     margin-top: 0.625rem;
