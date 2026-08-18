@@ -12,7 +12,8 @@
     "./types": "./src/types.ts",
     "./registry": "./src/registry.ts",
     "./content": "./src/content/index.ts",
-    "./robots": "./src/robots.ts"
+    "./robots": "./src/robots.ts",
+    "./blocks": "./src/blocks.ts"
   },
   "peerDependencies": {
     "astro": "^7.0.0"

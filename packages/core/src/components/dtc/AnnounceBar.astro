@@ -1,0 +1,42 @@
+---
+/**
+ * 顶部通告条 —— 结构照搬原站,文案换掉。
+ *
+ * 原站写的是「FREE SHIPPING ON ORDERS ¥300+」。这条对帛卉不成立:
+ * 我们不做零售、不谈运费、不出价 —— 挂一句包邮门槛,来的会是买一支的散客,
+ * 而真正要接的是下三千支起订单的品牌方。一句错的招揽比不招揽更贵。
+ *
+ * 条留着,因为它确实有用:整站最先被看见的一行,适合放当期最想让人知道的一件事
+ * (新品线、展会、认证到手)。所以内容做成可编辑的,不写死在代码里。
+ */
+export interface Props {
+  text: string;
+  linkText?: string;
+  linkHref?: string;
+  /** 底色;缺省用主题里的通告色 */
+  bg?: string;
+  fg?: string;
+}
+const { text, linkText, linkHref, bg, fg } = Astro.props;
+---
+
+<div class="strip" style={[bg && `background:${bg}`, fg && `color:${fg}`].filter(Boolean).join(';')}>
+  <div class="dtc-wrap inner">
+    <span>{text}</span>
+    {linkText && <a href={linkHref ?? '#'}>{linkText}</a>}
+  </div>
+</div>
+
+<style>
+  .strip {
+    background: var(--dtc-strip);
+    color: var(--dtc-strip-ink);
+    text-align: center;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .inner { padding-block: 0.75rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+  .strip a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  .strip a:hover { opacity: 0.8; }
+</style>

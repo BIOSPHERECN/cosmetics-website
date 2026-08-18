@@ -1,0 +1,62 @@
+---
+/**
+ * 图文对开 —— 原站的「本草显色唇部系列 / 润唇膏系列 / 品牌故事」三屏共用一种结构。
+ * 左图右文(可翻面)、图 4:5、两栏等高居中、栏距 48px、容器 1152px。
+ *
+ * 翻面(flip)不是花样,是节奏:连着三屏同向会读成一张长表格,
+ * 交替之后眼睛在两侧来回摆,自然分出段落。
+ */
+export interface Props {
+  image: string;
+  alt?: string;
+  eyebrow?: string;
+  title: string;
+  body?: string;
+  ctaText?: string;
+  ctaHref?: string;
+  /** true = 图在右 */
+  flip?: boolean;
+  tone?: 'paper' | 'sand';
+}
+const { image, alt = '', eyebrow, title, body, ctaText, ctaHref, flip = false, tone = 'sand' } = Astro.props;
+---
+
+<section class:list={['dtc-sec', tone, 'split']}>
+  <div class:list={['dtc-wrap-mid', 'grid', flip && 'flip']}>
+    <img class="pic" src={image} alt={alt || title} loading="lazy" decoding="async" />
+    <div class="copy">
+      {eyebrow && <p class="dtc-eyebrow">{eyebrow}</p>}
+      <h2 class="dtc-h2">{title}</h2>
+      {body && <p class="dtc-lead">{body}</p>}
+      {ctaText && ctaHref && <a class="dtc-btn" href={ctaHref}>{ctaText}</a>}
+    </div>
+  </div>
+</section>
+
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 3rem;
+  }
+  /* 翻面只调视觉顺序,DOM 里图始终在前 —— 读屏与 LCP 都按 DOM 走 */
+  .grid.flip .pic { order: 2; }
+  .grid.flip .copy { order: 1; }
+
+  .pic {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    background: var(--dtc-paper);
+  }
+  .copy .dtc-h2 { margin-top: 1rem; }
+  .copy .dtc-lead { max-width: 28rem; }
+
+  @media (max-width: 52rem) {
+    .grid { grid-template-columns: 1fr; gap: 2rem; }
+    .grid.flip .pic, .grid.flip .copy { order: 0; }
+    .pic { aspect-ratio: 4 / 3; }
+  }
+</style>

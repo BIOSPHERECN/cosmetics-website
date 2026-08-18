@@ -1,0 +1,64 @@
+---
+/**
+ * 通栏图屏 —— 原站的「body essentials」那一屏。
+ * 一张 72vh 的整宽图,顶部压一道从黑到透明的渐变,上面放一行超大英文 + 一行大写中文。
+ *
+ * 渐变在**顶部**不是底部:这一屏的图主体在下半部(人物/产品),
+ * 把暗带放上面才不会盖住主体,又刚好托住文字。
+ * 首屏轮播则相反(文字在下),两屏的渐变方向不同是有原因的,不是随手写的。
+ */
+export interface Props {
+  image: string;
+  alt?: string;
+  /** 超大英文/拉丁词,原站是 body essentials */
+  display?: string;
+  title: string;
+  ctaText?: string;
+  ctaHref?: string;
+}
+const { image, alt = '', display, title, ctaText, ctaHref } = Astro.props;
+---
+
+<section class="band">
+  <img class="pic" src={image} alt={alt} loading="lazy" decoding="async" />
+  <div class="veil">
+    <div class="dtc-wrap">
+      {display && <p class="display">{display}</p>}
+      <h2 class="title">{title}</h2>
+      {ctaText && ctaHref && <a class="dtc-btn on-dark" href={ctaHref}>{ctaText}</a>}
+    </div>
+  </div>
+</section>
+
+<style>
+  .band { position: relative; }
+  .pic { display: block; width: 100%; height: 72vh; min-height: 24rem; object-fit: cover; background: var(--dtc-sand); }
+  .veil {
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    padding-block: 3.5rem 8rem;
+    background: linear-gradient(to bottom, rgb(0 0 0 / 0.5), transparent);
+    color: #fff;
+  }
+  .display {
+    margin: 0;
+    font-size: clamp(2.5rem, 1rem + 6vw, 6rem);
+    font-weight: 700;
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+  }
+  .title {
+    margin: 0.5rem 0 0;
+    font-size: clamp(1.5rem, 1rem + 2vw, 2.25rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    text-wrap: balance;
+  }
+  @media (max-width: 48rem) {
+    .pic { height: 56vh; }
+    .veil { padding-block: 2rem 5rem; }
+    .title { letter-spacing: 0.18em; }
+  }
+</style>

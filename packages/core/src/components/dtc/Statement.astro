@@ -1,0 +1,48 @@
+---
+/**
+ * 陈述屏 —— 原站「科学护肤 + 天然彩妆」那一屏:没有图、没有按钮,只有一句话。
+ *
+ * 一整屏只放一句话,在信息密集的长页里是**呼吸口**:
+ * 前面刚看完十二个商品,后面还要看两个系列,中间不给一次留白,
+ * 读者会在第三屏开始滑得越来越快。
+ *
+ * 底纹是内联 SVG(草叶 + 圆点),不外链、不加请求;
+ * 用 currentColor 之外的独立变量上色,换主题时叶子跟着换。
+ */
+export interface Props {
+  eyebrow?: string;
+  title: string;
+  body?: string;
+  /** 背景:渐变绿(原站)或纯沙色 */
+  tone?: 'leaf' | 'sand';
+}
+const { eyebrow, title, body, tone = 'leaf' } = Astro.props;
+
+/* 草叶纹:三笔叶脉 + 两个果实圆点。做成 data URI 是为了平铺,
+   拆成独立文件反而多一次请求、还得处理缓存。 */
+const LEAF = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='none' stroke='%234A6B3A' stroke-opacity='0.18' stroke-width='2'%3E%3Cpath d='M40 200 C 60 150, 60 90, 90 50 C 95 42, 108 42, 112 52 C 100 92, 100 150, 80 200 Z'/%3E%3Cpath d='M95 45 C 120 30, 150 32, 178 42 C 170 60, 140 66, 112 58'/%3E%3Cpath d='M150 70 C 160 50, 180 40, 200 42 C 198 62, 180 76, 158 76'/%3E%3Ccircle cx='52' cy='120' r='14'/%3E%3Ccircle cx='120' cy='150' r='10'/%3E%3C/g%3E%3C/svg%3E`;
+---
+
+<section class:list={['dtc-sec', 'lg', 'stmt', tone]}>
+  {tone === 'leaf' && <div class="pattern" aria-hidden="true" style={`background-image:url("${LEAF}")`}></div>}
+  <div class="dtc-wrap-prose inner">
+    {eyebrow && <p class="dtc-eyebrow">{eyebrow}</p>}
+    <h2 class="dtc-h2">{title}</h2>
+    {body && <p class="dtc-lead">{body}</p>}
+  </div>
+</section>
+
+<style>
+  .stmt { position: relative; overflow: hidden; text-align: center; }
+  .stmt.leaf { background: linear-gradient(135deg, #eaf2e6 0%, #f6f3e9 50%, #dfedda 100%); }
+  .stmt.sand { background: var(--dtc-sand); }
+  .pattern {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    opacity: 0.6;
+    background-repeat: repeat;
+  }
+  .inner { position: relative; }
+  .inner .dtc-lead { margin-inline: auto; max-width: 34rem; }
+</style>

@@ -1,0 +1,81 @@
+---
+/**
+ * 订阅屏 —— 页面最后一块。原站是纯前端表单;这里接到真实的询盘接口,
+ * 因为对帛卉来说,「留邮箱」就是一条最轻量的线索,不该只是个装饰。
+ *
+ * 表单零 JS:原生 type=email + required,浏览器自带校验与多语言提示。
+ * 提交后走 /api/inquiry,和正式询盘同一张表,来源标 newsletter —— 这样
+ * 后台的线索列表里能一眼看出这条是哪来的,不用另建一套订阅系统。
+ */
+export interface Props {
+  title: string;
+  body?: string;
+  placeholder: string;
+  button: string;
+  note?: string;
+  /** 归属站点,写进线索来源 */
+  siteId?: string;
+  tone?: 'paper' | 'sand';
+}
+const { title, body, placeholder, button, note, siteId = '', tone = 'sand' } = Astro.props;
+---
+
+<section class:list={['dtc-sec', tone, 'signup']}>
+  <div class="dtc-wrap-narrow center">
+    <h2 class="dtc-h2 sm">{title}</h2>
+    {body && <p class="dtc-lead">{body}</p>}
+
+    <form class="form" method="post" action="/api/inquiry">
+      <input type="hidden" name="source" value="newsletter" />
+      <input type="hidden" name="site" value={siteId} />
+      {/* 蜜罐:机器人会填满每一个字段,真人看不见这一个。
+          比验证码温和 —— 不给真实用户加一道题。 */}
+      <input type="text" name="company" tabindex="-1" autocomplete="off" class="pot" aria-hidden="true" />
+      <input class="mail" type="email" name="email" required placeholder={placeholder} aria-label={placeholder} />
+      <button class="go" type="submit">{button}</button>
+    </form>
+
+    {note && <p class="note">{note}</p>}
+  </div>
+</section>
+
+<style>
+  .center { text-align: center; }
+  .form {
+    display: flex;
+    margin-top: 2rem;
+    border: 2px solid var(--dtc-ink);
+    background: transparent;
+  }
+  .mail {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 1rem 1.25rem;
+    border: 0;
+    background: transparent;
+    color: var(--dtc-ink);
+    font: inherit;
+    font-size: 0.875rem;
+  }
+  .mail:focus { outline: 2px solid var(--dtc-ink); outline-offset: -4px; }
+  .go {
+    flex: none;
+    padding: 1rem 2rem;
+    border: 0;
+    background: var(--dtc-ink);
+    color: #fff;
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+  }
+  .go:hover { opacity: 0.85; }
+  .pot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .note {
+    margin: 1rem 0 0;
+    font-size: 0.75rem;
+    color: color-mix(in srgb, var(--dtc-ink) 50%, transparent);
+  }
+</style>

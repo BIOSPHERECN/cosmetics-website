@@ -1,0 +1,115 @@
+/* ══════════════════════════════════════════════════════════════
+   DTC 品牌版式 —— 复刻 biosphere-group.pages.dev/medierba 的设计语言。
+   给 MEDIERBA(集团自有品牌)用:它面向消费者,和另外四个 B2B 代工站
+   本来就该是两种语言 —— 工厂站讲产能与合规,品牌站讲仪式感与成分故事。
+
+   数值全部是从原站量出来的,不是我重新设计的:
+     容器 1280 / 1440 / 1152 / 768 / 576(对应 Tailwind 的 7xl / 1440 / 6xl / 3xl / xl)
+     版块纵向留白 80px(py-20),重点屏 96px(py-24)
+     首屏 78vh,通栏图 72vh
+     描边按钮 px-10 py-4 · 13px · 粗体 · 大写 · 字距 0.15em · 悬停填墨色
+     商品卡 256px 宽 · 图 4:5 · 卡间距 24px · 横向滚动不换行
+
+   为什么不用 Tailwind 直接搬:整个仓库是零构建依赖的 Astro 组件 +
+   CSS 变量令牌体系,引一套 Tailwind 进来只为一个站,会让另外四个站
+   的样式来源变成两套。令牌层比工具类更适合"一套骨架五种皮肤"。
+   ══════════════════════════════════════════════════════════════ */
+
+html[data-dtc] {
+  /* ── 色 ── 原站取值,一个没改 */
+  --dtc-ink: #000418;          /* 近黑藏青:正文与描边 */
+  --dtc-paper: #f9f8f5;        /* 暖白:主底 */
+  --dtc-sand: #eeeedc;         /* 沙色:交替屏 */
+  --dtc-line: #d5d1ca;         /* 分隔线 */
+  --dtc-strip: #ef4b81;        /* 通告条底色 */
+  --dtc-strip-ink: #ffffff;
+  --dtc-leaf: #4a6b3a;         /* 草本绿:陈述屏的叶纹 */
+
+  /* ── 字 ── Futura 打头是原站的选择:几何无衬线,
+       字面开阔、字重对比大,美妆 DTC 用得最多的一类。
+       中文回退 PingFang / 微软雅黑,不混排衬线。 */
+  --dtc-font: 'Futura', 'Century Gothic', 'Helvetica Neue', Arial,
+              'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+  /* ── 度量 ── */
+  --dtc-wrap: 1280px;
+  --dtc-wrap-wide: 1440px;
+  --dtc-wrap-mid: 1152px;
+  --dtc-wrap-prose: 768px;
+  --dtc-wrap-narrow: 576px;
+  --dtc-gutter: 24px;
+  --dtc-py: 80px;
+  --dtc-py-lg: 96px;
+}
+
+/* 主题接管整页:字体、底色、字色三件套一次说清,组件里不再各写一遍 */
+html[data-dtc] body {
+  background: var(--dtc-paper);
+  color: var(--dtc-ink);
+  font-family: var(--dtc-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── 容器五档 ───────────────────────────────────────────── */
+.dtc-wrap        { max-width: var(--dtc-wrap);        margin-inline: auto; padding-inline: var(--dtc-gutter); }
+.dtc-wrap-wide   { max-width: var(--dtc-wrap-wide);   margin-inline: auto; padding-inline: var(--dtc-gutter); }
+.dtc-wrap-mid    { max-width: var(--dtc-wrap-mid);    margin-inline: auto; padding-inline: var(--dtc-gutter); }
+.dtc-wrap-prose  { max-width: var(--dtc-wrap-prose);  margin-inline: auto; padding-inline: var(--dtc-gutter); }
+.dtc-wrap-narrow { max-width: var(--dtc-wrap-narrow); margin-inline: auto; padding-inline: var(--dtc-gutter); }
+
+/* ── 版块底色交替 ───────────────────────────────────────── */
+.dtc-sec        { padding-block: var(--dtc-py); }
+.dtc-sec.lg     { padding-block: var(--dtc-py-lg); }
+.dtc-sec.paper  { background: var(--dtc-paper); }
+.dtc-sec.sand   { background: var(--dtc-sand); }
+
+/* ── 标题层级 ───────────────────────────────────────────── */
+.dtc-h2 {
+  margin: 0;
+  font-size: clamp(1.875rem, 1.2rem + 2.2vw, 3rem);   /* 30 → 48px,与原站 text-3xl md:text-5xl 对齐 */
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  color: var(--dtc-ink);
+  text-wrap: balance;
+}
+.dtc-h2.sm { font-size: clamp(1.875rem, 1.4rem + 1.4vw, 2.25rem); }  /* 30 → 36px */
+.dtc-lead {
+  margin: 1.25rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--dtc-ink) 60%, transparent);
+}
+.dtc-eyebrow {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  color: color-mix(in srgb, var(--dtc-ink) 50%, transparent);
+}
+
+/* ── 描边按钮 ───────────────────────────────────────────
+   原站的主 CTA。悬停整块填墨、字转白 —— 没有位移、没有阴影,
+   在 DTC 美妆里这套克制的交互比动效更贵气。 */
+.dtc-btn {
+  display: inline-block;
+  margin-top: 2rem;
+  padding: 1rem 2.5rem;
+  border: 2px solid var(--dtc-ink);
+  color: var(--dtc-ink);
+  background: transparent;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+.dtc-btn:hover { background: var(--dtc-ink); color: #fff; }
+.dtc-btn.on-dark { border-color: #fff; color: #fff; }
+.dtc-btn.on-dark:hover { background: #fff; color: var(--dtc-ink); }
+
+@media (max-width: 48rem) {
+  html[data-dtc] { --dtc-py: 56px; --dtc-py-lg: 64px; }
+}

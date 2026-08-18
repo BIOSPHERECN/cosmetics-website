@@ -1,0 +1,185 @@
+---
+/**
+ * DTC 首屏轮播 —— 复刻原站的做法:整屏图交叉淡入,文字压在底部渐变上。
+ *
+ * 这里的「图上压字」和 B2B 站不一样,是成立的:
+ *   底部有一道 from-black/70 的渐变把下三分之一压暗,文字落在那条暗带上,
+ *   不是压在图最花的地方。B2B 首屏当初的问题是**标题压在图像亮度跨度 1~255 的区域**,
+ *   两回事。品牌站要的就是"人在场景里"的情绪,分割式反而把气氛切断。
+ *
+ * 轮播用纯 CSS + 一小段脚本切 class,不引任何轮播库:
+ *   五张图 5MB,库再加 30KB 不值当;而且淡入切换只需要改一个 opacity。
+ */
+export interface Slide { image: string; alt?: string }
+export interface Props {
+  slides: Slide[];
+  eyebrow?: string;
+  title: string;
+  lead?: string;
+  ctaText?: string;
+  ctaHref?: string;
+  /** 自动播放间隔(毫秒);0 = 不自动播 */
+  interval?: number;
+}
+const { slides = [], eyebrow, title, lead, ctaText, ctaHref, interval = 6000 } = Astro.props;
+const lines = title.split('\n');
+---
+
+<section class="hero" data-interval={interval}>
+  <div class="stage">
+    {slides.map((s, i) => (
+      <img
+        class:list={['slide', i === 0 && 'on']}
+        src={s.image}
+        alt={s.alt ?? ''}
+        loading={i === 0 ? 'eager' : 'lazy'}
+        fetchpriority={i === 0 ? 'high' : undefined}
+        decoding="async"
+      />
+    ))}
+  </div>
+
+  {/* 底部渐变 —— 文字的承重墙。pointer-events:none 让它不挡住图上的任何交互 */}
+  <div class="veil">
+    <div class="dtc-wrap veil-in">
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+      <h1 class="title">{lines.map((l, i) => <>{i > 0 && <br />}{l}</>)}</h1>
+      {lead && <p class="lead">{lead}</p>}
+      {ctaText && ctaHref && <a class="dtc-btn on-dark" href={ctaHref}>{ctaText}</a>}
+    </div>
+  </div>
+
+  {slides.length > 1 && (
+    <div class="nav">
+      <button type="button" class="arrow" data-dir="-1" aria-label="上一张">‹</button>
+      <div class="dots">
+        {slides.map((_, i) => (
+          <button type="button" class:list={['dot', i === 0 && 'on']} data-go={i} aria-label={`第 ${i + 1} 张`} />
+        ))}
+      </div>
+      <button type="button" class="arrow" data-dir="1" aria-label="下一张">›</button>
+    </div>
+  )}
+</section>
+
+<style>
+  .hero { position: relative; overflow: hidden; }
+  .stage { position: relative; width: 100%; height: 78vh; min-height: 30rem; background: var(--dtc-sand); }
+  .slide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+  .slide.on { opacity: 1; }
+
+  .veil {
+    pointer-events: none;
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    padding-block: 10rem 4rem;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.7), rgb(0 0 0 / 0.2) 55%, transparent);
+  }
+  .veil-in { color: #fff; }
+  .veil-in > * { pointer-events: auto; }
+  .eyebrow {
+    margin: 0 0 0.875rem;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    color: rgb(255 255 255 / 0.75);
+  }
+  .title {
+    margin: 0;
+    max-width: 42rem;
+    font-size: clamp(1.5rem, 0.9rem + 2.6vw, 2.75rem);
+    font-weight: 700;
+    line-height: 1.18;
+    text-wrap: balance;
+  }
+  .lead {
+    margin: 1rem 0 0;
+    max-width: 28rem;
+    font-size: 0.8125rem;
+    line-height: 1.75;
+    color: rgb(255 255 255 / 0.8);
+  }
+  .dtc-btn { margin-top: 1.75rem; }
+
+  /* ── 翻页控件 ────────────────────────────────
+     放右下角而不是左右居中:居中的大箭头会压在人脸上,
+     而这类品牌图的主体几乎总在画面中间。 */
+  .nav {
+    position: absolute;
+    inset-inline-end: var(--dtc-gutter);
+    bottom: 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+  }
+  .arrow {
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid rgb(255 255 255 / 0.5);
+    background: rgb(0 0 0 / 0.2);
+    color: #fff;
+    font: inherit;
+    font-size: 1.125rem;
+    line-height: 1;
+    cursor: pointer;
+    backdrop-filter: blur(2px);
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+  .arrow:hover { background: rgb(0 0 0 / 0.45); border-color: #fff; }
+  .dots { display: flex; gap: 0.4375rem; }
+  .dot {
+    width: 1.75rem;
+    height: 2px;
+    padding: 0;
+    border: 0;
+    background: rgb(255 255 255 / 0.4);
+    cursor: pointer;
+    transition: background 0.25s ease;
+  }
+  .dot.on { background: #fff; }
+
+  @media (max-width: 48rem) {
+    .stage { height: 62vh; min-height: 24rem; }
+    .veil { padding-block: 7rem 2.5rem; }
+    .nav { bottom: 0.875rem; }
+  }
+</style>
+
+<script is:inline>
+  (() => {
+    document.querySelectorAll('.hero').forEach((hero) => {
+      const slides = [...hero.querySelectorAll('.slide')];
+      const dots = [...hero.querySelectorAll('.dot')];
+      if (slides.length < 2) return;
+      let i = 0, timer = null;
+      const show = (n) => {
+        i = (n + slides.length) % slides.length;
+        slides.forEach((s, k) => s.classList.toggle('on', k === i));
+        dots.forEach((d, k) => d.classList.toggle('on', k === i));
+      };
+      const ms = Number(hero.dataset.interval) || 0;
+      /* 尊重"减少动态"偏好:前庭功能敏感的人被自动轮播晃得难受,
+         这类偏好在系统设置里,不该由页面替他决定。 */
+      const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const start = () => { if (ms && !calm) timer = setInterval(() => show(i + 1), ms); };
+      const stop = () => { clearInterval(timer); timer = null; };
+      hero.querySelectorAll('.arrow').forEach((b) =>
+        b.addEventListener('click', () => { stop(); show(i + Number(b.dataset.dir)); start(); }));
+      dots.forEach((d) =>
+        d.addEventListener('click', () => { stop(); show(Number(d.dataset.go)); start(); }));
+      /* 鼠标停在图上时暂停 —— 人正在看,不该被翻走 */
+      hero.addEventListener('mouseenter', stop);
+      hero.addEventListener('mouseleave', start);
+      start();
+    });
+  })();
+</script>

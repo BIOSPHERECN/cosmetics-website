@@ -31,6 +31,9 @@ import '@fontsource/playfair-display/400.css';
 import '@fontsource/playfair-display/700.css';
 import '@fontsource-variable/inter';
 import '../styles/marvis.css';
+/* DTC 品牌版式 —— 面向消费者的自有品牌站(MEDIERBA)专用。
+   与另外四个代工站是两种语言:工厂站讲产能与合规,品牌站讲仪式感与成分故事。 */
+import '../styles/dtc.css';
 import '../styles/base.css';
 
 export interface Props {
@@ -58,7 +61,7 @@ export interface Props {
    * 而创始人认可的正是深金那版。写死主题等于把风格决定权焊在代码里,
    * 那本该是后台一个下拉框的事。
    */
-  theme?: 'noir' | 'summer' | 'marvis';
+  theme?: 'noir' | 'summer' | 'marvis' | 'dtc';
 }
 
 const {
@@ -106,6 +109,7 @@ const allowIndex = indexable && liveIndexing;
   data-summer={theme === 'summer' ? '' : undefined}
   data-noir={theme === 'noir' ? '' : undefined}
   data-marvis={theme === 'marvis' ? 'light' : undefined}
+  data-dtc={theme === 'dtc' ? '' : undefined}
 >
   <head>
     <meta charset="utf-8" />

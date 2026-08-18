@@ -1,0 +1,32 @@
+---
+/**
+ * 居中招揽屏 —— 原站「为你的肌肤找到完美仪式 / 30 秒小测试」那一屏。
+ * 一个标题、一句话、一颗描边按钮,居中,上下各 80px 留白。
+ *
+ * 它的位置很关键:紧贴首屏之后。首屏只负责让人停住,
+ * 这一屏负责把"停住"变成"往下走的第一步" —— 所以按钮上写的必须是
+ * 一个具体动作(做个测试),不是一个方向(了解更多)。
+ * 帛卉这边对应的动作是 AI 肌肤检测,它本来就在站内,不用另造。
+ */
+export interface Props {
+  title: string;
+  body?: string;
+  ctaText?: string;
+  ctaHref?: string;
+  tone?: 'paper' | 'sand';
+}
+const { title, body, ctaText, ctaHref, tone = 'paper' } = Astro.props;
+---
+
+<section class:list={['dtc-sec', tone, 'cta']}>
+  <div class="dtc-wrap-prose">
+    <h2 class="dtc-h2">{title}</h2>
+    {body && <p class="dtc-lead">{body}</p>}
+    {ctaText && ctaHref && <a class="dtc-btn" href={ctaHref}>{ctaText}</a>}
+  </div>
+</section>
+
+<style>
+  .cta { text-align: center; }
+  .cta .dtc-lead { margin-inline: auto; max-width: 32rem; }
+</style>

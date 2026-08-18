@@ -13,6 +13,7 @@ import FieldTree from '../../../components/admin/FieldTree.astro';
 import { pageGuard } from '../../../lib/guard';
 import { LANG_GROUPS } from '../../../lib/db';
 import { SITES } from '@cosmetic/core/registry';
+import { BLOCKS, BLOCK_BY_ID, FAMILY_NAME, type BlockFamily } from '@cosmetic/core/blocks';
 
 export const prerender = false;
 const c = await pageGuard(Astro.request);
@@ -48,12 +49,12 @@ const editLangs = (url.searchParams.get('langs') ?? 'zh-cn,en').split(',').filte
 
 const LNAME = new Map(LANG_GROUPS.flatMap((g) => g.langs));
 const siteName = new Map(SITES.map((s) => [s.id, s.name])).get(pg.site_id) ?? pg.site_id;
-const BTYPE: Record<string, string> = {
-  hero: '首屏', workshop: '车间实拍', certs: '资质证书', matrix: '品类矩阵',
-  process: '服务流程', evidence: '能力佐证', proof: '数字实证', form: '询盘表单',
-  inquiry: '询盘引导', prose: '正文段落', statwall: '数字墙', bases: '生产基地', stages: '叙事流程', banner: '超大首屏图',
-};
-const PICK = ['zh-cn', 'en', 'zh-tw', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'ar', 'pt', 'id'];
+/* 版块中文名与说明一律从注册表取。以前这里手抄了一张 BTYPE 表,
+   加了 DTC 那一族之后就对不上了 —— 后台显示 shelf、slideshow 这种英文键名,
+   运营根本不知道那是什么。一处真源,不留第二张表。 */
+const famOf = (id: string): BlockFamily => BLOCK_BY_ID.get(id)?.family ?? 'shared';
+const GROUPED = (['shared', 'dtc', 'b2b'] as BlockFamily[])
+  .map((f) => ({ family: f, name: FAMILY_NAME[f], list: BLOCKS.filter((b) => b.family === f) }));const PICK = ['zh-cn', 'en', 'zh-tw', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'ar', 'pt', 'id'];
 
 /** 某语种没有译文时,拿已有语种的结构做骨架 —— 让运营直接在上面译,而不是面对一片空白 */
 const parse = (s?: string) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
@@ -99,7 +100,8 @@ const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
       </p>
     </div>
     <div class="hd-a">
-      <a class="btn" href={`/zh-cn/${pg.slug}${pg.slug ? '/' : ''}?site=${pg.site_id}`} target="_blank">预览前台</a>
+      <button type="button" class="btn addblk" data-after={-1}>＋ 加版块</button>
+      <a class="btn" href={`/zh-cn/${pg.slug}${pg.slug ? '/' : ''}?site=${pg.site_id}&preview=${Date.now()}`} target="_blank">预览前台</a>
       <button class="btn pri" id="saveall">保存全部</button>
     </div>
   </div>
@@ -138,13 +140,19 @@ const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
     </div>
   </section>
 
-  {view.length === 0 ? (
-    <div class="empty">这个页面还没有版块。</div>
-  ) : view.map((b: any, i: number) => (
+  {view.length === 0 && (
+    <div class="empty">
+      这个页面还没有版块。
+      <button type="button" class="btn pri addblk" data-after="-1" style="margin-inline-start:.75rem">＋ 加第一屏</button>
+    </div>
+  )}
+
+  {view.map((b: any, i: number) => (
+    <>
     <details class="card blk" data-id={b.id} open={i < 2}>
       <summary class="card-h">
         <span class="chev"></span>
-        <b>{BTYPE[b.type] ?? b.type}</b>
+        <b>{BLOCK_BY_ID.get(b.type)?.name ?? b.type}</b>
         <code class="ty">{b.type}</code>
         {b.missing.length > 0 && (
           <span class="pill p-warn">缺 {b.missing.map((l: string) => LNAME.get(l) ?? l).join(' / ')}</span>
@@ -153,6 +161,14 @@ const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
           <input type="checkbox" checked={!!b.is_visible} />
           <span>在前台显示</span>
         </label>
+        {/* 操作按钮放在折叠头里。type=button 是必须的 ——
+            summary 里的 button 默认是 submit,点一下会连带把 details 开合掉。 */}
+        <span class="ops" data-blk={b.id}>
+          <button type="button" class="op" data-op="move" data-dir="-1" title="上移" aria-label="上移">↑</button>
+          <button type="button" class="op" data-op="move" data-dir="1" title="下移" aria-label="下移">↓</button>
+          <button type="button" class="op" data-op="duplicate" title="复制这一屏">复制</button>
+          <button type="button" class="op danger" data-op="delete" title="删除这一屏">删除</button>
+        </span>
       </summary>
       <div class="card-b">
         <div class="cols" style={`--n:${editLangs.length}`}>
@@ -172,7 +188,38 @@ const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
         </div>
       </div>
     </details>
+    {/* 插入位:悬停才显形。常显会把版块列表切得很碎,
+        而"想在这里插一屏"是一个明确动作,不需要一直提醒。 */}
+    <div class="insert"><button type="button" class="addblk" data-after={b.sort_order}>＋ 在这里加一屏</button></div>
+    </>
   ))}
+
+  {/* 版块库 —— 「加版块」点开的那个面板。
+      每块都写了「它解决什么问题」而不是「它长什么样」:
+      运营在挑的时候想的是"我要说一件事",不是"我要一个三栏网格"。 */}
+  <dialog id="lib">
+    <div class="pk-h">
+      <b>加一屏</b>
+      <input id="libq" placeholder="搜版块…" />
+      <button type="button" class="btn" id="libx">关闭</button>
+    </div>
+    <div class="lib-b">
+      {GROUPED.map((g) => (
+        <section class="lib-g" data-fam={g.family}>
+          <h3>{g.name}</h3>
+          <div class="lib-grid">
+            {g.list.map((d) => (
+              <button type="button" class="lib-i" data-type={d.id} data-kw={`${d.name} ${d.id} ${d.note}`}>
+                <span class="sk" aria-hidden="true">{d.sketch}</span>
+                <b>{d.name}</b>
+                <span class="nt">{d.note}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  </dialog>
 
   {/* 选图弹层 —— 所有图片字段共用一个。
       这一件事决定了运营是「自己能换图」还是「得来找我」。 */}
@@ -224,6 +271,55 @@ const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
     .card-h h2 { font-size: .875rem; margin: 0; }
     .card-h .hint { font-size: .75rem; color: var(--ad-faint); margin-left: auto; }
     .card-b { padding: 1.125rem; }
+
+    /* ── 版块操作按钮 ────────────────────────── */
+    .ops { display: flex; gap: .25rem; margin-inline-start: .5rem; }
+    .op {
+      font: inherit; font-size: .6875rem; line-height: 1;
+      padding: .3125rem .5rem; cursor: pointer;
+      background: var(--ad-panel); border: 1px solid var(--ad-line);
+      border-radius: 6px; color: var(--ad-soft);
+    }
+    .op:hover { border-color: var(--ad-accent); color: var(--ad-accent); }
+    .op.danger:hover { border-color: var(--ad-bad); color: var(--ad-bad); }
+
+    /* ── 插入位 ───────────────────────────────
+       常显会把版块列表切得很碎;悬停才显形,既不吵也随手可及。 */
+    .insert { height: 1.25rem; display: grid; place-items: center; position: relative; }
+    .insert::before {
+      content: ''; position: absolute; inset-inline: 0; top: 50%;
+      border-top: 1px dashed var(--ad-line); opacity: 0; transition: opacity .15s;
+    }
+    .insert .addblk {
+      font: inherit; font-size: .6875rem; padding: .25rem .625rem; cursor: pointer;
+      background: var(--ad-panel); border: 1px dashed var(--ad-line); border-radius: 999px;
+      color: var(--ad-faint); opacity: 0; transition: opacity .15s; position: relative;
+    }
+    .insert:hover::before, .insert:hover .addblk,
+    .insert:focus-within .addblk { opacity: 1; }
+    .insert .addblk:hover { border-color: var(--ad-accent); color: var(--ad-accent); border-style: solid; }
+
+    /* ── 版块库 ───────────────────────────────── */
+    #lib { width: min(56rem, 92vw); max-height: 84vh; border: 0; border-radius: 12px; padding: 0;
+           box-shadow: 0 24px 60px -20px rgb(0 0 0 / .4); }
+    #lib::backdrop { background: rgb(15 22 20 / .5); }
+    #lib .pk-h input { flex: 1; max-width: 16rem; }
+    .lib-b { padding: 1rem 1.25rem 1.5rem; overflow: auto; max-height: 68vh; }
+    .lib-g h3 { font-size: .75rem; text-transform: uppercase; letter-spacing: .1em;
+                color: var(--ad-faint); margin: 1rem 0 .625rem; }
+    .lib-g:first-child h3 { margin-top: 0; }
+    .lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .625rem; }
+    .lib-i {
+      display: grid; gap: .25rem; text-align: start; cursor: pointer;
+      padding: .875rem; background: var(--ad-panel);
+      border: 1px solid var(--ad-line); border-radius: 9px; font: inherit;
+      transition: border-color .12s, background .12s;
+    }
+    .lib-i:hover { border-color: var(--ad-accent); background: var(--ad-accent-soft); }
+    .lib-i .sk { font-size: 1rem; letter-spacing: .15em; color: var(--ad-accent); line-height: 1.1; }
+    .lib-i b { font-size: .875rem; color: var(--ad-ink); }
+    .lib-i .nt { font-size: .75rem; line-height: 1.5; color: var(--ad-soft); }
+    .lib-g[hidden], .lib-i[hidden] { display: none; }
 
     /* 版块折叠卡 */
     .blk > summary { cursor: pointer; list-style: none; }
@@ -390,6 +486,69 @@ const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
       const on = [...document.querySelectorAll('.langbar input')].filter((x) => x.checked).map((x) => x.value);
       location.search = '?langs=' + (on.length ? on.join(',') : 'zh-cn');
     }));
+
+    /* ══ 版块增删改排 ══════════════════════════════════════
+       每个动作都先落库再整页刷新。不做前端乐观更新是有意的:
+       版块的顺序、可见性、内容分属三张表,前端"假装成功"很容易和库不一致,
+       而不一致的后台比慢一点的后台可怕得多 —— 运营会以为改好了,其实没有。
+       整页刷新是 200ms 的事,换来的是"你看到的就是库里的"。 */
+    const pageId = +location.pathname.split('/').filter(Boolean).pop();
+    async function blockOp(body) {
+      const r = await fetch('/api/admin/block', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json().catch(() => ({ ok: false, msg: '接口没有返回 JSON' }));
+      if (!d.ok) { say(d.msg || '操作失败', true); return null; }
+      return d;
+    }
+
+    document.addEventListener('click', async (e) => {
+      const op = e.target.closest('.op');
+      if (op) {
+        e.preventDefault();
+        const id = +op.closest('.ops').dataset.blk;
+        const kind = op.dataset.op;
+        if (kind === 'delete' && !confirm('删掉这一屏?内容会存进修订记录,删错了能从那里找回来。')) return;
+        op.disabled = true;
+        const d = await blockOp({ action: kind, blockId: id, dir: +(op.dataset.dir || 0) });
+        if (d) location.reload(); else op.disabled = false;
+        return;
+      }
+
+      const add = e.target.closest('.addblk');
+      if (add) {
+        e.preventDefault();
+        document.getElementById('lib').dataset.after = add.dataset.after ?? '-1';
+        document.getElementById('lib').showModal();
+        document.getElementById('libq').focus();
+        return;
+      }
+
+      const pick = e.target.closest('.lib-i');
+      if (pick) {
+        e.preventDefault();
+        const lib = document.getElementById('lib');
+        pick.disabled = true;
+        const d = await blockOp({
+          action: 'add', pageId, type: pick.dataset.type, after: +(lib.dataset.after ?? -1),
+        });
+        if (d) location.reload(); else pick.disabled = false;
+      }
+    });
+
+    document.getElementById('libx')?.addEventListener('click', () => document.getElementById('lib').close());
+    /* 搜索:名字、类型键、说明三处一起搜 ——
+       运营记得住"那个横着滑的",记不住它叫 shelf,所以说明也得进搜索范围。 */
+    document.getElementById('libq')?.addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      document.querySelectorAll('.lib-i').forEach((b) => {
+        b.hidden = !!q && !b.dataset.kw.toLowerCase().includes(q);
+      });
+      document.querySelectorAll('.lib-g').forEach((g) => {
+        g.hidden = ![...g.querySelectorAll('.lib-i')].some((b) => !b.hidden);
+      });
+    });
   })();
   </script>
 </AdminShell>

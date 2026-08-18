@@ -1,0 +1,143 @@
+---
+/**
+ * 商品架 —— 原站「发现社区挚爱精选」那一屏。
+ * 横向滚动、卡片不换行、图 4:5、卡宽 256px、卡间距 24px。
+ *
+ * 为什么横滑而不是换行栅格:
+ *   十二个品换行会堆成三排,整屏变成一堵墙,逛不动。
+ *   横滑一屏只露四五个,右边露出半张 —— 那半张就是"还有"的信号,
+ *   是 DTC 商品架最有效的一个细节。
+ *
+ * ★ 不出价 ★
+ *   原站每张卡带 $36-$58。帛卉是接单方不是零售方,产品线一律不出价 ——
+ *   代工客户看到零售价会直接拿它反推我们的成本,那是自己给谈判设障。
+ *   位置改成"可做规格",信息密度不降,却把话题从价格拉回能力。
+ */
+export interface ShelfItem {
+  name: string;
+  nameEn?: string;
+  image: string;
+  /** 色卡:纯色值或图片地址都行 */
+  swatches?: string[];
+  /** 卡片底部那行小字 —— 放规格/剂型,不放价格 */
+  note?: string;
+  href?: string;
+  /** 角标,如「新品」「畅销」 */
+  badge?: string;
+}
+export interface Props {
+  title: string;
+  moreText?: string;
+  moreHref?: string;
+  items: ShelfItem[];
+  tone?: 'paper' | 'sand';
+}
+const { title, moreText, moreHref, items = [], tone = 'paper' } = Astro.props;
+const isImg = (s: string) => /^(\/|https?:|data:)/.test(s);
+---
+
+<section class:list={['dtc-sec', tone, 'shelf']}>
+  <div class="dtc-wrap-wide">
+    <header class="head">
+      <h2 class="dtc-h2 sm">{title}</h2>
+      {moreText && <a class="more" href={moreHref ?? '#'}>{moreText} →</a>}
+    </header>
+
+    {/* role=list 是必要的:overflow 容器在部分读屏器里会丢掉列表语义 */}
+    <div class="rail" role="list" tabindex="0" aria-label={title}>
+      {items.map((p) => (
+        <article class="card" role="listitem">
+          <a class="shot" href={p.href ?? '#'}>
+            <img src={p.image} alt={p.name} loading="lazy" decoding="async" />
+            {p.badge && <span class="badge">{p.badge}</span>}
+          </a>
+          {p.swatches && p.swatches.length > 0 && (
+            <div class="swatches" aria-hidden="true">
+              {p.swatches.slice(0, 6).map((s) => (
+                <span class="sw" style={isImg(s) ? `background-image:url(${s})` : `background:${s}`}></span>
+              ))}
+            </div>
+          )}
+          <h3 class="nm">{p.name}</h3>
+          {p.nameEn && <p class="en">{p.nameEn}</p>}
+          {p.note && <p class="note">{p.note}</p>}
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1.5rem; }
+  .more {
+    flex: none;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: color-mix(in srgb, var(--dtc-ink) 50%, transparent);
+    text-decoration: none;
+  }
+  .more:hover { color: var(--dtc-ink); }
+
+  .rail {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 2.5rem;
+    /* 负边距 + 同值内边距:卡片能滑到贴住视口边,而首尾又留着栏距 */
+    margin-inline: calc(var(--dtc-gutter) * -1);
+    padding: 0 var(--dtc-gutter) 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail:focus-visible { outline: 2px solid var(--dtc-ink); outline-offset: 4px; }
+
+  /* 256px 是照着原站量的固定值,不写 16rem ——
+     本仓库根字号是 18px,16rem 会算成 288px,一屏就少露出半张卡,
+     而"右边露出半张"正是横滑架告诉人"还有"的那个信号。 */
+  .card { flex: none; width: 256px; scroll-snap-align: start; }
+  .shot { position: relative; display: block; overflow: hidden; background: var(--dtc-sand); }
+  .shot img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+  .card:hover .shot img { transform: scale(1.04); }
+  .badge {
+    position: absolute;
+    inset-inline-start: 0.75rem;
+    top: 0.75rem;
+    padding: 0.1875rem 0.5rem;
+    background: var(--dtc-ink);
+    color: #fff;
+    font-size: 0.625rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .swatches { display: flex; gap: 0.375rem; padding-block: 0.625rem 0.25rem; }
+  .sw {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    border: 1px solid rgb(0 0 0 / 0.1);
+    background-size: cover;
+    background-position: center;
+  }
+
+  .nm { margin: 0.5rem 0 0; font-size: 0.8125rem; font-weight: 700; }
+  .en {
+    margin: 0.1875rem 0 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    color: color-mix(in srgb, var(--dtc-ink) 45%, transparent);
+  }
+  .note {
+    margin: 0.375rem 0 0;
+    font-size: 0.75rem;
+    color: color-mix(in srgb, var(--dtc-ink) 60%, transparent);
+  }
+</style>

@@ -1,0 +1,71 @@
+---
+/**
+ * 社媒墙 —— 原站「关注我们 @medierba」那一屏:四张方图,悬停压暗出一个心。
+ *
+ * 这一屏在 DTC 站里承担的是**社会证明**:比任何自夸都管用的一句话是
+ * 「已经有人在用,而且愿意发出来」。所以图要选用户视角的实拍,
+ * 不要选棚拍产品图 —— 棚拍图放这儿会读成"还是品牌自己在说"。
+ */
+export interface SocialItem { image: string; href?: string; alt?: string }
+export interface Props {
+  title: string;
+  handle?: string;
+  items: SocialItem[];
+  tone?: 'paper' | 'sand';
+}
+const { title, handle, items = [], tone = 'paper' } = Astro.props;
+---
+
+<section class:list={['dtc-sec', tone, 'social']}>
+  <div class="dtc-wrap-mid">
+    <h2 class="dtc-h2 sm center">{title}</h2>
+    {handle && <p class="handle">{handle}</p>}
+    <div class="grid">
+      {items.map((s) => (
+        <a class="cell" href={s.href ?? '#'} rel={s.href ? 'noopener' : undefined}
+           target={s.href?.startsWith('http') ? '_blank' : undefined}>
+          <img src={s.image} alt={s.alt ?? ''} loading="lazy" decoding="async" />
+          <span class="heart" aria-hidden="true">♥</span>
+        </a>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .center { text-align: center; }
+  .handle {
+    margin: 0.625rem 0 0;
+    text-align: center;
+    font-size: 0.8125rem;
+    letter-spacing: 0.12em;
+    color: color-mix(in srgb, var(--dtc-ink) 50%, transparent);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.75rem;
+    margin-top: 2.5rem;
+  }
+  .cell { position: relative; display: block; overflow: hidden; background: var(--dtc-sand); }
+  .cell img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+  .cell:hover img { transform: scale(1.05); }
+  .heart {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgb(0 0 0 / 0.4);
+    color: #fff;
+    font-size: 1.25rem;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .cell:hover .heart, .cell:focus-visible .heart { opacity: 1; }
+</style>

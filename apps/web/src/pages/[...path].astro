@@ -25,6 +25,17 @@ import StatementFooter from '@cosmetic/core/components/StatementFooter.astro';
 import SocialProof from '@cosmetic/core/components/SocialProof.astro';
 import InquiryForm from '@cosmetic/core/components/InquiryForm.astro';
 import InquiryBand from '@cosmetic/core/components/InquiryBand.astro';
+/* DTC 品牌版式(MEDIERBA 自有品牌站)—— 复刻 biosphere-group 的 medierba 页 */
+import AnnounceBar from '@cosmetic/core/components/dtc/AnnounceBar.astro';
+import Slideshow from '@cosmetic/core/components/dtc/Slideshow.astro';
+import CenterCta from '@cosmetic/core/components/dtc/CenterCta.astro';
+import BandImage from '@cosmetic/core/components/dtc/BandImage.astro';
+import Shelf from '@cosmetic/core/components/dtc/Shelf.astro';
+import SplitFeature from '@cosmetic/core/components/dtc/SplitFeature.astro';
+import Statement from '@cosmetic/core/components/dtc/Statement.astro';
+import Perks from '@cosmetic/core/components/dtc/Perks.astro';
+import SocialWall from '@cosmetic/core/components/dtc/SocialWall.astro';
+import Signup from '@cosmetic/core/components/dtc/Signup.astro';
 import Motion from '../components/Motion.astro';
 import BrandEcosystem from '../components/BrandEcosystem.astro';
 import ProductGrid from '../components/ProductGrid.astro';
@@ -113,6 +124,16 @@ const DEMO_TEXTURE: Record<string, 'cream' | 'fluid' | 'powder' | 'gel'> = {
 
 /** 集团生态(大脑 + 四平台),页脚前渲染 */
 const eco = db && bundle ? await getEcosystem(db, lang).catch(() => null) : null;
+
+/*
+ * 通告条从版块里抽出来单独处理:它渲染在页头**之上**,不在 <main> 里,
+ * 所以不能和其它版块一起走那个 map。抽出来之后再从主列表里剔除,
+ * 否则会在正文中间又画一条粉色条 —— 这类"渲染两遍"的错很难在自查里发现,
+ * 因为两处单看都对。
+ */
+const announce = (bundle?.blocks ?? []).find((b) => b.type === 'announce')?.data as
+  { text?: string; linkText?: string; linkHref?: string; bg?: string; fg?: string } | undefined;
+const bodyBlocks = (bundle?.blocks ?? []).filter((b) => b.type !== 'announce');
 
 /**
  * demo 用剂型数据 —— 证明「逛→选规格→加入询盘→攒车→提交」这条动线通。
@@ -204,6 +225,12 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
 >
   <a class="ck-skip-link" href="#main">{tSkip}</a>
 
+  {/* 顶部通告条 —— 整站最先被看见的一行。有内容才出,不留空条 */}
+  {announce?.text && (
+    <AnnounceBar text={announce.text} linkText={announce.linkText} linkHref={announce.linkHref}
+                 bg={announce.bg} fg={announce.fg} />
+  )}
+
   {/*
    * 主题切换胶囊 —— 评审工具,不是站点功能,所以默认不出。
    *
@@ -256,7 +283,7 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
     {/* banner 与 hero 一样自带 <h1>(BigBanner 第 66 行),所以两者任一存在都不再出页头带。
         漏掉 banner 的后果是双重的:首页同时有两个 h1(搜索引擎不知道该信哪个),
         版式上还多出一条 400px 的标题带把首屏大图整个压到折叠线以下 —— 大图看不见就白做了。 */}
-    {!bundle!.blocks.some((b) => b.type === 'hero' || b.type === 'banner') && (
+    {!bodyBlocks.some((b) => ['hero', 'banner', 'slideshow', 'bandimg'].includes(b.type)) && (
       <section class="ck-section pagehead">
         <div class="ck-wrap">
           <h1>{bundle!.page.title}</h1>
@@ -265,7 +292,7 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
       </section>
     )}
 
-    {bundle!.blocks.map((b) => {
+    {bodyBlocks.map((b) => {
       const d = b.data as any;
       switch (b.type) {
         case 'hero':
@@ -343,6 +370,36 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
           );
         case 'inquiry':
           return <InquiryBand inquiry={d} href={`/${lang}/contact/`} email={email} />;
+
+        /* ── DTC 品牌版式(自有品牌站)────────────────────────
+           这一族与上面的 B2B 版块并存而不互斥:同一个渲染器,
+           站点用哪一族由内容决定,不需要第二套路由或第二个应用。 */
+        case 'slideshow':
+          return <Slideshow slides={d.slides ?? []} eyebrow={d.eyebrow} title={d.title ?? ''}
+                            lead={d.lead} ctaText={d.ctaText} ctaHref={d.ctaHref ?? `/${lang}/products/`}
+                            interval={d.interval ?? 6000} />;
+        case 'centercta':
+          return <CenterCta title={d.title ?? ''} body={d.body} ctaText={d.ctaText}
+                            ctaHref={d.ctaHref ?? `/${lang}/skin/`} tone={d.tone} />;
+        case 'bandimg':
+          return <BandImage image={d.image} alt={d.alt} display={d.display} title={d.title ?? ''}
+                            ctaText={d.ctaText} ctaHref={d.ctaHref ?? `/${lang}/products/`} />;
+        case 'shelf':
+          return <Shelf title={d.title ?? ''} moreText={d.moreText} moreHref={d.moreHref ?? `/${lang}/products/`}
+                        items={d.items ?? []} tone={d.tone} />;
+        case 'split':
+          return <SplitFeature image={d.image} alt={d.alt} eyebrow={d.eyebrow} title={d.title ?? ''}
+                               body={d.body} ctaText={d.ctaText} ctaHref={d.ctaHref ?? `/${lang}/products/`}
+                               flip={!!d.flip} tone={d.tone} />;
+        case 'statement':
+          return <Statement eyebrow={d.eyebrow} title={d.title ?? ''} body={d.body} tone={d.tone} />;
+        case 'perks':
+          return <Perks image={d.image} items={d.items ?? []} veil={d.veil} />;
+        case 'social':
+          return <SocialWall title={d.title ?? ''} handle={d.handle} items={d.items ?? []} tone={d.tone} />;
+        case 'signup':
+          return <Signup title={d.title ?? ''} body={d.body} placeholder={d.placeholder ?? 'Email'}
+                         button={d.button ?? 'OK'} note={d.note} siteId={site!.id} tone={d.tone} />;
         default:
           return null;
       }
