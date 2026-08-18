@@ -90,7 +90,11 @@ html[data-marvis][data-brand] {
   --ck-gutter: 1.5rem;
 }
 
-/* ── 版块背景交替 —— 实测的三种 ──────────────────────── */
+/* ── 版块背景交替 —— 实测的三种 ────────────────────────
+   ⚠ nth-of-type 是按「同标签的兄弟」计数的。超大 banner 曾经也是 <section>,
+   把计数整体错开一位,实测第 5、6 屏都落成白底、节奏断在那里。
+   治本的做法是让 banner 不占 <section> 的计数位(它本来就不是常规版块,已改为 div),
+   而不是再写一串相邻兄弟规则去补 —— 那种补法遇到中间夹了别的元素就又断。 */
 html[data-marvis][data-brand] .ck-section:nth-of-type(3n + 1) {
   background: var(--mv-s);
 }
@@ -100,10 +104,7 @@ html[data-marvis][data-brand] .ck-section:nth-of-type(3n + 2) {
 html[data-marvis][data-brand] .ck-section:nth-of-type(3n) {
   background: linear-gradient(180deg, var(--mv-bg) 0%, color-mix(in srgb, var(--mv-g) 2%, var(--mv-bg)) 100%);
 }
-/* 首屏:自上而下从底色淡入 4% 金 —— 实测值 */
-html[data-marvis][data-brand] .hero {
-  background: linear-gradient(180deg, var(--mv-bg) 0%, color-mix(in srgb, var(--mv-g) 4%, var(--mv-bg)) 100%);
-}
+
 
 /* ── 卡片:1px 边 + 1.5rem 圆角 + 1.5rem 内边距 + .4s 过渡 ── */
 html[data-marvis][data-brand] .matrix .cell,

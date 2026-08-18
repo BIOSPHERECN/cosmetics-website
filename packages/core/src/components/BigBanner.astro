@@ -39,7 +39,13 @@ const {
 } = Astro.props;
 ---
 
-<section class="bb" style={`--bb-h:${height}`} aria-label={title}>
+<div class="bb" role="region" style={`--bb-h:${height}`} aria-label={title}>
+  {/* 图独占右幅,不与文字叠压。
+      「图上压字」是电商促销的语言:字要压得住图,就得加重遮罩,一加重图就脏。
+      高端制造要的是另一套 —— 图归图、字归字,靠分割和留白撑场面。
+      顺带解决两个实际问题:图不用铺满整幅所以不必放大(锐利),
+      字在纯色场上所以换任何图都读得清。 */}
+  <div class="bb-media">
   {image ? (
     <img class="bb-img" src={image} alt={imageAlt} fetchpriority="high" decoding="async" />
   ) : (
@@ -52,8 +58,8 @@ const {
     </div>
   )}
 
-  {/* 可读性兜底:换任何一张图,文字都还读得清 */}
-  <div class="bb-scrim" aria-hidden="true"></div>
+    <div class="bb-scrim" aria-hidden="true"></div>
+  </div>
 
   <div class="bb-in ck-wrap">
     {eyebrow && <p class="bb-eyebrow">{eyebrow}</p>}
@@ -66,21 +72,25 @@ const {
       </p>
     )}
   </div>
-</section>
+</div>
 
 <style>
   .bb {
     position: relative;
     min-height: var(--bb-h, 82vh);
     display: grid;
-    align-items: end;
-    overflow: hidden;
-    background: var(--ck-bg);
-    /* 满幅出血:挣脱容器,贴到视口两边 —— 超大 banner 的「超大」在这里 */
+    /* 不对称分割:文字 55%、图 45%。对半分会显得呆,
+       55/45 这种略微偏移才有编排感 —— 这是版面「贵」的来源之一。 */
+    grid-template-columns: minmax(0, 1.14fr) minmax(0, 1fr);
+    align-items: center;
+    background: var(--ck-surface);
     width: 100vw;
     margin-inline: calc(50% - 50vw);
   }
 
+  /* 图在 DOM 里靠前(浏览器早一步开始下载,LCP 更快),
+     但视觉上排到右边 —— 中英文都是从左读起,口号该先被读到。 */
+  .bb-media { position: relative; height: 100%; overflow: hidden; order: 2; }
   .bb-img {
     position: absolute;
     inset: 0;
@@ -119,31 +129,24 @@ const {
   }
   .bb-empty-d a { color: var(--ck-accent); }
 
-  /* 自下而上的暗渐变 —— 只在有图时铺 */
+  /* 遮罩极轻,只为让图与文字场之间有一道过渡,不再承担压字的职责 */
   .bb-scrim {
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      180deg,
-      rgb(0 0 0 / 0.28) 0%,
-      rgb(0 0 0 / 0.06) 34%,
-      rgb(0 0 0 / 0.62) 78%,
-      rgb(0 0 0 / 0.86) 100%
-    );
+    background: linear-gradient(90deg, var(--ck-surface) 0%, transparent 12%);
     pointer-events: none;
   }
   .bb:has(.bb-empty) .bb-scrim { display: none; }
 
   .bb-in {
+    order: 1;
     position: relative;
-    padding-block: clamp(2.5rem, 6vh, 5rem);
+    padding: clamp(2rem, 6vh, 5rem) clamp(1.25rem, 5vw, 5rem);
     display: grid;
     justify-items: start;
     gap: 0;
-    /* 有图时文字一律用白,不跟主题走 —— 图的亮度不可控,主题色可能读不清 */
-    color: #fff;
+    color: var(--ck-ink);
   }
-  .bb:has(.bb-empty) .bb-in { color: var(--ck-ink); }
 
   .bb-eyebrow {
     margin: 0 0 0.875rem;
@@ -156,10 +159,11 @@ const {
     margin: 0;
     font-family: var(--ck-font-head);
     font-weight: var(--ck-weight-head);
-    font-size: clamp(2.25rem, 1.2rem + 5vw, 5.5rem);
-    line-height: 1.02;
-    letter-spacing: -0.03em;
-    max-width: 15ch;
+    /* 口号是全站最该被记住的一行,给它绝对的尺寸主导 */
+    font-size: clamp(2.5rem, 1.4rem + 4.4vw, 6rem);
+    line-height: 1.0;
+    letter-spacing: -0.035em;
+    max-width: 9ch;
     text-wrap: balance;
     overflow-wrap: anywhere;
     min-width: 0;
@@ -205,9 +209,16 @@ const {
   .bb-cta:focus-visible,
   .bb-ghost:focus-visible { outline: 2px solid var(--ck-accent); outline-offset: 3px; }
 
-  @media (max-width: 40rem) {
-    .bb { min-height: min(var(--bb-h, 82vh), 34rem); }
-    .bb-title { max-width: 100%; }
+  @media (max-width: 52rem) {
+    /* 窄屏没有左右分割的余地:图在上、字在下,图给足高度不压缩成一条 */
+    .bb {
+      grid-template-columns: minmax(0, 1fr);
+      min-height: 0;
+      align-items: stretch;
+    }
+    .bb-media { height: 46vh; min-height: 15rem; }
+    .bb-scrim { background: linear-gradient(180deg, transparent 60%, var(--ck-surface) 100%); }
+    .bb-title { max-width: 14ch; }
   }
 
   /* 图片缓慢推近 —— 只在允许动效时,且只动 transform */

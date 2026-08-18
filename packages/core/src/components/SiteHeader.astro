@@ -249,3 +249,14 @@ const items: NavNode[] = nav?.length
     .zh { display: none; }
   }
 </style>
+
+  <script is:inline>
+    /* 手动选语言 = 明确表态,记一年。中间件读到这个 cookie 就不再自动跳。
+       不记的话:海外同事把中文链接发给国内客户,客户点开又被跳成中文 —— 看着像坏了。 */
+    document.querySelectorAll('a[hreflang]').forEach((a) => {
+      a.addEventListener('click', () => {
+        document.cookie = 'bohui_lang=' + a.getAttribute('hreflang') +
+          ';path=/;max-age=31536000;samesite=lax';
+      });
+    });
+  </script>
