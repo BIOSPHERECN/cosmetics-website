@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__CF_IPCOUNTRY__="JP";</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIOSPHERE-AI 管理后台</title>
+<style>
+:root{
+  --bg:#FAF8F4; --panel:#FFFFFF; --panel-2:#F4F0E8;
+  --ink:#23342B; --ink-2:#5A6B60; --ink-3:#8A988E;
+  --line:#E7E1D5; --line-2:#F0EBE0;
+  --green:#2C4A3B; --green-2:#3E6650; --herb:#5B8C5A; --herb-soft:#E4EEE1;
+  --gold:#C9A227; --gold-soft:#F6EBC9;
+  --danger:#B5472D; --danger-soft:#F9E8E2;
+  --radius:12px; --shadow:0 2px 10px rgba(44,74,59,.06);
+  --sidebar-w:232px; --topbar-h:58px;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html,body{height:100%}
+body{font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif; background:var(--bg); color:var(--ink); font-size:14px; line-height:1.55}
+a{color:var(--green-2); text-decoration:none}
+button{font-family:inherit; cursor:pointer}
+input,select,textarea{font-family:inherit; font-size:13px; color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:8px; padding:8px 10px; outline:none; transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--herb)}
+textarea{resize:vertical; min-height:72px}
+::-webkit-scrollbar{width:9px;height:9px} ::-webkit-scrollbar-thumb{background:#CFC8B8;border-radius:6px} ::-webkit-scrollbar-track{background:transparent}
+
+/* ===== 布局 ===== */
+.bhb-shell{display:flex; min-height:100vh}
+.bhb-sidebar{position:fixed; inset:0 auto 0 0; width:var(--sidebar-w); background:var(--green); color:#EDF2EC; display:flex; flex-direction:column; z-index:40; transition:transform .25s ease}
+.bhb-brand{display:flex; align-items:center; gap:10px; padding:18px 18px 16px; border-bottom:1px solid rgba(255,255,255,.12)}
+.bhb-brand img{width:34px;height:34px;border-radius:8px;object-fit:cover;background:#fff}
+.bhb-brand .t{font-size:15px;font-weight:700;letter-spacing:.3px}
+.bhb-brand .s{font-size:11px;color:#B9C8BD;margin-top:2px}
+.bhb-nav{flex:1; overflow-y:auto; padding:12px 10px}
+.bhb-nav .grp{font-size:11px;color:#9FB4A6;padding:10px 10px 4px;letter-spacing:1px}
+.bhb-nav a{display:flex; align-items:center; gap:10px; padding:9px 12px; margin:2px 0; border-radius:8px; color:#DCE6DF; font-size:13.5px; cursor:pointer; transition:background .15s}
+.bhb-nav a:hover{background:rgba(255,255,255,.08)}
+.bhb-nav a.active{background:rgba(255,255,255,.16); color:#fff; box-shadow:inset 2px 0 0 var(--gold)}
+.bhb-nav a .ic{width:18px;text-align:center;font-size:15px}
+.bhb-nav a .cnt{margin-left:auto;font-size:11px;background:var(--gold);color:#3A2F0D;border-radius:10px;padding:0 7px;font-weight:700}
+.bhb-sidefoot{padding:12px 14px;border-top:1px solid rgba(255,255,255,.12);font-size:11px;color:#9FB4A6}
+.bhb-main{flex:1; margin-left:var(--sidebar-w); display:flex; flex-direction:column; min-width:0}
+.bhb-topbar{position:sticky; top:0; z-index:30; height:var(--topbar-h); background:rgba(255,255,255,.92); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:14px; padding:0 22px}
+.bhb-burger{display:none; font-size:20px; background:none; border:none; color:var(--ink)}
+.bhb-topbar .crumb{font-size:15px; font-weight:600}
+.bhb-topbar .spacer{flex:1}
+.bhb-topbar .userchip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2)}
+.bhb-topbar .userchip .dot{width:28px;height:28px;border-radius:50%;background:var(--herb);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:7px 14px;font-size:13px;transition:all .15s}
+.btn:hover{border-color:var(--herb);color:var(--green-2)}
+.btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+.btn.primary:hover{background:var(--green-2)}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#3A2F0D}
+.btn.danger{background:#fff;border-color:#E5C6BB;color:var(--danger)}
+.btn.danger:hover{background:var(--danger-soft);border-color:var(--danger)}
+.btn.sm{padding:4px 10px;font-size:12px;border-radius:6px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.bhb-content{flex:1; padding:22px; max-width:1180px; width:100%; margin:0 auto}
+
+/* ===== 仪表盘 ===== */
+.page-title{font-size:18px;font-weight:700;margin-bottom:4px}
+.page-sub{color:var(--ink-3);font-size:12.5px;margin-bottom:18px}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;margin-bottom:20px}
+.stat-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.stat-card .num{font-size:28px;font-weight:800;color:var(--green)}
+.stat-card .lab{color:var(--ink-2);font-size:12.5px;margin-top:2px}
+.stat-card .bar{position:absolute;inset:0 0 auto 0;height:4px}
+.stat-card.c1 .bar{background:var(--green)} .stat-card.c2 .bar{background:var(--herb)} .stat-card.c3 .bar{background:var(--gold)} .stat-card.c4 .bar{background:#8A6FA0} .stat-card.c5 .bar{background:var(--danger)}
+.dash-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.panel .hd{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line-2);font-weight:600}
+.panel .bd{padding:8px 16px 16px}
+.quick-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;padding:14px 16px}
+.quick-item{display:flex;align-items:center;gap:9px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer;transition:all .15s;background:#fff}
+.quick-item:hover{border-color:var(--herb);box-shadow:var(--shadow);transform:translateY(-1px)}
+.quick-item .ic{font-size:18px}
+.quick-item .t{font-size:12.5px;color:var(--ink-2)}
+.quick-item .t b{display:block;color:var(--ink);font-size:13.5px}
+.recent-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line-2);font-size:13px}
+.recent-row:last-child{border-bottom:none}
+.recent-row .rt{color:var(--ink-3);font-size:12px;white-space:nowrap}
+.recent-row .rm{margin-left:auto}
+
+/* ===== 列表页 ===== */
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.toolbar .search{flex:1;min-width:220px;position:relative}
+.toolbar .search input{width:100%;padding-left:32px}
+.toolbar .search .s-ic{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--ink-3)}
+.tbl-wrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line-2);font-size:13px;vertical-align:middle}
+th{background:var(--panel-2);color:var(--ink-2);font-weight:600;font-size:12px;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#FCFAF5}
+.thumb{width:46px;height:46px;border-radius:8px;object-fit:cover;background:#EFE9DC;border:1px solid var(--line)}
+.cell-title{font-weight:600}
+.cell-sub{color:var(--ink-3);font-size:12px}
+.badge-tag{display:inline-block;background:var(--gold-soft);color:#8A6A10;border-radius:6px;padding:1px 8px;font-size:11.5px;margin-left:6px;vertical-align:middle}
+.status{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:2px 10px;border-radius:20px;font-weight:600}
+.status.published{background:var(--herb-soft);color:var(--green-2)}
+.status.draft{background:#F1EEE5;color:#8A7A4A}
+.status.archived{background:var(--danger-soft);color:var(--danger)}
+.status.new{background:var(--gold-soft);color:#8A6A10}
+.status.handled{background:var(--herb-soft);color:var(--green-2)}
+.row-ops{white-space:nowrap}
+.row-ops .op{background:none;border:none;color:var(--ink-2);font-size:12.5px;padding:3px 7px;border-radius:6px;cursor:pointer}
+.row-ops .op:hover{background:var(--herb-soft);color:var(--green-2)}
+.row-ops .op.del:hover{background:var(--danger-soft);color:var(--danger)}
+.pager{display:flex;align-items:center;gap:10px;justify-content:flex-end;padding:12px 4px}
+.pager .pg-info{color:var(--ink-3);font-size:12.5px}
+.empty{padding:48px 20px;text-align:center;color:var(--ink-3)}
+.empty .ic{font-size:34px;margin-bottom:8px}
+.batchbar{display:flex;align-items:center;gap:10px;background:var(--gold-soft);border:1px solid #E8D9A4;border-radius:10px;padding:8px 14px;margin-bottom:12px;font-size:13px}
+
+/* ===== 弹窗 ===== */
+.modal-mask{position:fixed;inset:0;background:rgba(35,52,43,.45);z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;backdrop-filter:blur(2px)}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:680px;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.modal.wide{max-width:860px}
+.modal .m-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;border-radius:14px 14px 0 0;z-index:2}
+.modal .m-hd .t{font-size:16px;font-weight:700}
+.modal .m-x{background:none;border:none;font-size:20px;color:var(--ink-3);cursor:pointer}
+.modal .m-bd{padding:18px 20px;max-height:70vh;overflow-y:auto}
+.modal .m-ft{display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--line-2)}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+.field>label{font-size:12.5px;color:var(--ink-2);font-weight:600}
+.field .hint{font-size:11.5px;color:var(--ink-3)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grp{border:1px solid var(--line);border-radius:10px;margin-bottom:16px;overflow:hidden}
+.grp .g-hd{background:var(--panel-2);padding:9px 14px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:7px}
+.grp .g-bd{padding:14px}
+.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:10px}
+.img-cell{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#F7F3EA;aspect-ratio:1}
+.img-cell img{width:100%;height:100%;object-fit:cover;display:block}
+.img-cell .ops{position:absolute;inset:auto 0 0 0;display:flex;background:rgba(35,52,43,.72)}
+.img-cell .ops button{flex:1;border:none;background:none;color:#fff;font-size:11px;padding:4px 0;cursor:pointer}
+.img-cell .ops button:hover{background:rgba(255,255,255,.2)}
+.img-cell.main::after{content:"主图";position:absolute;top:4px;left:4px;background:var(--gold);color:#3A2F0D;font-size:10px;font-weight:700;padding:0 6px;border-radius:6px}
+.img-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:1.5px dashed var(--line);border-radius:10px;aspect-ratio:1;color:var(--ink-3);cursor:pointer;font-size:11.5px;background:#fff;transition:all .15s}
+.img-add:hover{border-color:var(--herb);color:var(--green-2)}
+.uploading{opacity:.6;pointer-events:none}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg .opt{padding:6px 14px;border:1px solid var(--line);border-radius:20px;font-size:12.5px;cursor:pointer;color:var(--ink-2);background:#fff}
+.seg .opt.on{background:var(--green);border-color:var(--green);color:#fff}
+.msg{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:99;padding:10px 22px;border-radius:10px;font-size:13.5px;box-shadow:0 6px 24px rgba(0,0,0,.15);animation:pop .25s ease}
+.msg.ok{background:var(--green);color:#fff}
+.msg.err{background:var(--danger);color:#fff}
+@keyframes pop{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* 设置页 */
+.set-wrap{display:grid;grid-template-columns:210px 1fr;gap:16px}
+.set-nav{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:10px;box-shadow:var(--shadow);align-self:start;position:sticky;top:76px}
+.set-nav a{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;color:var(--ink-2);font-size:13px;cursor:pointer;margin:2px 0}
+.set-nav a:hover{background:var(--panel-2)}
+.set-nav a.active{background:var(--herb-soft);color:var(--green-2);font-weight:600}
+.set-page{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+.lang-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line-2)}
+.lang-row .code{font-weight:700;width:70px}
+.lang-row .name{flex:1;color:var(--ink-2)}
+.lang-row .def{font-size:11.5px;color:var(--gold);font-weight:700}
+
+/* 移动端 */
+@media (max-width:1023px){
+  .bhb-sidebar{transform:translateX(-100%);box-shadow:0 0 40px rgba(0,0,0,.25)}
+  .bhb-sidebar.open{transform:translateX(0)}
+  .bhb-burger{display:inline-flex}
+  .bhb-main{margin-left:0}
+  .dash-grid{grid-template-columns:1fr}
+  .set-wrap{grid-template-columns:1fr}
+  .set-nav{position:static}
+  .field-row{grid-template-columns:1fr}
+  .modal{padding:16px 0}
+  .bhb-content{padding:14px}
+}
+</style>
+</head>
+<body>
+<div class="bhb-shell">
+  <!-- 侧边栏 -->
+  <aside class="bhb-sidebar" id="sidebar">
+    <div class="bhb-brand">
+      <img id="brandLogo" src="images/logo.png" alt="logo" onerror="this.style.display='none'">
+      <div><div class="t">BIOSPHERE-AI</div><div class="s">品牌管理后台</div></div>
+    </div>
+    <nav class="bhb-nav" id="nav"></nav>
+    <div class="bhb-sidefoot">v<span id="footVer">1.0.0</span> · 数据存于本地并支持导出部署</div>
+  </aside>
+
+  <!-- 主区域 -->
+  <div class="bhb-main">
+    <div class="bhb-topbar">
+      <button class="bhb-burger" id="burger">☰</button>
+      <div class="crumb" id="crumb">仪表盘</div>
+      <div class="spacer"></div>
+      <div class="userchip"><div class="dot">A</div><span>管理员</span></div>
+      <button class="btn sm" id="btnLogout">退出</button>
+    </div>
+    <div class="bhb-content" id="content"></div>
+  </div>
+</div>
+<div class="modal-mask" id="modalMask" style="display:none"></div>
+<div id="msgBox"></div>
+
+<script>
+"use strict";
+/* ================= 数据层 ================= */
+const MODULES = [
+  { key:"products",  label:"产品",     file:"products.json",  defaultItems:[] },
+  { key:"origins",   label:"种植基地", file:"origins.json",   defaultItems:[] },
+  { key:"packaging", label:"包材库",   file:"packaging.json", defaultItems:[] },
+  { key:"notices",   label:"公告",     file:"notices.json",   defaultItems:[] },
+  { key:"inquiries", label:"询盘",     file:"inquiries.json", defaultItems:[] }
+];
+const SITE_KEY = "site";
+const LS_PREFIX = "bhbohui_";
+const state = { data:{}, site:null, page:"dashboard", setTab:"site", loaded:false };
+
+function nowISO(){ return new Date().toISOString(); }
+function lsGet(k){ try{ return localStorage.getItem(LS_PREFIX+k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(LS_PREFIX+k, JSON.stringify(v)); }catch(e){ toast("本地存储失败（可能超出容量）","err"); } }
+
+function mediaUrl(x){ return typeof x==="string" ? x : (x&&x.url)||""; }
+function normGallery(g, fallbackImg){
+  let arr = Array.isArray(g) ? g.slice() : [];
+  if(!arr.length && fallbackImg) arr = [fallbackImg];
+  return arr.map((x,i)=>({
+    url: mediaUrl(x),
+    alt: (x&&x.alt)||"",
+    sort: (x && typeof x.sort==="number") ? x.sort : i
+  })).filter(x=>x.url);
+}
+function normalizeItem(raw, mod){
+  const base = { status:"published", updatedAt: nowISO() };
+  const item = Object.assign({}, raw||{}, base);
+  if(item.status!=='draft' && item.status!=='archived' && item.status!=='new' && item.status!=='handled') item.status = "published";
+  if(!item.updatedAt) item.updatedAt = nowISO();
+  if(mod==="products"){
+    if(!item.id) item.id = 0;
+    item.gallery = normGallery(item.gallery, item.img);
+    item.img = mediaUrl(item.img) || mediaUrl(item.gallery[0]) || "";
+    if(!item.category) item.category = "";
+    if(!item.price) item.price = "";
+    if(!item.badge) item.badge = "";
+    if(!item.slug) item.slug = "";
+    if(!item.seo_title) item.seo_title = "";
+    if(!item.seo_desc) item.seo_desc = "";
+    if(!item.en) item.en = "";
+    if(!item.desc) item.desc = "";
+  }
+  if(mod==="origins"){
+    if(!item.id) item.id = 0;
+    item.gallery = normGallery(item.gallery, item.img);
+    item.img = mediaUrl(item.img) || mediaUrl(item.gallery[0]) || "";
+    if(!item.region) item.region = "";
+    if(!item.zh) item.zh = "";
+    if(!item.page) item.page = "";
+    if(!item.desc) item.desc = "";
+  }
+  return item;
+}
+function logAction(module, action, detail){
+  try{
+    const logs = JSON.parse(lsGet("actions")||"[]");
+    logs.unshift({ at: nowISO(), module: module||"", action: action||"", detail: detail||"" });
+    if(logs.length>500) logs.length = 500;
+    lsSet("actions", logs);
+  }catch(e){}
+}
+function registerMedia(rec){
+  try{
+    const list = JSON.parse(lsGet("media")||"[]");
+    list.unshift({ url: rec.url||"", owner_type: rec.owner_type||"unassigned", owner_id: String(rec.owner_id==null?"":rec.owner_id), alt: rec.alt||"", at: rec.at||nowISO() });
+    if(list.length>500) list.length = 500;
+    lsSet("media", list);
+  }catch(e){}
+}
+
+async function loadAll(){
+  const tasks = MODULES.map(async m => {
+    let data = null;
+    const local = lsGet(m.key);
+    if(local){ try{ data = JSON.parse(local); }catch(e){} }
+    if(!data){
+      try{
+        const r = await fetch("/bhbohui/data/" + m.file, { cache:"no-store" });
+        if(r.ok) data = await r.json();
+      }catch(e){}
+    }
+    let items = (data && Array.isArray(data.items)) ? data.items : [];
+    items = items.map(it => normalizeItem(it, m.key));
+    state.data[m.key] = items;
+  });
+  let site = null;
+  const localSite = lsGet(SITE_KEY);
+  if(localSite){ try{ site = JSON.parse(localSite); }catch(e){} }
+  if(!site){
+    try{
+      const r = await fetch("/bhbohui/data/site.json", { cache:"no-store" });
+      if(r.ok) site = await r.json();
+    }catch(e){}
+  }
+  state.site = Object.assign({
+    site_name:"biosphere-ai", domain:"biosphere-ai.com", version:"1.0.0", logo:"", footer_note:"",
+    email:"", whatsapp:"", phone:"", address:"",
+    default_lang:"en", languages:[{code:"en",name:"English"},{code:"zh",name:"简体中文"}],
+    updated_at: nowISO()
+  }, site||{});
+  if(!Array.isArray(state.site.languages)) state.site.languages = [{code:"en",name:"English"},{code:"zh",name:"简体中文"}];
+  await Promise.all(tasks);
+  state.loaded = true;
+}
+
+function persist(modKey){
+  const items = state.data[modKey] || [];
+  lsSet(modKey, { items });
+}
+function persistSite(){ lsSet(SITE_KEY, state.site); }
+
+function nextId(items){
+  const max = items.reduce((m,it)=> Math.max(m, Number(it.id)||0), 0);
+  return max + 1;
+}
+function touch(item){ item.updatedAt = nowISO(); return item; }
+
+/* ================= 导航 ================= */
+const NAV = [
+  { id:"dashboard", label:"仪表盘", ic:"📊", grp:"总览" },
+  { id:"products",  label:"产品管理", ic:"🧴", grp:"内容管理" },
+  { id:"origins",   label:"种植基地", ic:"🌿" },
+  { id:"packaging", label:"包材库",   ic:"📦" },
+  { id:"notices",   label:"公告管理", ic:"📢" },
+  { id:"inquiries", label:"询盘管理", ic:"✉️" },
+  { id:"settings",  label:"设置",     ic:"⚙️", grp:"系统" }
+];
+
+function renderNav(){
+  const nav = document.getElementById("nav");
+  nav.innerHTML = "";
+  NAV.forEach(n => {
+    if(n.id==="inquiries" && (state.data.inquiries||[]).length===0) return; // 无数据不展示
+    if(n.grp){
+      const g = document.createElement("div");
+      g.className = "grp"; g.textContent = n.grp;
+      nav.appendChild(g);
+    }
+    const a = document.createElement("a");
+    a.dataset.page = n.id;
+    a.innerHTML = '<span class="ic">'+n.ic+'</span><span>'+n.label+'</span>' + (n.id==="inquiries"&&(state.data.inquiries||[]).length? '<span class="cnt">'+state.data.inquiries.filter(i=>i.status==="new").length+'</span>':'');
+    if(state.page===n.id || (n.id==="settings" && state.page==="settings")) a.classList.add("active");
+    a.addEventListener("click", ()=> go(n.id));
+    nav.appendChild(a);
+  });
+  const foot = document.getElementById("footVer");
+  if(foot) foot.textContent = state.site.version || "1.0.0";
+}
+
+function go(page){
+  state.page = page;
+  renderNav();
+  document.getElementById("sidebar").classList.remove("open");
+  const titles = { dashboard:"仪表盘", products:"产品管理", origins:"种植基地", packaging:"包材库", notices:"公告管理", inquiries:"询盘管理", settings:"设置" };
+  document.getElementById("crumb").textContent = titles[page] || "管理后台";
+  if(page==="dashboard") renderDashboard();
+  else if(page==="products") renderList("products");
+  else if(page==="origins") renderList("origins");
+  else if(page==="packaging") renderList("packaging");
+  else if(page==="notices") renderList("notices");
+  else if(page==="inquiries") renderList("inquiries");
+  else if(page==="settings") renderSettings();
+}
+
+/* ================= 工具 ================= */
+function toast(text, type){ 
+  const box = document.getElementById("msgBox");
+  box.innerHTML = '<div class="msg '+type+'">'+escapeHtml(text)+'</div>';
+  setTimeout(()=>{ box.innerHTML=""; }, 2400);
+}
+function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fmtTime(t){ if(!t) return "—"; const d = new Date(t); if(isNaN(d)) return String(t); const p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes()); }
+function fmtDate(t){ if(!t) return "—"; const d = new Date(t); if(isNaN(d)) return String(t); const p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); }
+function statusBadge(st){
+  const map = { published:"发布", draft:"草稿", archived:"归档", new:"新询盘", handled:"已处理" };
+  const cls = ["published","draft","archived","new","handled"].includes(st) ? st : "published";
+  return '<span class="status '+cls+'">'+ (map[st]||st||"发布") +'</span>';
+}
+function statusToggle(st){
+  if(st==="published") return "draft";
+  if(st==="draft") return "published";
+  if(st==="new") return "handled";
+  if(st==="handled") return "new";
+  return "published";
+}
+function imgHtml(url){
+  if(!url) return '<div class="thumb" style="display:flex;align-items:center;justify-content:center;color:#C9C2B2">—</div>';
+  return '<img class="thumb" src="'+escapeHtml(url)+'" onerror="this.outerHTML=\'<div class=thumb style=&quot;display:flex;align-items:center;justify-content:center;color:#C9C2B2&quot;>!</div>\'">';
+}
+
+/* ================= 仪表盘 ================= */
+function renderDashboard(){
+  const c = document.getElementById("content");
+  const d = state.data;
+  const stats = [
+    { k:"products",  label:"产品",  c:"c1", ic:"🧴" },
+    { k:"origins",   label:"种植基地", c:"c2", ic:"🌿" },
+    { k:"packaging", label:"包材供应商", c:"c3", ic:"📦" },
+    { k:"notices",   label:"公告",  c:"c4", ic:"📢" },
+    { k:"inquiries", label:"询盘",  c:"c5", ic:"✉️" }
+  ];
+  const recent = [];
+  Object.keys(d).forEach(k=>{ d[k].forEach(it=>{ recent.push({ t: it.updatedAt||it.date||"", txt: (k==="products"?(it.name||"") : k==="origins"?(it.zh||it.name||"") : k==="notices"?(it.title||"") : k==="packaging"?(it.company||"") : (it.name||it.email||"")), mod: MODULES.find(m=>m.key===k)?.label||k }); }); });
+  recent.sort((a,b)=> String(b.t).localeCompare(String(a.t)));
+  const recentTop = recent.slice(0,8).filter(r=>r.txt);
+  const draftCount = Object.keys(d).reduce((s,k)=> s + d[k].filter(i=>i.status==="draft").length, 0);
+  const pubCount = Object.keys(d).reduce((s,k)=> s + d[k].filter(i=>i.status==="published").length, 0);
+
+  c.innerHTML = `
+    <div class="page-title">仪表盘</div>
+    <div class="page-sub">${escapeHtml(state.site.site_name||"BIOSPHERE-AI")} · 欢迎回来，今天是 ${fmtDate(new Date())}。已发布 ${pubCount} 条，草稿 ${draftCount} 条。</div>
+    <div class="stat-grid">
+      ${stats.map(s=>`<div class="stat-card ${s.c}"><div class="bar"></div><div class="num">${(d[s.k]||[]).length}</div><div class="lab">${s.ic} ${s.label}</div></div>`).join("")}
+    </div>
+    <div class="dash-grid">
+      <div class="panel">
+        <div class="hd">快捷入口</div>
+        <div class="quick-list">
+          <div class="quick-item" data-go="products"><span class="ic">➕</span><span class="t"><b>新增产品</b>产品管理</span></div>
+          <div class="quick-item" data-go="products"><span class="ic">🧴</span><span class="t"><b>产品列表</b>${(d.products||[]).length} 项</span></div>
+          <div class="quick-item" data-go="origins"><span class="ic">🌿</span><span class="t"><b>种植基地</b>${(d.origins||[]).length} 项</span></div>
+          <div class="quick-item" data-go="packaging"><span class="ic">📦</span><span class="t"><b>包材库</b>${(d.packaging||[]).length} 项</span></div>
+          <div class="quick-item" data-go="notices"><span class="ic">📢</span><span class="t"><b>公告管理</b>${(d.notices||[]).length} 项</span></div>
+          <div class="quick-item" data-go="settings"><span class="ic">⚙️</span><span class="t"><b>站点设置</b>联系方式·语言</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="hd">最近更新</div>
+        <div class="bd">
+          ${recentTop.length? recentTop.map(r=>`<div class="recent-row"><span class="rt">${fmtTime(r.t)}</span><span class="txt">${escapeHtml(r.txt)}</span><span class="rm">${escapeHtml(r.mod)}</span></div>`).join("") : '<div class="empty"><div class="ic">🗂️</div>暂无更新记录</div>'}
+        </div>
+      </div>
+    </div>`;
+  c.querySelectorAll(".quick-item").forEach(el=> el.addEventListener("click", ()=> go(el.dataset.go)));
+}
+
+/* ================= 通用列表 ================= */
+const LIST_CFG = {
+  products:  { searchKeys:["name","en","category"], title: it=>it.name, sub: it=>[it.category, it.en].filter(Boolean).join(" · "), thumb: it=>it.img },
+  origins:   { searchKeys:["name","zh","region"], title: it=>it.zh||it.name, sub: it=>[it.name, it.region].filter(Boolean).join(" · "), thumb: it=> it.img || mediaUrl(it.gallery&&it.gallery[0]) || "" },
+  packaging: { searchKeys:["company","business","channel","source"], title: it=>it.company, sub: it=>[it.category, it.business].filter(Boolean).join(" · "), thumb: it=>"" },
+  notices:   { searchKeys:["title","summary","cat"], title: it=>it.title, sub: it=>it.cat||"", thumb: it=>"" },
+  inquiries: { searchKeys:["name","email","phone","message"], title: it=>it.name||it.email||"(未署名)", sub: it=>[it.email,it.phone].filter(Boolean).join(" · "), thumb: it=>"" }
+};
+const COL_EXTRA = {
+  products: it => `<td class="cell-sub">${escapeHtml(it.category||"—")}</td><td>${it.price? "¥"+escapeHtml(it.price):"—"}</td>`,
+  origins:  it => `<td class="cell-sub">${escapeHtml(it.region||"—")}</td><td>${it.page? '<a href="/'+escapeHtml(it.page)+'" target="_blank">查看页</a>':"—"}</td>`,
+  packaging:it => `<td class="cell-sub">${escapeHtml(it.business||"—")}</td><td>${escapeHtml(it.channel||"—")}</td>`,
+  notices:  it => `<td class="cell-sub">${escapeHtml(it.cat||"—")}</td><td>${fmtDate(it.date||it.updatedAt)}</td>`,
+  inquiries:it => `<td>${it.source||"—"}</td><td>${fmtTime(it.created_at||it.updatedAt)}</td>`
+};
+const LIST_PAGE_SIZE = 10;
+const listState = {};
+function listSearch(modKey, it){
+  const st = listState[modKey] || {};
+  const q = (st.q||"").trim().toLowerCase();
+  if(q){
+    const keys = LIST_CFG[modKey].searchKeys;
+    const hay = keys.map(k=>String(it[k]||"")).join(" ").toLowerCase();
+    if(!hay.includes(q)) return false;
+  }
+  if(st.status && st.status!=="all" && it.status!==st.status) return false;
+  return true;
+}
+function renderList(modKey){
+  listState[modKey] = listState[modKey] || { q:"", status:"all", page:1, sel:{} };
+  const st = listState[modKey];
+  const cfg = LIST_CFG[modKey];
+  const items = (state.data[modKey]||[]).filter(it=>listSearch(modKey,it));
+  const totalPages = Math.max(1, Math.ceil(items.length / LIST_PAGE_SIZE));
+  if(st.page > totalPages) st.page = totalPages;
+  const pageItems = items.slice((st.page-1)*LIST_PAGE_SIZE, st.page*LIST_PAGE_SIZE);
+  const c = document.getElementById("content");
+  const titleMap = { products:"产品管理", origins:"种植基地", packaging:"包材库", notices:"公告管理", inquiries:"询盘管理" };
+  const statusOpts = ["all","published","draft"].concat(modKey==="inquiries" ? ["new","handled"] : ["archived"]);
+  const statusNames = { all:"全部状态", published:"已发布", draft:"草稿", archived:"已归档", new:"新询盘", handled:"已处理" };
+  const selCount = Object.keys(st.sel||{}).filter(k=>st.sel[k]).length;
+
+  c.innerHTML = `
+    <div class="page-title">${titleMap[modKey]}</div>
+    <div class="page-sub">共 ${items.length} 条记录${modKey==="inquiries" ? " · 新询盘 "+(state.data.inquiries||[]).filter(i=>i.status==="new").length+" 条" : ""}</div>
+    <div class="toolbar">
+      <div class="search"><span class="s-ic">🔍</span><input id="tbSearch" placeholder="搜索…" value="${escapeHtml(st.q)}"></div>
+      <select id="tbStatus">${statusOpts.map(s=>`<option value="${s}" ${st.status===s?"selected":""}>${statusNames[s]}</option>`).join("")}</select>
+      <button class="btn primary" id="btnAdd">＋ 新增</button>
+    </div>
+    ${selCount? `<div class="batchbar">已选 ${selCount} 项 <button class="btn sm danger" id="btnBatchDel">批量删除</button> <button class="btn sm" id="btnBatchPub">批量发布</button> <button class="btn sm" id="btnBatchDraft">转为草稿</button> <button class="btn sm" id="btnBatchClear">取消选择</button></div>`:""}
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:34px"><input type="checkbox" id="chkAll" ${pageItems.length&&Object.keys(st.sel).length===pageItems.length?"checked":""}></th>
+          ${modKey==="products"||modKey==="origins"? "<th style=\"width:58px\">图</th>":""}
+          <th>${modKey==="packaging"?"供应商":modKey==="notices"?"标题":modKey==="inquiries"?"联系人":"标题"}</th>
+          ${modKey==="products"?"<th>分类</th><th>价格</th>":modKey==="origins"?"<th>地区</th><th>页面</th>":modKey==="packaging"?"<th>业务</th><th>渠道</th>":modKey==="notices"?"<th>分类</th><th>日期</th>":"<th>来源</th><th>时间</th>"}
+          <th>状态</th><th>更新时间</th><th style="width:150px">操作</th>
+        </tr></thead>
+        <tbody>
+        ${pageItems.length? pageItems.map(it=>`
+          <tr>
+            <td><input type="checkbox" class="row-chk" data-id="${it.id}" ${st.sel[it.id]?"checked":""}></td>
+            ${modKey==="products"||modKey==="origins"? `<td>${imgHtml(mediaUrl(cfg.thumb(it)))}</td>`:""}
+            <td><span class="cell-title">${escapeHtml(cfg.title(it))}</span>${it.badge? '<span class="badge-tag">'+escapeHtml(it.badge)+'</span>':""}<div class="cell-sub">${escapeHtml(cfg.sub(it)||"")}</div></td>
+            ${COL_EXTRA[modKey](it)}
+            <td>${statusBadge(it.status)}</td>
+            <td class="cell-sub">${fmtTime(it.updatedAt)}</td>
+            <td class="row-ops">
+              <button class="op" data-act="edit" data-id="${it.id}">编辑</button>
+              <button class="op" data-act="dup" data-id="${it.id}">复制</button>
+              <button class="op" data-act="toggle" data-id="${it.id}">${it.status==="published"?"转草稿":it.status==="draft"?"发布":"切换"}</button>
+              <button class="op del" data-act="del" data-id="${it.id}">删除</button>
+            </td>
+          </tr>`).join("")
+        : `<tr><td colspan="12"><div class="empty"><div class="ic">🗂️</div>没有匹配的记录，试试调整搜索或筛选</div></td></tr>`}
+        </tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <span class="pg-info">第 ${st.page} / ${totalPages} 页 · 共 ${items.length} 条</span>
+      <button class="btn sm" id="pgPrev" ${st.page<=1?"disabled":""}>上一页</button>
+      <button class="btn sm" id="pgNext" ${st.page>=totalPages?"disabled":""}>下一页</button>
+    </div>`;
+
+  const $ = id => document.getElementById(id);
+  $("tbSearch").addEventListener("input", e=>{ st.q=e.target.value; st.page=1; renderList(modKey); });
+  $("tbStatus").addEventListener("change", e=>{ st.status=e.target.value; st.page=1; renderList(modKey); });
+  $("btnAdd").addEventListener("click", ()=> openEditor(modKey, null));
+  $("pgPrev").addEventListener("click", ()=>{ st.page--; renderList(modKey); });
+  $("pgNext").addEventListener("click", ()=>{ st.page++; renderList(modKey); });
+  const chkAll = $("chkAll");
+  if(chkAll) chkAll.addEventListener("change", e=>{ pageItems.forEach(it=>{ st.sel[it.id]=e.target.checked; }); renderList(modKey); });
+  c.querySelectorAll(".row-chk").forEach(ch=> ch.addEventListener("change", e=>{ st.sel[ch.dataset.id]=ch.checked; renderList(modKey); }));
+  const bd = $("btnBatchDel");
+  if(bd) bd.addEventListener("click", ()=>{
+    const ids = Object.keys(st.sel).filter(k=>st.sel[k]);
+    if(!confirm("确定删除选中的 "+ids.length+" 条记录？")) return;
+    state.data[modKey] = state.data[modKey].filter(it=>!ids.includes(String(it.id)));
+    persist(modKey); st.sel={}; logAction(titleMap[modKey], "批量删除", ids.length+" 条"); toast("已删除 "+ids.length+" 条"); renderList(modKey);
+  });
+  const bp = $("btnBatchPub");
+  if(bp) bp.addEventListener("click", ()=>{ batchStatus(modKey, "published"); });
+  const bdr = $("btnBatchDraft");
+  if(bdr) bdr.addEventListener("click", ()=>{ batchStatus(modKey, "draft"); });
+  const bc = $("btnBatchClear");
+  if(bc) bc.addEventListener("click", ()=>{ st.sel={}; renderList(modKey); });
+  c.querySelectorAll(".row-ops .op").forEach(op=> op.addEventListener("click", ()=>{
+    const id = op.dataset.id;
+    const it = state.data[modKey].find(x=>String(x.id)===id);
+    if(!it) return;
+    if(op.dataset.act==="edit") openEditor(modKey, it);
+    else if(op.dataset.act==="dup"){ const copy = JSON.parse(JSON.stringify(it)); copy.id = nextId(state.data[modKey]); const nm = copy.name||copy.company||copy.title||""; if(modKey==="products"&&copy.name) copy.name = copy.name+"（副本）"; if(modKey==="packaging"&&copy.company) copy.company = copy.company+"（副本）"; if(modKey==="notices"&&copy.title) copy.title = copy.title+"（副本）"; copy.status="draft"; touch(copy); state.data[modKey].push(copy); persist(modKey); logAction(titleMap[modKey], "复制", nm||copy.id); toast("已复制为草稿"); renderList(modKey); }
+    else if(op.dataset.act==="toggle"){ it.status = statusToggle(it.status); touch(it); persist(modKey); logAction(titleMap[modKey], "状态切换", (it.name||it.company||it.title||it.email||"记录")+" → "+it.status); toast("状态已更新"); renderList(modKey); }
+    else if(op.dataset.act==="del"){ if(confirm("确定删除「"+(it.name||it.company||it.title||it.email||"该项")+"」？")){ const nm = it.name||it.company||it.title||it.email||String(it.id); state.data[modKey] = state.data[modKey].filter(x=>String(x.id)!==id); persist(modKey); logAction(titleMap[modKey], "删除", nm); toast("已删除"); renderList(modKey); } }
+  }));
+}
+function batchStatus(modKey, st){
+  const lk = listState[modKey]||{};
+  const ids = Object.keys(lk.sel||{}).filter(k=>lk.sel[k]);
+  state.data[modKey].forEach(it=>{ if(ids.includes(String(it.id))){ it.status=st; touch(it); } });
+  persist(modKey); lk.sel={}; logAction({products:"产品管理",origins:"种植基地",packaging:"包材库",notices:"公告管理",inquiries:"询盘管理"}[modKey], "批量状态", st+" "+ids.length+" 条"); toast("已批量更新状态"); renderList(modKey);
+}
+
+/* ================= 编辑器（弹窗） ================= */
+function openModal(html, wide){
+  const mask = document.getElementById("modalMask");
+  mask.style.display = "flex";
+  mask.innerHTML = '<div class="modal'+(wide?" wide":"")+'">'+html+'</div>';
+  return mask;
+}
+function closeModal(){
+  document.getElementById("modalMask").style.display = "none";
+  document.getElementById("modalMask").innerHTML = "";
+}
+function bindModalClose(){
+  const mask = document.getElementById("modalMask");
+  mask.querySelectorAll(".m-x,.m-cancel").forEach(el=> el.addEventListener("click", closeModal));
+  mask.addEventListener("click", e=>{ if(e.target===mask) closeModal(); });
+}
+function field(label, inner, hint){
+  return '<div class="field"><label>'+label+'</label>'+inner+(hint?'<span class="hint">'+hint+'</span>':"")+'</div>';
+}
+function seg(name, opts, val){
+  return '<div class="seg" data-name="'+name+'">'+opts.map(o=>`<span class="opt ${val===o.v?"on":""}" data-v="${o.v}">${o.t}</span>`).join("")+'</div>';
+}
+async function uploadImage(file, ownerType, ownerId){
+  const fd = new FormData();
+  fd.append("file", file);
+  const r = await fetch("/api/upload", { method:"POST", body:fd });
+  const j = await r.json().catch(()=>({ok:false}));
+  if(!r.ok || !j.ok) throw new Error(j.message || "上传失败");
+  registerMedia({ url: j.url, owner_type: ownerType||"unassigned", owner_id: ownerId==null? "" : ownerId, alt:"", at: nowISO() });
+  return j.url;
+}
+
+function openEditor(modKey, item){
+  if(modKey==="products") return openProductEditor(item);
+  if(modKey==="origins") return openOriginEditor(item);
+  if(modKey==="packaging") return openSimpleEditor("packaging", item);
+  if(modKey==="notices") return openSimpleEditor("notices", item);
+  if(modKey==="inquiries") return openSimpleEditor("inquiries", item);
+}
+
+function openProductEditor(item){
+  const isNew = !item;
+  const it = isNew ? { id:0, name:"", en:"", desc:"", category:"", img:"", gallery:[], price:"", badge:"", status:"draft", slug:"", seo_title:"", seo_desc:"", updatedAt: nowISO() } : JSON.parse(JSON.stringify(item));
+  const cats = [...new Set((state.data.products||[]).map(p=>p.category).filter(Boolean))];
+  const mask = openModal(`
+    <div class="m-hd"><div class="t">${isNew?"新增产品":"编辑产品"}</div><button class="m-x">✕</button></div>
+    <div class="m-bd">
+      <div class="grp"><div class="g-hd">📋 基本信息</div><div class="g-bd">
+        ${field("标题 *", '<input id="f_name" value="'+escapeHtml(it.name)+'" placeholder="产品名称">')}
+        <div class="field-row">
+          ${field("副标题（英文）", '<input id="f_en" value="'+escapeHtml(it.en)+'" placeholder="English name">')}
+          ${field("分类", '<input id="f_category" list="catList" value="'+escapeHtml(it.category)+'" placeholder="如 精华/面霜">')}
+        </div>
+        <datalist id="catList">${cats.map(c=>'<option value="'+escapeHtml(c)+'">').join("")}</datalist>
+        ${field("描述", '<textarea id="f_desc">'+escapeHtml(it.desc)+'</textarea>')}
+      </div></div>
+      <div class="grp"><div class="g-hd">🖼️ 媒体（图片上传 · 拖拽排序）</div><div class="g-bd">
+        <div class="img-grid" id="galleryGrid"></div>
+        <input type="file" id="imgFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none">
+        <div style="margin-top:10px"><button class="btn sm" id="btnAddImg">＋ 上传图片</button> <span class="hint" style="color:var(--ink-3);font-size:12px">支持 jpg/png/webp ≤5MB；第一张为主图</span></div>
+      </div></div>
+      <div class="grp"><div class="g-hd">💰 销售</div><div class="g-bd">
+        <div class="field-row">
+          ${field("价格（¥）", '<input id="f_price" value="'+escapeHtml(it.price)+'" placeholder="如 299">')}
+          ${field("角标", '<input id="f_badge" value="'+escapeHtml(it.badge)+'" placeholder="如 新品/畅销">')}
+        </div>
+      </div></div>
+      <div class="grp"><div class="g-hd">🚦 状态</div><div class="g-bd">
+        ${field("发布状态", seg("f_status", [{v:"published",t:"发布"},{v:"draft",t:"草稿"},{v:"archived",t:"归档"}], it.status))}
+      </div></div>
+      <div class="grp"><div class="g-hd">🔍 SEO</div><div class="g-bd">
+        ${field("Slug（URL 标识）", '<input id="f_slug" value="'+escapeHtml(it.slug)+'" placeholder="如 ginseng-glow-serum">')}
+        ${field("SEO 标题", '<input id="f_seo_title" value="'+escapeHtml(it.seo_title)+'">')}
+        ${field("SEO 描述", '<textarea id="f_seo_desc">'+escapeHtml(it.seo_desc)+'</textarea>')}
+      </div></div>
+    </div>
+    <div class="m-ft"><button class="btn m-cancel">取消</button><button class="btn primary" id="btnSave">保存</button></div>`, true);
+
+  const grid = mask.querySelector("#galleryGrid");
+  function renderGallery(){
+    grid.innerHTML = (it.gallery||[]).map((g,idx)=>`
+      <div class="img-cell ${idx===0?"main":""}">
+        <img src="${escapeHtml(mediaUrl(g))}" onerror="this.style.display='none'">
+        <input class="alt-in" data-alt="${idx}" value="${escapeHtml((g&&g.alt)||"")}" placeholder="ALT 文本（SEO/无障碍）" title="图片 ALT 文本">
+        <div class="ops">
+          <button data-g="main" data-i="${idx}" ${idx===0?"disabled":""}>主图</button>
+          <button data-g="up" data-i="${idx}" ${idx===0?"disabled":""}>↑</button>
+          <button data-g="down" data-i="${idx}" ${idx===it.gallery.length-1?"disabled":""}>↓</button>
+          <button data-g="del" data-i="${idx}">✕</button>
+        </div>
+      </div>`).join("") + `<div class="img-add" id="imgAdd"><span style="font-size:20px">＋</span>上传图片</div>`;
+    grid.querySelector("#imgAdd").addEventListener("click", ()=> mask.querySelector("#imgFile").click());
+    grid.querySelectorAll(".img-cell .alt-in").forEach(a=> a.addEventListener("input", ()=>{ const i=Number(a.dataset.alt); const g=it.gallery[i]; if(g && typeof g==="object") g.alt = a.value; }));
+    grid.querySelectorAll(".img-cell .ops button").forEach(b=> b.addEventListener("click", ()=>{
+      const i = Number(b.dataset.i);
+      if(b.dataset.g==="main" && i>0){ const t = it.gallery.splice(i,1)[0]; it.gallery.unshift(t); }
+      if(b.dataset.g==="up" && i>0){ const t=it.gallery[i-1]; it.gallery[i-1]=it.gallery[i]; it.gallery[i]=t; }
+      if(b.dataset.g==="down" && i<it.gallery.length-1){ const t=it.gallery[i+1]; it.gallery[i+1]=it.gallery[i]; it.gallery[i]=t; }
+      if(b.dataset.g==="del") it.gallery.splice(i,1);
+      renderGallery();
+    }));
+  }
+  renderGallery();
+  const fileInput = mask.querySelector("#imgFile");
+  fileInput.addEventListener("change", async ()=>{
+    const fs = Array.from(fileInput.files||[]); if(!fs.length) return;
+    fileInput.parentElement.classList.add("uploading");
+    let ok=0, err="";
+    for(const f of fs){
+      try{
+        const url = await uploadImage(f, "product", it.id||0);
+        it.gallery.push({ url, alt:"", sort: it.gallery.length });
+        if(!it.img) it.img = url;
+        ok++;
+      }catch(e){ err = e.message; }
+    }
+    renderGallery(); toast(ok?("已上传 "+ok+" 张图片"+(err?("，失败："+err):"")):(err||"上传失败"), err?"err":"");
+    fileInput.parentElement.classList.remove("uploading");
+    fileInput.value = "";
+  });
+  mask.querySelectorAll(".seg .opt").forEach(o=> o.addEventListener("click", ()=>{
+    mask.querySelectorAll(".seg[data-name='"+o.parentElement.dataset.name+"'] .opt").forEach(x=>x.classList.remove("on"));
+    o.classList.add("on");
+  }));
+  mask.querySelector("#btnSave").addEventListener("click", ()=>{
+    it.name = mask.querySelector("#f_name").value.trim();
+    it.en = mask.querySelector("#f_en").value.trim();
+    it.category = mask.querySelector("#f_category").value.trim();
+    it.desc = mask.querySelector("#f_desc").value;
+    it.price = mask.querySelector("#f_price").value.trim();
+    it.badge = mask.querySelector("#f_badge").value.trim();
+    it.slug = mask.querySelector("#f_slug").value.trim();
+    it.seo_title = mask.querySelector("#f_seo_title").value.trim();
+    it.seo_desc = mask.querySelector("#f_seo_desc").value.trim();
+    const st = mask.querySelector(".seg[data-name='f_status'] .opt.on");
+    if(st) it.status = st.dataset.v;
+    if(!it.name){ toast("请填写产品标题","err"); return; }
+    if(!it.slug) it.slug = it.name.toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g,"-").replace(/^-+|-+$/g,"");
+    it.img = mediaUrl(it.gallery&&it.gallery[0]) || it.img || "";
+    const items = state.data.products;
+    if(isNew){ it.id = nextId(items); touch(it); items.push(it); }
+    else { const i = items.findIndex(x=>String(x.id)===String(it.id)); if(i>=0) items[i]=touch(it); }
+    persist("products"); logAction("产品管理", isNew?"新增":"编辑", it.name); closeModal(); toast("产品已保存"); renderList("products");
+  });
+  bindModalClose();
+}
+
+function openOriginEditor(item){
+  const isNew = !item;
+  const it = isNew ? { id:0, name:"", zh:"", region:"", page:"", desc:"", img:"", gallery:[], status:"draft", updatedAt: nowISO() } : JSON.parse(JSON.stringify(item));
+  if(!Array.isArray(it.gallery)) it.gallery = it.img? [{url:it.img,alt:"",sort:0}] : [];
+  const mask = openModal(`
+    <div class="m-hd"><div class="t">${isNew?"新增种植基地":"编辑种植基地"}</div><button class="m-x">✕</button></div>
+    <div class="m-bd">
+      <div class="grp"><div class="g-hd">📋 基本信息</div><div class="g-bd">
+        ${field("英文名 *", '<input id="f_name" value="'+escapeHtml(it.name||"")+'" placeholder="如 Rose">')}
+        <div class="field-row">
+          ${field("中文名", '<input id="f_zh" value="'+escapeHtml(it.zh||"")+'" placeholder="如 玫瑰">')}
+          ${field("产地（地区）*", '<input id="f_region" value="'+escapeHtml(it.region||"")+'" placeholder="如 贵州毕节">')}
+        </div>
+        ${field("页面文件", '<input id="f_page" value="'+escapeHtml(it.page||"")+'" placeholder="如 origin-aloe.html">')}
+        ${field("描述（种植环境 / 采摘 / 品质特点）", '<textarea id="f_desc" rows="6">'+escapeHtml(it.desc||"")+'</textarea>')}
+      </div></div>
+      <div class="grp"><div class="g-hd">🖼️ 基地媒体（图片严格归属本基地记录 · 拖拽排序）</div><div class="g-bd">
+        <div class="img-grid" id="galleryGrid"></div>
+        <input type="file" id="imgFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none">
+        <div style="margin-top:10px"><button class="btn sm" id="btnAddImg">＋ 上传图片</button> <span class="hint" style="color:var(--ink-3);font-size:12px">支持 jpg/png/webp ≤5MB；第一张为主图（封面），拖拽卡片可排序</span></div>
+      </div></div>
+      <div class="grp"><div class="g-hd">🚦 状态</div><div class="g-bd">
+        ${field("发布状态", seg("f_status", [{v:"published",t:"发布"},{v:"draft",t:"草稿"},{v:"archived",t:"归档"}], it.status||"published"))}
+      </div></div>
+    </div>
+    <div class="m-ft"><button class="btn m-cancel">取消</button><button class="btn primary" id="btnSave">保存</button></div>`, true);
+  const grid = mask.querySelector("#galleryGrid");
+  let dragFrom = null;
+  function renderGallery(){
+    grid.innerHTML = (it.gallery||[]).map((g,idx)=>`
+      <div class="img-cell ${idx===0?"main":""}" draggable="true" data-idx="${idx}">
+        <img src="${escapeHtml(mediaUrl(g))}" onerror="this.style.display='none'">
+        <input class="alt-in" data-alt="${idx}" value="${escapeHtml((g&&g.alt)||"")}" placeholder="ALT 文本（必填建议）" title="图片 ALT 文本">
+        <div class="ops">
+          <button data-g="main" data-i="${idx}" ${idx===0?"disabled":""}>设为主图</button>
+          <button data-g="up" data-i="${idx}" ${idx===0?"disabled":""}>↑</button>
+          <button data-g="down" data-i="${idx}" ${idx===it.gallery.length-1?"disabled":""}>↓</button>
+          <button data-g="del" data-i="${idx}">✕</button>
+        </div>
+      </div>`).join("") + `<div class="img-add" id="imgAdd"><span style="font-size:20px">＋</span>上传图片</div>`;
+    grid.querySelector("#imgAdd").addEventListener("click", ()=> mask.querySelector("#imgFile").click());
+    grid.querySelectorAll(".img-cell .alt-in").forEach(a=> a.addEventListener("input", ()=>{ const i=Number(a.dataset.alt); const g=it.gallery[i]; if(g && typeof g==="object") g.alt = a.value; }));
+    grid.querySelectorAll(".img-cell").forEach(cell=>{
+      cell.addEventListener("dragstart", ()=>{ dragFrom = Number(cell.dataset.idx); });
+      cell.addEventListener("dragover", e=>{ e.preventDefault(); });
+      cell.addEventListener("drop", e=>{ e.preventDefault(); const to=Number(cell.dataset.idx); if(dragFrom==null||dragFrom===to||dragFrom<0||dragFrom>=it.gallery.length) return; const t=it.gallery.splice(dragFrom,1)[0]; it.gallery.splice(to,0,t); dragFrom=null; renderGallery(); });
+    });
+    grid.querySelectorAll(".img-cell .ops button").forEach(b=> b.addEventListener("click", ()=>{
+      const i = Number(b.dataset.i);
+      if(b.dataset.g==="main" && i>0){ const t = it.gallery.splice(i,1)[0]; it.gallery.unshift(t); }
+      if(b.dataset.g==="up" && i>0){ const t=it.gallery[i-1]; it.gallery[i-1]=it.gallery[i]; it.gallery[i]=t; }
+      if(b.dataset.g==="down" && i<it.gallery.length-1){ const t=it.gallery[i+1]; it.gallery[i+1]=it.gallery[i]; it.gallery[i]=t; }
+      if(b.dataset.g==="del") it.gallery.splice(i,1);
+      renderGallery();
+    }));
+  }
+  renderGallery();
+  const fileInput = mask.querySelector("#imgFile");
+  fileInput.addEventListener("change", async ()=>{
+    const fs = Array.from(fileInput.files||[]); if(!fs.length) return;
+    fileInput.parentElement.classList.add("uploading");
+    let ok=0, err="";
+    for(const f of fs){
+      try{
+        const url = await uploadImage(f, "origin", it.id||0);
+        it.gallery.push({ url, alt:"", sort: it.gallery.length });
+        if(!it.img) it.img = url;
+        ok++;
+      }catch(e){ err = e.message; }
+    }
+    renderGallery(); toast(ok?("已上传 "+ok+" 张图片"+(err?("，失败："+err):"")):(err||"上传失败"), err?"err":"");
+    fileInput.parentElement.classList.remove("uploading");
+    fileInput.value = "";
+  });
+  mask.querySelectorAll(".seg .opt").forEach(o=> o.addEventListener("click", ()=>{
+    mask.querySelectorAll(".seg[data-name='"+o.parentElement.dataset.name+"'] .opt").forEach(x=>x.classList.remove("on"));
+    o.classList.add("on");
+  }));
+  mask.querySelector("#btnSave").addEventListener("click", ()=>{
+    it.name = mask.querySelector("#f_name").value.trim();
+    it.zh = mask.querySelector("#f_zh").value.trim();
+    it.region = mask.querySelector("#f_region").value.trim();
+    it.page = mask.querySelector("#f_page").value.trim();
+    it.desc = mask.querySelector("#f_desc").value;
+    const st = mask.querySelector(".seg[data-name='f_status'] .opt.on");
+    if(st) it.status = st.dataset.v;
+    if(!it.name){ toast("请填写英文名","err"); return; }
+    if(!it.region){ toast("请填写产地（地区）","err"); return; }
+    it.gallery = it.gallery.map((g,i)=>({ url: mediaUrl(g), alt: (g&&g.alt)||"", sort: i }));
+    it.img = mediaUrl(it.gallery[0]) || it.img || "";
+    const items = state.data.origins;
+    const hasId = Object.prototype.hasOwnProperty.call(it,"id") && it.id;
+    if(!hasId){ it.id = nextId(items); }
+    touch(it);
+    const i = items.findIndex(x=>String(x.id)===String(it.id));
+    if(i>=0) items[i]=it; else items.push(it);
+    persist("origins"); logAction("种植基地", isNew?"新增":"编辑", (it.zh||it.name)+"（"+it.region+"）"); closeModal(); toast("基地已保存"); renderList("origins");
+  });
+  bindModalClose();
+}
+
+function openSimpleEditor(modKey, item){
+  const isNew = !item;
+  const it = isNew ? {} : JSON.parse(JSON.stringify(item));
+  const configs = {
+    origins: {
+      title: isNew?"新增种植基地":"编辑种植基地",
+      fields: ()=> [
+        field("英文名 *", '<input id="f_name" value="'+escapeHtml(it.name||"")+'">'),
+        field("中文名", '<input id="f_zh" value="'+escapeHtml(it.zh||"")+'">'),
+        field("地区", '<input id="f_region" value="'+escapeHtml(it.region||"")+'">'),
+        field("页面文件", '<input id="f_page" value="'+escapeHtml(it.page||"")+'" placeholder="如 origin-aloe.html">'),
+        field("描述", '<textarea id="f_desc">'+escapeHtml(it.desc||"")+'</textarea>')
+      ]
+    },
+    packaging: {
+      title: isNew?"新增包材供应商":"编辑包材供应商",
+      fields: ()=> [
+        field("供应商 *", '<input id="f_company" value="'+escapeHtml(it.company||"")+'">'),
+        field("分类", '<input id="f_category" value="'+escapeHtml(it.category||"")+'" placeholder="如 玻璃瓶类">'),
+        field("业务", '<input id="f_business" value="'+escapeHtml(it.business||"")+'">'),
+        field("渠道", '<input id="f_channel" value="'+escapeHtml(it.channel||"")+'">'),
+        field("来源", '<input id="f_source" value="'+escapeHtml(it.source||"")+'">')
+      ]
+    },
+    notices: {
+      title: isNew?"新增公告":"编辑公告",
+      fields: ()=> [
+        field("标题 *", '<input id="f_title" value="'+escapeHtml(it.title||"")+'">'),
+        field("分类", '<input id="f_cat" value="'+escapeHtml(it.cat||"")+'" placeholder="如 公司新闻/行业热门">'),
+        field("摘要", '<textarea id="f_summary">'+escapeHtml(it.summary||"")+'</textarea>'),
+        field("日期", '<input id="f_date" value="'+escapeHtml(it.date||"")+'" placeholder="如 2026-08">')
+      ]
+    },
+    inquiries: {
+      title: "查看 / 处理询盘",
+      fields: ()=> [
+        field("姓名", '<input id="f_name" value="'+escapeHtml(it.name||"")+'" readonly>'),
+        field("邮箱", '<input id="f_email" value="'+escapeHtml(it.email||"")+'" readonly>'),
+        field("电话", '<input id="f_phone" value="'+escapeHtml(it.phone||"")+'" readonly>'),
+        field("来源", '<input id="f_source" value="'+escapeHtml(it.source||"")+'" readonly>'),
+        field("留言内容", '<textarea id="f_message" readonly>'+escapeHtml(it.message||"")+'</textarea>'),
+        field("处理状态", seg("f_status", [{v:"new",t:"新询盘"},{v:"handled",t:"已处理"}], it.status||"new"))
+      ]
+    }
+  };
+  const cfg = configs[modKey];
+  const titleKey = modKey==="packaging" ? "company" : modKey==="notices" ? "title" : "name";
+  const mask = openModal(`
+    <div class="m-hd"><div class="t">${cfg.title}</div><button class="m-x">✕</button></div>
+    <div class="m-bd">${cfg.fields().join("")}</div>
+    <div class="m-ft"><button class="btn m-cancel">取消</button><button class="btn primary" id="btnSave">保存</button></div>`);
+  mask.querySelectorAll(".seg .opt").forEach(o=> o.addEventListener("click", ()=>{
+    mask.querySelectorAll(".seg[data-name='"+o.parentElement.dataset.name+"'] .opt").forEach(x=>x.classList.remove("on"));
+    o.classList.add("on");
+  }));
+  mask.querySelector("#btnSave").addEventListener("click", ()=>{
+    const g = id => mask.querySelector(id);
+    const vals = {};
+    if(modKey==="origins"){ vals.name=g("#f_name").value.trim(); vals.zh=g("#f_zh").value.trim(); vals.region=g("#f_region").value.trim(); vals.page=g("#f_page").value.trim(); vals.desc=g("#f_desc").value; }
+    if(modKey==="packaging"){ vals.company=g("#f_company").value.trim(); vals.category=g("#f_category").value.trim(); vals.business=g("#f_business").value.trim(); vals.channel=g("#f_channel").value.trim(); vals.source=g("#f_source").value.trim(); }
+    if(modKey==="notices"){ vals.title=g("#f_title").value.trim(); vals.cat=g("#f_cat").value.trim(); vals.summary=g("#f_summary").value.trim(); vals.date=g("#f_date").value.trim(); }
+    if(modKey==="inquiries"){ const st=g(".seg[data-name='f_status'] .opt.on"); vals.status = st? st.dataset.v : "new"; }
+    const req = vals[titleKey];
+    if(modKey!=="inquiries" && (!req || !String(req).trim())){ toast("请填写必填项","err"); return; }
+    const items = state.data[modKey];
+    const hasId = Object.prototype.hasOwnProperty.call(it,"id");
+    if(modKey==="inquiries" && hasId){ it.status = vals.status; }
+    else {
+      Object.assign(it, vals);
+      if(!hasId){ it.id = nextId(items); }
+    }
+    if(modKey!=="inquiries") it.status = it.status || "published";
+    touch(it);
+    if(hasId){ const i = items.findIndex(x=>String(x.id)===String(it.id)); if(i>=0) items[i]=it; }
+    else { items.push(it); }
+    persist(modKey); logAction({origins:"种植基地",packaging:"包材库",notices:"公告管理",inquiries:"询盘管理"}[modKey], modKey==="inquiries"?"状态更新":(isNew?"新增":"编辑"), modKey==="inquiries"? (it.name||it.email||"")+" → "+it.status : (vals[titleKey]||"")); closeModal(); toast("已保存"); renderList(modKey);
+  });
+  bindModalClose();
+}
+
+/* ================= 设置 ================= */
+function downloadCSV(filename, rows){
+  const esc = v => '"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+  const csv = rows.map(r=>r.map(esc).join(",")).join("\r\n");
+  const blob = new Blob(["\ufeff"+csv], { type:"text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+}
+function ownerLabel(type, id){
+  const names = { product:"产品", origin:"种植基地", unassigned:"未归属" };
+  if(type==="product"){ const p=(state.data.products||[]).find(x=>String(x.id)===String(id)); return "产品 / "+(p?p.name:id); }
+  if(type==="origin"){ const o=(state.data.origins||[]).find(x=>String(x.id)===String(id)); return "种植基地 / "+(o?(o.zh||o.name):id); }
+  return (names[type]||type||"未归属")+(id?(" / "+id):"");
+}
+function findMediaUsage(url){
+  const hits=[];
+  (state.data.products||[]).forEach(it=>{ const gs=Array.isArray(it.gallery)?it.gallery:[]; if([it.img].concat(gs.map(x=>mediaUrl(x))).includes(url)) hits.push("产品 / "+(it.name||it.id)); });
+  (state.data.origins||[]).forEach(it=>{ const gs=Array.isArray(it.gallery)?it.gallery:[]; if([it.img].concat(gs.map(x=>mediaUrl(x))).includes(url)) hits.push("种植基地 / "+(it.zh||it.name||it.id)); });
+  return hits.length? hits.join("、") : "—";
+}
+function renderSettings(){
+  state.setTab = state.setTab || "site";
+  const c = document.getElementById("content");
+  const tabs = [ ["site","站点信息"], ["contact","联系方式"], ["lang","语言"], ["data","数据导入导出"], ["media","媒体库"], ["audit","操作日志"], ["security","安全"] ];
+  c.innerHTML = `
+    <div class="page-title">设置</div>
+    <div class="page-sub">站点信息 · 联系方式 · 语言 · 数据 · 媒体库 · 操作日志 · 安全</div>
+    <div class="set-wrap">
+      <div class="set-nav">${tabs.map(t=>`<a data-tab="${t[0]}" class="${state.setTab===t[0]?"active":""}">${t[1]}</a>`).join("")}</div>
+      <div class="set-page" id="setPage"></div>
+    </div>`;
+  c.querySelectorAll(".set-nav a").forEach(a=> a.addEventListener("click", ()=>{ state.setTab=a.dataset.tab; renderSettings(); }));
+  const sp = document.getElementById("setPage");
+  const s = state.site;
+
+  if(state.setTab==="site"){
+    sp.innerHTML = `
+      <h3 style="margin-bottom:14px">站点信息</h3>
+      ${field("站点名称", '<input id="s_name" value="'+escapeHtml(s.site_name)+'">')}
+      <div class="field-row">
+        ${field("域名", '<input id="s_domain" value="'+escapeHtml(s.domain)+'">')}
+        ${field("版本", '<input id="s_ver" value="'+escapeHtml(s.version)+'">')}
+      </div>
+      ${field("Logo 图片地址", '<input id="s_logo" value="'+escapeHtml(s.logo||"")+'" placeholder="/assets/xxx 或 images/logo.png">')}
+      ${field("页脚备注", '<input id="s_footer" value="'+escapeHtml(s.footer_note||"")+'">')}
+      <div style="display:flex;gap:10px;margin-top:8px"><button class="btn primary" id="s_save">保存站点信息</button></div>`;
+    sp.querySelector("#s_save").addEventListener("click", ()=>{
+      s.site_name = sp.querySelector("#s_name").value.trim() || s.site_name;
+      s.domain = sp.querySelector("#s_domain").value.trim();
+      s.version = sp.querySelector("#s_ver").value.trim();
+      s.logo = sp.querySelector("#s_logo").value.trim();
+      s.footer_note = sp.querySelector("#s_footer").value.trim();
+      s.updated_at = nowISO(); persistSite();
+      const lg = document.getElementById("brandLogo"); if(lg && s.logo) lg.src = s.logo;
+      renderNav(); logAction("设置","保存站点信息", s.site_name); toast("站点信息已保存");
+    });
+  }
+  if(state.setTab==="contact"){
+    sp.innerHTML = `
+      <h3 style="margin-bottom:14px">联系方式</h3>
+      ${field("邮箱", '<input id="s_email" value="'+escapeHtml(s.email||"")+'">')}
+      <div class="field-row">
+        ${field("WhatsApp", '<input id="s_whatsapp" value="'+escapeHtml(s.whatsapp||"")+'" placeholder="+86 138 0000 0000">')}
+        ${field("电话", '<input id="s_phone" value="'+escapeHtml(s.phone||"")+'">')}
+      </div>
+      ${field("地址", '<input id="s_addr" value="'+escapeHtml(s.address||"")+'">')}
+      <div style="display:flex;gap:10px;margin-top:8px"><button class="btn primary" id="s_save">保存联系方式</button></div>`;
+    sp.querySelector("#s_save").addEventListener("click", ()=>{
+      s.email = sp.querySelector("#s_email").value.trim();
+      s.whatsapp = sp.querySelector("#s_whatsapp").value.trim();
+      s.phone = sp.querySelector("#s_phone").value.trim();
+      s.address = sp.querySelector("#s_addr").value.trim();
+      s.updated_at = nowISO(); persistSite(); logAction("设置","保存联系方式", s.email); toast("联系方式已保存");
+    });
+  }
+  if(state.setTab==="lang"){
+    sp.innerHTML = `
+      <h3 style="margin-bottom:14px">语言设置</h3>
+      <div style="margin-bottom:12px">${field("默认语言", '<select id="s_def">'+s.languages.map(l=>`<option value="${escapeHtml(l.code)}" ${s.default_lang===l.code?"selected":""}>${escapeHtml(l.name)} (${escapeHtml(l.code)})</option>`).join("")+'</select>')}</div>
+      <div id="langList">${s.languages.map((l,i)=>`<div class="lang-row"><span class="code">${escapeHtml(l.code)}</span><span class="name">${escapeHtml(l.name)}</span>${l.code===s.default_lang?'<span class="def">默认</span>':'<button class="btn sm" data-setdef="'+escapeHtml(l.code)+'">设为默认</button>'}<button class="btn sm danger" data-del="'+i+'">删除</button></div>`).join("")}</div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <input id="nl_code" placeholder="语言代码，如 fr" style="width:130px">
+        <input id="nl_name" placeholder="语言名称，如 Français" style="flex:1">
+        <button class="btn primary" id="nl_add">添加语言</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px"><button class="btn" id="s_save">保存语言设置</button></div>`;
+    sp.querySelector("#nl_add").addEventListener("click", ()=>{
+      const code = sp.querySelector("#nl_code").value.trim().toLowerCase();
+      const name = sp.querySelector("#nl_name").value.trim();
+      if(!code||!name){ toast("请填写代码与名称","err"); return; }
+      if(s.languages.some(l=>l.code===code)){ toast("该语言已存在","err"); return; }
+      s.languages.push({code, name}); persistSite(); logAction("设置","添加语言", code+" "+name); renderSettings(); toast("语言已添加");
+    });
+    sp.querySelectorAll("[data-setdef]").forEach(b=> b.addEventListener("click", ()=>{ s.default_lang = b.dataset.setdef; persistSite(); logAction("设置","设置默认语言", b.dataset.setdef); renderSettings(); toast("默认语言已更新"); }));
+    sp.querySelectorAll("[data-del]").forEach(b=> b.addEventListener("click", ()=>{
+      const i = Number(b.dataset.del); const l = s.languages[i];
+      if(!l) return;
+      if(l.code===s.default_lang){ toast("不能删除默认语言","err"); return; }
+      s.languages.splice(i,1); persistSite(); logAction("设置","删除语言", l.code); renderSettings(); toast("已删除");
+    }));
+    sp.querySelector("#s_save").addEventListener("click", ()=>{
+      s.default_lang = sp.querySelector("#s_def").value; s.updated_at=nowISO(); persistSite(); logAction("设置","保存语言设置", s.default_lang); toast("语言设置已保存");
+    });
+  }
+  if(state.setTab==="data"){
+    sp.innerHTML = `
+      <h3 style="margin-bottom:6px">数据导入导出</h3>
+      <p class="hint" style="color:var(--ink-3);font-size:12.5px;margin-bottom:16px">编辑数据保存在浏览器本地（localStorage）。导出 JSON 后，可随 Worker 部署为 /bhbohui/data/*.json 生效。</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
+        <button class="btn primary" id="d_export">⬇ 导出全部数据（JSON）</button>
+        <button class="btn" id="d_import">⬆ 导入数据文件</button>
+        <button class="btn danger" id="d_reset">↺ 从线上重新加载（丢弃本地修改）</button>
+        <input type="file" id="d_file" accept=".json,application/json" style="display:none">
+      </div>
+      <div class="panel"><div class="hd">数据模块概览</div><div class="bd">
+        <table><thead><tr><th>模块</th><th>数据文件</th><th>记录数</th><th>本地已修改</th></tr></thead><tbody>
+        ${MODULES.map(m=>`<tr><td class="cell-title">${m.label}</td><td class="cell-sub">/bhbohui/data/${m.file}</td><td>${(state.data[m.key]||[]).length}</td><td>${lsGet(m.key)? "是":"否"}</td></tr>`).join("")}
+        <tr><td class="cell-title">站点设置</td><td class="cell-sub">/bhbohui/data/site.json</td><td>1</td><td>${lsGet(SITE_KEY)? "是":"否"}</td></tr>
+        </tbody></table>
+      </div></div>`;
+    sp.querySelector("#d_export").addEventListener("click", ()=>{
+      const payload = { exported_at: nowISO(), version: state.site.version, site: state.site };
+      MODULES.forEach(m=> payload[m.key] = { items: state.data[m.key] });
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "bhbohui-data-"+new Date().toISOString().slice(0,10)+".json";
+      a.click(); URL.revokeObjectURL(a.href);
+      logAction("设置","导出数据", "全部模块 JSON"); toast("已导出 JSON，可随部署发布");
+    });
+    sp.querySelector("#d_import").addEventListener("click", ()=> sp.querySelector("#d_file").click());
+    sp.querySelector("#d_file").addEventListener("change", async ()=>{
+      const f = sp.querySelector("#d_file").files[0]; if(!f) return;
+      try{
+        const data = JSON.parse(await f.text());
+        let cnt = 0;
+        MODULES.forEach(m=>{ if(data[m.key] && Array.isArray(data[m.key].items)){ state.data[m.key] = data[m.key].items.map(x=>normalizeItem(x,m.key)); persist(m.key); cnt += state.data[m.key].length; } });
+        if(data.site){ state.site = Object.assign(state.site, data.site); persistSite(); }
+        toast("导入成功，共 "+cnt+" 条记录"); renderNav(); go(state.page);
+      }catch(e){ toast("导入失败：文件格式不正确","err"); }
+      sp.querySelector("#d_file").value = "";
+    });
+    sp.querySelector("#d_reset").addEventListener("click", async ()=>{
+      if(!confirm("将丢弃本地修改并从线上数据文件重新加载，确定？")) return;
+      Object.keys(localStorage).filter(k=>k.startsWith(LS_PREFIX) && k!==LS_PREFIX+"actions").forEach(k=>localStorage.removeItem(k));
+      await loadAll(); logAction("设置","重新加载线上数据",""); renderNav(); toast("已重新加载线上数据"); go("dashboard");
+    });
+  }
+  if(state.setTab==="media"){
+    const media = getList(LS_MEDIA);
+    const rows = media.slice().reverse().map(m=>`
+      <tr>
+        <td>${m.url? '<img src="'+escapeHtml(m.url)+'" style="width:56px;height:56px;object-fit:cover;border-radius:6px;background:#fff" onerror="this.outerHTML=\'<span style=color:#999>无效</span>\'">' : '<span style="color:#999">—</span>'}</td>
+        <td class="cell-sub" style="word-break:break-all"><a href="${escapeHtml(m.url||"")}" target="_blank" rel="noopener">${escapeHtml(m.url||"—")}</a></td>
+        <td>${escapeHtml(ownerLabel(m.owner_type, m.owner_id))}</td>
+        <td class="cell-sub">${escapeHtml(findMediaUsage(m.url))}</td>
+        <td class="cell-sub">${m.alt? escapeHtml(m.alt) : '<span style="color:#b26a3a">未填写</span>'}</td>
+        <td class="cell-sub">${escapeHtml((m.at||"").replace("T"," ").slice(0,19))}</td>
+      </tr>`).join("");
+    sp.innerHTML = `
+      <h3 style="margin-bottom:6px">媒体库（Media Library）</h3>
+      <p class="hint" style="color:var(--ink-3);font-size:12.5px;margin-bottom:14px">记录通过本后台上传的图片，按「归属实体」关联（产品 / 种植基地），可反向查看每张图被哪些内容使用，保证图地对应。</p>
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <button class="btn" id="m_export">⬇ 导出媒体清单（CSV）</button>
+      </div>
+      ${media.length? `<div class="panel"><div class="bd" style="overflow:auto"><table><thead><tr><th>缩略图</th><th>文件</th><th>归属实体</th><th>使用位置</th><th>ALT</th><th>上传时间</th></tr></thead><tbody>${rows}</tbody></table></div></div>` : '<div class="empty">暂无上传记录，请先在产品 / 种植基地编辑页上传图片</div>'}`;
+    sp.querySelector("#m_export").addEventListener("click", ()=>{
+      downloadCSV("bhbohui-media.csv", [["url","owner_type","owner_id","alt","uploaded_at"]].concat(media.map(m=>[m.url,m.owner_type,m.owner_id,m.alt,m.at])));
+      toast("媒体清单已导出");
+    });
+  }
+  if(state.setTab==="audit"){
+    const acts = getList(LS_ACTIONS);
+    const rows = acts.slice().reverse().map(a=>`
+      <tr><td class="cell-sub">${escapeHtml((a.at||"").replace("T"," ").slice(0,19))}</td><td>${escapeHtml(a.module||"")}</td><td>${escapeHtml(a.action||"")}</td><td class="cell-sub">${escapeHtml(a.detail||"")}</td></tr>`).join("");
+    sp.innerHTML = `
+      <h3 style="margin-bottom:6px">操作日志（Audit Log）</h3>
+      <p class="hint" style="color:var(--ink-3);font-size:12.5px;margin-bottom:14px">记录本后台的关键操作（新增 / 编辑 / 复制 / 删除 / 状态切换 / 批量操作 / 设置变更），支持导出 CSV。</p>
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <button class="btn" id="a_export">⬇ 导出操作日志（CSV）</button>
+        <button class="btn danger" id="a_clear">清空日志</button>
+      </div>
+      ${acts.length? `<div class="panel"><div class="bd" style="overflow:auto"><table><thead><tr><th>时间</th><th>模块</th><th>操作</th><th>详情</th></tr></thead><tbody>${rows}</tbody></table></div></div>` : '<div class="empty">暂无操作记录</div>'}`;
+    sp.querySelector("#a_export").addEventListener("click", ()=>{
+      downloadCSV("bhbohui-audit.csv", [["time","module","action","detail"]].concat(acts.map(a=>[a.at,a.module,a.action,a.detail])));
+      toast("操作日志已导出");
+    });
+    sp.querySelector("#a_clear").addEventListener("click", ()=>{
+      if(!confirm("确定清空全部操作日志？")) return;
+      localStorage.removeItem(LS_ACTIONS); logAction("系统","清空操作日志",""); toast("操作日志已清空"); renderSettings();
+    });
+  }
+  if(state.setTab==="security"){
+    sp.innerHTML = `
+      <h3 style="margin-bottom:14px">安全设置</h3>
+      <div class="grp"><div class="g-hd">🔑 修改登录密码</div><div class="g-bd">
+        ${field("当前密码", '<input type="password" id="p_cur" autocomplete="current-password">')}
+        <div class="field-row">
+          ${field("新密码（至少 6 位）", '<input type="password" id="p_new" autocomplete="new-password">')}
+          ${field("确认新密码", '<input type="password" id="p_new2" autocomplete="new-password">')}
+        </div>
+        <div style="margin-top:8px"><button class="btn primary" id="p_save">修改密码</button></div>
+      </div></div>
+      <p class="hint" style="color:var(--ink-3);font-size:12px">修改后的密码经哈希后写入 Cloudflare KV，重启不丢失；未修改时使用部署默认密码。</p>`;
+    sp.querySelector("#p_save").addEventListener("click", async ()=>{
+      const cur = sp.querySelector("#p_cur").value;
+      const n1 = sp.querySelector("#p_new").value;
+      const n2 = sp.querySelector("#p_new2").value;
+      if(!cur){ toast("请输入当前密码","err"); return; }
+      if(n1.length<6){ toast("新密码至少 6 位","err"); return; }
+      if(n1!==n2){ toast("两次输入的新密码不一致","err"); return; }
+      const btn = sp.querySelector("#p_save"); btn.disabled = true;
+      try{
+        const r = await fetch("/bhbohui/api/change-password", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ current_password: cur, new_password: n1 }) });
+        const j = await r.json().catch(()=>({ok:false}));
+        if(r.ok && j.ok){ logAction("设置","修改密码",""); toast("密码已修改，下次登录请使用新密码"); sp.querySelector("#p_cur").value=""; sp.querySelector("#p_new").value=""; sp.querySelector("#p_new2").value=""; }
+        else toast(j.message||"修改失败","err");
+      }catch(e){ toast("网络错误","err"); }
+      btn.disabled = false;
+    });
+  }
+}
+
+/* ================= 初始化 ================= */
+async function init(){
+  document.getElementById("burger").addEventListener("click", ()=> document.getElementById("sidebar").classList.toggle("open"));
+  document.getElementById("btnLogout").addEventListener("click", async ()=>{
+    await fetch("/bhbohui/api/logout", { method:"POST" }).catch(()=>{});
+    location.href = "/bhbohui/login";
+  });
+  try{
+    const r = await fetch("/bhbohui/api/session", { cache:"no-store" });
+    const j = await r.json().catch(()=>({ok:false}));
+    if(!j.ok){ location.href = "/bhbohui/login"; return; }
+  }catch(e){ location.href = "/bhbohui/login"; return; }
+  await loadAll();
+  renderNav();
+  go("dashboard");
+}
+init();
+</script>
+</body>
+</html>

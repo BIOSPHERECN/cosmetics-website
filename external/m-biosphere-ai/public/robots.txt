@@ -1,0 +1,1126 @@
+# As a condition of accessing this website, you agree to abide by the following
+# content signals:
+
+# (a)  If a Content-Signal = yes, you may collect content for the corresponding
+#      use.
+# (b)  If a Content-Signal = no, you may not collect content for the
+#      corresponding use.
+# (c)  If the website operator does not include a Content-Signal for a
+#      corresponding use, the website operator neither grants nor restricts
+#      permission via Content-Signal with respect to the corresponding use.
+
+# The content signals and their meanings are:
+
+# search:   building a search index and providing search results (e.g., returning
+#           hyperlinks and short excerpts from your website's contents). Search does not
+#           include providing AI-generated search summaries.
+# ai-input: inputting content into one or more AI models (e.g., retrieval
+#           augmented generation, grounding, or other real-time taking of content for
+#           generative AI search answers).
+# ai-train: training or fine-tuning AI models.
+# use:      how AI systems may consume the content (immediate, reference, or full).
+
+# ANY RESTRICTIONS EXPRESSED VIA CONTENT SIGNALS ARE EXPRESS RESERVATIONS OF
+# RIGHTS UNDER ARTICLE 4 OF THE EUROPEAN UNION DIRECTIVE 2019/790 ON COPYRIGHT
+# AND RELATED RIGHTS IN THE DIGITAL SINGLE MARKET.
+
+# BEGIN Cloudflare Managed content
+
+User-agent: *
+Content-Signal: search=yes,ai-train=no,use=reference
+Allow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: CloudflareBrowserRenderingCrawler
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: meta-externalagent
+Disallow: /
+
+# END Cloudflare Managed Content
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><script>window.__CF_IPCOUNTRY__="JP";</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="meta.title">BIOSPHERE-AI | 帛卉集团 BIOSPHERE GROUP</title>
+<meta name="description" content="帛卉集团自有护肤品牌 BIOSPHERE-AI：以发酵、低温闪萃与合成生物三大生物技术重释东方草本，让实验室里被科学验证的自然，抵达每一天的护肤仪式。">
+<meta name="keywords" content="BIOSPHERE-AI, 帛卉集团, 本草护肤, 生物科技护肤, 草本护肤, 精华, 面霜">
+<meta property="og:title" content="BIOSPHERE-AI | 帛卉集团 BIOSPHERE GROUP">
+<meta property="og:description" content="本草为先，生物科技驱动。发酵、低温闪萃与合成生物，让每一支产品都有数据背书。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/images/banner-cover.webp">
+<meta name="theme-color" content="#FAFAF5">
+<link rel="icon" type="image/png" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232D5016'/%3E%3Ctext x='16' y='22' font-size='14' font-family='Georgia' fill='%23F5EFDC' text-anchor='middle'%3EB%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/style.css">
+<script type="application/ld+json" data-i18n="nav.skincare">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "name": "BIOSPHERE-AI",
+      "alternateName": "帛卉集团 BIOSPHERE GROUP",
+      "description": "本草生物科技护肤品牌，以发酵、低温闪萃与合成生物三大技术重释东方草本。",
+      "url": "https://biosphere-ai.com/"
+    },
+    {
+      "@type": "WebSite",
+      "name": "BIOSPHERE-AI",
+      "url": "https://biosphere-ai.com/"
+    }
+  ]
+}
+</script>
+<script src="assets/i18n/zh-dict.js" defer></script>
+    <script src="assets/js/i18n.js" defer></script>
+</head>
+<body>
+
+<!-- 促销条 -->
+<div class="announcement" id="announcement">
+  <div class="announcement-inner">
+    <span class="announcement-text">AI-Powered Herbal Skincare · Global OEM / ODM</span>
+  </div>
+  <button class="announcement-close" aria-label="关闭" data-i18n-aria="common.close" onclick="document.getElementById('announcement').style.display='none'">&times;</button>
+</div>
+
+<!-- ============ HEADER ============ -->
+<header class="site-header" id="siteHeader">
+  <div class="header-inner">
+    <a href="#" class="logo" aria-label="BIOSPHERE-AI 首页" data-i18n-aria="common.home_aria">
+      <span class="logo-mark">B</span>
+      <span class="logo-text">BIOSPHERE<em>-AI</em></span>
+    </a>
+
+    <nav class="nav-links" id="navLinks" aria-label="主导航" data-i18n-aria="common.nav_aria">
+      <div class="nav-item has-dropdown">
+        <button class="nav-link" aria-haspopup="true"><span data-i18n="nav.shop">产品系列</span> <span class="nav-caret">▾</span></button>
+        <div class="dropdown">
+          <div class="dropdown-grid">
+            <a href="#products" data-i18n="nav.all_products">全部产品</a>
+            <a href="#products" data-i18n="nav.best">畅销榜</a>
+            <a href="#products" data-i18n="nav.skincare">护肤</a>
+            <a href="#products" data-i18n="nav.makeup">彩妆</a>
+            <a href="#lip-collection" data-i18n="nav.lips">唇部护理</a>
+            <a href="#products" data-i18n="nav.fragrance">香氛</a>
+            <a href="#body-essentials" data-i18n="nav.body">身体护理</a>
+            <a href="#products" data-i18n="nav.travel">旅行装</a>
+            <a href="#products" data-i18n="nav.gift">礼盒套装</a>
+            <a href="#ritual" data-i18n="nav.by_skin">按肤质</a>
+          </div>
+        </div>
+      </div>
+      <div class="nav-item"><a class="nav-link" href="#origins" data-i18n="nav.origins">原料溯源</a></div>
+      <div class="nav-item has-dropdown">
+        <button class="nav-link" aria-haspopup="true"><span data-i18n="nav.company">公司介绍</span> <span class="nav-caret">▾</span></button>
+        <div class="dropdown">
+          <div class="dropdown-grid company-grid">
+            <a href="company.html#company-intro" data-i18n="company.menu_intro">公司介绍</a>
+            <a href="company.html#brand-intro" data-i18n="company.menu_brand">品牌介绍</a>
+            <a href="company.html#production-line" data-i18n="company.menu_line">生产线</a>
+            <a href="company.html#video" data-i18n="company.menu_video">公司视频版块</a>
+            <a href="company.html#rd-team" data-i18n="company.menu_rd_team">公司研发团队</a>
+            <a href="company.html#rd-equipment" data-i18n="company.menu_rd_equip">研发设备</a>
+            <a href="company.html#client-brands" data-i18n="company.menu_client_brands">合作的客户品牌</a>
+            <a href="company.html#material-brands" data-i18n="company.menu_material_brands">合作的原料品牌方</a>
+            <a href="company.html#patents" data-i18n="company.menu_patents">公司专利</a>
+            <a href="company.html#certifications" data-i18n="company.menu_certs">认证资质文件</a>
+            <a href="company.html#prod-process" data-i18n="company.menu_prod_process">生产流程</a>
+            <a href="company.html#qc-process" data-i18n="company.menu_qc_process">质检流程</a>
+            <a href="company.html#packaging" data-i18n="company.menu_packaging">包材</a>
+            <a href="company.html#product-categories" data-i18n="company.menu_categories">不同类别的产品展示</a>
+            <a href="company.html#ip-collab" data-i18n="company.menu_ip">合作IP展示</a>
+            <a href="company.html#team" data-i18n="company.menu_team">团队风采展示</a>
+            <a href="company.html#culture" data-i18n="company.menu_culture">企业文化展示</a>
+            <a href="company.html#charity" data-i18n="company.menu_charity">企业慈善</a>
+            <a href="company.html#knowledge-graph" data-i18n="company.menu_knowledge">知识图谱</a>
+            <a href="company.html#logo" data-i18n="company.menu_logo">logo图片升级设计</a>
+            <a href="company.html#exhibition" data-i18n="company.menu_exhibition">参展图</a>
+            <a href="company.html#testimonials" data-i18n="company.menu_testimonials">客户见证</a>
+            <a href="company.html#showroom" data-i18n="company.menu_showroom">展厅展示</a>
+          </div>
+        </div>
+      </div>
+      <div class="nav-item"><a class="nav-link" href="ai-center.html" data-i18n="nav.ai_center">AI 交互中心</a></div>
+      <div class="nav-item"><a class="nav-link" href="news.html" data-i18n="nav.news">资讯中心</a></div>
+      <div class="nav-item"><a class="nav-link" href="membership.html" data-i18n="nav.member">会员</a></div>
+      <div class="nav-item"><a class="nav-link" href="#subscribe" data-i18n="nav.contact">联系</a></div>
+    </nav>
+
+    <div class="header-actions">
+      <div class="lang-switch" id="langSwitchHost"></div>
+<button class="icon-btn" id="searchToggle" aria-label="搜索" data-i18n-aria="nav.search" data-i18n-aria="nav.search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <a href="#" class="icon-btn" aria-label="会员账户" data-i18n-aria="common.account_aria"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg></a>
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="菜单" data-i18n-aria="common.menu_aria"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    </div>
+  </div>
+
+  <!-- 搜索条 -->
+  <div class="search-bar" id="searchBar">
+    <div class="search-bar-inner">
+      <input type="search" id="searchInput" placeholder="搜索产品、成分、功效…" data-i18n-placeholder="nav.search_ph" aria-label="搜索" data-i18n-aria="nav.search" data-i18n-aria="nav.search">
+      <button class="btn btn-dark" id="searchGo" data-i18n="nav.search">搜索</button>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- ============ 1. HERO 轮播 ============ -->
+<section class="hero" id="hero">
+  <div class="hero-slider" id="heroSlider">
+    <div class="hero-slide active">
+      <img src="images/banner-cover.webp" alt="BIOSPHERE-AI 本草生物科技护肤" fetchpriority="high">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <p class="hero-eyebrow reveal" data-i18n="hero.b2b_eyebrow">Global OEM / ODM Manufacturer · Guangzhou, China</p>
+        <h1 class="hero-title reveal"><span data-i18n="hero.b2b_title1">本草生物科技，</span><span data-i18n="hero.b2b_title2">全球品牌智造伙伴。</span></h1>
+        <p class="hero-sub hero-b2b-sub reveal" data-i18n="hero.b2b_sub">14+ 年 OEM/ODM 智造经验，服务 40+ 出口国家与地区，24 项国际认证——从配方、剂型到包装一站式交付，为全球品牌打造可信赖的美妆智造供应链。</p>
+        <div class="hero-stats reveal">
+          <div class="hero-stat"><strong>14+</strong><span data-i18n="hero.b2b_stat1">年智造经验</span></div>
+          <div class="hero-stat"><strong>40+</strong><span data-i18n="hero.b2b_stat2">出口国家/地区</span></div>
+          <div class="hero-stat"><strong>24</strong><span data-i18n="hero.b2b_stat3">项国际认证</span></div>
+        </div>
+        <div class="hero-cta reveal">
+          <a href="#inquiry" class="btn btn-light" data-i18n="hero.b2b_cta1">获取报价</a>
+          <a href="#sampling" class="btn btn-ghost-light" data-i18n="hero.b2b_cta2">申请打样</a>
+          <a href="#products" class="btn btn-text" data-i18n="hero.cta1">现在看看</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. 肤质测试 CTA ============ -->
+<section class="ritual-cta" id="ritual">
+  <div class="container">
+    <div class="ritual-grid">
+      <div class="ritual-card reveal">
+        <div class="ritual-icon">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3 4 7v6c0 4.4 3.4 8 8 8s8-3.6 8-8V7l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg>
+        </div>
+        <div>
+          <h2 data-i18n="ritual.title">为你的肌肤找到完美仪式</h2>
+          <p data-i18n="ritual.sub">30 秒小测试，找到属于你的本草护肤流程。</p>
+        </div>
+        <img class="ritual-card-img" src="images/medierba-body.webp" alt="BIOSPHERE-AI Herbal Skincare Ritual" loading="lazy">
+        <a href="ai-center.html#quiz" class="btn btn-dark" data-i18n="hero.cta2">开始肤质测试</a>
+      </div>
+      <div class="ai-chat reveal" id="aiChat">
+        <div class="ai-chat-head">
+          <span class="ai-dot"></span>
+          <div>
+            <strong data-i18n="ai.name">BIOSPHERE-AI 肌肤顾问</strong>
+            <em data-i18n="ai.tag">专属护肤 AI · 只聊肌肤与本草</em>
+          </div>
+        </div>
+        <div class="ai-chat-body" id="aiChatBox">
+          <div class="ai-msg ai-assistant"><div class="ai-bubble" data-i18n="ai.welcome">你好，我是 BIOSPHERE-AI 肌肤顾问。可以问我肤质判断、产品成分、护肤流程与搭配建议，我会用本草与生物科技的知识为你解答。</div></div>
+        </div>
+        <div class="ai-chat-input">
+          <input id="aiChatInput" type="text" placeholder="例如：油皮适合哪款精华？" data-i18n-placeholder="ai.ph" maxlength="500" autocomplete="off">
+          <button id="aiChatSend" type="button" data-i18n="ai.send">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. BODY ESSENTIALS ============ -->
+<section class="section" id="body-essentials">
+  <div class="container">
+    <div class="banner-split reveal">
+      <div class="banner-media">
+        <img src="images/medierba-body.webp" alt="本草身体养护系列" loading="lazy">
+        <span class="banner-tag">body essentials</span>
+      </div>
+      <div class="banner-copy">
+        <p class="section-label">Body Ritual</p>
+        <h2 data-i18n="body.title">本草身体养护</h2>
+        <p class="section-subtitle" data-i18n="body.sub">发酵油脂 × 本草提取，从面部到身体，每一寸肌肤都值得被滋养。</p>
+        <a href="#products" class="btn btn-text" data-i18n="body.cta">发现社区挚爱精选 &rarr;</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3.5 工厂实力（大厂 B2B 信任链） ============ -->
+<section class="section section-factory" id="factory">
+  <div class="container">
+    <div class="section-header center reveal">
+      <p class="section-label">Factory Capability</p>
+      <h2 data-i18n="factory.title">工厂实力</h2>
+      <p class="section-subtitle" data-i18n="factory.sub">GMPC/ISO 22716 认证智造基地，为全球品牌提供一站式 OEM/ODM 服务</p>
+    </div>
+
+    <!-- 车间实证（30-60s 视频位） -->
+    <div class="workshop reveal">
+      <div class="workshop-video">
+        <img src="images/factory-workshop.webp" alt="GMPC 洁净车间实拍" class="workshop-img" loading="lazy">
+        <p class="workshop-caption" data-i18n="b2b.workshop_caption">GMPC 洁净车间实拍 · 乳化 · 灌装 · 包装 · 见证一支产品的诞生</p>
+      </div>
+    </div>
+
+    <!-- 资质信任条 -->
+    <div class="factory-trustbar reveal">
+      <span class="factory-trust-badge">GMPC</span>
+      <span class="factory-trust-badge">ISO 22716</span>
+      <span class="factory-trust-badge">HALAL</span>
+      <span class="factory-trust-badge">CPNP</span>
+      <span class="factory-trust-text" data-i18n="factory.trust_years">14+ 年美妆智造</span>
+      <span class="factory-trust-text" data-i18n="factory.trust_origin">中国 · 广州</span>
+    </div>
+
+    <!-- 认证墙（徽章卡片） -->
+    <div class="factory-certs reveal">
+      <h3 data-i18n="factory.cert_title">认证资质墙</h3>
+      <div class="factory-cert-row">
+        <span class="factory-cert">GMPC</span>
+        <span class="factory-cert">ISO 22716</span>
+        <span class="factory-cert">HALAL</span>
+        <span class="factory-cert">CPNP</span>
+        <span class="factory-cert">MSDS</span>
+        <span class="factory-cert">FDA</span>
+        <span class="factory-cert">CE</span>
+        <span class="factory-cert">SGS</span>
+      </div>
+    </div>
+
+    <!-- 数字墙（超大字号表格化） -->
+    <div class="factory-stats reveal">
+      <div class="factory-stat">
+        <strong>14+</strong>
+        <span data-i18n="factory.stat1_label">代工年限（年）</span>
+      </div>
+      <div class="factory-stat">
+        <strong>40+</strong>
+        <span data-i18n="factory.stat2_label">出口国家/地区</span>
+      </div>
+      <div class="factory-stat">
+        <strong>24</strong>
+        <span data-i18n="factory.stat3_label">国际认证资质</span>
+      </div>
+      <div class="factory-stat">
+        <strong>30+</strong>
+        <span data-i18n="factory.stat4_label">研发与技术人员</span>
+      </div>
+    </div>
+
+    <!-- 打样流程（4 步 + 时长） -->
+    <div class="sampling reveal" id="sampling">
+      <h3 data-i18n="b2b.sample_title">打样流程</h3>
+      <p class="sample-sub" data-i18n="b2b.sample_sub">从需求沟通到量产交付，4 步透明可控</p>
+      <div class="sample-steps">
+        <div class="sample-step">
+          <span class="sample-num">01</span>
+          <h4 data-i18n="b2b.sample_step1">需求沟通</h4>
+          <p data-i18n="b2b.sample_dur1">1-2 个工作日</p>
+        </div>
+        <div class="sample-step">
+          <span class="sample-num">02</span>
+          <h4 data-i18n="b2b.sample_step2">配方打样</h4>
+          <p data-i18n="b2b.sample_dur2">3-7 个工作日</p>
+        </div>
+        <div class="sample-step">
+          <span class="sample-num">03</span>
+          <h4 data-i18n="b2b.sample_step3">寄样确认</h4>
+          <p data-i18n="b2b.sample_dur3">2-3 个工作日</p>
+        </div>
+        <div class="sample-step">
+          <span class="sample-num">04</span>
+          <h4 data-i18n="b2b.sample_step4">量产交付</h4>
+          <p data-i18n="b2b.sample_dur4">15-30 天</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 多品类产品线入口 -->
+    <div class="factory-cats reveal">
+      <h3 data-i18n="factory.cat_title">多品类产品线</h3>
+      <div class="factory-cat-grid">
+        <a class="factory-cat" href="#products" data-i18n="factory.cat_skincare">护肤系列</a>
+        <a class="factory-cat" href="#lip-collection" data-i18n="factory.cat_lip">唇部护理</a>
+        <a class="factory-cat" href="#body-essentials" data-i18n="factory.cat_body">身体护理</a>
+        <a class="factory-cat" href="#products" data-i18n="factory.cat_baby">婴儿护理</a>
+        <a class="factory-cat" href="#products" data-i18n="factory.cat_eye">眼霜系列</a>
+        <a class="factory-cat" href="company.html#production-line" data-i18n="factory.cat_custom">OEM/ODM 定制</a>
+      </div>
+    </div>
+
+    <!-- 合作证明（数字 + 匿名评价） -->
+    <div class="factory-proof reveal">
+      <h3 data-i18n="b2b.proof_title">合作证明</h3>
+      <div class="proof-stats">
+        <div class="proof-stat"><strong>14+</strong><span data-i18n="b2b.proof_num1">年行业经验</span></div>
+        <div class="proof-stat"><strong>40+</strong><span data-i18n="b2b.proof_num2">出口国家/地区</span></div>
+        <div class="proof-stat"><strong>24</strong><span data-i18n="b2b.proof_num3">项国际认证</span></div>
+        <div class="proof-stat"><strong>30+</strong><span data-i18n="b2b.proof_num4">研发技术人员</span></div>
+      </div>
+      <div class="proof-quotes">
+        <blockquote data-i18n="b2b.proof_q1">“配方打样专业高效，4 天出样，沟通顺畅透明。” —— 欧洲护肤品牌（匿名）</blockquote>
+        <blockquote data-i18n="b2b.proof_q2">“中草药系列从成分、剂型到包材一站式完成，出口文件齐全。” —— 东南亚美妆品牌（匿名）</blockquote>
+      </div>
+    </div>
+
+    <!-- 询盘表单（对接 info@biosphere-ai.com） -->
+    <div class="inquiry reveal" id="inquiry">
+      <div class="inquiry-head">
+        <h3 data-i18n="b2b.inquiry_title">获取报价 / 申请打样</h3>
+        <p data-i18n="b2b.inquiry_sub">提交需求，1 个工作日内回复 · info@biosphere-ai.com</p>
+      </div>
+      <form class="inquiry-form" id="inquiryForm" novalidate>
+        <div class="inquiry-grid">
+          <input type="text" name="name" required data-i18n-placeholder="b2b.inquiry_name" placeholder="姓名 / Name">
+          <input type="text" name="company" data-i18n-placeholder="b2b.inquiry_company" placeholder="公司 / Company">
+          <input type="email" name="email" required data-i18n-placeholder="b2b.inquiry_email" placeholder="邮箱 / Email">
+          <input type="text" name="country" data-i18n-placeholder="b2b.inquiry_country" placeholder="国家 / Country">
+          <textarea name="need" rows="3" data-i18n-placeholder="b2b.inquiry_need" placeholder="需求描述：品类 / 剂型 / 目标市场…"></textarea>
+        </div>
+        <div class="inquiry-actions">
+          <button type="submit" class="btn btn-light" data-i18n="b2b.inquiry_btn">提交询盘</button>
+          <p class="inquiry-ok" id="inquiryOk" data-i18n="b2b.inquiry_ok">已生成询盘邮件，请在邮件客户端确认发送；或直接发送至 info@biosphere-ai.com</p>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. 产品网格 ============ -->
+<section class="section section-products" id="products">
+  <div class="container">
+    <div class="section-header center reveal">
+      <p class="section-label">Community Favorites</p>
+      <h2 data-i18n="body.cta">发现社区挚爱精选</h2>
+      <a href="all-products.html" class="view-all" data-i18n="prod.view_all">查看全部 &rarr;</a>
+    </div>
+    <div class="product-grid" id="productGrid">
+      <article class="product-card reveal" data-id="1">
+        <div class="product-media">
+          <img src="images/medierba-prod-1.webp" alt="人参微光精华" loading="lazy">
+          <span class="product-badge" data-i18n="prod.best">畅销</span>
+          <a class="quick-add" href="mailto:info@biosphere-ai.com" data-name="人参微光精华" data-i18n="quick.contact">Contact Us</a>
+        </div>
+        <div class="product-info">
+          <h3 class="product-name" data-i18n="prod.p1">人参微光精华</h3>
+          <p class="product-en">Ginseng Glow Serum</p>
+        </div>
+      </article>
+      <article class="product-card reveal" data-id="2">
+        <div class="product-media">
+          <img src="images/medierba-prod-2.webp" alt="灵芝修护面霜" loading="lazy">
+          <a class="quick-add" href="mailto:info@biosphere-ai.com" data-name="灵芝修护面霜" data-i18n="quick.contact">Contact Us</a>
+        </div>
+        <div class="product-info">
+          <h3 class="product-name" data-i18n="prod.p2">灵芝修护面霜</h3>
+          <p class="product-en">Reishi Repair Cream</p>
+        </div>
+      </article>
+      <article class="product-card reveal" data-id="3">
+        <div class="product-media">
+          <img src="images/medierba-prod-3.webp" alt="积雪草舒缓水" loading="lazy">
+          <a class="quick-add" href="mailto:info@biosphere-ai.com" data-name="积雪草舒缓水" data-i18n="quick.contact">Contact Us</a>
+        </div>
+        <div class="product-info">
+          <h3 class="product-name" data-i18n="prod.p3">积雪草舒缓水</h3>
+          <p class="product-en">Centella Soothing Water</p>
+        </div>
+      </article>
+      <article class="product-card reveal" data-id="4">
+        <div class="product-media">
+          <img src="images/medierba-prod-4.webp" alt="绿茶平衡洁面" loading="lazy">
+          <a class="quick-add" href="mailto:info@biosphere-ai.com" data-name="绿茶平衡洁面" data-i18n="quick.contact">Contact Us</a>
+        </div>
+        <div class="product-info">
+          <h3 class="product-name" data-i18n="prod.p4">绿茶平衡洁面</h3>
+          <p class="product-en">Green Tea Balm Cleanser</p>
+        </div>
+      </article>
+      <article class="product-card reveal" data-id="5">
+        <div class="product-media">
+          <img src="images/medierba-prod-5.webp" alt="红参紧致眼霜" loading="lazy">
+          <a class="quick-add" href="mailto:info@biosphere-ai.com" data-name="红参紧致眼霜" data-i18n="quick.contact">Contact Us</a>
+        </div>
+        <div class="product-info">
+          <h3 class="product-name" data-i18n="prod.p5">红参紧致眼霜</h3>
+          <p class="product-en">Red Ginseng Eye Patches</p>
+        </div>
+      </article>
+      <article class="product-card reveal" data-id="6">
+        <div class="product-media">
+          <img src="images/medierba-prod-6.webp" alt="发酵新生面膜" loading="lazy">
+          <span class="product-badge badge-green" data-i18n="prod.new">新品</span>
+          <a class="quick-add" href="mailto:info@biosphere-ai.com" data-name="发酵新生面膜" data-i18n="quick.contact">Contact Us</a>
+        </div>
+        <div class="product-info">
+          <h3 class="product-name" data-i18n="prod.p6">发酵新生面膜</h3>
+          <p class="product-en">Fermented Renewal Mask</p>
+        </div>
+      </article>
+      <article class="product-card reveal" data-id="7">
+        <div class="product-media">
+          <img src="images/medierba-prod-7.webp" alt="烟酰胺控油精华" loading="lazy">
+          <a class="quick-add" href="mailto:info@biosphere-ai.com" data-name="烟酰胺控油精华" data-i18n="quick.contact">Contact Us</a>
+        </div>
+        <div class="product-info">
+          <h3 class="product-name" data-i18n="prod.p7">烟酰胺控油精华</h3>
+          <p class="product-en">Niacinamide Control Oil</p>
+        </div>
+      </article>
+      <article class="product-card reveal" data-id="8">
+        <div class="product-media">
+          <img src="images/medierba-prod-8.webp" alt="新草本旅行套装" loading="lazy">
+          <a class="quick-add" href="mailto:info@biosphere-ai.com" data-name="新草本旅行套装" data-i18n="quick.contact">Contact Us</a>
+        </div>
+        <div class="product-info">
+          <h3 class="product-name" data-i18n="prod.p8">新草本旅行套装</h3>
+          <p class="product-en">Herbal Essentials Set</p>
+        </div>
+      </article>
+      <article class="product-card reveal" data-id="9">
+        <div class="product-media">
+          <img src="images/medierba-prod-9.webp" alt="灵芝精华油" loading="lazy">
+          <a class="quick-add" href="mailto:info@biosphere-ai.com" data-name="灵芝精华油" data-i18n="quick.contact">Contact Us</a>
+        </div>
+        <div class="product-info">
+          <h3 class="product-name" data-i18n="prod.p9">灵芝精华油</h3>
+          <p class="product-en">Reishi Glow Oil</p>
+        </div>
+      </article>
+      <article class="product-card reveal" data-id="10">
+        <div class="product-media">
+          <img src="images/medierba-prod-10.webp" alt="透明质酸保湿面霜" loading="lazy">
+          <a class="quick-add" href="mailto:info@biosphere-ai.com" data-name="透明质酸保湿面霜" data-i18n="quick.contact">Contact Us</a>
+        </div>
+        <div class="product-info">
+          <h3 class="product-name" data-i18n="prod.p10">透明质酸保湿面霜</h3>
+          <p class="product-en">Cloud Dew&trade; Gel Cream</p>
+        </div>
+      </article>
+      <article class="product-card reveal" data-id="11">
+        <div class="product-media">
+          <img src="images/medierba-prod-11.webp" alt="本草唇膏笔" loading="lazy">
+          <a class="quick-add" href="mailto:info@biosphere-ai.com" data-name="本草唇膏笔" data-i18n="quick.contact">Contact Us</a>
+        </div>
+        <div class="product-info">
+          <h3 class="product-name" data-i18n="prod.p11">本草唇膏笔</h3>
+          <p class="product-en">Herbal Lip Liner</p>
+        </div>
+      </article>
+      <article class="product-card reveal" data-id="12">
+        <div class="product-media">
+          <img src="images/medierba-prod-12.webp" alt="本草淡香水" loading="lazy">
+          <span class="product-badge" data-i18n="prod.limited">限定</span>
+          <a class="quick-add" href="mailto:info@biosphere-ai.com" data-name="本草淡香水" data-i18n="quick.contact">Contact Us</a>
+        </div>
+        <div class="product-info">
+          <h3 class="product-name" data-i18n="prod.p12">本草淡香水</h3>
+          <p class="product-en">Sunlit Vanilla&trade; Eau de Parfum</p>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5. 唇部系列 ============ -->
+<section class="section section-collection" id="lip-collection">
+  <div class="container">
+    <div class="collection-banner reveal">
+      <div class="collection-media">
+        <img src="images/medierba-collection-1.webp" alt="本草美妆系列" loading="lazy">
+        <span class="collection-tag" data-i18n="prod.new">新品</span>
+      </div>
+      <div class="collection-copy">
+        <p class="section-label">The Herbal Beauty Collection</p>
+        <h2 data-i18n="lip.title">本草美妆系列</h2>
+        <p data-i18n="lip.sub">染唇液 × 护唇精华二合一，让色彩同时成为滋养。</p>
+        <a href="#products" class="btn btn-dark" data-i18n="nav.lips">选购唇部护理</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6. 本草防晒系列 ============ -->
+<section class="section section-collection alt">
+  <div class="container">
+    <div class="collection-banner reverse reveal">
+      <div class="collection-media">
+        <img src="images/medierba-collection-2.webp" alt="本草防晒系列" loading="lazy">
+        <span class="collection-tag tag-classic" data-i18n="coll.tag">经典</span>
+      </div>
+      <div class="collection-copy">
+        <p class="section-label">The Herbal Sun Care Collection</p>
+        <h2 data-i18n="balm.title">本草防晒系列</h2>
+        <p data-i18n="balm.sub">发酵油脂 × 本草提取，全天候锁水修护。</p>
+        <a href="#products" class="btn btn-dark" data-i18n="balm.cta">选购润唇膏</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7. 水润夏日肌肤 ============ -->
+<section class="section section-summer">
+  <div class="container">
+    <div class="section-header center reveal">
+      <p class="section-label">Hydrated Summer Skin</p>
+      <h2 data-i18n="summer.title">水润夏日肌肤</h2>
+      <p class="section-subtitle" data-i18n="summer.sub">保湿 × 防护 × 焕亮</p>
+    </div>
+    <div class="summer-grid">
+      <a href="#products" class="summer-card reveal">
+        <img src="images/medierba-prod-10.webp" alt="透明质酸保湿面霜" loading="lazy">
+        <h3 data-i18n="prod.p10">透明质酸保湿面霜</h3>
+        <p>Cloud Dew&trade; Gel Cream</p>
+        
+      </a>
+      <a href="#products" class="summer-card reveal">
+        <img src="images/medierba-prod-3.webp" alt="积雪草舒缓水" loading="lazy">
+        <h3 data-i18n="prod.p3">积雪草舒缓水</h3>
+        <p>Centella Soothing Water</p>
+        
+      </a>
+      <a href="#products" class="summer-card reveal">
+        <img src="images/medierba-prod-1.webp" alt="人参微光精华" loading="lazy">
+        <h3 data-i18n="prod.p1">人参微光精华</h3>
+        <p>Ginseng Glow Serum</p>
+        
+      </a>
+      <a href="#products" class="summer-card reveal">
+        <img src="images/medierba-prod-7.webp" alt="烟酰胺控油精华" loading="lazy">
+        <h3 data-i18n="prod.p7">烟酰胺控油精华</h3>
+        <p>Niacinamide Control Oil</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7.5 植物产地溯源 ============ -->
+<section class="section section-origins" id="origins">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow">CHINA SOURCING</p>
+      <h2 data-i18n="origins.title">中国种植基地</h2>
+      <p data-i18n="origins.sub">只来自中国核心种植基地，每一份原料都可追溯。</p>
+    </div>
+    <div class="origins-grid" id="originsGrid">
+      <a class="origin-card" href="origin-rose.html">
+        <div class="origin-img"><img src="images/origin-rose.webp" alt="Rose" loading="lazy"></div>
+        <div class="origin-card-body">
+          <h3 data-i18n="origins.rose.name">玫瑰</h3>
+          <div class="origin-en">Rose</div>
+          <div class="origin-loc" data-i18n="origins.rose.loc">贵州毕节</div>
+          <p data-i18n="origins.rose.benefit">保湿提亮</p>
+          <span class="origin-more" data-i18n="origins.view_more">查看溯源 &rsaquo;</span>
+        </div>
+      </a>
+      <a class="origin-card" href="origin-green-tea.html">
+        <div class="origin-img"><img src="images/origin-green-tea.webp" alt="Green Tea" loading="lazy"></div>
+        <div class="origin-card-body">
+          <h3 data-i18n="origins.greentea.name">绿茶</h3>
+          <div class="origin-en">Green Tea</div>
+          <div class="origin-loc" data-i18n="origins.greentea.loc">中国浙江</div>
+          <p data-i18n="origins.greentea.benefit">抗氧化</p>
+          <span class="origin-more" data-i18n="origins.view_more">查看溯源 &rsaquo;</span>
+        </div>
+      </a>
+      <a class="origin-card" href="origin-aloe.html">
+        <div class="origin-img"><img src="images/origin-aloe.webp" alt="Aloe Vera" loading="lazy"></div>
+        <div class="origin-card-body">
+          <h3 data-i18n="origins.aloe.name">芦荟</h3>
+          <div class="origin-en">Aloe Vera</div>
+          <div class="origin-loc" data-i18n="origins.aloe.loc">中国云南</div>
+          <p data-i18n="origins.aloe.benefit">保湿舒缓</p>
+          <span class="origin-more" data-i18n="origins.view_more">查看溯源 &rsaquo;</span>
+        </div>
+      </a>
+      <a class="origin-card" href="origin-centella.html">
+        <div class="origin-img"><img src="images/origin-centella.webp" alt="Centella Asiatica" loading="lazy"></div>
+        <div class="origin-card-body">
+          <h3 data-i18n="origins.centella.name">积雪草</h3>
+          <div class="origin-en">Centella Asiatica</div>
+          <div class="origin-loc" data-i18n="origins.centella.loc">中国云南</div>
+          <p data-i18n="origins.centella.benefit">舒缓修复</p>
+          <span class="origin-more" data-i18n="origins.view_more">查看溯源 &rsaquo;</span>
+        </div>
+      </a>
+      <a class="origin-card" href="origin-ginseng.html">
+        <div class="origin-img"><img src="images/origin-ginseng.webp" alt="Ginseng" loading="lazy"></div>
+        <div class="origin-card-body">
+          <h3 data-i18n="origins.ginseng.name">人参</h3>
+          <div class="origin-en">Ginseng</div>
+          <div class="origin-loc" data-i18n="origins.ginseng.loc">中国吉林长白山</div>
+          <p data-i18n="origins.ginseng.benefit">抗老焕活</p>
+          <span class="origin-more" data-i18n="origins.view_more">查看溯源 &rsaquo;</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 8. 品牌故事 ============ -->
+<section class="section section-story" id="story">
+  <div class="container">
+    <div class="story-wrap reveal">
+      <div class="story-media">
+        <img src="images/medierba-story.webp" alt="中国本草实验室" loading="lazy">
+        <div class="story-media-caption" data-i18n="story.base">广州白云基地 · 十四载美妆智造</div>
+      </div>
+      <div class="story-copy">
+        <p class="section-label" data-i18n="story.brand">帛卉品牌故事 · BIOSPHERE</p>
+        <h2 data-i18n="story.h1">一株植物的东方使命</h2>
+        <p class="story-subtitle" data-i18n="story.sub">草本生物科技 × AI 智能智造 ｜ 东方本草美妆领先智造者</p>
+        <p class="story-text" data-i18n="story.p1">帛，古之精丝，经纬交织，藏匠人精工细作的分寸与温度；卉，天地百草，花叶丛生，载自然原生纯粹的生机与馈赠。帛卉之名，寓意以织丝的极致精工，萃取草木的本真灵气。</p>
+        <p class="story-text" data-i18n="story.p2">十四载深耕美妆智造，品牌始于广州白云基地，从一款配方、一款产品起步。在帛卉看来，草本绝非配方点缀，而是美妆体系的核心根基与功效本源。</p>
+        <div class="story-pillars">
+          <div class="story-pillar"><span data-i18n="story.pillar1">承千年本草底蕴</span><small data-i18n="story.pillar1_sub">依托云南 / 四川 / 长白山核心草本产区，搭建全链路溯源体系</small></div>
+          <div class="story-pillar"><span data-i18n="story.pillar2">纳全球视野资源</span><small data-i18n="story.pillar2_sub">深度调研巴西、东南亚等海外市场潮流，重塑草本叙事</small></div>
+          <div class="story-pillar"><span data-i18n="story.pillar3">启 AI 精准研发</span><small data-i18n="story.pillar3_sub">数万种植萃智能匹配肌肤靶点，数据定配方、科技定功效</small></div>
+          <div class="story-pillar"><span data-i18n="story.pillar4">赋智能智造效能</span><small data-i18n="story.pillar4_sub">打通研发、供应链、生产、品控全链路 AI 智能体系</small></div>
+        </div>
+        <a href="#origins" class="btn btn-text" data-i18n="story.cta">探寻植物产地 &rarr;</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 9. 会员俱乐部 ============ -->
+<section class="section section-perks" id="perks">
+  <div class="container">
+    <div class="perks-wrap reveal">
+      <div class="perks-media">
+        <img src="images/medierba-perks.webp" alt="本草会员俱乐部" loading="lazy">
+      </div>
+      <div class="perks-list">
+        <p class="section-label">BIOSPHERE-AI Rewards</p>
+        <h2 data-i18n="perks.title">加入本草会员俱乐部</h2>
+        <div class="perk-item">
+          <span class="perk-icon">&#9733;</span>
+          <div><h3 data-i18n="perks.p1">会员积分</h3><p data-i18n="perks.p1_sub">每次购物累积积分，兑换专属折扣与新品体验。</p></div>
+        </div>
+        <div class="perk-item">
+          <span class="perk-icon">&#8635;</span>
+          <div><h3 data-i18n="perks.p2">订阅省 15%</h3><p data-i18n="perks.p2_sub">订阅挚爱产品，随时更换或取消。</p></div>
+        </div>
+        <div class="perk-item">
+          <span class="perk-icon">&#9851;</span>
+          <div><h3 data-i18n="perks.p3">空瓶回收计划</h3><p data-i18n="perks.p3_sub">寄回 5 个以上空瓶，获赠绿色礼遇。</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10. 社交关注 ============ -->
+<section class="section section-social">
+  <div class="container">
+    <div class="section-header center reveal">
+      <p class="section-label">Follow Us</p>
+      <h2 data-i18n="perks.social">关注我们 @biosphereai</h2>
+    </div>
+    <div class="social-grid">
+      <a href="#" class="social-card reveal"><img src="images/medierba-social-1.webp" alt="社交媒体内容" loading="lazy"></a>
+      <a href="#" class="social-card reveal"><img src="images/medierba-social-2.webp" alt="社交媒体内容" loading="lazy"></a>
+      <a href="#" class="social-card reveal"><img src="images/medierba-social-3.webp" alt="社交媒体内容" loading="lazy"></a>
+      <a href="#" class="social-card reveal"><img src="images/medierba-social-4.webp" alt="社交媒体内容" loading="lazy"></a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10. AI 包装设计工坊 ============ -->
+<section class="section section-design" id="design">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow">AI DESIGN STUDIO</p>
+      <h2 data-i18n="design.title">AI 包装设计工坊</h2>
+      <p data-i18n="design.sub">选择预设包材模板即可直接生成包装方案，也可上传瓶子照片让 AI 根据瓶型定制设计。</p>
+      <p class="design-notice" data-i18n="design.notice">受控说明：效果图仅供创意参考，实际工艺需要商务沟通落地；上传图片将受存储上限管控；不上传图片时可直接基于包材模板生成。</p>
+    </div>
+    <div class="design-grid">
+      <div>
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" id="bottleInput" accept="image/jpeg,image/png,image/webp" hidden>
+          <span class="up-ico" id="upIco">&#128230;</span>
+          <p data-i18n="design.drop">点击或拖拽上传瓶子照片</p>
+          <p class="hint" data-i18n="design.drop_sub">支持 JPG / PNG / WEBP，建议正面清晰照</p>
+        </div>
+        <div class="design-options">
+          <div class="pack-picker">
+            <label class="pack-label" for="dsPack" data-i18n="design.pack_label">包材类型</label>
+            <select id="dsPack" class="pack-select">
+              <option value="玻璃滴管瓶" data-i18n="design.pack1">玻璃滴管瓶</option>
+              <option value="真空按压瓶" data-i18n="design.pack2">真空按压瓶</option>
+              <option value="铝管软管" data-i18n="design.pack3">铝管软管</option>
+              <option value="磨砂广口罐" data-i18n="design.pack4">磨砂广口罐</option>
+              <option value="翻盖瓶" data-i18n="design.pack5">翻盖瓶</option>
+              <option value="安瓶" data-i18n="design.pack6">安瓶</option>
+              <option value="泵头喷雾瓶" data-i18n="design.pack7">泵头喷雾瓶</option>
+              <option value="礼盒套装" data-i18n="design.pack8">礼盒套装</option>
+            </select>
+          </div>
+          <input id="dsBrand" placeholder="品牌名（默认 BIOSPHERE）" maxlength="60">
+          <input id="dsProduct" placeholder="产品名称（默认 精华液）" maxlength="60">
+          <textarea id="dsStyle" placeholder="设计风格（默认 高端暗色奢华、黑金/铜色点缀、简约优雅）" data-i18n-placeholder="design.style_ph" maxlength="200"></textarea>
+          <div class="count-picker">
+            <span class="count-label">效果图数量</span>
+            <label class="count-option"><input type="radio" name="dsCount" value="1" checked><span data-i18n="design.count_1">1张效果图</span></label>
+            <label class="count-option"><input type="radio" name="dsCount" value="5"><span data-i18n="design.count_5">5张效果图</span></label>
+          </div>
+          <button class="btn btn-dark" id="designBtn" data-i18n="design.btn">生成包装设计</button>
+        </div>
+      </div>
+      <div class="design-result" id="designResult">
+        <div class="result-placeholder" data-i18n="design.result_ph">选择包材模板或上传瓶子照片后点击生成，AI 设计方案将展示在这里</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 11. 订阅 ============ -->
+<section class="section section-subscribe" id="subscribe">
+  <div class="container">
+    <div class="subscribe-card reveal">
+      <p class="section-label">Newsletter</p>
+      <h2 data-i18n="sub.title">订阅最新资讯</h2>
+      <p data-i18n="sub.sub">每期分享配方手记、成分科学与新品体验，还有会员专属礼遇。</p>
+      <form class="subscribe-form" id="subscribeForm" novalidate>
+        <input type="email" id="subscribeEmail" placeholder="请输入邮箱地址" aria-label="邮箱地址" data-i18n-aria="common.email_aria" required>
+        <button type="submit" class="btn btn-dark" data-i18n="sub.btn">订阅</button>
+      </form>
+      <p class="subscribe-note" data-i18n="sub.agree">订阅即表示同意接收品牌邮件，可随时退订。</p>
+    </div>
+  </div>
+</section>
+  <section class="page-section section-contact" id="contact">
+    <div class="container">
+      <p class="section-label">Contact</p>
+      <h2 data-i18n="contact.title">联系我们</h2>
+      <p class="section-subtitle" data-i18n="contact.sub">留下您的需求，我们将在 1 个工作日内回复</p>
+      <div class="contact-panel">
+        <form class="contact-form" id="contactForm" novalidate>
+          <div class="contact-grid">
+            <input type="text" name="name" required data-i18n-placeholder="contact.name" placeholder="姓名">
+            <input type="text" name="company" data-i18n-placeholder="contact.company" placeholder="公司/品牌">
+            <input type="email" name="email" required data-i18n-placeholder="contact.email" placeholder="邮箱">
+            <label class="contact-wa-field">
+              <svg class="wa-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              <input type="tel" name="whatsapp" data-i18n-placeholder="contact.whatsapp" placeholder="WhatsApp 号码">
+            </label>
+            <input type="text" name="country" data-i18n-placeholder="contact.country" placeholder="所在国家/地区">
+            <textarea name="message" rows="4" data-i18n-placeholder="contact.message" placeholder="留言内容"></textarea>
+          </div>
+          <div class="inquiry-actions contact-actions">
+            <button type="submit" class="btn btn-light" data-i18n="contact.submit">发送咨询</button>
+            <p class="inquiry-ok contact-ok" id="contactOk" data-i18n="contact.ok">已生成咨询邮件，请在邮件客户端确认发送；或直接发送至 info@biosphere-ai.com</p>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ===== 联系我们表单（WhatsApp 版）：构建 mailto 并提示 ===== */
+(function () {
+  var form = document.getElementById('contactForm');
+  var ok = document.getElementById('contactOk');
+  if (!form || !ok) return;
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = form.elements;
+    if (!f.name.value.trim() || !f.email.value.trim()) {
+      ok.textContent = 'Please fill in name and email.';
+      ok.classList.add('show');
+      return;
+    }
+    var body = encodeURIComponent('Name: ' + f.name.value + '\nCompany/Brand: ' + (f.company.value || '-') + '\nCountry/Region: ' + (f.country.value || '-') + '\nWhatsApp: ' + (f.whatsapp.value || '-') + '\nMessage: ' + (f.message.value || '-'));
+    var subject = encodeURIComponent('Contact Inquiry - ' + f.name.value);
+    window.location.href = 'mailto:info@biosphere-ai.com?subject=' + subject + '&body=' + body;
+    ok.classList.add('show');
+  });
+})();
+</script>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="#" class="logo"><span class="logo-mark">B</span><span class="logo-text">BIOSPHERE<em>-AI</em></span></a>
+        <p data-i18n="footer.desc">帛卉集团自有护肤品牌：以三大生物技术重释东方草本，让实验室里被科学验证的自然，抵达每一天的护肤仪式。</p>
+        <div class="footer-social">
+          <a href="#" aria-label="Instagram">IG</a>
+          <a href="#" aria-label="TikTok">TT</a>
+          <a href="#" aria-label="小红书" data-i18n-aria="footer.red">RED</a>
+          <a href="#" aria-label="YouTube">YT</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h3 data-i18n="footer.group">集团生态</h3>
+        <a href="https://biosphere-ai.com" target="_blank" rel="noopener" data-i18n="footer.g1">BIOSPHERE-AI 科技中枢</a>
+        <a href="https://beauty2oem.com" target="_blank" rel="noopener" data-i18n="footer.g2">BEAUTY2OEM 智造出口</a>
+        <a href="https://skin2oem.com" target="_blank" rel="noopener" data-i18n="footer.g3">SKIN2OEM 智造纵深</a>
+        <a href="https://medierba.com" target="_blank" rel="noopener" data-i18n="footer.g4">MEDIERBA 自有品牌</a>
+      </div>
+      <div class="footer-col">
+        <h3 data-i18n="footer.brand">品牌</h3>
+        <a href="brand-story.html" data-i18n="nav.story">品牌故事</a>
+        <a href="brand-story.html#journey" data-i18n="footer.journey">本草之旅</a>
+        <a href="brand-story.html#lab" data-i18n="footer.lab">研发实验室</a>
+        <a href="brand-story.html#farm" data-i18n="footer.farm">种植基地 &amp; 古方传承</a>
+        <a href="brand-story.html#platforms" data-i18n="footer.platforms">三大生物技术平台</a>
+      </div>
+      <div class="footer-col">
+        <h3 data-i18n="footer.ai">AI 交互</h3>
+        <a href="ai-center.html#quiz" data-i18n="footer.quiz">AI 肤质测试</a>
+        <a href="ai-center.html#advisor" data-i18n="footer.advisor">AI 肌肤顾问</a>
+        <a href="ai-center.html#packaging" data-i18n="design.title">AI 包装设计工坊</a>
+        <a href="ai-center.html#formula" data-i18n="footer.formula">AI 配方选配（受控）</a>
+      </div>
+      <div class="footer-col">
+        <h3 data-i18n="footer.news">资讯</h3>
+        <a href="news.html#company" data-i18n="footer.n1">公司新闻</a>
+        <a href="news.html#industry" data-i18n="footer.n2">行业热门新闻</a>
+        <a href="news.html#ingredient" data-i18n="footer.n3">原料技术新闻</a>
+        <a href="news.html#trend" data-i18n="footer.n4">产品趋势介绍</a>
+        <a href="news.html#overseas" data-i18n="footer.n5">海外市场爆款</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p data-i18n="footer.copyright">&copy; 2026 BIOSPHERE-AI · BIOSPHERE GROUP 帛卉集团</p>
+      <p>Powered by BIOSPHERE-AI Herb-Biotech Intelligence</p>
+    </div>
+  </div>
+</footer>
+
+
+
+<script src="assets/js/main.js"></script>
+
+<script>
+/* ===== 询盘表单：构建 mailto 并提示 ===== */
+(function () {
+  var form = document.getElementById('inquiryForm');
+  var ok = document.getElementById('inquiryOk');
+  if (!form || !ok) return;
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = form.elements;
+    if (!f.name.value.trim() || !f.email.value.trim()) {
+      ok.textContent = 'Please fill in name and email.';
+      ok.classList.add('show');
+      return;
+    }
+    var body = encodeURIComponent('Name: ' + f.name.value + '\nCompany: ' + (f.company.value || '-') + '\nCountry: ' + (f.country.value || '-') + '\nNeed: ' + (f.need.value || '-'));
+    var subject = encodeURIComponent('OEM/ODM Inquiry - ' + f.name.value);
+    window.location.href = 'mailto:info@biosphere-ai.com?subject=' + subject + '&body=' + body;
+    ok.classList.add('show');
+  });
+})();
+</script>
+
+<script>
+/* ===== AI 包装设计工坊（支持不上传图片直接生成） ===== */
+(function () {
+  var zone = document.getElementById("uploadZone");
+  var input = document.getElementById("bottleInput");
+  var btn = document.getElementById("designBtn");
+  var dsPack = document.getElementById("dsPack");
+  var result = document.getElementById("designResult");
+  var GATE_KEY = "sk-router-8a7e8e0e4e0efc1e916ad81c";
+  var API = "https://router.biosphere-ai.com/api/design";
+  var curImg = null;
+
+  function compress(file, cb) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var img = new Image();
+      img.onload = function () {
+        var maxW = 1024, w = img.width, h = img.height;
+        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+        var canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        cb(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  zone.addEventListener("click", function () { input.click(); });
+  zone.addEventListener("dragover", function (e) { e.preventDefault(); zone.classList.add("drag"); });
+  zone.addEventListener("dragleave", function () { zone.classList.remove("drag"); });
+  zone.addEventListener("drop", function (e) {
+    e.preventDefault(); zone.classList.remove("drag");
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  input.addEventListener("change", function () { if (input.files[0]) handleFile(input.files[0]); });
+
+  function handleFile(file) {
+    if (!file.type.match(/^image\//)) return;
+    compress(file, function (dataUrl) {
+      curImg = dataUrl;
+      zone.innerHTML = '<img src="' + dataUrl + '" alt="\u5DF2\u4E0A\u4F20\u74F6\u5B50\u7167\u7247">';
+    });
+  }
+
+  function t(key) {
+    return (window.I18N && window.I18N.t) ? window.I18N.t(key) : key;
+  }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function renderFormula(fd, productName) {
+    var list = (fd && fd.matched) || [];
+    var h = '<div class="design-block"><h4>' + t("design.comparison_title") + '</h4>';
+    if (!list.length) {
+      h += '<p class="muted">暂无匹配配方方案，可调整产品名称后重试。</p></div>';
+      return h;
+    }
+    h += '<table class="formula-table"><thead><tr>' +
+      '<th>' + t("design.comparison_name") + '</th>' +
+      '<th>' + t("design.comparison_suitable") + '</th>' +
+      '<th>' + t("design.comparison_ingredients") + '</th>' +
+      '<th>' + t("design.comparison_benefit") + '</th>' +
+      '<th>' + t("design.comparison_note") + '</th>' +
+      '</tr></thead><tbody>';
+    list.forEach(function (m) {
+      h += '<tr><td>' + esc(m.name) + '</td><td>' + esc(m.suitable || "") + '</td><td>' + esc(m.key_ingredients || "") + '</td><td>' + esc(m.benefit || m.brief || "") + '</td><td>' + esc(m.note || "") + '</td></tr>';
+    });
+    h += '</tbody></table>';
+    h += '<p class="muted formula-disclaimer">' + esc((fd && fd.disclaimer) || "") + '</p></div>';
+    return h;
+  }
+  function renderProductFunc(fd, productName) {
+    var m = (fd && fd.matched && fd.matched[0]) || null;
+    var h = '<div class="design-block"><h4>' + t("design.product_func") + '</h4><p>';
+    if (m) h += esc(productName) + '：' + esc(m.brief || "");
+    else h += esc(productName) + '：主打本草生物科技护肤功效，融合发酵、低温闪萃与合成生物三大技术平台，为肌肤提供温和有效的护理体验。';
+    h += '</p></div>';
+    return h;
+  }
+  function renderSellingPoints(fd, productName) {
+    var m = (fd && fd.matched && fd.matched[0]) || null;
+    var h = '<div class="design-block"><h4>' + t("design.selling_points") + '</h4><ul class="selling-list">';
+    var points = [];
+    if (m) {
+      if (m.key_ingredients) points.push('关键成分：' + m.key_ingredients);
+      if (m.suitable) points.push('适用肤质：' + m.suitable);
+      if (m.benefit) points.push('核心功效：' + m.benefit);
+      if (m.note) points.push('使用建议：' + m.note);
+    }
+    if (!points.length) points.push('本草生物科技配方，安全温和，多肤质适用。');
+    points.forEach(function (p) { h += '<li>' + esc(p) + '</li>'; });
+    h += '</ul></div>';
+    return h;
+  }
+  function renderVideoSection() {
+    return '<div class="design-block design-video">' +
+      '<h4>' + t("design.video_section") + '</h4>' +
+      '<div class="video-placeholder">' +
+      '<span class="video-ico">▶</span>' +
+      '<p>' + t("design.video_placeholder") + '</p>' +
+      '<a class="btn btn-dark" href="ai-center.html">' + t("design.video_section") + '</a>' +
+      '</div></div>';
+  }
+  function renderItems(items, productName) {
+    if (!items || !items.length) return '';
+    var h = '<div class="design-block"><h4>' + t("design.set_items") + '</h4>';
+    items.forEach(function (it, idx) {
+      h += '<div class="set-item"><h5>' + esc((idx + 1) + '. ' + (it.product_name || it.name || (productName + ' ' + (idx + 1)))) + '</h5>';
+      if (it.function || it.func) h += '<p><strong>' + t("design.set_func") + '</strong>' + esc(it.function || it.func) + '</p>';
+      if (it.selling_point || it.selling_points) h += '<p><strong>' + t("design.set_selling") + '</strong>' + esc(it.selling_point || it.selling_points) + '</p>';
+      if (it.video_script) h += '<p class="muted"><strong>' + t("design.set_video") + '</strong>' + esc(it.video_script) + '</p>';
+      h += '</div>';
+    });
+    h += '</div>';
+    return h;
+  }
+  btn.addEventListener("click", function () {
+    var packType = (dsPack && dsPack.value) ? dsPack.value : "玻璃滴管瓶";
+    // 无图也可以生成：用包装类型描述作为输入
+    btn.disabled = true; btn.textContent = "生成中…";
+    var body = { packaging_type: packType, product_name: "" };
+    if (curImg) body.image = curImg;
+    var prodInput = document.getElementById("dsProduct");
+    if (prodInput && prodInput.value) body.product_name = prodInput.value;
+    var styleInput = document.getElementById("dsStyle");
+    if (styleInput && styleInput.value) body.style = styleInput.value;
+    // 读取图片数量选择器
+    var countInput = document.querySelector('input[name="dsCount"]:checked');
+    var countValue = countInput ? countInput.value : "1";
+    body.count = parseInt(countValue, 10) || 1;
+    var lang = "zh";
+    try { var lg = document.documentElement.getAttribute("lang"); if (lg) lang = lg; } catch (e) {}
+    body.lang = lang;
+    fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + GATE_KEY },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      btn.disabled = false; btn.textContent = "生成包装设计";
+      if (d.error) { result.innerHTML = '<div class="result-placeholder">' + d.error + '</div>'; return; }
+      var productName = body.product_name || "精华液";
+      // 额外步骤：调用 /api/formula 获取匹配配方（用 product_name 作为参数）
+      return fetch("/api/formula", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_name: productName, label: productName })
+      }).then(function (r2) { return r2.json(); }).then(function (fd) {
+        var html = '<div class="result-body"><h3>AI 设计方案</h3>';
+        if (d.image_url) html += '<img src="' + d.image_url + '" alt="AI 生成的包装设计">';
+        var analysisText = d.analysis || "";
+        try { var parsed = JSON.parse(analysisText); if (parsed && parsed.items) { if (!d.items) d.items = parsed.items; analysisText = parsed.analysis || parsed.summary || ""; } } catch (e2) {}
+        html += '<div class="design-analysis">' + analysisText.replace(/</g, "&lt;") + '</div>';
+        // 套装/多瓶组合识别：结构与单瓶一致逐瓶展示
+        html += renderItems(d.items, productName);
+        // 配方匹配 + 效果对比表格
+        html += renderFormula(fd, productName);
+        // 产品功能介绍
+        html += renderProductFunc(fd, productName);
+        // 卖点说明书
+        html += renderSellingPoints(fd, productName);
+        // 电商爆款视频
+        html += renderVideoSection();
+        html += '</div>';
+        result.innerHTML = html;
+      });
+    }).catch(function (e) {
+      btn.disabled = false; btn.textContent = "生成包装设计";
+      result.innerHTML = '<div class="result-placeholder">请求失败：' + e + '</div>';
+    });
+  });
+})();
+</script>
+
+<!-- 产品详情弹层 -->
+<div class="product-modal" id="productModal" aria-hidden="true">
+  <div class="modal-overlay" data-close="1"></div>
+  <div class="modal-panel">
+    <button class="modal-close" data-close="1" aria-label="关闭" data-i18n-aria="common.close">×</button>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+</body>
+</html>

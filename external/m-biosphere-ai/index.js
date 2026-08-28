@@ -73,11 +73,37 @@ const contentTypeFromKey = (key) =>
 /** 当前密码版本 —— 改密码时 +1,让已签发的令牌全部作废 */
 const currentPv = async (kv) => Number(await kv.get(KV_PV)) || 1;
 
-/** 取存着的密码哈希;库里没有就退回 env 里的初始密码(只在首次设定前用一次) */
-async function storedHash(env) {
+/**
+ * 校验密码。两条路径:
+ *
+ *  ① KV 里已经有哈希 —— 正常路径,走 PBKDF2(或旧格式并顺手升级)。
+ *  ② KV 里还没有 —— 首次引导。拿 env.ADMIN_PASSWORD 做**恒定时间比较**,
+ *     比对成功后立刻把 PBKDF2 哈希写进 KV,下一次登录就走 ① 了。
+ *
+ * ② 这条路径特意不对 env 密码再做一次 PBKDF2 —— 那样每次登录要跑两遍
+ * 6 万次迭代(一次造参照哈希、一次验),白烧一倍 CPU。
+ * env secret 本身是加密存储的,明文比一次就够,关键是**恒定时间**。
+ */
+async function checkPassword(password, env, ctx) {
   const inKv = await env.ASSETS_BUCKET.get(KV_PWD).catch(() => null);
-  if (inKv) return String(inKv);
-  return env.ADMIN_PASSWORD ? await hashPassword(env.ADMIN_PASSWORD) : null;
+  if (inKv) {
+    const { ok, legacy } = await verifyPassword(password, String(inKv));
+    if (ok && legacy) ctx.waitUntil(env.ASSETS_BUCKET.put(KV_PWD, await hashPassword(password)));
+    return { ok, configured: true };
+  }
+  if (!env.ADMIN_PASSWORD) return { ok: false, configured: false };
+  const ok = timingSafeEqualStr(password, env.ADMIN_PASSWORD);
+  /* 引导成功后立刻落库,把"密码只存在环境变量里"这个中间状态尽快结束掉 */
+  if (ok) ctx.waitUntil(env.ASSETS_BUCKET.put(KV_PWD, await hashPassword(password)));
+  return { ok, configured: true };
+}
+
+/** 与 auth.js 里同一套实现;这里只比较明文,不值得为它多导出一个符号 */
+function timingSafeEqualStr(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 /** 登录态判定,一处实现供所有受保护路由用 */
@@ -137,18 +163,13 @@ export default {
       try { pwd = String((await request.json())?.password || ''); }
       catch { return json({ ok: false, message: '请求格式错误' }, 400); }
 
-      const stored = await storedHash(env);
-      if (!stored) return json({ ok: false, message: '服务端未配置管理密码' }, 503);
-
-      const { ok, legacy } = await verifyPassword(pwd, stored);
+      const { ok, configured } = await checkPassword(pwd, env, ctx);
+      if (!configured) return json({ ok: false, message: '服务端未配置管理密码' }, 503);
       if (!ok) {
         await recordFail(env.ASSETS_BUCKET, ip);
         return json({ ok: false, message: '密码错误' }, 401);
       }
       await clearFails(env.ASSETS_BUCKET, ip);
-      /* 顺手把旧格式升级成 PBKDF2 —— 运营完全无感,下次登录就是强哈希了。
-         放 waitUntil 里:升级失败也不该拖慢或挡住这次登录。 */
-      if (legacy) ctx.waitUntil(env.ASSETS_BUCKET.put(KV_PWD, await hashPassword(pwd)));
 
       const token = await makeToken(env.AUTH_SECRET, await currentPv(env.ASSETS_BUCKET));
       return new Response(JSON.stringify({ ok: true, message: '登录成功' }), {
@@ -164,8 +185,7 @@ export default {
       try { const b = await request.json(); cur = String(b?.current_password || ''); next = String(b?.new_password || ''); }
       catch { return json({ ok: false, message: '请求格式错误' }, 400); }
 
-      const stored = await storedHash(env);
-      if (!(await verifyPassword(cur, stored)).ok) return json({ ok: false, message: '当前密码错误' }, 400);
+      if (!(await checkPassword(cur, env, ctx)).ok) return json({ ok: false, message: '当前密码错误' }, 400);
       if (next.length < 10) return json({ ok: false, message: '新密码至少 10 位' }, 400);   // 原来是 6 位,太短
       if (next === cur) return json({ ok: false, message: '新密码不能与当前密码相同' }, 400);
 
@@ -241,9 +261,10 @@ export default {
       } else {
         /* 没绑 R2 时退回 KV(与线上现状一致),但把这件事显式记下来,
            免得"以为搬到 R2 了"其实一直在走 KV。 */
-        let bin = '';
-        for (let i = 0; i < bytes.length; i += 32768) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768));
-        await env.ASSETS_BUCKET.put(key, btoa(bin));
+        /* 存**原始二进制**,不再存 base64。
+           两个理由:base64 白白涨 33%;而且线上 KV 里那 14 张老图本来就是原始二进制,
+           两种格式混着存,读的那一端迟早判错(见下面读取处的说明)。 */
+        await env.ASSETS_BUCKET.put(key, bytes);
         console.warn('[upload] 未绑定 R2(MEDIA),已退回 KV 存储:', key);
       }
       return json({ ok: true, url: `/assets/${key}`, key });
@@ -267,21 +288,43 @@ export default {
             return new Response(obj.body, { headers: h });   // 流式,不进内存
           }
         }
-        const raw = await env.ASSETS_BUCKET.get(key, { type: 'text' }).catch(() => null);
-        if (raw) {
-          try {
-            const bin = atob(raw);
-            const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-            const h = new Headers({
-              'Content-Type': contentTypeFromKey(key),
-              'Cache-Control': 'public, max-age=31536000, immutable',
-              'CDN-Cache-Control': 'public, max-age=31536000, immutable',
-              'Access-Control-Allow-Origin': '*',
+        /* ★ 这里踩了一个线上正在发生的坑 ★
+           原实现只会 `atob(值)` 按 base64 解。可线上 KV 里那 14 张图存的是**原始二进制** ——
+           atob 抛异常 → 被 catch 吞掉 → 落到 env.ASSETS.fetch → 命中 SPA 回退,
+           于是 /assets/xxx.png 返回 200、Content-Type 是 text/html、内容是 60KB 的首页。
+           实测生产站现在就是这个样子:图裂了,但状态码是 200,任何监控都不会报。
+
+           改法:按 arrayBuffer 取回,先看**文件头**。
+           是图就直接吐;不是图再当 base64 试一次;两条都不成立就老老实实 404 ——
+           在图片地址上返回一整页 HTML,比返回 404 更难查。 */
+        const buf = await env.ASSETS_BUCKET.get(key, { type: 'arrayBuffer' }).catch(() => null);
+        if (buf) {
+          const bytes = new Uint8Array(buf);
+          const sig = (a, off = 0) => a.every((v, i) => bytes[off + i] === v);
+          const isImage =
+            sig([0xff, 0xd8, 0xff]) ||                                   // JPEG
+            sig([0x89, 0x50, 0x4e, 0x47]) ||                             // PNG
+            (sig([0x52, 0x49, 0x46, 0x46]) && sig([0x57, 0x45, 0x42, 0x50], 8)); // WEBP
+
+          let out = isImage ? bytes : null;
+          if (!out) {
+            try {
+              const bin = atob(new TextDecoder().decode(bytes));
+              out = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+            } catch { /* 既不是图也不是 base64 */ }
+          }
+          if (out) {
+            return new Response(out, {
+              headers: {
+                'Content-Type': contentTypeFromKey(key),
+                'Cache-Control': 'public, max-age=31536000, immutable',
+                'CDN-Cache-Control': 'public, max-age=31536000, immutable',
+                'Access-Control-Allow-Origin': '*',
+              },
             });
-            return new Response(bytes, { headers: h });
-          } catch { /* 不是 base64,落到静态资源 */ }
+          }
         }
+        return new Response('Not found', { status: 404 });
       }
       return env.ASSETS.fetch(url);
     }
