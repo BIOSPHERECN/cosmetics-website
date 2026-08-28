@@ -36,11 +36,27 @@ export const GET: APIRoute = async ({ params, request }) => {
     : null;
   if (!body || (body as ArrayBuffer).byteLength === 0) return new Response('Not found', { status: 404 });
 
-  return new Response(body as BodyInit, {
-    headers: {
-      'Content-Type': row.mime,
-      'Cache-Control': 'public, max-age=31536000, immutable',
-      'X-Content-Type-Options': 'nosniff',
-    },
-  });
+  /*
+   * SVG 是可执行文档,不是图片。
+   *
+   * 它能内嵌 <script>,而 /media/12 这种地址是**可以被直接打开**的 ——
+   * 一旦有人上传一张带脚本的 SVG,那段脚本就在本站域下运行。
+   * 会话 cookie 是 HttpOnly 偷不走,但同源意味着它能替登录中的运营
+   * 去调后台接口(SameSite=Lax 不挡同站请求)。
+   * nosniff 只防"把别的类型嗅探成 HTML",防不住 SVG 本来就该被当文档渲染。
+   *
+   * 处置:不下架 SVG(logo 用矢量是正当需求),而是给它一条最严的 CSP。
+   * sandbox 让它以无源方式载入,script 直接不执行;
+   * default-src 'none' 断掉它对外发请求的能力。
+   */
+  const headers: Record<string, string> = {
+    'Content-Type': row.mime,
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    'X-Content-Type-Options': 'nosniff',
+  };
+  if (row.mime === 'image/svg+xml') {
+    headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+  }
+
+  return new Response(body as BodyInit, { headers });
 };

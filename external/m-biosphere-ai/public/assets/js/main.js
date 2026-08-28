@@ -442,8 +442,7 @@
 (function () {
   'use strict';
   var $ = function (s, c) { return (c || document).querySelector(s); };
-  var GATE_KEY = "sk-router-8a7e8e0e4e0efc1e916ad81c";
-  var API = "https://router.biosphere-ai.com/v1/chat/completions";
+  var API = "/api/ai/chat";
   var MODEL = "deepseek-chat";
 
   var chatBox = $('#aiChatBox');
@@ -622,7 +621,7 @@
     var fullMsgs = [{ role: "system", content: SYSTEM_PROMPT }].concat(msgs);
     fetch(API, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + GATE_KEY },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model: MODEL, messages: fullMsgs, temperature: 0.7, max_tokens: 800 })
     }).then(function (r) { return r.json(); }).then(function (d) {
       locked = false;

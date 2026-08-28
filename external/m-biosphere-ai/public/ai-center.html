@@ -385,9 +385,9 @@
       try { var lg = document.documentElement.getAttribute('lang'); if (lg) lang = lg; } catch (e) {}
       var langName = { zh: '中文', en: 'English', es: 'Español', ar: 'العربية', id: 'Bahasa Indonesia', ja: '日本語' }[lang] || '中文';
       var sys = '你是 BIOSPHERE-AI 品牌站的专业皮肤检测助手。请根据用户上传的照片进行专业肤质检测，输出结构清晰的内容，包含：1) 肤质类型判断；2) 可见肌肤问题分析；3) 针对性护理建议；4) 推荐关注的本草成分。请严格使用' + langName + '输出，语气专业、克制，正文 200-300 字；若照片不清晰或无法判断，说明原因并建议改用肤质测试问卷。';
-      fetch('https://router.biosphere-ai.com/v1/chat/completions', {
+      fetch('/api/ai/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer sk-router-8a7e8e0e4e0efc1e916ad81c' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'agnes-2.5-flash',
           messages: [
@@ -431,9 +431,9 @@
       if (hasPhoto) {
         msgs[1] = { role: 'user', content: [{ type: 'text', text: '我的肤质测试信息：' + profile + '；另附一张素颜照片，请结合分析。' }, { type: 'image_url', image_url: { url: photoData } }] };
       }
-      fetch('https://router.biosphere-ai.com/v1/chat/completions', {
+      fetch('/api/ai/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer sk-router-8a7e8e0e4e0efc1e916ad81c' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: 'deepseek-chat', messages: msgs, max_tokens: 800, stream: false })
       }).then(function (r) { return r.json(); }).then(function (d) {
         if (btn) { btn.disabled = false; btn.textContent = I18N ? I18N.t('quiz.start') : '开始测试'; }
@@ -449,8 +449,7 @@
   }
 
     /* ---- AI 肌肤顾问（全领域护肤+推荐+多语言+语音+知识图谱） ---- */
-  var GATE_KEY = "sk-router-8a7e8e0e4e0efc1e916ad81c";
-  var API = "https://router.biosphere-ai.com/v1/chat/completions";
+  var API = "/api/ai/chat";
   var MODEL = "deepseek-chat";
   var chatBox = $('#aiChatBox');
   var chatInput = $('#aiChatInput');
@@ -607,7 +606,7 @@
       var fullMsgs = [{ role: "system", content: SYSTEM_PROMPT }].concat(msgs);
       fetch(API, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + GATE_KEY },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: MODEL, messages: fullMsgs, temperature: 0.7, max_tokens: 800 })
       }).then(function (r) { return r.json(); }).then(function (d) {
         locked = false;

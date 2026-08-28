@@ -885,8 +885,7 @@
   var btn = document.getElementById("designBtn");
   var dsPack = document.getElementById("dsPack");
   var result = document.getElementById("designResult");
-  var GATE_KEY = "sk-router-8a7e8e0e4e0efc1e916ad81c";
-  var API = "https://router.biosphere-ai.com/api/design";
+  var API = "/api/ai/design";
   var curImg = null;
 
   function compress(file, cb) {
@@ -1014,7 +1013,7 @@
     body.lang = lang;
     fetch(API, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + GATE_KEY },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     }).then(function (r) { return r.json(); }).then(function (d) {
       btn.disabled = false; btn.textContent = "生成包装设计";

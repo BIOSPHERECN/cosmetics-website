@@ -29,6 +29,23 @@ export const POST: APIRoute = async ({ request }) => {
     if (file.size > MAX) return json({ ok: false, msg: `文件 ${(file.size / 1024 / 1024).toFixed(1)}MB 超出单个 0.9MB 上限(R2 开通后可放开)` }, 400);
 
     const buf = await file.arrayBuffer();
+
+    /* 声明的 MIME 是客户端说了算的,不能信。
+       栅格图按文件头核一遍;SVG 与 MP4 走各自的判据:
+       SVG 是文本,看开头是不是 <svg / <?xml;MP4 看 ftyp 盒子。 */
+    const head = new Uint8Array(buf.slice(0, 32));
+    const sig = (a: number[], off = 0) => a.every((v, i) => head[off + i] === v);
+    const text = new TextDecoder().decode(head).trimStart().toLowerCase();
+    const realType =
+      sig([0xff, 0xd8, 0xff]) ? 'image/jpeg'
+      : sig([0x89, 0x50, 0x4e, 0x47]) ? 'image/png'
+      : (sig([0x52, 0x49, 0x46, 0x46]) && sig([0x57, 0x45, 0x42, 0x50], 8)) ? 'image/webp'
+      : sig([0x66, 0x74, 0x79, 0x70], 4) ? 'video/mp4'
+      : (text.startsWith('<svg') || text.startsWith('<?xml')) ? 'image/svg+xml'
+      : '';
+    if (!realType || realType !== file.type) {
+      return json({ ok: false, msg: `文件内容与声明的类型不符(声明 ${file.type},实际看起来是 ${realType || '未知格式'})` }, 400);
+    }
     // 对象键现在就定下来:即使当前存在 D1,将来搬进 R2 时键不变,
     // 前台引用的 /media/<id> 也不用改 —— 迁移只是把 blob 挪走、把 driver 改成 r2。
     const ext = (file.name.match(/\.(\w{1,5})$/)?.[1] ?? 'bin').toLowerCase();

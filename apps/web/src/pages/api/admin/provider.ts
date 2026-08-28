@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { readSession, readCookie, COOKIE } from '../../../lib/auth';
+import { apiGuard, requireAdmin } from '../../../lib/guard';
 
 export const prerender = false;
 
@@ -14,10 +14,15 @@ export const prerender = false;
  *  · **改动记修订**:换档位、停用、换 base 都进 revisions,出问题能回溯是谁改的。
  */
 export const POST: APIRoute = async ({ request }) => {
-  const db = (env as any).DB as D1Database;
-  const secret = (env as any).AUTH_SECRET as string | undefined;
-  const sess = await readSession(readCookie(request.headers.get('cookie'), COOKIE), secret ?? '');
-  if (!sess) return json({ ok: false, msg: '未登录' }, 401);
+  const c = await apiGuard(request);
+  if (c instanceof Response) return c;
+  /* 这个接口管的是**模型供应商与它们的 API key** —— 能增能删能改。
+     站点运营不该碰它:改坏了全站 AI 停摆,拿走 key 就是拿走真金白银。
+     之前只判了「登录没登录」,任何账号都能改。 */
+  const denied = requireAdmin(c);
+  if (denied) return denied;
+  const db = c.db;
+  const sess = c.sess;
 
   const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const id = String(b.id ?? '').trim().toLowerCase();

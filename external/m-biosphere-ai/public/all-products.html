@@ -386,8 +386,7 @@ var ORIGINS = [
   var btn = document.getElementById("designBtn");
   var result = document.getElementById("designResult");
   var upIco = document.getElementById("upIco");
-  var GATE_KEY = "sk-router-8a7e8e0e4e0efc1e916ad81c";
-  var API = "https://router.biosphere-ai.com/api/design";
+  var API = "/api/ai/design";
   var curImg = null;
 
   function compress(file, cb) {
@@ -434,7 +433,7 @@ var ORIGINS = [
     var style = document.getElementById("dsStyle").value.trim() || "高端暗色奢华、黑金/铜色点缀、简约优雅、符合欧美 B2B 审美";
     fetch(API, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + GATE_KEY },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: curImg, brand: brand, product: product, style: style })
     }).then(function (r) { return r.json(); }).then(function (d) {
       btn.disabled = false; btn.textContent = "生成包装设计";

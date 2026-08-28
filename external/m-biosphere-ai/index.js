@@ -51,6 +51,13 @@ const KV_PV = 'bhbohui_password_version';
 const IMAGE_ALLOWED = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 
+/* AI 代理的三道闸。数字按「一个真人正常用会用几次」定:
+   问诊要传照片、等十几秒看结果,一小时 15 次已经远超正常使用。 */
+const AI_QUOTA = 15;
+const AI_MAX_TOKENS = 900;
+const AI_MODELS = ['deepseek-chat', 'agnes-2.5-flash'];
+const AI_DESIGN_QUOTA = 6;
+
 /* 私有接口不开 CORS;公开数据接口单独开 */
 const jsonHeaders = (cors = false) => ({
   'Content-Type': 'application/json; charset=utf-8',
@@ -327,6 +334,97 @@ export default {
         return new Response('Not found', { status: 404 });
       }
       return env.ASSETS.fetch(url);
+    }
+
+    /* ── AI 代理 ────────────────────────────────────────
+       前端原来是**直接把 key 写在页面里**调 router.biosphere-ai.com:
+         headers: { Authorization: 'Bearer sk-router-…' }
+       那串 key 在生产站 HTML 里出现 3 次,任何访客按 Ctrl+U 就能拿走,
+       复制粘贴即可无限调用 —— 烧的是公司的模型账单。
+       这比签名密钥泄漏更容易被利用:前者要懂点技术,后者会复制就行。
+
+       根治只有一条路:**key 不进浏览器**。前端改调本站这个接口,
+       Worker 在服务端补上 Authorization 再转发。
+       顺带把三件前端做不了的事一起做了:限流、白名单模型、封顶 token。 */
+    if (url.pathname === '/api/ai/chat') {
+      if (request.method !== 'POST') return json({ ok: false, message: '仅接受 POST' }, 405);
+      if (!env.AI_ROUTER_KEY) return json({ ok: false, message: 'AI 服务未配置' }, 503);
+
+      /* 只放行本站发起的调用。不是强防护(Origin 可伪造),
+         但能挡住"别人把我们的接口当免费 API 用"这种最省事的薅法。 */
+      const origin = request.headers.get('Origin') || request.headers.get('Referer') || '';
+      if (origin && !origin.startsWith(url.origin)) return json({ ok: false, message: '跨站调用已拒绝' }, 403);
+
+      const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+      const rlKey = `ai_use:${ip}`;
+      const used = Number(await env.ASSETS_BUCKET.get(rlKey).catch(() => 0)) || 0;
+      if (used >= AI_QUOTA) {
+        return json({ ok: false, message: `使用过于频繁:每小时最多 ${AI_QUOTA} 次。稍后再试,或直接留言由人工跟进。` }, 429);
+      }
+
+      let body;
+      try { body = await request.json(); } catch { return json({ ok: false, message: '请求格式错误' }, 400); }
+
+      /* 模型白名单 —— 不给就是"任选模型",那等于把最贵的那个也开放出去 */
+      const model = AI_MODELS.includes(body?.model) ? body.model : AI_MODELS[0];
+      const messages = Array.isArray(body?.messages) ? body.messages.slice(0, 24) : null;
+      if (!messages?.length) return json({ ok: false, message: '缺少对话内容' }, 400);
+
+      ctx.waitUntil(env.ASSETS_BUCKET.put(rlKey, String(used + 1), { expirationTtl: 3600 }));
+
+      try {
+        const r = await fetch('https://router.biosphere-ai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.AI_ROUTER_KEY}` },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: typeof body.temperature === 'number' ? body.temperature : 0.7,
+            max_tokens: Math.min(Number(body.max_tokens) || 800, AI_MAX_TOKENS),
+            stream: false,
+          }),
+          signal: AbortSignal.timeout(60_000),
+        });
+        /* 原样透传上游的响应体,前端解析逻辑一行不用改。
+           但**不透传上游的头** —— 里面可能带账号级的配额与计费信息。 */
+        const text = await r.text();
+        return new Response(text, { status: r.status, headers: jsonHeaders() });
+      } catch (e) {
+        return json({ ok: false, message: `AI 服务暂时不可用:${String(e?.message || e).slice(0, 120)}` }, 502);
+      }
+    }
+
+    /* 包装设计出图 —— 与上面同一个道理,只是上游路径不同。
+       原来同样是前端直接带 key 调 router/api/design。 */
+    if (url.pathname === '/api/ai/design') {
+      if (request.method !== 'POST') return json({ ok: false, message: '仅接受 POST' }, 405);
+      if (!env.AI_ROUTER_KEY) return json({ ok: false, message: 'AI 服务未配置' }, 503);
+      const origin = request.headers.get('Origin') || request.headers.get('Referer') || '';
+      if (origin && !origin.startsWith(url.origin)) return json({ ok: false, message: '跨站调用已拒绝' }, 403);
+
+      const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+      const rlKey = `ai_design:${ip}`;
+      const used = Number(await env.ASSETS_BUCKET.get(rlKey).catch(() => 0)) || 0;
+      /* 出图比对话贵得多,额度单独给,而且给得更紧 */
+      if (used >= AI_DESIGN_QUOTA) {
+        return json({ ok: false, message: `出图使用过于频繁:每小时最多 ${AI_DESIGN_QUOTA} 次。` }, 429);
+      }
+      let body;
+      try { body = await request.json(); } catch { return json({ ok: false, message: '请求格式错误' }, 400); }
+      /* 张数封顶 —— 前端传什么都不能直接信,它是可以被改的 */
+      body.count = Math.min(Math.max(Number(body?.count) || 1, 1), 4);
+      ctx.waitUntil(env.ASSETS_BUCKET.put(rlKey, String(used + 1), { expirationTtl: 3600 }));
+      try {
+        const r = await fetch('https://router.biosphere-ai.com/api/design', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.AI_ROUTER_KEY}` },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(120_000),
+        });
+        return new Response(await r.text(), { status: r.status, headers: jsonHeaders() });
+      } catch (e) {
+        return json({ ok: false, message: `出图服务暂时不可用:${String(e?.message || e).slice(0, 120)}` }, 502);
+      }
     }
 
     /* ── 配方受控匹配(公开接口)───────────────────────── */
