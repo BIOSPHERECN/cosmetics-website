@@ -20,6 +20,7 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { loadFleet, vision, chat } from '../../../lib/fleet';
+import { overQuota, recordUse, tooMany, clientId, sweep } from '../../../lib/ratelimit';
 
 export const prerender = false;
 
@@ -42,7 +43,17 @@ const FEATURE_SCHEMA = `{
 export const POST: APIRoute = async ({ request }) => {
   const db = (env as any).DB as D1Database | undefined;
 
+  /* 限流 —— 这个接口公开、每次调用都真的打视觉模型。
+     没有这一道,任何人写个 for 循环几分钟就能把免费池七家的额度烧干,
+     届时前台 AI 对所有真实客户同时失效,而配额耗尽往往第二天才被发现。
+     这类风险不需要攻击者有技术:一个写错的爬虫就能触发。 */
+  const who = clientId(request);
+  if (await overQuota(db, 'ai.skin', who)) return tooMany('ai.skin');
+
   try {
+    await recordUse(db, 'ai.skin', who);
+    if (Math.random() < 0.02) await sweep(db);   // 偶尔顺手清过期计数,不必每次都跑
+
     const body = (await request.json()) as {
       image?: string; lang?: string; site?: string; consent?: boolean;
     };

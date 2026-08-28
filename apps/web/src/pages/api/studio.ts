@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { loadFleet, chat } from '../../lib/fleet';
+import { overQuota, recordUse, tooMany, clientId } from '../../lib/ratelimit';
 
 export const prerender = false;
 
@@ -22,6 +23,11 @@ export const prerender = false;
  */
 export const POST: APIRoute = async ({ request }) => {
   const db = (env as any).DB as D1Database | undefined;
+
+  /* 同 /api/ai/skin:公开接口 + 真实模型调用 = 必须限流,理由见 lib/ratelimit.ts */
+  const who = clientId(request);
+  if (await overQuota(db, 'ai.studio', who)) return tooMany('ai.studio');
+  await recordUse(db, 'ai.studio', who);
   if (!db) return json({ ok: false, msg: '数据源未就绪' }, 500);
 
   const body = (await request.json().catch(() => ({}))) as { input?: string; lang?: string; site?: string };
