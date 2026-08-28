@@ -1,0 +1,119 @@
+{
+  "items": [
+    {
+      "id": "rose",
+      "name": "Rose",
+      "zh": "玫瑰",
+      "region": "贵州毕节",
+      "page": "origin-rose.html",
+      "desc": "玫瑰种植基地坐落于贵州毕节高原山地，海拔 1200–1800 米，昼夜温差大、光照充足，利于大马士革玫瑰积累芳香物质。每年 4–5 月为盛花期，清晨露水未干时人工采摘花苞，当日低温烘干或蒸馏提取。所产玫瑰精油香气清甜、出油率高，花水 pH 温和，是护肤配方中舒缓保湿的核心原料。",
+      "img": "images/origin-rose.webp",
+      "gallery": [
+        {
+          "url": "images/origin-rose.webp",
+          "alt": "贵州毕节玫瑰种植基地花田远观",
+          "sort": 0
+        },
+        {
+          "url": "images/origin-rose.jpg",
+          "alt": "玫瑰基地实拍：清晨采摘花苞",
+          "sort": 1
+        }
+      ],
+      "status": "published",
+      "updatedAt": "2026-08-24T00:00:00"
+    },
+    {
+      "id": "green-tea",
+      "name": "Green Tea",
+      "zh": "绿茶",
+      "region": "浙江",
+      "page": "origin-green-tea.html",
+      "desc": "绿茶原料基地分布于浙江丘陵茶园，属亚热带季风气候，雨量充沛、云雾缭绕，茶园土壤呈微酸性、富含有机质。春季明前采摘一芽一叶嫩梢，经摊青—杀青—揉捻—干燥工艺锁住茶多酚与氨基酸。茶提取物富含儿茶素与茶多酚，抗氧化、控油收敛，用于洁面与调理类产品。",
+      "img": "images/origin-green-tea.webp",
+      "gallery": [
+        {
+          "url": "images/origin-green-tea.webp",
+          "alt": "浙江丘陵绿茶种植园",
+          "sort": 0
+        },
+        {
+          "url": "images/origin-green-tea.jpg",
+          "alt": "绿茶基地：明前嫩梢采摘",
+          "sort": 1
+        }
+      ],
+      "status": "published",
+      "updatedAt": "2026-08-24T00:00:00"
+    },
+    {
+      "id": "aloe",
+      "name": "Aloe Vera",
+      "zh": "库拉索芦荟",
+      "region": "云南",
+      "page": "origin-aloe.html",
+      "desc": "库拉索芦荟种植基地位于云南干热河谷地区，日照强烈、昼夜温差大、灌溉水源洁净，植株肉质叶片肥厚、凝胶含量高。芦荟叶龄满 3 年以上方可采收，人工去皮取凝胶，2 小时内低温加工稳定多糖活性。芦荟凝胶富含多糖与氨基酸，保湿修护、舒缓晒后肌肤。",
+      "img": "images/origin-aloe.webp",
+      "gallery": [
+        {
+          "url": "images/origin-aloe.webp",
+          "alt": "云南干热河谷库拉索芦荟种植基地",
+          "sort": 0
+        },
+        {
+          "url": "images/origin-aloe.jpg",
+          "alt": "芦荟基地：3 年以上成熟叶采收",
+          "sort": 1
+        }
+      ],
+      "status": "published",
+      "updatedAt": "2026-08-24T00:00:00"
+    },
+    {
+      "id": "centella",
+      "name": "Centella Asiatica",
+      "zh": "积雪草",
+      "region": "云南",
+      "page": "origin-centella.html",
+      "desc": "积雪草野生驯化基地分布于云南低海拔湿润林地与溪畔，年均温 15–24℃，空气湿度高，土壤疏松排水良好。采收选择生长旺盛期地上全草，阴干后低温萃取。积雪草苷与羟基积雪草苷含量稳定，具有修护屏障、淡化红印功效，是敏感肌护理的核心活性物。",
+      "img": "images/origin-centella.webp",
+      "gallery": [
+        {
+          "url": "images/origin-centella.webp",
+          "alt": "云南湿润林地积雪草种植基地",
+          "sort": 0
+        },
+        {
+          "url": "images/origin-centella.jpg",
+          "alt": "积雪草基地：旺盛期全草采收",
+          "sort": 1
+        }
+      ],
+      "status": "published",
+      "updatedAt": "2026-08-24T00:00:00"
+    },
+    {
+      "id": "ginseng",
+      "name": "Ginseng",
+      "zh": "人参",
+      "region": "吉林长白山",
+      "page": "origin-ginseng.html",
+      "desc": "人参种植基地位于吉林长白山余脉，海拔 500–900 米，针阔混交林下腐殖土深厚、透气保水，冬季漫长低温利于皂苷积累。移山参需经 5–6 年自然生长方可采收，秋季白露后起参，洗净晾晒或低温干燥。人参皂苷含量高，能提升肌肤活力、延缓老化，用于抗衰紧致系列。",
+      "img": "images/origin-ginseng.webp",
+      "gallery": [
+        {
+          "url": "images/origin-ginseng.webp",
+          "alt": "吉林长白山人参种植基地",
+          "sort": 0
+        },
+        {
+          "url": "images/origin-ginseng.jpg",
+          "alt": "人参基地：5 年生移山参起收",
+          "sort": 1
+        }
+      ],
+      "status": "published",
+      "updatedAt": "2026-08-24T00:00:00"
+    }
+  ]
+}
