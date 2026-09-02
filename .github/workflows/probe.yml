@@ -1,0 +1,41 @@
+name: probe-runner
+# 探路(2026-09-02):GitHub 机器能不能替创始人的电脑干活?
+#   ① 能否访问国内行业站(青眼情报 / 聚美丽)—— 决定资讯抓取能否搬上来
+#   ② 能否调 Agnes 出图 —— 决定包装定制图能否搬上来(Agnes 封了 Cloudflare Worker 的出口 IP)
+#   ③ Google News RSS / AnySearch 是否可达
+# 只读探测,不写任何数据。
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: 访问国内站与聚合源
+        run: |
+          for u in https://www.iqyqb.com/ https://www.jumeili.cn/ "https://news.google.com/rss/search?q=cosmetics&hl=en-US&gl=US&ceid=US:en" https://api.anysearch.com/v1/search; do
+            printf '%-70s ' "$u"; curl -s -o /dev/null -w 'HTTP %{http_code} %{time_total}s\n' --max-time 30 "$u" || echo 'FAIL'
+          done
+      - name: Agnes 出图(仅当配置了 AGNES_KEY 才测)
+        if: ${{ env.AGNES_KEY != '' }}
+        env:
+          AGNES_KEY: ${{ secrets.AGNES_KEY }}
+        run: |
+          code=$(curl -s -o /tmp/img.json -w '%{http_code}' --max-time 150 -X POST https://apihub.agnes-ai.com/v1/images/generations \
+            -H "Authorization: Bearer $AGNES_KEY" -H 'Content-Type: application/json' \
+            -d '{"model":"agnes-image-2.1-flash","prompt":"a plain white paper box on white background","n":1,"size":"1024x1024"}')
+          echo "Agnes images/generations → HTTP $code"; head -c 200 /tmp/img.json; echo
+      - name: Agnes 对话(仅当配置了 AGNES_KEY 才测)
+        if: ${{ env.AGNES_KEY != '' }}
+        env:
+          AGNES_KEY: ${{ secrets.AGNES_KEY }}
+        run: |
+          code=$(curl -s -o /tmp/chat.json -w '%{http_code}' --max-time 60 -X POST https://apihub.agnes-ai.com/v1/chat/completions \
+            -H "Authorization: Bearer $AGNES_KEY" -H 'Content-Type: application/json' \
+            -d '{"model":"agnes-2.0-flash","messages":[{"role":"user","content":"reply ok"}],"max_tokens":1200}')
+          echo "Agnes chat → HTTP $code"; head -c 200 /tmp/chat.json; echo
+      - name: Python 爬虫栈可装性
+        run: |
+          python3 -m pip install -q trafilatura crawl4ai 2>&1 | tail -1
+          python3 -c "import trafilatura, crawl4ai; print('trafilatura', trafilatura.__version__, '| crawl4ai', crawl4ai.__version__)"
