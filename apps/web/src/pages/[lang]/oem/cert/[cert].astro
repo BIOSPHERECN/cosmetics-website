@@ -1,0 +1,109 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+import { OEM_MARKETS, OEM_CATEGORIES, OEM_CERTS } from '@cosmetic/core/content/oem.ts';
+/**
+ * 意图页的「认证」维度(2026-09-23 GEO 第 5 条):买家会搜「HALAL cosmetics manufacturer」「ISO 22716 cosmetics OEM」。
+ * 只写真有的三项(OEM_CERTS,来源:知识库「工厂口径」页认证行);证书编号 / 有效期不上网页,凭扫描件原件提供。
+ * 「认证覆盖什么」是我们自己写的通识句,不抄任何认证机构原文;不替任何市场断言「这张证在当地一定被认」。
+ * 中 / 英模板在这里,其它语种回落英文。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../../lib/shell';
+
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const C = OEM_CERTS.find((c) => c.id === String(Astro.params.cert ?? '').toLowerCase());
+if (!C) return new Response(null, { status: 404 });
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const B = `/${lang}`; const path = `${B}/oem/cert/${C.id}/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const lines = '15';   // 工厂口径页「产线 15 条自动化产线(官网口径)」
+const markets = OEM_MARKETS.filter((m) => C.markets === 'all' || m.halal);
+
+const COVERS_EN: Record<string, string> = {
+  gmpc: 'GMPC stands for Good Manufacturing Practice for Cosmetics. A GMPC certificate means an independent auditor has checked the plant\'s cosmetic GMP system: premises and hygiene, control of raw materials and packaging, batch records, in-process and release testing, complaint handling and recall. It is a plant-level certificate and does not register or approve any individual product.',
+  'iso-22716': 'ISO 22716:2007 is the international guideline for Good Manufacturing Practices in cosmetics, covering production, control, storage and shipment. In the EU, Regulation (EC) No 1223/2009 requires cosmetics to be made under GMP, and compliance is presumed when manufacturing follows the harmonised standard EN ISO 22716. Buyers in other markets commonly ask for it during supplier approval.',
+  halal: 'Halal certification checks that raw materials and the production process meet Islamic requirements: no porcine-derived or otherwise prohibited materials, documented sourcing of animal-derived and alcohol-containing ingredients, and no cross-contamination on the line. Which halal certificate a market accepts is decided by that market\'s own authority (for example BPJPH in Indonesia), so acceptance for your target market should be confirmed before filing.',
+};
+const COVERS_ZH: Record<string, string> = {
+  gmpc: 'GMPC 即化妆品良好生产规范(Good Manufacturing Practice for Cosmetics)。拿到 GMPC 证书,意味着第三方审核员检查过工厂的化妆品 GMP 体系:厂房与卫生、原料和包材控制、批记录、过程检验与放行检验、投诉处理与召回。它是工厂级证书,不等于任何一个具体产品已经注册或获批。',
+  'iso-22716': 'ISO 22716:2007 是化妆品良好生产规范的国际指南,覆盖生产、控制、储存和发运。欧盟法规 (EC) No 1223/2009 要求化妆品按 GMP 生产,按协调标准 EN ISO 22716 生产即推定符合。其它市场的采购在供应商准入时也常要这张证。',
+  halal: '清真(HALAL)认证核查原料与生产过程是否符合伊斯兰要求:不用猪源及其它禁用物料,动物来源与含酒精原料的来源有据可查,产线不交叉污染。某个市场认不认某张清真证书,由该市场自己的主管机构决定(例如印尼的 BPJPH),所以上市前应先确认目标市场是否接受。',
+};
+
+const EN = {
+  title: `${C.name}-certified cosmetics OEM manufacturer in Guangzhou, China | BIOSPHERE`,
+  h1: `${C.name}-certified cosmetics OEM / private label manufacturer`,
+  capQ: `Is BIOSPHERE ${C.name} certified?`,
+  capA: `Yes. The Guangzhou plant of Guangzhou Bohui Cosmetics Co., Ltd., which exports under the BIOSPHERE brand, holds ${C.name} certification and runs ${lines} automated lines. Certificate copies with number, scope and validity are sent on request against the scanned original, and buyers are welcome to audit the plant before ordering.`,
+  coversH: `What ${C.name} certification covers`, marketsH: `Markets where buyers ask for ${C.name}`,
+  otherH: 'Other certifications', back: '← All markets and categories', inquiry: 'Ask for the certificate copy',
+  faq2q: `Does ${C.name} certification mean my product is approved for sale?`,
+  faq2a: `No. ${C.name} certifies the factory's system. Each product still needs the target market's own notification, registration or filing, made by the responsible person in that market; each market page below summarises that route.`,
+  faq3q: `Can I get a copy of the ${C.name} certificate?`,
+  faq3a: 'Yes. A copy with certificate number, scope and validity is provided on request against the scanned original; certificate details are not published on the website.',
+  eyebrow: 'OEM / private label · certification',
+};
+const ZH = {
+  title: `${C.name} 认证化妆品代工厂(广州)| 帛卉化妆品 BIOSPHERE`,
+  h1: `${C.name} 认证的化妆品 OEM / 贴牌代工厂`,
+  capQ: `帛卉化妆品有 ${C.name} 认证吗?`,
+  capA: `有。广州市帛卉化妆品有限公司(出口品牌 BIOSPHERE)的广州工厂持有 ${C.name} 认证,运行 ${lines} 条自动化产线。证书复印件(含编号、范围与有效期)凭扫描件原件按需提供,下单前欢迎来厂审核。`,
+  coversH: `${C.name} 认证管什么`, marketsH: `哪些市场的买家会问 ${C.name}`,
+  otherH: '其它认证', back: '← 全部市场与品类', inquiry: '索取证书复印件',
+  faq2q: `有 ${C.name} 认证,是不是我的产品就能直接上市?`,
+  faq2a: `不是。${C.name} 认证的是工厂体系;每个产品仍要按目标市场的规定,由当地责任人完成通报、备案或注册。下面各市场页整理了各自的上市路径。`,
+  faq3q: `能拿到 ${C.name} 证书复印件吗?`,
+  faq3a: '能。证书复印件(含编号、范围与有效期)凭扫描件原件按需提供;证书细节不在网页上公开。',
+  eyebrow: 'OEM / 贴牌代工 · 认证',
+};
+const T = zh ? ZH : EN;
+const covers = (zh ? COVERS_ZH : COVERS_EN)[C.id];
+const faqs: [string, string][] = [[T.capQ, T.capA], [T.faq2q, T.faq2a], [T.faq3q, T.faq3a]];
+const mName = (m: any) => (zh ? m.zh : m.en.replace(/^the /, ''));
+const cName = (c: any) => (zh ? c.zh : c.en);
+const ld = [
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}${B}/` },
+    { '@type': 'ListItem', position: 2, name: zh ? 'OEM / 贴牌代工' : 'OEM / private label', item: `${origin}${B}/oem/` },
+    { '@type': 'ListItem', position: 3, name: C.name, item: origin + path } ] },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) },
+];
+---
+<BaseLayout locale={lang as any} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.capA} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <p class="back"><a href={`${B}/oem/`}>{T.back}</a></p>
+    <header class="hd"><p class="eyebrow">{T.eyebrow}</p><h1>{T.h1}</h1></header>
+    <section class="capsule" aria-labelledby="cap-h"><h2 id="cap-h">{T.capQ}</h2><p>{T.capA}</p></section>
+    <section class="blk"><h2>{T.coversH}</h2><p>{covers}</p></section>
+    <section class="blk"><h2>{T.marketsH}</h2>
+      <ul class="mk">{markets.map((m) => (<li><b>{mName(m)}</b>{OEM_CATEGORIES.map((c) => (<a href={`${B}/oem/${m.id}/${c.id}/`}>{cName(c)}</a>))}</li>))}</ul>
+    </section>
+    <section class="faq"><h2>FAQ</h2>{faqs.slice(1).map(([q, a]) => (<details open><summary>{q}</summary><p>{a}</p></details>))}</section>
+    <p class="other">{T.otherH}: {OEM_CERTS.filter((x) => x.id !== C.id).map((x, i) => (<>{i > 0 && ' · '}<a href={`${B}/oem/cert/${x.id}/`}>{x.name}</a></>))}</p>
+    <p class="ask"><a href={`${B}/contact/`}>{T.inquiry} →</a></p>
+  </main>
+  <SiteFooter locale={lang as any} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} />
+</BaseLayout>
+
+<style>
+  main{max-width:56rem;margin:0 auto;padding:2rem 1rem 4rem}
+  .back{font-size:.875rem;margin:0 0 1rem} .eyebrow{text-transform:uppercase;letter-spacing:.08em;font-size:.75rem;opacity:.7;margin:0 0 .5rem}
+  h1{font-size:clamp(1.5rem,3vw,2.25rem);line-height:1.2;margin:0 0 1rem}
+  .capsule{margin:1.5rem 0;padding:1rem 1.25rem;border:1px solid var(--ck-line, rgba(0,0,0,.12));border-radius:12px} .capsule h2{font-size:1.125rem;margin:0 0 .5rem} .capsule p{line-height:1.7;margin:0}
+  .blk{margin:2rem 0} .blk h2,.faq h2{font-size:1.25rem;margin:0 0 .75rem} .blk p{line-height:1.7}
+  .mk{list-style:none;padding:0;margin:0;display:grid;gap:.5rem} .mk li{line-height:1.8} .mk b{display:inline-block;min-width:9rem} .mk a{margin-right:.75rem;text-decoration:underline;text-underline-offset:.15em}
+  .faq details{margin:.5rem 0} .faq summary{cursor:pointer;font-weight:600} .faq p{line-height:1.7} .other,.ask{margin-top:1.5rem}
+</style>

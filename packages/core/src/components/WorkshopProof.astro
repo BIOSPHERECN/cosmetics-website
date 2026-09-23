@@ -103,7 +103,7 @@ const { title, intro, clips, pendingLabel = '实拍素材待补' } = Astro.props
   }
   .cam { width: 2.75rem; height: auto; opacity: 0.75; }
   .ptext {
-    font-size: 0.75rem;
+    font-size: max(0.75rem, 14px);
     letter-spacing: 0.08em;
   }
 
@@ -116,7 +116,7 @@ const { title, intro, clips, pendingLabel = '实拍素材待补' } = Astro.props
     background: var(--ck-band-bg);
     color: var(--ck-band-ink);
     font-family: var(--ck-font-mono);
-    font-size: 0.6875rem;
+    font-size: max(0.6875rem, 14px);
     border-radius: 3px;
   }
 
@@ -126,4 +126,8 @@ const { title, intro, clips, pendingLabel = '实拍素材待补' } = Astro.props
     font-size: var(--ck-small);
     color: var(--ck-ink-soft);
   }
+  /* 创始人:手机不要一行单图 —— 图网格保持 2 列 */
+  @media (max-width: 40rem) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.75rem; } }
+  /* 创始人:图下文字手机端太大 —— 降档 */
+  @media (max-width: 40rem) { .t { font-size: 0.9375rem; } }
 </style>

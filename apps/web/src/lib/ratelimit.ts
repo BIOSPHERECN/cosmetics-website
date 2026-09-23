@@ -38,7 +38,23 @@ export interface Quota {
 export const QUOTA = {
   'ai.skin': { limit: 8, windowMin: 60 },
   'ai.studio': { limit: 20, windowMin: 60 },
+  /* 包装设计:一次调用同时打读图 + 出图两条线,是最贵的一档,给 6/小时 */
+  'ai.pack': { limit: 6, windowMin: 60 },
+  /* AI 站内搜索:检索走 D1 不花钱,但每次会调一次模型 —— 给个上限防脚本刷 */
+  'ai.search': { limit: 30, windowMin: 60 },
+  /* AI 客服:对话轮次多于共创,给到 30/小时;刷爆的引导走询盘,不是无限聊天 */
+  'ai.chat': { limit: 30, windowMin: 60 },
+  /* 向量检索的**全站**日上限(不分 IP)。
+     按 IP 限流挡不住分布式脚本,而 Vectorize 是按「查询的向量维度数」计费的 ——
+     一次 topK=20 × 1024 维不贵,量堆起来才贵。这一条是刹车不是节流:
+     超了就跳过语义、走原来的 SQL 结果,**降级但不报错**。
+     创始人 2026-09-08:「Vectorize 注意被打爆流量」。 */
+  'kb.query': { limit: 500, windowMin: 1440 },
   inquiry: { limit: 5, windowMin: 60 },
+  /* 会员登录邮件(2026-09-23):同一邮箱 1 小时 3 封(防拿别人邮箱轰炸),同一 IP 1 小时 20 封(公司出口 NAT 留余量)。
+     真正挡批量注册的是 Turnstile,这两条挡的是「过了人机验证之后的滥发」。 */
+  'member.mail': { limit: 3, windowMin: 60 },
+  'member.ip': { limit: 20, windowMin: 60 },
 } satisfies Record<string, Quota>;
 
 export type QuotaKey = keyof typeof QUOTA;

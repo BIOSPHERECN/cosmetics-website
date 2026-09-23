@@ -1,0 +1,151 @@
+---
+/**
+ * 市场结构 —— 按 市场 × 类目 看公开全成分的出现频率:高频成分 Top 30、标签占比、品牌集中度。
+ * 依据:GPT 设计包 ingredient_market_trends(P004)「频率≠销量」;映射文档:真正的趋势等 market_product_seen 积累 ≥2 周再算,这页只做结构快照。
+ * 数据:market_product_inci(0088,I 任务同建)JOIN market_products / ingredient_facts;表没建好时显示「数据准备中」,不 500。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { MARKET, TAG_LABEL } from '../../lib/decoder';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const country = url.searchParams.get('c') ?? '';
+const cat = url.searchParams.get('cat') ?? '';
+const ex = url.searchParams.get('inc') !== '1';   // 默认排除水 / 甘油(否则 Top 30 前两名永远是它们);勾「包含」才放回来
+
+/* 筛选项来自 market_products(已有表),与主体统计分开 try —— 关系表没建好也要能选 */
+type KV = { k: string | null; n: number };
+let countries: KV[] = [], cats: KV[] = [];
+try {
+  const [a, b] = await c.db.batch([
+    c.db.prepare(`SELECT country k, COUNT(*) n FROM market_products WHERE COALESCE(inci,'')<>'' GROUP BY country ORDER BY n DESC`),
+    c.db.prepare(`SELECT cat_zh k, COUNT(*) n FROM market_products WHERE COALESCE(inci,'')<>'' ${country ? 'AND country=?' : ''} GROUP BY cat_zh ORDER BY n DESC LIMIT 80`).bind(...(country ? [country] : [])),
+  ]);
+  countries = a.results as KV[]; cats = b.results as KV[];
+} catch { /* 显示空下拉 */ }
+
+const W = [`COALESCE(p.inci,'')<>''`], B: unknown[] = [];
+if (country) { W.push('p.country=?'); B.push(country); }
+if (cat) { W.push('p.cat_zh=?'); B.push(cat); }
+const where = 'WHERE ' + W.join(' AND ');
+/* factKey 去括号后「Water (Aqua)」→ WATER;各国标签还有 AQUA/WATER/EAU 这类合写 */
+const EXC = ['WATER', 'AQUA', 'EAU', 'AQUA/WATER', 'WATER/AQUA', 'AQUA/WATER/EAU', 'WATER/AQUA/EAU', 'GLYCERIN', 'GLYCERINE'];
+const TAGS = ['fragrance', 'alcohol', 'paraben', 'silicone', 'sulfate', 'essential-oil'];
+
+type Top = { inci_key: string; n: number; name_zh?: string | null; rating?: string | null };
+type Data = { total: number; top: Top[]; tags: Record<string, number>; brands: { brand: string; n: number }[]; nb: number };
+/* 后台 /bohui/* 中间件强制 no-store,边缘缓存进不去 → 同一筛选组合在 isolate 内存里留 60 秒(任务口径:每个筛选组合可缓存 60 秒)。
+   ponytail: 每个 isolate 各一份,冷启动就没了;要跨实例再改预聚合表 */
+const CACHE: Map<string, { t: number; v: Data }> = ((globalThis as any).__msCache ??= new Map());
+const ck = `${country}|${cat}|${ex}`;
+const hit = CACHE.get(ck);
+let data: Data | null = hit && hit.t > Date.now() - 60e3 ? hit.v : null;
+let ready = true;
+if (!data) try {
+  /* 查询先量行数:全市场无类目 ≈ 6,695 款 × ~30 行 ≈ 20 万关系行,Top 30 带 LIMIT、标签占比一次 JOIN 扫过(不用 6 个 EXISTS 扫 6 遍),再加 60 秒缓存;
+     以后款数翻几倍就改成 market_structure_agg 预聚合(记忆:超过 5 万行的聚合加 LIMIT 或改预聚合) */
+  const total = (await c.db.prepare(`SELECT COUNT(*) n FROM market_products p ${where}`).bind(...B).first<{ n: number }>())?.n ?? 0;
+  const tagSel = TAGS.map((_, i) => `COUNT(DISTINCT CASE WHEN f.tags LIKE ? THEN i.product_id END) t${i}`).join(', ');
+  const [top, tg, br, nb] = await c.db.batch([
+    c.db.prepare(`SELECT i.inci_key, COUNT(DISTINCT i.product_id) n FROM market_product_inci i JOIN market_products p ON p.id=i.product_id ${where}
+      ${ex ? `AND i.inci_key NOT IN (${EXC.map(() => '?').join(',')})` : ''} GROUP BY i.inci_key ORDER BY n DESC LIMIT 30`).bind(...B, ...(ex ? EXC : [])),
+    c.db.prepare(`SELECT ${tagSel} FROM market_products p JOIN market_product_inci i ON i.product_id=p.id JOIN ingredient_facts f ON f.inci_key=i.inci_key ${where}`)
+      .bind(...TAGS.map((t) => `%"${t}"%`), ...B),
+    c.db.prepare(`SELECT brand, COUNT(*) n FROM market_products p ${where} AND COALESCE(p.brand,'')<>'' GROUP BY brand ORDER BY n DESC LIMIT 10`).bind(...B),
+    c.db.prepare(`SELECT COUNT(DISTINCT p.brand) n FROM market_products p ${where} AND COALESCE(p.brand,'')<>''`).bind(...B),
+  ]);
+  const rows = top.results as Top[];
+  const facts = rows.length ? (await c.db.prepare(`SELECT inci_key, name_zh, rating FROM ingredient_facts WHERE inci_key IN (${rows.map(() => '?').join(',')})`)
+    .bind(...rows.map((r) => r.inci_key)).all<{ inci_key: string; name_zh: string | null; rating: string | null }>()).results : [];
+  const F = new Map(facts.map((f) => [f.inci_key, f]));
+  const t0 = (tg.results[0] ?? {}) as Record<string, number>;
+  data = {
+    total,
+    top: rows.map((r) => ({ ...r, name_zh: F.get(r.inci_key)?.name_zh, rating: F.get(r.inci_key)?.rating })),
+    tags: Object.fromEntries(TAGS.map((t, i) => [t, t0[`t${i}`] ?? 0])),
+    brands: br.results as { brand: string; n: number }[],
+    nb: (nb.results[0] as { n: number } | undefined)?.n ?? 0,
+  };
+  CACHE.set(ck, { t: Date.now(), v: data });
+} catch { ready = false; }
+
+const pc = (n: number) => data?.total ? `${Math.round((n / data.total) * 1000) / 10}%` : '—';
+const mk = (k: string | null) => k ? (MARKET[k]?.[0] ?? k.toUpperCase()) : '其他';
+const RATING: Record<string, string> = { green: '安全', yellow: '注意', red: '风险' };
+---
+
+<AdminShell title="市场结构" active="market-structure" email={c.sess.email} tenant={c.tenant}>
+  <h1>市场结构</h1>
+  <p class="lead notice">以下为公开全成分的出现频率统计,不是销量,不代表市场份额。成分顺序只代表标签标示顺序,不代表含量。</p>
+
+  <form class="bar" method="get">
+    <select name="c"><option value="">全部市场</option>
+      {countries.map((r) => <option value={r.k ?? ''} selected={(r.k ?? '') === country}>{mk(r.k)}({r.n})</option>)}</select>
+    <select name="cat"><option value="">全部类目</option>
+      {cats.map((r) => <option value={r.k ?? ''} selected={(r.k ?? '') === cat}>{r.k ?? '(未分类)'}({r.n})</option>)}</select>
+    <label class="chk"><input type="checkbox" name="inc" value="1" checked={!ex} /> 包含水 / 甘油</label>
+    <button class="btn pri" type="submit">查看</button>
+    {(country || cat || !ex) && <a class="btn" href="/bohui/market-structure/">清空</a>}
+  </form>
+
+  {!ready || !data ? (
+    <div class="empty">数据准备中 —— 成分关系表 market_product_inci 还没建好(迁移 0088),灌完 6,695 款全成分后这里就有统计。</div>
+  ) : (
+    <>
+      <div class="cards">
+        <div class="card"><div class="k">{mk(country || null)}{cat ? ` · ${cat}` : ''} 产品数</div><div class="v">{data.total.toLocaleString('en-US')}</div><div class="s">有公开全成分的款数</div></div>
+        <div class="card"><div class="k">品牌数</div><div class="v">{data.nb.toLocaleString('en-US')}</div></div>
+        {TAGS.map((t) => (
+          <div class="card"><div class="k">无{TAG_LABEL[t]?.[0] ?? t}</div><div class="v">{pc(data!.total - data!.tags[t])}</div><div class="s">含{TAG_LABEL[t]?.[0] ?? t} {data!.tags[t]} 款 · {pc(data!.tags[t])}</div></div>
+        ))}
+      </div>
+
+      <div class="grid2">
+        <section class="panel">
+          <h2>高频成分 Top 30{ex ? '(已排除水 / 甘油)' : ''}</h2>
+          {data.top.length === 0 ? <div class="empty">这个组合没有成分记录。</div> : (
+            <table>
+              <thead><tr><th style="width:2.5rem">#</th><th>成分</th><th class="r">出现款数</th><th class="r">占比</th></tr></thead>
+              <tbody>{data.top.map((r, i) => (
+                <tr>
+                  <td class="dim">{i + 1}</td>
+                  <td><i class:list={['dot', r.rating]} title={RATING[r.rating ?? ''] ?? '未评'} /> <b>{r.inci_key}</b>{r.name_zh && <span class="dim"> · {r.name_zh}</span>}</td>
+                  <td class="r num">{r.n.toLocaleString('en-US')}</td>
+                  <td class="r num">{pc(r.n)}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          )}
+        </section>
+        <section class="panel">
+          <h2>Top 10 品牌(款数)</h2>
+          {data.brands.length === 0 ? <div class="empty">没有品牌记录。</div> : (
+            <table>
+              <thead><tr><th>品牌</th><th class="r">款数</th><th class="r">占比</th></tr></thead>
+              <tbody>{data.brands.map((b) => (
+                <tr><td><b>{b.brand}</b></td><td class="r num">{b.n}</td><td class="r num">{pc(b.n)}</td></tr>
+              ))}</tbody>
+            </table>
+          )}
+          <p class="dim">款数多只说明该品牌在公开榜单上 SKU 多,不是销量。</p>
+        </section>
+      </div>
+    </>
+  )}
+
+  <style>
+    .notice{border-left:3px solid var(--ad-warn);padding-left:.75rem}
+    .chk{display:flex;gap:.375rem;align-items:center;font-size:.8125rem} .chk input{width:auto}
+    .grid2{display:grid;grid-template-columns:3fr 2fr;gap:.75rem}
+    .panel{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:1rem 1.125rem}
+    h2{font-size:.9375rem;margin:0 0 .5rem}
+    th.r,td.r{text-align:right} .dim{color:var(--ad-faint);font-size:.75rem}
+    .dot{display:inline-block;width:.5rem;height:.5rem;border-radius:50%;background:var(--ad-line);vertical-align:middle}
+    .dot.green{background:var(--ad-ok)} .dot.yellow{background:var(--ad-warn)} .dot.red{background:var(--ad-bad)}
+    @media (max-width:60rem){.grid2{grid-template-columns:1fr}}
+  </style>
+</AdminShell>

@@ -14,11 +14,17 @@
  *   零 JS 也能开合 —— 下面那点脚本只做两件锦上添花的事:
  *   点外面关掉、记住选择的 cookie。脚本挂了,切语言照样能用。
  *
+ * **`<script is:inline>` 里不要写中文注释。**
+ *   Astro 对 is:inline 的脚本原样输出,注释也会一起发到浏览器。
+ *   这个组件在每一页上,2026-09-08 实测每页因此多背约 1.8 KB 的内部工程笔记 ——
+ *   任何人查看源码、任何 AI 爬虫读页面都能看到。解释写在这段(frontmatter
+ *   注释不会被输出),脚本里只留代码。
+ *
  * 为什么按钮上写「JP」而地址栏是 /ja/:
  *   ja 是 ISO 639-1 的语言码,Google 的 hreflang 只认它,写 jp 会失效。
  *   但访客眼里日本就是 JP。所以机器读 ja、人看 JP,两边都不将就。
  */
-import { LOCALE_GROUPS, LOCALE_LABELS, LOCALE_SHORT, HREFLANG, isRtl, switchLocalePath, t, type Locale } from '../i18n/index.ts';
+import { GROUP_LABELS, groupLabel, LOCALE_GROUPS, LOCALE_LABELS, LOCALE_SHORT, HREFLANG, isRtl, switchLocalePath, t, type Locale } from '../i18n/index.ts';
 
 export interface Props {
   locale: Locale;
@@ -58,7 +64,7 @@ const tr = t(locale);
       <section class="ls-grp">
         {/* 大区标题不是装饰:36 个语种平铺成一列,人只会在里面上下乱扫。
             按大区分组之后,访客先定位「我在哪个洲」,再在 3-16 个里挑 —— 这是能扫完的量。 */}
-        <h3 class="ls-gt">{g.group}</h3>
+        <h3 class="ls-gt">{groupLabel(locale, g.group)}</h3>
         <ul role="list">
           {g.codes.map((l) => (
             <li>
@@ -96,7 +102,7 @@ const tr = t(locale);
     align-items: center;
     gap: 0.375rem;
     padding: 0.3125rem 0.5625rem;
-    font-size: 0.75rem;
+    font-size: max(0.75rem, 14px);
     line-height: 1;
     color: var(--ck-ink-soft);
     background: transparent;
@@ -156,7 +162,7 @@ const tr = t(locale);
   .ls-gt {
     margin: 0 0 0.25rem;
     padding: 0 0.625rem;
-    font-size: 0.625rem;
+    font-size: max(0.625rem, 14px);
     font-weight: 600;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -173,9 +179,13 @@ const tr = t(locale);
     align-items: baseline;
     justify-content: space-between;
     gap: 1rem;
-    padding: 0.4375rem 0.625rem;
+    /* 18 个语种 × 每项不到 44px = 首页 81 个过小触控靶里的 36 个。
+       手指按不准就换错语言,换错语言就退出 —— 这一条不是无障碍洁癖。 */
+    min-height: 2.75rem;
+    align-content: center;
+    padding: 0.625rem 0.625rem;
     border-radius: calc(var(--ck-radius) - 2px);
-    font-size: 0.8125rem;
+    font-size: max(0.8125rem, 14px);
     line-height: 1.3;
     text-decoration: none;
     color: var(--ck-ink-soft);
@@ -188,7 +198,7 @@ const tr = t(locale);
   }
   .ls-code {
     font-family: var(--ck-font-mono);
-    font-size: 0.625rem;
+    font-size: max(0.625rem, 14px);
     letter-spacing: 0.08em;
     color: var(--ck-ink-faint);
     flex: none;
@@ -203,7 +213,7 @@ const tr = t(locale);
   /* 紧凑档:报头那条细窄的期次行 */
   .ls.dense > summary {
     padding: 0.125rem 0.375rem;
-    font-size: 0.6875rem;
+    font-size: max(0.6875rem, 14px);
     border-color: transparent;
   }
   .ls.dense > summary:hover { border-color: var(--ck-line); }
@@ -211,16 +221,15 @@ const tr = t(locale);
 </style>
 
 <script is:inline>
-  /* 只做两件锦上添花的事;脚本挂了切换器照样能用(<details> 是原生开合)。 */
+  
   (() => {
-    /* ① 点到菜单外面就收起来。
-          原生 <details> 不会自己关,六个语种的面板一直摊在那儿会挡住内容。 */
+    
     document.addEventListener('click', (e) => {
       document.querySelectorAll('details.ls[open]').forEach((d) => {
         if (!d.contains(e.target)) d.open = false;
       });
     });
-    /* Esc 关闭 —— 键盘用户的通用退出手势 */
+    
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
       document.querySelectorAll('details.ls[open]').forEach((d) => {
@@ -229,11 +238,8 @@ const tr = t(locale);
       });
     });
 
-    /* ② 手动选语言 = 明确表态,记一年;中间件读到这个 cookie 就不再按地区自动跳。
-          不记的话:海外同事把英文链接发给国内客户,客户点开又被跳成中文 —— 看着像坏了。 */
-    /* 存的是**语种码**(zh-cn / pt-br),不是 hreflang 值(zh-CN / pt-BR)——
-       两者大小写不一致,靠中间件 toLowerCase 兜底能work但太脆:
-       哪天多一个 sr-Latn 这样的写法就对不上了。存什么读什么,不做隐式转换。 */
+    
+    
     document.querySelectorAll('a[data-locale]').forEach((a) => {
       a.addEventListener('click', () => {
         document.cookie = 'bohui_lang=' + a.dataset.locale +

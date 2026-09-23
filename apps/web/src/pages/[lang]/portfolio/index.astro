@@ -1,0 +1,75 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 成熟产品展示 —— 过往代工成品。创始人 2026-09-11 10:2x:「还缺一些我们自己的成熟产品的展示版块!那么就可以把我们过去给客户代工的产品上传了」。
+ * 数据就是 products 表里勾了「成熟产品展示」(is_showcase=1)的产品:后台 /bohui/products 勾一下即上;图片走 /bohui/media。
+ * 不写客户品牌(创始人红线:客户品牌只在公开资料已写明处出现),只展示品类 / 剂型 / 规格 / 卖点。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const siteId = shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai';
+let items: any[] = [];
+if (db) {
+  try {
+    items = ((await db.prepare(
+      `SELECT p.slug, p.category, p.moq, p.cover_media, i.name, i.summary
+         FROM products p LEFT JOIN product_i18n i ON i.product_id = p.id AND i.lang = ?
+        WHERE p.site_id = ? AND p.status = 'published' AND p.is_showcase = 1 ORDER BY p.sort_order, p.id DESC`).bind(lang, siteId).all<any>()).results ?? []) as any[];
+  } catch { items = []; }
+}
+const path = `/${lang}/portfolio/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const B = `/${lang}`;
+const T = zh ? { eyebrow: '成品', title: items.length ? `成熟产品展示 · ${items.length} 款` : '成熟产品展示', lede: '过往代工出厂的成品:品类、剂型、规格与卖点,看得到从料体到外盒的完整搭配。',
+                 empty: '首批成品正在拍摄整理,近期上线。想先看某个品类的成品样例,发询盘告诉我们品类与目标市场。', moq: '起订', more: '看详情', ask: '想做类似的?告诉我们品类与目标市场。', inq: '发起询盘' }
+             : { eyebrow: 'Finished products', title: items.length ? `Product showcase · ${items.length}` : 'Product showcase', lede: 'Finished products we have manufactured: category, format, specs and selling points, bulk through to carton.',
+                 empty: 'The first batch is being photographed and will go live shortly. To see samples in a category now, send an inquiry with the category and target market.', moq: 'MOQ', more: 'Details', ask: 'Want something similar? Tell us the category and target market.', inq: 'Send an inquiry' };
+---
+<BaseLayout locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={siteId}
+  title={T.title} description={T.lede} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <header class="hd"><p class="eyebrow">{T.eyebrow}</p><h1>{T.title}</h1><p class="lede">{T.lede}</p></header>
+    {items.length === 0 && <p class="lede">{T.empty}</p>}
+    <ul class="grid">
+      {items.map((p) => (
+        <li><a class="card" href={`${B}/product/${p.slug}/`}>
+          {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} loading="lazy" /> : <div class="ph" />}
+          <h2>{p.name ?? p.slug}</h2>
+          {p.summary && <p>{p.summary}</p>}
+          <small>{p.category}{p.moq ? ` · ${T.moq} ${p.moq}` : ''} · {T.more} →</small>
+        </a></li>
+      ))}
+    </ul>
+    <p class="ask">{T.ask} <a href={`${B}/contact/`}>{T.inq}</a></p>
+  </main>
+  <SiteFooter locale={lang} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+<style>
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .hd { display: grid; gap: .75rem; margin-bottom: 1.5rem; max-width: 62rem; }
+  .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: clamp(1.625rem, 3vw, 2.25rem); line-height: 1.24; margin: 0; }
+  .lede { font-size: 1rem; line-height: 1.75; opacity: .85; margin: 0; }
+  .grid { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+  .card { display: grid; gap: .5rem; height: 100%; padding: .875rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; text-decoration: none; color: inherit; }
+  .card img, .ph { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: var(--ck-surface-alt, #f3f3f1); }
+  .card h2 { font-size: 1.0625rem; margin: 0; line-height: 1.4; }
+  .card p { margin: 0; font-size: .9rem; line-height: 1.6; opacity: .75; }
+  .card small { margin-top: auto; opacity: .65; }
+  .ask { margin: 1.75rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
+  @media (min-width: 900px) { main { padding: 2rem 1.5rem 4rem; } }
+</style>

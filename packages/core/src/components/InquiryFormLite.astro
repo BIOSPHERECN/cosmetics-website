@@ -1,0 +1,181 @@
+---
+/**
+ * 询盘表单(CMS 页面用)—— 全站唯一真正能收到线索的入口。
+ *
+ * 为什么单独做一个:联系页是由 CMS 渲染的([...path].astro 按 blocks 出页),
+ * 走不到 ContactPage 布局那份表单。而这一页正是「发起询盘」「发送这套方案」的落点,
+ * 落地却只有一个 mailto 链接 —— 手机上点了多半什么都不发生,
+ * 于是 inquiries 表建好几个月一行数据都没有,后台看起来像没人询盘。
+ *
+ * 三条设计取舍:
+ *   · 零 JS 也能提交:原生 POST 到 /api/inquiry,接口 303 回本页带 ?sent=1;
+ *     有 JS 时用 fetch 就地给回执 —— B2B 客户最怕「不知道有没有发出去」。
+ *   · 蜜罐字段叫 website,不叫 company:company 是真实字段,拿它当蜜罐会把
+ *     「填了公司名的正常客户」全判成机器人。
+ *   · 选品链路带过来的组合(配方号/包材号/市场/诉求)自动填进正文,
+ *     客户不用把刚做的选择再复述一遍。这些是产品信息不是隐私,走查询串没问题。
+ */
+export interface Props {
+  lang: string;
+  email: string;
+}
+const { lang, email } = Astro.props;
+/* Turnstile 的 site key 是公开值(会渲染进 HTML),放明文没问题;
+   真正的开关是服务端的 TURNSTILE_SECRET。没配 key 就不渲染组件,
+   服务端那边也会放行 —— 校验组件的配置问题不该挡住真实询盘。 */
+const siteKey = (import.meta.env.TURNSTILE_SITE_KEY as string | undefined)
+  ?? '0x4AAAAAAEh9PTvpt4eaYV_q';
+const zh = String(lang).startsWith('zh');
+const T = zh
+  ? { h: '发起询盘', p: '填完这张表,方案与配方号会一起进入我们的跟单系统;我们在一个工作日内回复。',
+      name: '称呼', company: '公司', mail: '邮箱', country: '国家 / 地区', need: '需求',
+      cat: '想做什么品类', vol: '首批量级', pick: '请选择', wa: '不想等邮件?直接 WhatsApp',
+      ph: '例:想做一支敏感肌精华,卖欧盟与日本,首批 5000 支。已在选品台选了 SR-1101 与 AB-101。',
+      submit: '发送询盘', or: '或直接邮件联系:', privacy: '仅用于回复你的询盘,不做他用,不外发。' }
+  : { h: 'Start an inquiry', p: 'Send this form and your plan travels with it — formula and packaging codes included. We reply within one business day.',
+      name: 'Name', company: 'Company', mail: 'Email', country: 'Country / region', need: 'What you need',
+      cat: 'Product category', vol: 'First order volume', pick: 'Select', wa: 'Rather not wait for email? WhatsApp us',
+      ph: 'e.g. A serum for sensitive skin, for the EU and Japan, 5,000 units to start. Picked SR-1101 and AB-101 in the selector.',
+      submit: 'Send inquiry', or: 'Or email us directly:', privacy: 'Used only to answer your inquiry. Not shared.' };
+---
+
+<section class="iq" id="inquiry" aria-label={T.h}>
+  <div class="iw">
+    <h2>{T.h}</h2>
+    <p class="lead">{T.p}</p>
+
+    <form class="f" id="iqf" action="/api/inquiry" method="post">
+      <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
+             style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+      <input type="hidden" name="source" value="contact" />
+      <div class="g2">
+        <label><span>{T.name}</span><input type="text" name="name" required autocomplete="name" /></label>
+        <label><span>{T.company}</span><input type="text" name="company" required autocomplete="organization" /></label>
+        <label><span>{T.mail}</span><input type="email" name="email" required autocomplete="email" /></label>
+        <label><span>{T.country}</span><input type="text" name="country" required autocomplete="country-name" /></label>
+        <label><span>WhatsApp</span><input type="tel" name="whatsapp" autocomplete="tel" inputmode="tel" placeholder="+62 812 3456 7890" maxlength="40" /></label>
+      </div>
+      <div class="row">
+        {/* 品类与数量级做成下拉而不是让人写在留言里:
+            报价前必问的就这两件,结构化之后跟单能筛、后台能统计
+            「哪类询盘最多」。选项用采购自己的说法,不用我们的内部分类。
+            两个都非必填 —— 每多一个必填项完成率就掉一截。 */}
+        <label><span>{T.cat}</span>
+          <select name="category">
+            <option value="">{T.pick}</option>
+            {(zh
+              ? ['护肤(精华/面霜/水乳)', '面膜', '洁面与卸妆', '防晒', '身体护理', '洗护发',
+                 '彩妆', '口腔护理', '儿童护肤', '香氛', '其他']
+              : ['Skincare (serum/cream/toner)', 'Sheet mask', 'Cleansing', 'Suncare',
+                 'Body care', 'Hair care', 'Colour cosmetics', 'Oral care', 'Kids skincare',
+                 'Fragrance', 'Other']
+            ).map((o) => <option value={o}>{o}</option>)}
+          </select></label>
+        <label><span>{T.vol}</span>
+          <select name="volume">
+            <option value="">{T.pick}</option>
+            {(zh
+              ? ['1,000 支以内', '1,000 – 5,000', '5,000 – 20,000', '20,000 – 100,000',
+                 '100,000 以上', '还不确定']
+              : ['Under 1,000', '1,000 – 5,000', '5,000 – 20,000', '20,000 – 100,000',
+                 'Over 100,000', 'Not sure yet']
+            ).map((o) => <option value={o}>{o}</option>)}
+          </select></label>
+      </div>
+
+      <label class="full"><span>{T.need}</span>
+        <textarea name="message" rows="5" required id="iqmsg" placeholder={T.ph}></textarea></label>
+      <p class="act">
+        {siteKey && <div class="cf-turnstile" data-sitekey={siteKey} data-size="flexible"></div>}
+        <button class="btn" type="submit">{T.submit}</button>
+        {/* WhatsApp 放在提交键旁边:海外采购最不想做的事就是填完表等回复。
+            给一个能立刻说上话的出口,表单照填不误,两条路并行。 */}
+        <a class="wa" href="/zh-cn/contact/" rel="noopener">
+          <span aria-hidden="true">💬</span> {T.wa}
+        </a>
+        <span class="fb" id="iqfb" role="status" aria-live="polite"></span>
+      </p>
+      <p class="pv">{T.privacy}</p>
+    </form>
+
+    <p class="alt">{T.or} <a href={`mailto:${email}`}>{email}</a></p>
+  </div>
+  {siteKey && <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer is:inline />}
+</section>
+
+<style>
+  .wa { display: inline-flex; align-items: center; gap: .375rem; font-size: .875rem;
+        text-decoration: none; color: var(--ck-ink-soft); margin-left: .75rem; }
+  .wa:hover { color: var(--ck-accent); }
+  .cf-turnstile { margin: .5rem 0; }
+  select { font: inherit; }
+  .iq { padding: clamp(2.5rem, 5vw, 4rem) 0; background: var(--dtc-sand, var(--ck-surface-alt, #f5f5f7));
+        border-top: 1px solid var(--dtc-line, rgb(0 0 0/.08)); }
+  .iw { max-width: 46rem; margin: 0 auto; padding: 0 var(--ck-gutter, 1.25rem); }
+  .iq h2 { font-size: clamp(1.25rem, 1rem + .8vw, 1.75rem); letter-spacing: -.015em; margin: 0 0 .5rem; }
+  .lead { color: var(--ck-ink-soft); font-size: var(--ck-small); margin: 0 0 1.5rem; }
+  .f { display: grid; gap: .875rem; }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: .875rem; }
+  label { display: grid; gap: .3125rem; font-size: var(--ck-small); }
+  label > span { color: var(--ck-ink-soft); }
+  input, textarea { font: inherit; font-size: .9375rem; padding: .6875rem .8125rem; width: 100%;
+    border: 1px solid var(--dtc-line, rgb(0 0 0/.14)); border-radius: 10px;
+    background: var(--dtc-paper, #fff); color: var(--ck-ink); }
+  input:focus, textarea:focus { outline: none; border-color: var(--ck-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ck-accent) 16%, transparent); }
+  .act { display: flex; align-items: center; gap: .75rem; margin: .25rem 0 0; flex-wrap: wrap; }
+  .btn { font: inherit; font-size: .9375rem; font-weight: 600; padding: .8125rem 1.75rem; border: 0;
+    border-radius: var(--ck-cta-radius, 980px); background: var(--ck-accent); color: var(--ck-on-accent); cursor: pointer; }
+  .btn:disabled { opacity: .5; cursor: wait; }
+  .fb { font-size: var(--ck-small); color: var(--ck-ink-soft); }
+  .fb.ok { color: #1D7A46; } .fb.err { color: #A02B20; }
+  .pv, .alt { font-size: .75rem; color: var(--ck-ink-soft); margin: 0; }
+  .alt { margin-top: 1.25rem; }
+  @media (max-width: 40rem) { .g2 { grid-template-columns: 1fr; } }
+</style>
+
+<script is:inline>
+  (function () {
+    var f = document.getElementById('iqf');
+    if (!f) return;
+    var fb = document.getElementById('iqfb');
+    var ta = document.getElementById('iqmsg');
+    var zh = document.documentElement.lang.indexOf('zh') === 0;
+    var NL = String.fromCharCode(10, 10);
+    try {
+      var q = new URLSearchParams(location.search);
+      var bits = [];
+      if (q.get('formula')) bits.push((zh ? '配方 ' : 'Formula ') + q.get('formula'));
+      if (q.get('pack')) bits.push((zh ? '包材 ' : 'Packaging ') + q.get('pack'));
+      if (q.get('market')) bits.push((zh ? '目标市场 ' : 'Market ') + q.get('market'));
+      if (q.get('claim')) bits.push((zh ? '诉求 ' : 'Claim ') + q.get('claim'));
+      if (ta && bits.length && !ta.value) ta.value = bits.join(' · ') + NL;
+      var h = sessionStorage.getItem('bh-chat-handoff');
+      if (ta && h && !ta.value) { ta.value = h; sessionStorage.removeItem('bh-chat-handoff'); }
+      if (q.get('sent') === '1' && fb) {
+        fb.className = 'fb ok';
+        fb.textContent = zh ? '已收到,我们会在一个工作日内回复。' : 'Received. We reply within one business day.';
+      }
+    } catch (e) {}
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = f.querySelector('.btn');
+      btn.disabled = true;
+      if (fb) { fb.className = 'fb'; fb.textContent = zh ? '提交中…' : 'Sending…'; }
+      fetch('/api/inquiry', { method: 'POST', body: new FormData(f) })
+        .then(function (r) {
+          if (fb) {
+            fb.className = 'fb ' + (r.ok ? 'ok' : 'err');
+            fb.textContent = r.ok
+              ? (zh ? '已收到,我们会在一个工作日内回复。' : 'Received. We reply within one business day.')
+              : (zh ? '提交失败,请改用下面的邮箱联系我们。' : 'Could not send — please use the email below.');
+          }
+          if (r.ok) f.reset();
+        })
+        .catch(function () {
+          if (fb) { fb.className = 'fb err'; fb.textContent = zh ? '网络异常,请稍后重试。' : 'Network error, please retry.'; }
+        })
+        .then(function () { btn.disabled = false; });
+    });
+  })();
+</script>

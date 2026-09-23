@@ -35,7 +35,7 @@ export interface Props {
 const {
   image, imageAlt = '', eyebrow, title, lead,
   ctaPrimary, ctaHref, ctaSecondary, ctaSecondaryHref,
-  height = '82vh', adminHref = '/bohui/media/',
+  height = 'clamp(24rem, 60vh, 36rem)', adminHref = '/bohui/media/',
 } = Astro.props;
 ---
 
@@ -77,15 +77,17 @@ const {
 <style>
   .bb {
     position: relative;
-    min-height: var(--bb-h, 82vh);
+    /* 2026-09-17 创始人:「页面宽度最大 1800,不要去拉满屏」「很多都太多空余了」——
+       满屏出血(100vw)改回 112.5rem 版心居中;默认高度 82vh 压到 clamp(24–36rem)。 */
+    min-height: var(--bb-h, clamp(24rem, 60vh, 36rem));
     display: grid;
     /* 不对称分割:文字 55%、图 45%。对半分会显得呆,
        55/45 这种略微偏移才有编排感 —— 这是版面「贵」的来源之一。 */
     grid-template-columns: minmax(0, 1.14fr) minmax(0, 1fr);
     align-items: center;
     background: var(--ck-surface);
-    width: 100vw;
-    margin-inline: calc(50% - 50vw);
+    max-width: min(112.5rem, 100%);   /* 09-17 「不要去拉满屏」:出血改版心居中 */
+    margin-inline: auto;
   }
 
   /* 图在 DOM 里靠前(浏览器早一步开始下载,LCP 更快),
@@ -141,7 +143,7 @@ const {
   .bb-in {
     order: 1;
     position: relative;
-    padding: clamp(2rem, 6vh, 5rem) clamp(1.25rem, 5vw, 5rem);
+    padding: clamp(2rem, 4vw, 3.5rem) clamp(1.25rem, 4vw, 3rem);   /* 09-17 「太多空余」 */
     display: grid;
     justify-items: start;
     gap: 0;

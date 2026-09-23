@@ -1,0 +1,236 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 成分解读 · 全球热销产品 —— 列表页。
+ *
+ * 创始人 2026-09-17 18:3x 看了 INCIDecoder 的产品页:「他们的信息好像更全,是需要学习的,我们是不是也可以变成这样」
+ * 「这些其实也是可以对外的」。数据是 market_products 里已经采到的公开全成分(1,268 条),原来只给后台配方实验室看;
+ * 现在按 INCIDecoder 的形态开成公开页:列表在这里,逐条解读在 [slug].astro。
+ *
+ * 取数走 SQL 的 WHERE + LIMIT(一页 48 条)与两条 GROUP BY 计数,不整表读进内存 —— 这张表还在每天长。
+ * 版式照刚整顿过的包材页:版心 112.5rem、左筛选右网格、间距紧。没有实拍图就不摆图位,不写「实拍整理中」。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { decoderPath, splitInci, marketLabel, catLabel, cleanTitle } from '../../../lib/decoder';
+
+export const prerender = false;
+
+const PAGE = 48;
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/decoder/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const url = new URL(Astro.url);
+
+const mk = (url.searchParams.get('mk') ?? '').trim().toLowerCase().slice(0, 4).replace(/[^a-z-]/g, '');
+const cat = (url.searchParams.get('cat') ?? '').trim().slice(0, 24);
+const q = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
+const page = Math.max(1, Math.min(200, parseInt(url.searchParams.get('p') ?? '1', 10) || 1));
+
+/* 只取有全成分的行(与后台 hot.astro 同一口径) */
+const BASE = `inci IS NOT NULL AND length(inci) > 30`;
+const conds: string[] = [BASE]; const bind: unknown[] = [];
+if (mk) { conds.push(mk === '-' ? `(country IS NULL OR country = '')` : `country = ?`); if (mk !== '-') bind.push(mk); }
+if (cat) { conds.push(`COALESCE(cat_zh, cat) = ?`); bind.push(cat); }
+const qCond = `(brand LIKE ? OR title LIKE ? OR title_zh LIKE ? OR inci LIKE ? OR cat_zh LIKE ? OR cat LIKE ?)`;
+const qBind = () => { const l = `%${q}%`; const c = `%${q.replace(/(霜|液|乳|水|膏|油|皂|露|喷雾|精华液)$/u, '')}%`; return [l, l, l, l, c, c]; };
+if (q) { conds.push(qCond); bind.push(...qBind()); }
+const W = `WHERE ${conds.join(' AND ')}`;
+
+let total = 0; let rows: any[] = []; let mks: any[] = []; let cats: any[] = [];
+if (db) {
+  try {
+    total = (await db.prepare(`SELECT COUNT(*) n FROM market_products ${W}`).bind(...bind).first<{ n: number }>())?.n ?? 0;
+    const pages0 = Math.max(1, Math.ceil(total / PAGE));
+    const cur0 = Math.min(page, pages0);
+    rows = ((await db.prepare(`SELECT id, country, brand, title, title_zh, title_en, cat, cat_zh, inci, last_seen FROM market_products ${W} ORDER BY last_seen DESC, id DESC LIMIT ? OFFSET ?`)
+      .bind(...bind, PAGE, (cur0 - 1) * PAGE).all<any>()).results ?? []) as any[];
+    const mkW = [BASE, ...(q ? [qCond] : []), ...(cat ? ['COALESCE(cat_zh, cat) = ?'] : [])].join(' AND '); const mkB = [...(q ? qBind() : []), ...(cat ? [cat] : [])];
+    mks = ((await db.prepare(`SELECT NULLIF(country, '') country, COUNT(*) n FROM market_products WHERE ${mkW} GROUP BY NULLIF(country, '') ORDER BY (NULLIF(country, '') IS NULL), n DESC`).bind(...mkB).all<any>()).results ?? []) as any[];
+    const catW = [BASE, ...(q ? [qCond] : []), ...(mk ? [mk === '-' ? `(country IS NULL OR country = '')` : 'country = ?'] : [])].join(' AND '); const catB = [...(q ? qBind() : []), ...(mk && mk !== '-' ? [mk] : [])];
+    cats = ((await db.prepare(`SELECT NULLIF(COALESCE(cat_zh, cat), '') k, COUNT(*) n FROM market_products WHERE ${catW} GROUP BY k ORDER BY (NULLIF(COALESCE(cat_zh, cat), '') IS NULL), n DESC LIMIT 24`).bind(...catB).all<any>()).results ?? []) as any[];
+  } catch { rows = []; }
+}
+const pages = Math.max(1, Math.ceil(total / PAGE));
+const cur = Math.min(page, pages);
+
+const link = (o: Record<string, string | number | undefined>) => {
+  const p = new URLSearchParams();
+  const all = { mk, cat, q, p: cur > 1 ? String(cur) : '', ...o } as Record<string, any>;
+  for (const k of ['mk', 'cat', 'q', 'p']) if (all[k] && String(all[k]) !== '' && !(k === 'p' && String(all[k]) === '1')) p.set(k, String(all[k]));
+  const s = p.toString();
+  return s ? `${path}?${s}` : path;
+};
+
+const T = zh ? {
+  eyebrow: '全球产品库 · 全球配方库', title: '全球产品配方库 · 市场上有什么产品、别人家的产品是怎么做的',
+  lede: '各国电商榜单上正在卖的产品,按标签公开的全成分逐条解读:每个成分做什么、刺激与致痘倾向、在各国目录里的状态。看同类爆款怎么配,再来谈你的配方。',
+  search: '搜品牌、产品名或成分', go: '搜索', market: '市场', cat: '类目', all: '全部', results: '款', n: '个成分',
+  empty: '这些条件下没有产品,放宽一个再试。', clear: '清除筛选', prev: '上一页', next: '下一页', pageOf: '分页',
+  note: '来源:各产品标签公开的全成分,由电商榜单每日采集;评级为平台内部口径,非监管结论。',
+} : {
+  eyebrow: 'Global product and formula library', title: 'Global product and formula library · what the market sells and how it is made',
+  lede: 'Products currently selling on major marketplaces, decoded from the full ingredient list on their labels: what each ingredient does, irritancy and comedogenic tendency, and its status in national inventories.',
+  search: 'Search brand, product or ingredient', go: 'Search', market: 'Market', cat: 'Category', all: 'All', results: 'products', n: 'ingredients',
+  empty: 'Nothing matches these filters. Loosen one and try again.', clear: 'Clear filters', prev: 'Previous', next: 'Next', pageOf: 'Pagination',
+  note: 'Source: full ingredient lists published on product labels, collected daily from marketplace rankings. Ratings are our internal reading, not a regulatory conclusion.',
+};
+
+const SKIP = new Set(['WATER', 'AQUA', 'WATER/AQUA', 'AQUA/WATER', 'WATER/EAU', 'EAU']);
+const items = rows.map((r) => {
+  const list = splitInci(r.inci);
+  return {
+    href: decoderPath(lang, r.id, r.brand, r.title),
+    brand: r.brand ?? '', name: cleanTitle(zh ? (r.title_zh || r.title) : (r.title_en || r.title)), sub: zh && r.title_zh ? cleanTitle(r.title) : '',
+    market: marketLabel(r.country, zh), cat: catLabel(zh ? (r.cat_zh || r.cat) : (r.cat || r.cat_zh), zh),
+    n: list.length, top: list.filter((x) => !SKIP.has(x.toUpperCase())).slice(0, 3),
+  };
+});
+
+const cells = (() => {   // 页码窗口,与 ShelfPage 同算法
+  const keep = new Set<number>([1, pages, cur]);
+  for (let i = 1; i <= 2; i++) { keep.add(cur - i); keep.add(cur + i); }
+  const nums = [...keep].filter((n) => n >= 1 && n <= pages).sort((a, b) => a - b);
+  const out: (number | '…')[] = [];
+  nums.forEach((n, i) => { if (i && n - nums[i - 1] > 1) out.push('…'); out.push(n); });
+  return out;
+})();
+
+const itemListLd = items.length ? {
+  '@context': 'https://schema.org', '@type': 'ItemList', name: T.title, numberOfItems: total,
+  itemListElement: items.map((it, i) => ({ '@type': 'ListItem', position: (cur - 1) * PAGE + i + 1,
+    item: { '@type': 'Product', name: it.name, brand: { '@type': 'Brand', name: it.brand }, url: `${origin}${it.href}` } })),
+} : null;
+const indexable = shell.site?.is_live === 1 && !mk && !cat && !q && cur === 1;
+---
+
+<BaseLayout
+  locale={lang as any} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'} title={T.title} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={indexable} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main" class="dec">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+    </header>
+
+    <div class="cols">
+      <aside class="side">
+        <form class="search" method="get" action={path}>
+          {mk && <input type="hidden" name="mk" value={mk} />}
+          {cat && <input type="hidden" name="cat" value={cat} />}
+          <input type="search" name="q" value={q} placeholder={T.search} aria-label={T.search} maxlength="60" />
+          <button type="submit">{T.go}</button>
+        </form>
+        <h2>{T.market}</h2>
+        <ul>
+          <li><a class={mk ? '' : 'on'} href={link({ mk: '', p: '' })}>{T.all}</a></li>
+          {mks.map((m) => { const v = m.country ?? '-'; return (
+            <li><a class={mk === v ? 'on' : ''} href={link({ mk: mk === v ? '' : v, p: '' })}>{marketLabel(m.country, zh)}<span>{m.n}</span></a></li>); })}
+        </ul>
+        <h2>{T.cat}</h2>
+        <ul>
+          <li><a class={cat ? '' : 'on'} href={link({ cat: '', p: '' })}>{T.all}</a></li>
+          {cats.filter((c) => c.k).map((c) => (
+            <li><a class={cat === c.k ? 'on' : ''} href={link({ cat: cat === c.k ? '' : c.k, p: '' })}>{catLabel(c.k, zh)}<span>{c.n}</span></a></li>))}
+        </ul>
+      </aside>
+
+      <section class="list">
+        <div class="bar">
+          <p class="count">{total.toLocaleString()} {T.results}</p>
+          {(mk || cat || q) && <a class="clear" href={path}>{T.clear}</a>}
+        </div>
+        {items.length === 0 ? <p class="empty">{T.empty}</p> : (
+          <ul class="grid">
+            {items.map((it) => (
+              <li><a class="card" href={it.href}>
+                <p class="cat">{it.market}{it.cat ? ` · ${it.cat}` : ''}</p>
+                <p class="brand">{it.brand}</p>
+                <p class="name">{it.name}</p>
+                {it.sub && <p class="sub">{it.sub}</p>}
+                <p class="chips">{it.top.map((x) => <span>{x}</span>)}</p>
+                <p class="meta">{it.n} {T.n}</p>
+              </a></li>))}
+          </ul>
+        )}
+        {pages > 1 && (
+          <nav class="pager" aria-label={T.pageOf}>
+            <a class={`pn ${cur > 1 ? '' : 'off'}`} href={cur > 1 ? link({ p: cur - 1 }) : undefined} rel="prev">‹</a>
+            {cells.map((c) => c === '…' ? <span class="gap">…</span>
+              : <a class={`pn ${c === cur ? 'on' : ''}`} href={link({ p: c })} aria-current={c === cur ? 'page' : undefined}>{c}</a>)}
+            <a class={`pn ${cur < pages ? '' : 'off'}`} href={cur < pages ? link({ p: cur + 1 }) : undefined} rel="next">›</a>
+          </nav>
+        )}
+        <p class="note">{T.note}</p>
+      </section>
+    </div>
+  </main>
+  {itemListLd && <script type="application/ld+json" set:html={JSON.stringify(itemListLd)} is:inline />}
+  <SiteFooter locale={lang as any} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+
+  <style>
+    /* 版心 112.5rem(铁令),间距照 09-17 整顿后的包材页 */
+    .dec { max-width: min(112.5rem, 100%); margin: 0 auto; padding: clamp(1.5rem, 4vw, 2.5rem) var(--ck-gutter, 1.25rem) 3rem; }
+    .hd { max-width: 46rem; margin-bottom: 1.5rem; }
+    .eyebrow { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase; color: var(--ck-accent); margin: 0 0 .5rem; }
+    h1 { font-size: clamp(1.625rem, 1.2rem + 1.8vw, 2.5rem); line-height: 1.15; letter-spacing: -.025em; margin: 0 0 .625rem; text-wrap: balance; }
+    .lede { color: var(--ck-ink-soft); font-size: .9375rem; line-height: 1.7; margin: 0; }
+    .cols { display: grid; grid-template-columns: 14rem 1fr; gap: 1.5rem; align-items: start; }
+    .side h2 { font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ck-ink-soft); margin: 1.25rem 0 .375rem; }
+    .side ul { list-style: none; margin: 0; padding: 0; }
+    .side li a { display: flex; justify-content: space-between; gap: .5rem; padding: .3125rem .5rem; border-radius: 6px;
+                 font-size: .875rem; color: var(--ck-ink); text-decoration: none; }
+    .side li a span { color: var(--ck-ink-soft); font-size: .75rem; font-variant-numeric: tabular-nums; }
+    .side li a:hover { background: var(--dtc-wash, rgb(0 0 0/.05)); }
+    .side li a.on { background: var(--b2a-soft, #FDEDEB); color: var(--b2a-primary, #E5372F); font-weight: 600; }
+    .side li a.on span { color: inherit; opacity: .7; }
+    .search { display: flex; gap: .375rem; }
+    .search input { flex: 1; min-width: 0; min-height: 2.5rem; padding: 0 .75rem; border-radius: 8px; font-size: .875rem;
+                    border: 1px solid var(--dtc-line, rgb(0 0 0/.14)); background: var(--dtc-paper, #fff); color: var(--ck-ink); }
+    .search button { min-height: 2.5rem; padding: 0 .875rem; border-radius: 980px; border: 0; font-size: .8125rem; font-weight: 600;
+                     background: var(--ck-accent); color: var(--ck-on-accent); cursor: pointer; }
+    .bar { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: .75rem; }
+    .count { margin: 0; font-size: .8125rem; color: var(--ck-ink-soft); font-variant-numeric: tabular-nums; }
+    .clear { font-size: .8125rem; color: var(--ck-ink-soft); }
+    .empty { color: var(--ck-ink-soft); }
+    .grid { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }
+    .grid > li { border: 1px solid var(--dtc-line, rgb(0 0 0/.08)); border-radius: 8px; }
+    .card { display: flex; flex-direction: column; height: 100%; padding: .75rem; text-decoration: none; color: inherit; border-radius: 8px; }
+    .card:hover { outline: 1px solid var(--ck-accent); }
+    .card p { margin: 0; }
+    .cat { font-size: .6875rem; color: var(--ck-ink-soft); letter-spacing: .04em; }
+    .brand { font-size: .75rem; font-weight: 600; color: var(--ck-accent); margin-top: .375rem !important; }
+    .name { font-size: .875rem; font-weight: 550; line-height: 1.4; margin-top: .125rem !important;
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .sub { font-size: .6875rem; color: var(--ck-ink-soft); line-height: 1.4; margin-top: .125rem !important;
+           display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .chips { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: auto !important; padding-top: .5rem; }
+    .chips span { font-size: .6875rem; color: var(--ck-ink-soft); background: var(--dtc-sand, #f5f4f2); border-radius: 5px; padding: .125rem .4375rem; }
+    .meta { font-size: .75rem; color: var(--ck-ink-soft); margin-top: .375rem !important; font-variant-numeric: tabular-nums; }
+    .pager { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; margin: 1.25rem 0 0; }
+    .pn { min-width: 2.25rem; height: 2.25rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px;
+          font-size: .875rem; text-decoration: none; color: var(--ck-ink); border: 1px solid var(--dtc-line, rgb(0 0 0/.1)); font-variant-numeric: tabular-nums; }
+    .pn.on { background: var(--b2a-soft, #FDEDEB); color: var(--b2a-primary, #E5372F); font-weight: 600; border-color: transparent; }
+    .pn.off { opacity: .35; pointer-events: none; }
+    .gap { padding: 0 .25rem; color: var(--ck-ink-soft); }
+    .note { margin: 1.5rem 0 0; font-size: .8125rem; color: var(--ck-ink-soft); line-height: 1.7; }
+    @media (max-width: 60rem) { .cols { grid-template-columns: 1fr; } .side ul { display: flex; flex-wrap: wrap; gap: .25rem; } }
+  </style>
+</BaseLayout>

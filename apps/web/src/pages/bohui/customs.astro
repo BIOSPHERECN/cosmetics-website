@@ -1,0 +1,186 @@
+---
+/**
+ * 海关线索 —— 公开提单 / 海关统计反推的进口商(2026-09-18 创始人:「出口单据把买家暴露给整条供应链,这对我们获客是好事,抓紧进入情报系统」)。
+ *
+ * 数据从哪来:
+ *   customs_buyers / customs_shipments ← tools/prospect/customs-importyeti.py(人工在浏览器里保存的 ImportYeti 公司页 / 供应商页;条款禁脚本抓,所以只解析本地文件)
+ *   customs_trade                      ← tools/prospect/customs-comtrade.py(UN Comtrade 国家级)
+ *   icp_score / icp_reason             ← tools/prospect/customs-score.py(纯规则;≥60 自动进 prospects)
+ * 这里做三件事:① 筛(品类 / 来源国 / 分数)并按分排;② 一键「进线索」到定向外联;③ 详情弹窗看出货时间线与供应商分布。
+ * 口径:来自公开提单 / 海关统计,只作 B2B 开发线索;个人信息不采集。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const q = (url.searchParams.get('q') ?? '').trim();
+const origin = (url.searchParams.get('origin') ?? '').trim();
+const status = url.searchParams.get('status') ?? '';
+const min = Number(url.searchParams.get('min') ?? 0) || 0;
+const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
+const PER = 30;
+
+const where: string[] = [], bind: unknown[] = [];
+if (q) { where.push('(name LIKE ? OR products_json LIKE ? OR hs_codes LIKE ? OR top_suppliers_json LIKE ?)'); bind.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
+if (origin) { where.push('(top_origins_json LIKE ? OR top_suppliers_json LIKE ?)'); bind.push(`%${origin}%`, `%${origin}%`); }
+if (status) { where.push('status=?'); bind.push(status); }
+if (min) { where.push('icp_score>=?'); bind.push(min); }
+const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+const total = (await c.db.prepare(`SELECT COUNT(*) n FROM customs_buyers ${W}`).bind(...bind).first<{ n: number }>())?.n ?? 0;
+const { results: rows } = await c.db.prepare(
+  `SELECT * FROM customs_buyers ${W} ORDER BY CASE status WHEN 'skip' THEN 1 ELSE 0 END, icp_score DESC NULLS LAST, shipments_12m DESC NULLS LAST, id LIMIT ? OFFSET ?`
+).bind(...bind, PER, (page - 1) * PER).all<any>();
+const ids = rows.map((r: any) => r.id);
+const ships = ids.length ? (await c.db.prepare(`SELECT * FROM customs_shipments WHERE buyer_id IN (${ids.map(() => '?').join(',')}) ORDER BY ship_date DESC`).bind(...ids).all<any>()).results : [];
+
+/* 全表统计 + 市场趋势(有数据才显示):每个市场 HS3304 最新年份的进口总额、中国份额、与上一年比 */
+const k = await c.db.prepare(`SELECT COUNT(*) n, SUM(shipments_12m IS NOT NULL) fulln, SUM(icp_score>=60) a, SUM(status='pushed') pushed FROM customs_buyers`).first<any>();
+const nShip = (await c.db.prepare(`SELECT COUNT(*) n FROM customs_shipments`).first<{ n: number }>())?.n ?? 0;
+const { results: trade } = await c.db.prepare(
+  `SELECT market, year, partner, value_usd FROM customs_trade WHERE hs='3304' AND partner IN ('World','China') ORDER BY market, year`).all<{ market: string; year: number; partner: string; value_usd: number }>();
+const MK: Record<string, string> = { us: '美国', de: '德国', fr: '法国', gb: '英国', jp: '日本', kr: '韩国', id: '印尼', my: '马来', th: '泰国', vn: '越南', br: '巴西', au: '澳洲', ae: '阿联酋', sa: '沙特' };
+const byM: Record<string, Record<number, { w?: number; cn?: number }>> = {};
+for (const t of trade) { ((byM[t.market] ??= {})[t.year] ??= {})[t.partner === 'World' ? 'w' : 'cn'] = t.value_usd; }
+const trend = Object.entries(byM).map(([m, ys]) => {
+  const years = Object.keys(ys).map(Number).filter((y) => ys[y].w).sort((a, b) => b - a);
+  if (!years.length) return null;
+  const y = years[0], prev = ys[y - 1]?.w;
+  return { m, y, w: ys[y].w!, cn: ys[y].cn ?? null, yoy: prev ? (ys[y].w! - prev) / prev * 100 : null };
+}).filter(Boolean).sort((a: any, b: any) => b.w - a.w) as { m: string; y: number; w: number; cn: number | null; yoy: number | null }[];
+
+const ST: Record<string, [string, string]> = { new: ['未处理', 'p-wait'], pushed: ['已进线索', 'p-ok'], skip: ['不合适', 'p-wait'] };
+const list = (v: unknown): any[] => { try { const a = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(a) ? a : []; } catch { return []; } };
+const money = (v: number) => v >= 1e9 ? `${(v / 1e9).toFixed(1)} 亿美元` : `${Math.round(v / 1e6)} 百万美元`;
+const kg = (v: number | null) => v == null ? '—' : v >= 1e6 ? `${(v / 1e6).toFixed(1)}k t` : v >= 1000 ? `${(v / 1000).toFixed(1)} t` : `${Math.round(v)} kg`;
+const grade = (s: number | null) => s == null ? '' : s >= 60 ? 'gA' : s >= 40 ? 'gB' : 'gC';
+const pages = Math.max(1, Math.ceil(total / PER));
+const link = (p: number) => { const u = new URLSearchParams(); if (q) u.set('q', q); if (origin) u.set('origin', origin); if (status) u.set('status', status); if (min) u.set('min', String(min)); u.set('p', String(p)); return `?${u}`; };
+---
+
+<AdminShell title="海关线索" active="customs" email={c.sess.email} tenant={c.tenant}>
+  <h1>海关线索</h1>
+  <p class="lead">公开提单(美国海关)+ 海关统计(UN Comtrade)反推的进口商:谁在进口、从谁进口、多少、多频繁。规则打分 ≥60 自动进「定向外联」,其余按需一键进线索。</p>
+  <p class="warnbar">来自公开提单 / 海关统计,只作 B2B 开发线索;个人信息不采集。提单页由人在浏览器里保存(站点条款禁脚本抓取),系统只解析本地文件 —— 要更多买家,按派工单 K 交页面。</p>
+
+  <div class="kpi">
+    <div><b>{k?.n ?? 0}</b><span>进口商</span></div>
+    <div><b>{k?.fulln ?? 0}</b><span>有完整档案</span></div>
+    <div><b>{k?.a ?? 0}</b><span>A 级 ≥60</span></div>
+    <div><b>{k?.pushed ?? 0}</b><span>已进线索</span></div>
+    <div><b>{nShip}</b><span>出货记录(36 个月)</span></div>
+  </div>
+
+  {trend.length > 0 && (
+    <div class="trend">
+      <b>市场趋势 · HS 3304 护肤彩妆进口额(UN Comtrade,最新年份)</b>
+      <div class="tg">
+        {trend.map((t) => (
+          <div class="tc">
+            <div class="tm">{MK[t.m] ?? t.m} <small>{t.y}</small></div>
+            <div class="tv">{money(t.w)}</div>
+            <div class="ts">{t.cn != null ? `中国 ${(t.cn / t.w * 100).toFixed(0)}%` : '中国份额 —'}{t.yoy != null ? ` · 同比 ${t.yoy >= 0 ? '+' : ''}${t.yoy.toFixed(0)}%` : ''}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <form class="bar" method="get">
+    <input name="q" value={q} placeholder="品类关键词:serum / sunscreen / shampoo / 3304…" style="max-width:18rem" />
+    <input name="origin" value={origin} placeholder="来源国:China / South Korea / Thailand" style="max-width:14rem" />
+    <select name="min"><option value="0" selected={!min}>全部分数</option><option value="60" selected={min === 60}>A 级 ≥60</option><option value="40" selected={min === 40}>≥40</option></select>
+    <select name="status"><option value="">全部状态</option>{Object.entries(ST).map(([kk, v]) => <option value={kk} selected={kk === status}>{v[0]}</option>)}</select>
+    <button class="btn pri" type="submit">筛选</button>
+    {(q || origin || status || min) && <a class="btn" href="/bohui/customs/">清空</a>}
+  </form>
+
+  {rows.length === 0 ? <div class="empty">还没有进口商。把 ImportYeti 公司页 / 供应商页保存到 助手交付/11-海关数据/html/,跑 tools/prospect/customs-importyeti.py --apply,再跑 customs-score.py。</div> : (
+    <div class="tw"><table class="ct">
+      <thead><tr><th>进口商</th><th>国家</th><th class="n">12 个月</th><th class="n">36 个月</th><th class="n">重量 12m</th><th>Top 供应商</th><th>产品样本</th><th>最近出货</th><th class="n">ICP</th><th>状态</th><th></th></tr></thead>
+      <tbody>
+        {rows.map((r: any) => { const st = ST[r.status] ?? ['?', 'p-wait']; const sup = list(r.top_suppliers_json); const prods = list(r.products_json); const sh = ships.filter((s: any) => s.buyer_id === r.id); const orig = list(r.top_origins_json); const comp = /competitor_signal/.test(r.icp_reason ?? ''); return (
+          <tr data-id={r.id}>
+            <td><b>{r.name}</b>{r.website ? <><br /><a href={/^https?:/.test(r.website) ? r.website : `https://${r.website}`} target="_blank" rel="noreferrer" class="dim">{r.website}</a></> : null}{comp ? <><br /><span class="pill p-warn">供应商含同行</span></> : null}</td>
+            <td>{r.country}{r.city ? <><br /><span class="dim">{r.city}</span></> : null}</td>
+            <td class="n">{r.shipments_12m ?? <span class="dim" title="只有存根,还没打开公司页">存根</span>}</td>
+            <td class="n">{r.shipments_36m ?? '—'}</td>
+            <td class="n">{kg(r.weight_kg_12m)}</td>
+            <td>{sup.length ? sup.slice(0, 3).map((s: any, i: number) => <>{i ? <br /> : null}{s.name} <span class="dim">{s.country}{s.shipments != null ? ` · ${s.shipments}` : ''}</span></>) : '—'}</td>
+            <td class="pd">{prods.slice(0, 4).join(' · ') || '—'}</td>
+            <td>{r.last_seen ?? '—'}</td>
+            <td class="n"><span class:list={['score', grade(r.icp_score)]} title={r.icp_reason ?? ''}>{r.icp_score ?? '–'}</span></td>
+            <td><span class:list={['pill', st[1]]}>{st[0]}</span></td>
+            <td class="ops">
+              <button class="btn xs" data-open={r.id}>详情</button>
+              {r.prospect_id ? <a class="btn xs" href={`/bohui/prospects/?q=${encodeURIComponent(r.name)}`}>看线索</a> : <button class="btn xs pri" data-push={r.id}>进线索</button>}
+              {r.status !== 'skip' ? <button class="btn xs" data-st="skip">不合适</button> : <button class="btn xs" data-st="new">恢复</button>}
+              <dialog id={`d${r.id}`}>
+                <div class="dh"><b>{r.name}</b><span class="dim">{r.country}{r.city ? ` · ${r.city}` : ''} · 首见 {r.first_seen ?? '—'} · 最近 {r.last_seen ?? '—'}</span><form method="dialog"><button class="btn xs">关闭</button></form></div>
+                <div class="db">
+                  <div class="dg">
+                    <div><b>评分理由</b><p>{r.icp_reason ?? '未打分(存根)'}</p></div>
+                    <div><b>供应商分布</b>{sup.length ? <ul>{sup.map((s: any) => <li>{s.name} <span class="dim">{s.country} · 累计 {s.shipments ?? '—'} · 12m {s.shipments_12m ?? '—'}</span></li>)}</ul> : <p class="dim">—</p>}</div>
+                    <div><b>来源国</b>{orig.length ? <ul>{orig.map((o: any) => <li>{o.country} <span class="dim">{o.shipments}</span></li>)}</ul> : <p class="dim">—</p>}</div>
+                    <div><b>HS</b><p>{list(r.hs_codes).join(' · ') || '—'}</p><b>产品样本</b><p>{prods.join(' · ') || '—'}</p></div>
+                  </div>
+                  <b>出货时间线(近 36 个月,最多 50 单)</b>
+                  {sh.length ? <table class="tl"><thead><tr><th>日期</th><th>供应商</th><th>国</th><th class="n">重量</th><th class="n">箱</th><th>描述</th><th></th></tr></thead><tbody>
+                    {sh.map((s: any) => <tr><td>{s.ship_date}</td><td>{s.supplier}</td><td>{s.supplier_country}</td><td class="n">{kg(s.weight_kg)}</td><td class="n">{s.containers ?? '—'}</td><td>{s.product_desc}</td><td>{s.source_url ? <a href={s.source_url} target="_blank" rel="noreferrer" class="dim">来源</a> : null}</td></tr>)}
+                  </tbody></table> : <p class="dim">没有单条出货记录(存根只有供应商页的汇总)。</p>}
+                  <p class="dim src">来源:<a href={r.source_url} target="_blank" rel="noreferrer">{r.source_url}</a> · 采集 {r.captured_at ?? '—'} · 公开提单口径,只作 B2B 开发线索</p>
+                </div>
+              </dialog>
+            </td>
+          </tr>
+        ); })}
+      </tbody>
+    </table></div>
+  )}
+  {pages > 1 && <div class="pager">{page > 1 && <a class="btn" href={link(page - 1)}>上一页</a>}<span>第 {page} / {pages} 页 · 共 {total}</span>{page < pages && <a class="btn" href={link(page + 1)}>下一页</a>}</div>}
+  <div id="toast" class="toast" hidden></div>
+
+  <style>
+    .warnbar{background:#fef9c3;color:#854d0e;border-radius:8px;padding:.625rem .875rem;font-size:.875rem;margin:.5rem 0 0}
+    .kpi{display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem;margin:1rem 0}
+    .kpi div{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:.75rem 1rem;display:grid}
+    .kpi b{font-size:1.5rem;font-variant-numeric:tabular-nums} .kpi span{color:var(--ad-faint);font-size:.75rem}
+    .trend{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:.75rem 1rem;margin-bottom:1rem} .trend>b{font-size:.8125rem}
+    .tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(10rem,1fr));gap:.5rem;margin-top:.5rem}
+    .tc{border:1px solid var(--ad-line);border-radius:7px;padding:.5rem .625rem;font-size:.8125rem} .tm{color:var(--ad-soft)} .tm small{color:var(--ad-faint)} .tv{font-weight:600;font-size:.9375rem;font-variant-numeric:tabular-nums} .ts{color:var(--ad-faint);font-size:.75rem}
+    .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap} .bar input,.bar select{width:auto}
+    .tw{overflow:auto;background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px}
+    .ct{width:100%;font-size:.8125rem;border-collapse:collapse} .ct th{white-space:nowrap} .ct td{vertical-align:top} .n{text-align:right;font-variant-numeric:tabular-nums} .pd{max-width:16rem;color:var(--ad-soft)}
+    .dim{color:var(--ad-faint);font-size:.75rem}
+    .score{min-width:2.5rem;display:inline-block;text-align:center;font-weight:700;border-radius:6px;padding:.125rem .375rem;font-variant-numeric:tabular-nums}
+    .gA{background:#dcfce7;color:#166534} .gB{background:#fef9c3;color:#854d0e} .gC{background:#f1f5f9;color:#64748b}
+    .ops{white-space:nowrap} .ops .btn{margin:0 .125rem .25rem 0} .btn.xs{font-size:.75rem;padding:.25rem .625rem}
+    dialog{width:min(64rem,94vw);border:0;border-radius:14px;padding:0;box-shadow:0 24px 64px rgb(0 0 0/.25);color:var(--ad-ink);white-space:normal;text-align:left} dialog::backdrop{background:rgb(49 32 82/.35)}
+    .dh{display:flex;gap:.75rem;align-items:center;padding:.875rem 1.125rem;border-bottom:1px solid var(--ad-line)} .dh b{font-size:1rem} .dh form{margin-left:auto}
+    .db{padding:1rem 1.125rem;font-size:.8125rem} .db>b{display:block;margin:.75rem 0 .375rem}
+    .dg{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem 1.25rem} .dg ul{margin:.25rem 0 0;padding-left:1rem} .dg p{margin:.25rem 0 .5rem}
+    .tl{width:100%;font-size:.75rem;border-collapse:collapse} .src{margin-top:.75rem}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--ad-soft)}
+    .toast{position:fixed;right:1.25rem;bottom:1.25rem;background:#10131a;color:#fff;padding:.625rem 1rem;border-radius:7px;font-size:.8125rem;z-index:9}
+    [hidden]{display:none !important}
+    @media (max-width:60rem){.kpi{grid-template-columns:repeat(3,1fr)}.dg{grid-template-columns:1fr}}
+  </style>
+  <script is:inline>
+    const t = document.getElementById('toast');
+    const say = (m) => { t.textContent = m; t.hidden = false; setTimeout(() => { t.hidden = true; }, 1800); };
+    const call = async (method, body) => (await fetch('/api/admin/customs', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json().catch(() => ({}));
+    document.querySelectorAll('button[data-open]').forEach((b) => b.addEventListener('click', () => document.getElementById('d' + b.dataset.open).showModal()));
+    document.querySelectorAll('button[data-push]').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true; const d = await call('POST', { op: 'push', id: +b.dataset.push });
+      if (d.ok) { say(d.existed ? '已在线索里' : '已进定向外联'); setTimeout(() => location.reload(), 500); } else { b.disabled = false; say(d.msg || '失败'); }
+    }));
+    document.querySelectorAll('button[data-st]').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true; const d = await call('PATCH', { id: +b.closest('tr').dataset.id, status: b.dataset.st });
+      if (d.ok) { say('已更新'); setTimeout(() => location.reload(), 400); } else { b.disabled = false; say(d.msg || '失败'); }
+    }));
+  </script>
+</AdminShell>

@@ -1,0 +1,108 @@
+---
+/**
+ * 包材采集 —— 1688 按厂采集的进度与拍板页(2026-09-16)。
+ * 创始人:「采集要找好的工厂,然后一个个收集,这样我们才可以建立规范的包材库」「一定要一天收集几十几百家店铺,几千几万个瓶子」。
+ * 数据:pack_shops(店铺资质,自动达标 + 人拍板)、packaging 里 code LIKE 'AL-%' 的草稿(清单级 → 规格级逐步补齐)。
+ * 图走 /pack/<code>(R2 media/pack/al/<code>.webp),草稿也能看 —— 后台看得到,货架看不到。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+const url = new URL(Astro.request.url);
+const shopKey = url.searchParams.get('shop') ?? '';
+const isAdmin = c.sess.role === 'admin';
+
+const { results: shops } = await c.db.prepare(
+  `SELECT s.*, (SELECT COUNT(*) FROM packaging p WHERE p.supplier_ref=s.name AND p.code LIKE 'AL-%') AS drafts,
+          (SELECT COUNT(*) FROM packaging p WHERE p.supplier_ref=s.name AND p.code LIKE 'AL-%' AND p.status='active') AS live,
+          (SELECT COUNT(*) FROM packaging p WHERE p.supplier_ref=s.name AND p.code LIKE 'AL-%' AND (p.dims IS NOT NULL OR p.weight_g IS NOT NULL)) AS specd
+     FROM pack_shops s ORDER BY COALESCE(s.decision='want',0) DESC, s.qualified DESC, s.items DESC`).all<any>().catch(() => ({ results: [] as any[] }));
+const tot = await c.db.prepare(`SELECT COUNT(*) n, SUM(status='active') live, SUM(dims IS NOT NULL OR weight_g IS NOT NULL) specd, SUM(material IS NOT NULL AND material<>'') mat, COUNT(DISTINCT supplier_ref) sup FROM packaging WHERE code LIKE 'AL-%'`).first<any>().catch(() => null);
+const byType = (await c.db.prepare(`SELECT type, COUNT(*) n FROM packaging WHERE code LIKE 'AL-%' GROUP BY type ORDER BY n DESC LIMIT 12`).all<any>().catch(() => ({ results: [] as any[] }))).results;
+const cur = shops.find((s: any) => s.shop_key === shopKey);
+const { results: items } = cur ? await c.db.prepare(
+  `SELECT code, type, material, capacity, dims, weight_g, price_ref, status, notes_zh, source_url, source_price_note FROM packaging WHERE supplier_ref=? AND code LIKE 'AL-%' ORDER BY (dims IS NOT NULL) DESC, code LIMIT 120`).bind(cur.name).all<any>().catch(() => ({ results: [] as any[] })) : { results: [] as any[] };
+const TYPE: Record<string, string> = { 'airless-bottle': '真空瓶', 'dropper-bottle': '滴管瓶', 'foam-pump': '泡沫瓶', 'spray-bottle': '喷雾瓶', 'roll-on': '滚珠瓶', 'lipstick-tube': '口红管', 'lip-gloss-tube': '唇釉管', 'compact-powder-case': '粉盒', 'cushion-compact': '气垫', tube: '软管', jar: '膏霜罐', cap: '盖', 'pump-bottle': '泵瓶', 'flip-bottle': '翻盖瓶', 'glass-bottle': '玻璃瓶', 'screw-bottle': '螺口瓶', 'rigid-box': '礼盒', stick: '棒管', 'use-other': '未分类' };
+---
+
+<AdminShell title="包材采集" active="packsource" email={c.sess.email} tenant={c.tenant}>
+  <h1>包材采集 · 1688 按厂收</h1>
+  <p class="lead">每晚 01:00 <code>BohuiPackNight</code> 按候选店收整店清单并自动读资质(入驻 ≥5 年且回头率 ≥30% 记「达标」);05:40 按销量补商品页规格(材质 / 尺寸 / 重量)。清单进来先是<b>草稿</b>,货架看不到;你在这里对店铺拍板「要 / 不要」,管理员再「上货架」。</p>
+
+  <div class="kpis">
+    <div class="kpi"><b>{tot?.n ?? 0}</b><span>草稿款数</span></div>
+    <div class="kpi"><b>{tot?.sup ?? 0}</b><span>店铺</span></div>
+    <div class="kpi"><b>{shops.filter((s: any) => s.qualified).length}</b><span>自动达标店</span></div>
+    <div class="kpi"><b>{shops.filter((s: any) => s.decision === 'want').length}</b><span>你点了「要」</span></div>
+    <div class="kpi"><b>{tot?.specd ?? 0}</b><span>已补尺寸 / 重量</span></div>
+    <div class="kpi"><b>{tot?.mat ?? 0}</b><span>有材质</span></div>
+    <div class="kpi"><b>{tot?.live ?? 0}</b><span>已上货架</span></div>
+  </div>
+  <p class="types">{byType.map((t: any) => <span class="pill">{TYPE[t.type] ?? t.type} {t.n}</span>)}</p>
+
+  <table class="tbl">
+    <thead><tr><th>店铺</th><th>资质</th><th>款数</th><th>草稿 / 有规格 / 上架</th><th>拍板</th><th></th></tr></thead>
+    <tbody>
+      {shops.map((s: any) => (
+        <tr class:list={[s.decision === 'drop' && 'drop', s.shop_key === shopKey && 'cur']} data-shop={s.shop_key}>
+          <td><a href={`?shop=${s.shop_key}`}><b>{s.name || s.shop_key}</b></a><br /><a class="dim" href={s.shop_url} target="_blank" rel="noreferrer">{s.shop_key}.1688.com ↗</a>{s.main_cat ? <span class="dim"> · {s.main_cat}</span> : null}{s.loc ? <span class="dim"> · {s.loc}</span> : null}</td>
+          <td>{s.qualified ? <span class="pill ok">达标</span> : <span class="pill warn">不达标</span>} <span class="dim">入驻 {s.years ?? '?'} 年 · 回头率 {s.repeat_rate ?? '?'}% · 服务分 {s.score ?? '?'}</span></td>
+          <td>{s.items}</td>
+          <td>{s.drafts} / {s.specd} / {s.live}</td>
+          <td>
+            <button class:list={['btn', s.decision === 'want' && 'pri']} data-decide="want">要</button>
+            <button class:list={['btn', s.decision === 'drop' && 'bad']} data-decide="drop">不要</button>
+          </td>
+          <td>{isAdmin && s.decision === 'want' && s.live < s.drafts ? <button class="btn" data-publish>上货架({s.drafts - s.live})</button> : null}</td>
+        </tr>
+      ))}
+      {shops.length === 0 && <tr><td colspan="6" class="empty">还没有店铺。今晚 01:00 第一批。</td></tr>}
+    </tbody>
+  </table>
+
+  {cur && (
+    <section class="shop">
+      <h2>{cur.name} · 前 120 款(有尺寸的排前面)</h2>
+      <div class="grid">
+        {items.map((it: any) => (
+          <figure class:list={['card', it.status === 'active' && 'live']}>
+            <img src={`/pack/${it.code}`} alt={it.notes_zh ?? it.code} loading="lazy" onerror="this.style.opacity=.15" />
+            <figcaption>
+              <b>{TYPE[it.type] ?? it.type}{it.capacity ? ` · ${it.capacity}` : ''}{it.material ? ` · ${it.material}` : ''}</b>
+              <span>{it.dims ? `尺寸 ${it.dims}` : '尺寸待补'}{it.weight_g ? ` · ${it.weight_g} g` : ''}{it.price_ref ? ` · 参考 ${it.price_ref}` : ''}</span>
+              <span class="dim">{(it.notes_zh ?? '').slice(0, 40)}</span>
+              <a class="dim" href={it.source_url} target="_blank" rel="noreferrer">{it.code} ↗</a>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <style>
+    .lead{font-size:.875rem;color:var(--ad-soft);margin:0 0 1rem;max-width:60rem}
+    .kpis{display:flex;gap:.625rem;flex-wrap:wrap;margin-bottom:.75rem} .kpi{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:.625rem 1rem;min-width:7rem} .kpi b{display:block;font-size:1.375rem} .kpi span{font-size:.75rem;color:var(--ad-soft)}
+    .types{margin:0 0 1rem;display:flex;gap:.375rem;flex-wrap:wrap} .pill{display:inline-block;font-size:.75rem;padding:.125rem .5rem;border-radius:999px;background:#eef1f5;color:#334} .pill.ok{background:#e3f6e8;color:#1c6b32} .pill.warn{background:#fff1dc;color:#8a5200}
+    .tbl{width:100%;border-collapse:collapse;font-size:.8125rem;background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;overflow:hidden} .tbl th,.tbl td{padding:.5rem .75rem;border-bottom:1px solid var(--ad-line);text-align:left;vertical-align:top} .tbl th{font-weight:600;color:var(--ad-soft);font-size:.75rem}
+    tr.drop td{opacity:.45} tr.cur td{background:#fafbfe} .dim{color:var(--ad-faint);font-size:.75rem} .empty{text-align:center;color:var(--ad-soft);padding:1.5rem}
+    .btn{font:inherit;font-size:.75rem;padding:.25rem .625rem;border:1px solid var(--ad-line);border-radius:6px;background:#fff;cursor:pointer;margin-right:.25rem} .btn.pri{background:#1c6b32;color:#fff;border-color:#1c6b32} .btn.bad{background:#a12;color:#fff;border-color:#a12}
+    .shop{margin-top:1.5rem} h2{font-size:1rem;margin:0 0 .625rem}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(11rem,1fr));gap:.625rem} .card{margin:0;background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;overflow:hidden} .card.live{border-color:#1c6b32} .card img{width:100%;aspect-ratio:1;object-fit:cover;background:#f4f4f4;display:block}
+    .card figcaption{padding:.5rem .625rem;font-size:.75rem;display:grid;gap:.125rem} .card figcaption b{font-size:.8125rem}
+  </style>
+
+  <script>
+    const call = async (body: any) => (await fetch('/api/admin/packsource/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })).json();
+    document.querySelectorAll('[data-decide]').forEach((b) => b.addEventListener('click', async () => {
+      const tr = b.closest('tr') as HTMLElement; const cur = b.classList.contains('pri') || b.classList.contains('bad');
+      const d = await call({ op: 'shop', shop_key: tr.dataset.shop, decision: cur ? '' : (b as HTMLElement).dataset.decide }); d.ok ? location.reload() : alert(d.msg || '失败');
+    }));
+    document.querySelectorAll('[data-publish]').forEach((b) => b.addEventListener('click', async () => {
+      const tr = b.closest('tr') as HTMLElement; if (!confirm('把这家店的草稿全部上货架?')) return;
+      const d = await call({ op: 'publish', shop_key: tr.dataset.shop }); d.ok ? (alert('上架 ' + d.n + ' 款'), location.reload()) : alert(d.msg || '失败');
+    }));
+  </script>
+</AdminShell>

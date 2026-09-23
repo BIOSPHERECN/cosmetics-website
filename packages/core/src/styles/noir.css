@@ -41,7 +41,7 @@ html[data-noir][data-brand] {
   /* ── 首屏:满屏高度,金色柔光从右上斜下 ───────────────────── */
   --ck-hero-bg: #060606;
   --ck-hero-ink: #f5f0eb;
-  --ck-hero-minh: 100vh;
+  --ck-hero-minh: auto;   /* 09-17 「太多空余」:首屏不再强撑满屏 */
   --ck-hero-deco:
     radial-gradient(58% 70% at 82% 6%, rgba(200, 169, 110, 0.16), transparent 62%),
     radial-gradient(40% 50% at 12% 96%, rgba(200, 169, 110, 0.08), transparent 66%);
@@ -61,7 +61,7 @@ html[data-noir][data-brand] {
   --ck-tracking-eyebrow: 0.28em;  /* 眉标字距拉开,是奢侈品排版的标志 */
 
   /* ── 节奏:版块极高(实测 879–1802px),留白是这套语气的一半 ── */
-  --ck-section-py: clamp(6rem, 14vh, 11rem);
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
   --ck-gap: 2.25rem;
   --ck-maxw: 82rem;
   --ck-maxw-prose: 42rem;

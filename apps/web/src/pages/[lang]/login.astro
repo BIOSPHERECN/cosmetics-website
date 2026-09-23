@@ -1,0 +1,105 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 网站会员 注册 / 登录(一页,2026-09-23):填邮箱 → 人机验证 → 收登录链接,点开即登录;第一次点就是注册。
+ * 表单直接 POST 到 /api/member/login,303 回本页带状态(?sent=1 / ?e=错误码),不靠前端脚本。
+ * 带会员 cookie 的请求不进边缘缓存(middleware),所以「已登录」那一版不会串给别人。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../lib/shell';
+import { getMember, safeNext, loginMsg } from '../../lib/member';
+import { DAILY, limitFor, bjDay } from '../../lib/quota';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const path = `/${lang}/login/`;
+const q = Astro.url.searchParams;
+const next = safeNext(q.get('next'), `/${lang}/decoder/`);
+const sent = q.get('sent') === '1';
+const err = q.get('e') ? loginMsg(String(q.get('e')), zh) : '';
+const email = (q.get('email') ?? '').slice(0, 200);
+const siteKey = String((env as any).TURNSTILE_SITE_KEY ?? '');
+const me = await getMember(Astro.request, env, db);
+const used = me && db ? ((await db.prepare(`SELECT COUNT(*) n FROM mb_views WHERE member_id = ? AND day = ?`).bind(me.id, bjDay()).first<{ n: number }>().catch(() => null))?.n ?? 0) : 0;
+if (me) Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const T = zh ? {
+  title: '注册 / 登录', lead: `只要邮箱,不用密码。免费会员每天可查看 ${DAILY.free} 条成分解读、原料与配方详情或 AI 搜索结果;付费会员每天 ${DAILY.pro} 条。`,
+  email: '邮箱', go: '发送登录链接', sent: (e: string) => `登录链接已发到 ${e},30 分钟内有效。没收到的话看看垃圾邮件箱。`,
+  me: (e: string) => `已登录:${e}`, plan: (p: string) => (p === 'free' ? '免费会员' : '付费会员'), used: (u: number, l: number) => `今日已看 ${u} / ${l}`,
+  back: '回到刚才的页面', out: '退出登录', up: '需要更多?联系我们升级',
+} : {
+  title: 'Sign up / sign in', lead: `Email only, no password. Free members can open ${DAILY.free} ingredient breakdowns, ingredient or formula pages, or AI search answers a day; paid members ${DAILY.pro}.`,
+  email: 'Email', go: 'Email me a sign-in link', sent: (e: string) => `We sent a sign-in link to ${e}. It is valid for 30 minutes — check your spam folder if it does not arrive.`,
+  me: (e: string) => `Signed in as ${e}`, plan: (p: string) => (p === 'free' ? 'Free member' : 'Paid member'), used: (u: number, l: number) => `Today: ${u} / ${l}`,
+  back: 'Back to where you were', out: 'Sign out', up: 'Need more? Contact us to upgrade',
+};
+---
+
+<BaseLayout
+  locale={lang as any} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.lead} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={false} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main" class="lg">
+    <h1>{T.title}</h1>
+    {me ? (
+      <section class="card">
+        <p><b>{T.me(me.email)}</b> · {T.plan(me.plan_id)}</p>
+        <p class="dim">{T.used(used, limitFor(me.plan_id))}</p>
+        <p class="acts">
+          <a class="btn" href={next}>{T.back}</a>
+          <a href={`/api/member/login?logout=1&lang=${lang}`}>{T.out}</a>
+          {me.plan_id === 'free' && <a href={`/${lang}/contact/?ref=upgrade`}>{T.up}</a>}
+        </p>
+      </section>
+    ) : (
+      <section class="card">
+        <p class="dim">{T.lead}</p>
+        {sent && <p class="ok" role="status">{T.sent(email)}</p>}
+        {err && <p class="err" role="alert">{err}</p>}
+        <form method="post" action="/api/member/login">
+          <input type="hidden" name="lang" value={lang} />
+          <input type="hidden" name="next" value={next} />
+          <label for="em">{T.email}</label>
+          <input id="em" name="email" type="email" required maxlength="200" autocomplete="email" value={email} />
+          {siteKey && <div class="cf-turnstile" data-sitekey={siteKey} data-theme="light" data-language={zh ? 'zh-cn' : 'en'}></div>}
+          <button class="btn" type="submit">{T.go}</button>
+        </form>
+      </section>
+    )}
+  </main>
+  <SiteFooter locale={lang as any} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  {!me && siteKey && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
+
+  <style>
+    .lg { max-width: 32rem; margin: 0 auto; padding: 3rem var(--ck-gutter, 1.25rem) 4rem; }
+    h1 { font-size: 1.75rem; font-weight: 650; letter-spacing: -.02em; margin: 0 0 1rem; }
+    .card p { font-size: .9375rem; line-height: 1.7; margin: 0 0 .875rem; }
+    .dim { color: var(--ck-ink-soft); }
+    .ok { color: #1f7a45; } .err { color: #b3261e; }
+    form { display: grid; gap: .625rem; }
+    label { font-size: .8125rem; color: var(--ck-ink-soft); }
+    input[type=email] { min-height: 2.75rem; padding: 0 .875rem; font-size: 1rem; border: 1px solid var(--dtc-line, rgb(0 0 0/.2)); border-radius: 10px; background: transparent; color: inherit; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: 0 1.375rem; border: 0; border-radius: 980px; cursor: pointer;
+           text-decoration: none; font-size: .875rem; font-weight: 600; background: var(--ck-accent); color: var(--ck-on-accent); }
+    .acts { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+    .acts a:not(.btn) { color: inherit; font-size: .875rem; }
+  </style>
+</BaseLayout>

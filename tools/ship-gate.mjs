@@ -30,8 +30,8 @@ if ((process.env.HTTPS_PROXY || process.env.HTTP_PROXY) && !process.env.NODE_USE
 
 const BASE = (process.argv[2] ?? 'https://bohui-web.huanggw20.workers.dev').replace(/\/+$/, '');
 const SITES = ['beauty2oem', 'skin2oem', 'medierba', 'biosphere-ai', 'biosphere-oralcare'];
-const LOCALES = ['en', 'zh-cn', 'ja', 'ko', 'id', 'ms', 'th', 'vi', 'hi', 'bn', 'tl', 'ur', 'pa', 'te', 'ta', 'mr', 'gu', 'jv', 'fr', 'de', 'es', 'it', 'pt', 'nl', 'pl', 'sv', 'da', 'fi', 'no', 'cs', 'el', 'hu', 'ro', 'uk', 'ru', 'pt-br', 'es-mx', 'ar', 'tr', 'fa', 'he', 'sw', 'ha', 'am', 'kk', 'uz'];
-const HREFLANG = { en: 'en', 'zh-cn': 'zh-CN', ja: 'ja', ko: 'ko', id: 'id', ms: 'ms', th: 'th', vi: 'vi', hi: 'hi', bn: 'bn', tl: 'tl', ur: 'ur', pa: 'pa', te: 'te', ta: 'ta', mr: 'mr', gu: 'gu', jv: 'jv', fr: 'fr', de: 'de', es: 'es', it: 'it', pt: 'pt', nl: 'nl', pl: 'pl', sv: 'sv', da: 'da', fi: 'fi', no: 'no', cs: 'cs', el: 'el', hu: 'hu', ro: 'ro', uk: 'uk', ru: 'ru', 'pt-br': 'pt-BR', 'es-mx': 'es-MX', ar: 'ar', tr: 'tr', fa: 'fa', he: 'he', sw: 'sw', ha: 'ha', am: 'am', kk: 'kk', uz: 'uz' };
+const LOCALES = ['en', 'zh-cn', 'jp', 'kr', 'fr', 'de', 'ru', 'id', 'my', 'th', 'vn', 'ph', 'es', 'pt', 'ar', 'tr', 'in'];
+const HREFLANG = { en: 'en', 'zh-cn': 'zh-CN', jp: 'ja', kr: 'ko', fr: 'fr', de: 'de', ru: 'ru', id: 'id', my: 'ms', th: 'th', vn: 'vi', ph: 'tl', es: 'es', pt: 'pt', ar: 'ar', tr: 'tr', in: 'hi' };
 
 /* 价格字样。故意不收「MOQ / 起订量」——
    那是数量不是价格,B 端采购看完能做什么下一个问题必是「多少起做」,该留。 */

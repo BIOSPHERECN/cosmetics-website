@@ -1,0 +1,93 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/** 原料基地单页 —— 一页回答一个问题:「某味原料的基地在哪里、找谁拿」。
+ *  创始人 2026-09-11 22:0x「各国的是不是单独链接,是不是更利于 GEO」「你朝着必须引入 GEO 和 SEO 流量奋斗」。
+ *  单位不是一家公司,是「品种 × 产区」:同一产区同一品种的几家线索合成一页(GEO 上买手问的是「平阴玫瑰原料从哪拿」,不是某家公司名);
+ *  不给某一家第三方公司单独立页。措辞照旧:线索 · 持续核实,不代表已签约。中文内容,只在中文语种出页。 */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn'; const zh = lang.startsWith('zh');
+const id = parseInt(String(Astro.params.id ?? ''), 10);
+const db = (env as any).DB as D1Database | undefined; const tSkip = uiT(lang as any)('a11y.skip');
+if (!zh || !Number.isFinite(id) || id <= 0) return new Response(null, { status: 404 });
+let seed: any = null; let grp: any[] = []; let herbs: { slug: string; name_zh: string }[] = [];
+if (db) {
+  try {
+    seed = await db.prepare('SELECT * FROM herb_bases WHERE id = ?').bind(id).first<any>();
+    if (seed) {
+      grp = ((await db.prepare('SELECT * FROM herb_bases WHERE crop = ? AND region = ? ORDER BY id').bind(seed.crop, seed.region).all<any>()).results ?? []) as any[];
+      herbs = ((await db.prepare("SELECT slug, name_zh FROM ingredients WHERE status = 'published'").all<any>()).results ?? []) as any[];
+    }
+  } catch { seed = null; }
+}
+if (!seed || !grp.length) return new Response(null, { status: 404 });
+/* 同组的几家共用一页:规范地址取组里最小的 id,其余 id 302 过去,避免重复页 */
+const canon = grp[0].id;
+if (canon !== id) return Astro.redirect(`/${lang}/bases/${canon}/`, 302);
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const B = `/${lang}`; const path = `${B}/bases/${canon}/`; const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const crop = String(seed.crop || ''); const region = String(seed.region || '');
+const hit = herbs.filter((h) => h.name_zh && crop.includes(h.name_zh)).sort((a, b) => b.name_zh.length - a.name_zh.length)[0];
+const procs = [...new Set(grp.map((r) => String(r.processing || '').split(/[、,,;;]/)[0].trim()).filter(Boolean))].slice(0, 3);
+const picks = grp.filter((r) => r.shortlist).length;
+const answer = `${crop}主产区之一在${region},本站目前收录 ${grp.length} 家基地/企业线索${picks ? `(首批优选 ${picks} 家)` : ''}${procs.length ? `,能做到${procs.join('、')}` : ''};卖点方向:${first(grp.map((r) => r.selling).filter(Boolean).join('、'), 24) || '见各家条目'}。线索持续核实,不代表已签约。`;
+function first(t: string, n: number) { const x = String(t || '').replace(/\s+/g, ' ').trim(); return x.length > n ? x.slice(0, n - 1) + '…' : x; }
+const title = `${crop}的原料基地在哪里?${region}产区 ${grp.length} 家企业线索:加工能力、规模认证、适配卖点`;
+const faq: [string, string][] = [
+  [`做${crop}相关的护肤品,原料从哪里拿?`, `${region}是${crop}的主产区之一,本页列出 ${grp.length} 家基地/企业线索,标明各自的深加工能力、规模与认证、在化妆品上的落地情况;先按「风险 · 待核实」栏的项目核完再谈合同。`],
+  [`这些基地能提供什么形态的原料?`, procs.length ? `按已收集的信息,能做到:${[...new Set(grp.flatMap((r) => String(r.processing || '').split(/[、,,;;]/).map((s) => s.trim()).filter(Boolean)))].slice(0, 8).join('、')}。具体规格、COA 与起订量以尽调为准。` : '深加工能力待核实。'],
+  [`${crop}在化妆品里的卖点是什么?`, `${[...new Set(grp.map((r) => String(r.selling || '').trim()).filter(Boolean))].join(';') || '见各家条目'}。宣称须按目标市场法规与原料目录核对,本页不作功效承诺。`],
+];
+const ld = [
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: '首页', item: `${origin}/${lang}/` },
+    { '@type': 'ListItem', position: 2, name: '原料基地线索', item: `${origin}${B}/bases/` },
+    { '@type': 'ListItem', position: 3, name: `${crop} · ${region}`, item: origin + path } ] },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) },
+];
+const F: [string, string][] = [['深加工能力', 'processing'], ['规模 · 认证', 'scale'], ['化妆品落地', 'cosmetic'], ['核心优势', 'edge'], ['适配卖点', 'selling'], ['风险 · 待核实', 'risk']];
+---
+<BaseLayout locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={title} description={answer} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <p class="back"><a href={`${B}/bases/`}>← 原料基地线索</a></p>
+    <header class="hd"><p class="eyebrow">源头 · 原料 · {seed.grp}</p><h1>{crop}的原料基地在哪里?</h1>
+      <p class="answer">{answer}</p>
+      <p class="note">线索 · 持续核实中:供应侧候选名单,不代表已签约合作。{hit && <a href={`${B}/ingredients/${hit.slug}/`}>看{hit.name_zh}的原料档案 →</a>}</p></header>
+    <ol class="cards">{grp.map((r) => (
+      <li class="card" id={`b${r.id}`}>
+        <p class="who"><span class="no">#{r.id}</span> {r.grp}{r.shortlist && <b class="pk">首批优选{r.shortlist !== '是' ? ` · ${r.shortlist}` : ''}</b>}</p>
+        <h2>{r.name}</h2>
+        <p class="law"><b>{r.crop}</b> · {r.region}</p>
+        <dl>{F.filter(([, k]) => r[k]).map(([lb, k]) => (<><dt>{lb}</dt><dd class:list={{ muted: k === 'risk' }}>{r[k]}</dd></>))}</dl>
+      </li>))}</ol>
+    <section class="faq"><h2>常见问题</h2>{faq.map(([q, a]) => (<details open><summary>{q}</summary><p>{a}</p></details>))}</section>
+    <p class="ask">要{crop}做成品或半成品?把品类、目标市场和用量发给我们,我们按链路给你排原料、配方与合规。 <a href={`${B}/contact/`}>发起询盘</a></p>
+  </main>
+  <SiteFooter locale={lang} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+<style>
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .back { margin: 0 0 .75rem; font-size: .875rem; } .back a { color: inherit; opacity: .7; text-decoration: none; }
+  .hd { display: grid; gap: .75rem; margin-bottom: 1.5rem; max-width: 62rem; } .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: clamp(1.5rem, 3vw, 2.125rem); line-height: 1.25; margin: 0; text-wrap: balance; }
+  .answer { font-size: 1.0625rem; line-height: 1.7; margin: 0; padding: .75rem 1rem; border-left: 3px solid var(--ck-accent, #7C4DA8); background: rgb(0 0 0/.03); border-radius: 0 10px 10px 0; }
+  .note { font-size: .875rem; opacity: .7; margin: 0; } .note a { color: inherit; }
+  .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; } .card { padding: 1rem 1.125rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 12px; }
+  .who { margin: 0; font-size: .8125rem; opacity: .6; } .no { font-variant-numeric: tabular-nums; } .pk { margin-left: .5rem; font-size: .75rem; color: var(--ck-accent, #7C4DA8); }
+  .card h2 { font-size: 1.0625rem; margin: .125rem 0 .25rem; } .law { margin: 0 0 .5rem; font-size: .875rem; }
+  .card dl { margin: 0; display: grid; grid-template-columns: 1fr; gap: .2rem; } .card dt { font-size: .8125rem; opacity: .55; } .card dd { margin: 0 0 .4rem; font-size: .9rem; line-height: 1.6; } .muted { opacity: .7; }
+  h2 { font-size: 1.125rem; margin: 1.5rem 0 .625rem; }
+  .faq details { border-top: 1px solid var(--ck-line, rgba(0,0,0,.1)); padding: .625rem 0; } .faq summary { cursor: pointer; font-weight: 600; } .faq p { margin: .5rem 0 0; line-height: 1.7; opacity: .85; }
+  .ask { margin: 2rem 0 0; font-size: .9375rem; line-height: 1.7; opacity: .85; max-width: 62rem; }
+  @media (min-width: 900px) { main { padding: 2rem 1.5rem 4rem; } .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .card dl { grid-template-columns: 7rem 1fr; gap: .2rem .75rem; align-items: baseline; } }
+</style>

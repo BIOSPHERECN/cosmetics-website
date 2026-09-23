@@ -1,0 +1,328 @@
+---
+/**
+ * 产品详情页 —— /{lang}/product/{slug}/(单数)
+ *
+ * 为什么是单数:根目录的 [...path].astro 会把 /{lang}/products/{任意} 全部吃掉,
+ * 返回「no page: products/xxx」的 404 —— 详情页根本轮不到渲染。
+ * 站上 /formula/{code}/ 走的就是单数路径且一直是通的,按同一约定改过来。
+ *
+ * 起因:创始人点着产品列表说「无法点击进入」。他是对的 ——
+ * 列表卡此前只有「加入询盘」按钮,没有详情页可进。
+ * 访客看到产品卡的第一反应是点它;点不动,10 款产品就只是 10 张图。
+ *
+ * 数据全部来自 products / product_i18n / product_media,
+ * 语种回退与全站一致(目标语 → en → zh-cn)。
+ * description 是公开文案;internal_note **不查**(合规提醒只属于后台)。
+ */
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { env } from 'cloudflare:workers';
+import { pageShell } from '../../../lib/shell';
+import { isLang, DEFAULT_LANG, type Lang } from '../../../lib/db';
+import { orgJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { readSession, readCookie, COOKIE } from '../../../lib/auth';
+
+export const prerender = false;
+
+const db = (env as any).DB as D1Database | undefined;
+const rawLang = Astro.params.lang ?? DEFAULT_LANG;
+const lang: Lang = (isLang(rawLang) ? rawLang : DEFAULT_LANG) as Lang;
+const pslug = String(Astro.params.pslug ?? '').toLowerCase();
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const siteId = shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai';
+
+/* 语种回退与全站同一套:目标语 → en → zh-cn */
+const PRI = `CASE i.lang WHEN ? THEN 0 WHEN 'en' THEN 1 WHEN 'zh-cn' THEN 2 ELSE 3 END`;
+
+/* 草稿预览(A9 · 09-23):后台「预览」按钮带 ?preview=1,只有已登录后台的人能看到草稿。
+   带 preview 参数的地址本来就不进边缘缓存(middleware 里未知参数一律不缓存),草稿不会漏给访客。 */
+const preview = Astro.url.searchParams.has('preview')
+  && !!(await readSession(readCookie(Astro.request.headers.get('cookie'), COOKIE), (env as any)?.AUTH_SECRET ?? '').catch(() => null));
+
+const product = db ? await db.prepare(
+  `SELECT p.id, p.slug, p.category, p.moq, p.cover_media,
+          i.name, i.summary, i.description, i.specs_json
+     FROM products p
+     JOIN product_i18n i ON i.product_id = p.id AND i.lang IN (?, 'en', 'zh-cn')
+    WHERE p.site_id = ? AND p.slug = ? AND (p.status = 'published' OR ?)
+    ORDER BY ${PRI} LIMIT 1`,
+).bind(lang, siteId, pslug, preview ? 1 : 0, lang).first<any>() : null;
+
+if (!product) {
+  /* 没这个产品就回列表,别给 404 —— 链接可能来自旧收藏或改过 slug,
+     落回列表访客还能自己找;落到 404 这条线索就断了。 */
+  return Astro.redirect(`/${lang}/products/`, 302);
+}
+
+const { results: gallery } = await db!.prepare(
+  `SELECT media_id FROM product_media WHERE product_id = ? ORDER BY sort_order`,
+).bind(product.id).all<{ media_id: number }>();
+const images = (gallery ?? []).map((g) => `/media/${g.media_id}`);
+if (!images.length && product.cover_media) images.push(`/media/${product.cover_media}`);
+
+/* 同品类的其他产品 —— 「看更多」要有去处 */
+const { results: related } = await db!.prepare(
+  `SELECT p.slug, p.cover_media,
+          (SELECT x.name FROM product_i18n x WHERE x.product_id = p.id
+            ORDER BY CASE x.lang WHEN ? THEN 0 WHEN 'en' THEN 1 ELSE 2 END LIMIT 1) AS name
+     FROM products p
+    WHERE p.site_id = ? AND p.status = 'published' AND p.category = ? AND p.id <> ?
+    ORDER BY p.sort_order LIMIT 4`,
+).bind(lang, siteId, product.category, product.id).all<any>();
+
+const CAT_LABEL: Record<string, Record<string, string>> = {
+  'zh-cn': { skincare: '护肤', makeup: '彩妆', oral: '口腔护理', kids: '儿童护肤', body: '身体护理', hair: '洗护', cleansing: '洁护' },
+  en: { skincare: 'Skincare', makeup: 'Makeup', oral: 'Oral care', kids: 'Kids', body: 'Body care', hair: 'Hair', cleansing: 'Cleansing' },
+};
+const catLabel = (CAT_LABEL[lang] ?? CAT_LABEL.en)[product.category] ?? product.category;
+
+/* 产品分节(渝崧现货册那套骨架)—— 由 tools/product-sections.py 写进 specs_json。
+   `_pending` 是占位标记:销量与竞品结论必须是运营按实填的,没填就整块不渲染,
+   不能拿生成的数字充数(客户一问就穿)。 */
+const specs = (() => {
+  try { return JSON.parse(product.specs_json || '{}') || {}; } catch { return {}; }
+})();
+const real = (o: any) => (o && typeof o === 'object' && !o._pending ? o : null);
+const techBlocks: { title: string; body: string }[] = Array.isArray(specs.tech) ? specs.tech : [];
+const position = (real(specs.position) ?? {}) as { market?: string; audience?: string };
+const sales = real(specs.sales) as { text?: string } | null;
+const versus = real(specs.versus) as { rows?: { them: string; us: string }[] } | null;
+
+const T = lang === 'zh-cn'
+  ? { back: '返回产品品类', moq: '起订量', inquiry: '就这款发起询盘', more: '同品类还有', desc: '产品说明',
+      tech: '产品特点', position: '产品定位', posMarket: '目标市场', posAudience: '目标客户',
+      sales: '销售情况', versus: '竞品对照', vsThem: '常见竞品', vsUs: '本品优势',
+      chainH: '这支产品背后的链路',
+      chainNote: '配方、原料、产区、包材、质检在站内都是可点开的实体 —— 具体到这支产品用哪条配方与哪套包材,按询盘确认,不在页面上假装已经绑定。',
+      cFormula: '同品类配方', cIng: '草本原料库', cOrigin: '原料溯源与主产区',
+      cPack: '包材库(含彩盒与外封膜)', cQc: '质检体系 36 项', cReg: '各国备案索引',
+      note: '以上为公开产品信息。具体规格、包材与交期按询盘沟通;功效宣称以第三方检测报告为准。' }
+  : { back: 'Back to products', moq: 'MOQ', inquiry: 'Inquire about this product', more: 'More in this category', desc: 'About this product',
+      tech: 'Product highlights', position: 'Positioning', posMarket: 'Target markets', posAudience: 'Target buyers',
+      sales: 'Sales record', versus: 'Versus common alternatives', vsThem: 'Common alternative', vsUs: 'This product',
+      chainH: 'The chain behind this product',
+      chainNote: 'Formulation, ingredients, source regions, packaging and quality control are all live entities on this site. Which formula and which packaging set apply to this product is confirmed per inquiry — the page does not pretend they are already bound.',
+      cFormula: 'Formulations in this category', cIng: 'Herbal ingredient library', cOrigin: 'Ingredient origins',
+      cPack: 'Packaging library (cartons and films included)', cQc: 'Quality control, 36 points', cReg: 'Notification index',
+      note: 'Public product information. Specifications, packaging and lead time are confirmed per inquiry; efficacy claims follow third-party test reports.' };
+
+const base = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const path = `/${lang}/product/${product.slug}/`;
+const jsonLd = [
+  orgJsonLd(base, shell.site?.name ?? 'BIOSPHERE', lang, product.summary ?? ''),
+  breadcrumbJsonLd(base, lang, path, lang === 'zh-cn' ? '首页' : 'Home', [
+    { label: lang === 'zh-cn' ? '产品品类' : 'Products', href: `/${lang}/products/` },
+    { label: product.name, href: path },
+  ]),
+  {
+    '@context': 'https://schema.org', '@type': 'Product',
+    '@id': `${base}${path}`, name: product.name,
+    ...(product.summary ? { description: product.summary } : {}),
+    category: product.category,
+    ...(images[0] ? { image: `${base}${images[0]}` } : {}),
+    brand: { '@id': `${base}/#organization` },
+    manufacturer: { '@id': `${base}/#organization` },
+    offers: { '@type': 'Offer',
+      businessFunction: 'http://purl.org/goodrelations/v1#ProvideService',
+      availability: 'https://schema.org/InStock',
+      seller: { '@id': `${base}/#organization` },
+      ...(product.moq ? { eligibleQuantity: { '@type': 'QuantitativeValue', description: product.moq } } : {}),
+      url: `${base}${path}` },
+  },
+].filter(Boolean) as Record<string, unknown>[];
+---
+
+<BaseLayout
+  locale={lang}
+  school={shell.variant?.school ?? 'atelier'}
+  variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={specs.seo_title || `${product.name} | ${catLabel}`}
+  description={product.summary ?? ''}
+  siteName={shell.site?.name ?? '帛卉'}
+  siteUrl={base}
+  path={path}
+  indexable={shell.site?.is_live === 1}
+  brandColor={shell.site?.brand_color}
+  theme={(shell.site as any)?.theme ?? 'noir'}
+  ogImage={images[0]}
+  jsonLd={jsonLd}
+>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+
+  <main id="main" class="pd">
+    <div class="ck-wrap">
+      <p class="crumb"><a href={`/${lang}/products/`}>← {T.back}</a></p>
+
+      <div class="top">
+        <div class="pic">
+          {images[0]
+            ? <img src={images[0]} alt={product.name} decoding="async" />
+            : <div class="noimg" aria-hidden="true"></div>}
+        </div>
+        <div class="info">
+          <p class="cat">{catLabel}</p>
+          <h1>{product.name}</h1>
+          {product.summary && <p class="sum">{product.summary}</p>}
+          {product.moq && <p class="moq"><b>{T.moq}</b> {
+            /[一-鿿]/.test(product.moq) && lang !== 'zh-cn' && lang !== 'zh-tw'
+              ? 'Flexible MOQ · by category & packaging' : product.moq
+          }</p>}
+          <div class="acts">
+            <a class="cta" href={`/${lang}/contact/?about=${encodeURIComponent(product.name)}`}>{T.inquiry}</a>
+          </div>
+        </div>
+      </div>
+
+      {techBlocks.length > 0 && (
+        <section class="desc">
+          <h2>{T.tech}</h2>
+          <div class="techs">
+            {techBlocks.map((b) => (
+              <div class="tech"><h3>{b.title}</h3><p>{b.body}</p></div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {(position.market || position.audience) && (
+        <section class="desc">
+          <h2>{T.position}</h2>
+          <dl class="pos">
+            {position.market && (<><dt>{T.posMarket}</dt><dd>{position.market}</dd></>)}
+            {position.audience && (<><dt>{T.posAudience}</dt><dd>{position.audience}</dd></>)}
+          </dl>
+        </section>
+      )}
+
+      {/* 销售情况与竞品分析:运营按实填了才渲染。
+          销量数字和「竞品只控油不修护」这类结论必须是真的 —— 编一个,客户一问就穿。 */}
+      {sales && (
+        <section class="desc"><h2>{T.sales}</h2><p>{sales.text}</p></section>
+      )}
+
+      {versus && Array.isArray(versus.rows) && versus.rows.length > 0 && (
+        <section class="desc">
+          <h2>{T.versus}</h2>
+          <div class="wrap">
+            <table>
+              <thead><tr><th>{T.vsThem}</th><th>{T.vsUs}</th></tr></thead>
+              <tbody>{versus.rows.map((r: any) => (<tr><td>{r.them}</td><td>{r.us}</td></tr>))}</tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {product.description && (
+        <section class="desc">
+          <h2>{T.desc}</h2>
+          {/* 描述按空行分段;写死 white-space 会让长段在窄屏没法读 */}
+          {String(product.description).split(/\n{2,}|\n/).filter(Boolean).map((p: string) => <p>{p}</p>)}
+        </section>
+      )}
+
+      {/* 产线链路 —— 创始人 2026-09-10:「每一瓶产品都有草本溯源与 AI 质量记录,
+          这个是不是也需要把我们的完整链路打通,而不是孤单单的」。
+          产品与配方目前没有外键(配方是可选型的库,不是一支产品绑死一条),
+          所以按品类把下一跳给出来,并写明具体配对以询盘确认 —— 不假装有一对一映射。 */}
+      <section class="chain">
+        <h2>{T.chainH}</h2>
+        <p class="chainNote">{T.chainNote}</p>
+        <ul class="chainLinks">
+          <li><a href={`/${lang}/formulas/?c=${encodeURIComponent(product.category ?? '')}`}>{T.cFormula}</a></li>
+          <li><a href={`/${lang}/ingredients/`}>{T.cIng}</a></li>
+          <li><a href={`/${lang}/origin/`}>{T.cOrigin}</a></li>
+          <li><a href={`/${lang}/packaging/`}>{T.cPack}</a></li>
+          <li><a href={`/${lang}/qc/`}>{T.cQc}</a></li>
+          <li><a href={`/${lang}/compliance/`}>{T.cReg}</a></li>
+        </ul>
+      </section>
+
+      <p class="legal">{T.note}</p>
+
+      {(related ?? []).length > 0 && (
+        <section class="rel">
+          <h2>{T.more}</h2>
+          <ul>
+            {related.map((r: any) => (
+              <li>
+                <a href={`/${lang}/product/${r.slug}/`}>
+                  {r.cover_media && <img src={`/media/${r.cover_media}`} alt={r.name} loading="lazy" />}
+                  <span>{r.name}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  </main>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  .chain { margin: 2rem 0 0; padding: 1.125rem 1.25rem; border-radius: 14px;
+           border: 1px solid var(--ck-line, rgba(0,0,0,.14)); }
+  .chain h2 { font-size: 1.0625rem; margin: 0 0 .375rem; }
+  .chainNote { margin: 0; font-size: .9375rem; line-height: 1.72; opacity: .78; }
+  .chainLinks { list-style: none; padding: 0; margin: .75rem 0 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .chainLinks a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 .875rem;
+                  font-size: .9375rem; border-radius: 10px; text-decoration: none; color: inherit;
+                  border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
+
+  /* 产品特点:一块一个命名技术,标题短、正文给量化机理 ——
+     创始人给的现货册之所以好读,是因为每条都落到一个可核对的数,不是形容词。 */
+  .techs { display: grid; gap: .875rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); }
+  .tech { border-inline-start: 3px solid var(--ck-line); padding: 0 0 0 .875rem; }
+  .tech h3 { font-size: max(0.9375rem, 15px); margin: 0 0 .25rem; }
+  .tech p { color: var(--ck-ink-soft); line-height: 1.8; margin: 0; }
+  .pos { display: grid; grid-template-columns: max-content 1fr; gap: .375rem 1rem; margin: 0; }
+  .pos dt { color: var(--ck-ink-soft); }
+  .pos dd { margin: 0; }
+  .wrap { overflow-x: auto; }
+  .wrap table { border-collapse: collapse; width: 100%; min-width: 32rem; font-size: max(0.875rem, 14px); }
+  .wrap th, .wrap td { text-align: left; padding: .5rem .75rem; line-height: 1.7;
+                       border-bottom: 1px solid var(--ck-line); vertical-align: top; }
+  .pd { padding-block: 2.5rem 4rem; background: var(--ck-bg); color: var(--ck-ink); }
+  .crumb { margin: 0 0 1.5rem; }
+  .crumb a { color: var(--ck-ink-soft); text-decoration: none; font-size: var(--ck-small); }
+  .crumb a:hover { color: var(--ck-ink); }
+
+  .top { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 2.5rem; align-items: start; }
+  .pic img { width: 100%; border-radius: var(--ck-radius); border: var(--ck-border-w) solid var(--ck-line); display: block; }
+  .noimg { aspect-ratio: 4/3; background: var(--ck-surface-alt); border-radius: var(--ck-radius); }
+
+  .cat { font-size: max(0.75rem, 14px); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ck-ink-faint); margin: 0 0 0.5rem; }
+  .info h1 { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem); line-height: 1.2; margin: 0 0 0.875rem; letter-spacing: -0.01em; }
+  .sum { font-size: 1rem; line-height: 1.8; color: var(--ck-ink-soft); margin: 0 0 1rem; }
+  .moq { font-size: var(--ck-small); color: var(--ck-ink-soft); margin: 0 0 1.5rem; }
+  .moq b { color: var(--ck-ink); margin-inline-end: 0.5rem; }
+  .cta { display: inline-block; padding: 0.8125rem 1.625rem; background: var(--ck-accent); color: var(--ck-on-accent);
+         border-radius: var(--ck-cta-radius); text-decoration: none; font-size: var(--ck-small); font-weight: 600; }
+  .cta:hover { background: var(--ck-accent-deep); }
+
+  .desc { margin-top: 2.75rem; max-width: 62ch; }
+  .desc h2 { font-size: 1.125rem; margin: 0 0 0.875rem; }
+  .desc p { line-height: 1.85; color: var(--ck-ink-soft); margin: 0 0 0.875rem; }
+
+  .legal { margin-top: 2rem; font-size: max(0.75rem, 14px); color: var(--ck-ink-faint); max-width: 62ch; line-height: 1.7; }
+
+  .rel { margin-top: 3rem; }
+  .rel h2 { font-size: 1.125rem; margin: 0 0 1rem; }
+  .rel ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: 1rem; }
+  .rel a { display: block; text-decoration: none; color: inherit; }
+  .rel img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: var(--ck-radius);
+             border: var(--ck-border-w) solid var(--ck-line); display: block; margin-bottom: 0.5rem;
+             transition: transform 0.3s ease; }
+  .rel a:hover img { transform: scale(1.03); }
+  .rel span { font-size: var(--ck-small); }
+
+  @media (max-width: 52rem) { .top { grid-template-columns: 1fr; gap: 1.5rem; } }
+</style>

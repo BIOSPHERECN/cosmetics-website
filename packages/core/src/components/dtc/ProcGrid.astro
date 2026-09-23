@@ -1,0 +1,173 @@
+---
+/**
+ * 工艺图网格 —— 阿里工厂店铺最标志性的那一块。
+ *
+ * 名臣健康那页的样子:3 列 × 2 行的小方图,每张底下压一条黑色标题条
+ * (Research and development / Raw Material Emulsify / Canning and Sealing…)。
+ * 采购看这一块只花三秒,但这三秒决定了他信不信你"真的有厂"。
+ *
+ * 两个和阿里不同的做法,都是有意的:
+ *
+ * ① 标题条是**真文字**,不是烤进图里。
+ *    阿里店铺的做法是整块做成一张 1920 宽的设计图 —— 改一个字要重做图,
+ *    而我们有 46 个语种,那等于要 46 套图。文字独立出来才翻译得动、搜得到。
+ *
+ * ② 标题条常显,不做成"悬停才出现"。
+ *    这一块的读者是在快速扫,不是在把玩。藏起来的信息等于没有。
+ */
+export interface ProcItem {
+  image: string;
+  /** 压在图上的那行字,如「乳化车间」「灌装线」 */
+  label: string;
+  /** 可选的第二行小字,如设备型号或产能 */
+  note?: string;
+  /**
+   * 可选跳转。品类入口卡必须能点进去看产品 ——
+   * 一张不可点的品类卡等于告诉访客「到此为止」,
+   * 而访客点它的唯一动机就是想看更多。
+   */
+  href?: string;
+}
+export interface Props {
+  eyebrow?: string;
+  title: string;
+  intro?: string;
+  items: ProcItem[];
+  /** 每行几张;阿里店铺是 3,窄屏自动降到 2 再到 1 */
+  cols?: number;
+  tone?: 'paper' | 'sand';
+}
+const { eyebrow, title, intro, items = [], cols = 3, tone = 'paper' } = Astro.props;
+---
+
+<section class:list={['dtc-sec', tone, 'procgrid']} aria-label={title}>
+  <div class="dtc-wrap-wide">
+    <header class="head">
+      {eyebrow && <p class="dtc-eyebrow">{eyebrow}</p>}
+      <h2 class="dtc-h2 sm">{title}</h2>
+      {intro && <p class="dtc-lead">{intro}</p>}
+    </header>
+
+    <ul class="grid" style={`--cols:${cols}`}>
+      {items.map((it) => {
+        /* 有 href 就整卡可点 —— 链接包住整张图而不是只挂在小字上,
+           点击区就是视觉区,不用访客去找哪里能点。
+           没有 image 时不渲染 <img>:空 src 在浏览器里是一个破图标,
+           比留白难看得多。这类条目走同一套版式,只是图位留空 ——
+           照片没到位不该拦住内容上线,也不该拿别的图凑数。 */
+        const Tag = it.href ? 'a' : 'div';
+        return (
+          <li class="cell">
+            <Tag class:list={['shot', it.href && 'linked', !it.image && 'noshot']} href={it.href}>
+              {it.image
+                ? <img src={it.image} alt={it.label} loading="lazy" decoding="async" />
+                : <span class="ph" aria-hidden="true">{(it.label || '').trim().slice(0, 1)}</span>}
+              <div class="cap">
+                <b>{it.label}</b>
+                {it.note && <span>{it.note}</span>}
+                {it.href && <span class="go" aria-hidden="true">→</span>}
+              </div>
+            </Tag>
+          </li>
+        );
+      })}
+    </ul>
+  </div>
+</section>
+
+<style>
+  /* 没有照片的条目:压成一条紧凑文字牌,**不占 1:1 方格**。
+     2026-09-09 的教训:原来渲染成同尺寸的首字大方牌,5 个混在图里还行,
+     种植基地页一次上 46 个没实拍的,整页就是一面灰墙 ——
+     创始人当场问「灰白色是什么情况」。
+     占位的本分是别出破图,不是把空白撑到和照片一样大。 */
+  .procgrid .shot.noshot {
+    aspect-ratio: auto;
+    background: transparent;
+    border: var(--ck-border-w, 1px) solid var(--ck-line);
+    border-radius: var(--ck-radius, 4px);
+  }
+  .procgrid .shot.noshot .ph { display: none; }
+  .procgrid .shot.noshot .cap { padding: 0.75rem 0.875rem; }
+  /* 有图与无图两种高度混排时,行内顶部对齐,不要被最高的那张拉齐 */
+  .procgrid .grid { align-items: start; }
+
+  /* ★ 根类名叫 procgrid 不叫 pg ★
+     第一版用了 .pg,和 ProductGrid(商品网格)的 .pg 撞名 ——
+     editorial.css 里有一条 `.pg .grid { grid-template-columns: repeat(12,1fr) }`,
+     于是这里被压成 12 列,每张图只剩 65px 高。
+     Astro 的样式作用域只保证"我的规则不外泄",挡不住"别人的规则打进来";
+     全局皮肤层用的是无作用域的类选择器,所以组件的根类名必须够独特。 */
+  .head { max-width: var(--dtc-wrap-prose); }
+  .head .dtc-lead { max-width: 56ch; }
+
+  .grid {
+    list-style: none;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    display: grid;
+    /* 创始人定版(2026-08-31):桌面统一一行 6 个小方图(阿里大店样式),
+       「图片还是小一点,太大了,看的难受」「其他部分一样,都是一行6个」——
+       不再吃 per-block 的 cols,全站口径一致 */
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  .cell { min-width: 0; }
+
+  .shot {
+    position: relative;
+    overflow: hidden;
+    background: var(--dtc-sand);
+    /* ★ 网格卡资产标准:1:1 ★(创始人定的,2026-08-30)
+       此前 3:2 / 4:3 / 2:1 混用,运营挑图换图每次都要先想比例。
+       统一方图后任何网格位随便放。配套约定:
+       · 生成图直接按 1024×1024 出
+       · 证书/logo 墙这类"裁了会缺内容"的,从原件补白边成方图再入库
+       · 车间实拍不用重做 —— cover 居中裁切即可 */
+    aspect-ratio: 1 / 1;
+  }
+  .shot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.6s var(--ck-ease, ease);
+  }
+  .cell:hover img { transform: scale(1.04); }
+
+  /* 标题条:压在图的下沿。用半透明黑而不是实色,
+     让图的下缘还能透出来一点 —— 完全遮死会显得是两张图硬拼的。 */
+  /* 字幕移到图片下方(创始人:「黑色覆盖到图片上了,移到图片下面去,
+     影响了图片的美感!」)—— 图归图、字归字,不再压图。 */
+  .cap {
+    position: relative;
+    padding: 0.625rem 0.25rem 0.125rem;
+    color: var(--dtc-ink);
+    display: grid;
+    gap: 0.125rem;
+  }
+  .cap b { font-size: 0.875rem; font-weight: 600; line-height: 1.25; }
+  /* pre-line:note 里的换行符生效 —— 创始人:「迪士尼在上,其他两个在下,更美观」 */
+  .cap span { font-size: max(0.75rem, 14px); color: color-mix(in srgb, var(--dtc-ink) 62%, transparent); white-space: pre-line; }
+
+  /* 可点卡:链接形态 + 悬停时箭头滑出,告诉访客「这里能进去」 */
+  a.shot { display: block; text-decoration: none; color: inherit; }
+  .cap .go {
+    position: absolute; right: 0.875rem; bottom: 0.625rem;
+    font-size: 1rem; color: var(--ck-accent); opacity: 0.65;   /* 字幕已移到图下,箭头改品牌色 */
+    transition: transform 0.25s ease, opacity 0.25s ease;
+  }
+  a.shot:hover .go, a.shot:focus-visible .go { opacity: 1; transform: translateX(3px); }
+  a.shot:focus-visible { outline: 2px solid var(--dtc-strip, #ce416f); outline-offset: 2px; }
+
+  @media (max-width: 64rem) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  /* 创始人:手机不要一行单图 —— 保持 2 列;
+     「图片下面的文字,在手机端太大了!」—— 字幕降档 */
+  @media (max-width: 40rem) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+    .cap { padding: 0.4375rem 0.125rem 0; gap: 0.0625rem; }
+    .cap b { font-size: max(0.75rem, 14px); }
+    .cap span { font-size: max(0.65rem, 14px); }
+    .cap .go { font-size: max(0.8125rem, 14px); right: 0.375rem; bottom: 0.25rem; }
+  }
+</style>

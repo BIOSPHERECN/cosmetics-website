@@ -1,0 +1,5 @@
+---
+/* 周报已并入 /trends/reports/;旧地址 301 */
+export const prerender = false;
+return Astro.redirect(`/${Astro.params.lang ?? 'zh-cn'}/trends/reports/`, 301);
+---

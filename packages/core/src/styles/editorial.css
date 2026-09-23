@@ -26,13 +26,15 @@ html[data-editorial][data-brand] .hero .inner {
   padding-inline: var(--ed-gutter);
 }
 html[data-editorial][data-brand] .hero h1 {
-  max-width: 15ch;
+  /* 15ch → 20ch:窄柱标题配全宽画布 = 左下角一小坨(创始人截图实锤),
+     标题要占住左半幅才能和右侧质地带形成对开 */
+  max-width: 20ch;
   line-height: 0.94;
   letter-spacing: -0.035em;
   /* 大字号下负字距是必须的:默认字距在 100px 以上会显得松垮 */
 }
 html[data-editorial][data-brand] .hero .lead {
-  max-width: 34ch;
+  max-width: 46ch;
   margin-inline-start: 0;
 }
 /* 首屏数字墙保持在文字栏内。
@@ -46,7 +48,9 @@ html[data-editorial][data-brand] .hero .hl {
 
 /* ── ② 图片出血:破出容器贴到视口边缘 ──────────────────────── */
 html[data-editorial][data-brand] .hero .texwrap {
-  width: min(52%, 46rem);
+  /* 46rem 上限在宽屏留出一条空白带(质地带够不到文字区,中间悬空)——
+     去掉上限,右半幅永远填满,左文右图真正对开 */
+  width: 50%;
   /* 上下也出血,让图成为一整条竖带而不是一个方块 */
   inset: 0 0 0 auto;
 }
@@ -58,16 +62,51 @@ html[data-editorial][data-brand] .ck-section > .ck-wrap > .head {
   max-width: 24ch;
   margin-inline: 0;
 }
-
-/* ── ④ 交替偏置:偶数版块整体右移两栏,打破一柱到底 ──────────── */
-html[data-editorial][data-brand] .ck-section:nth-of-type(even) > .ck-wrap {
-  padding-inline-start: calc(var(--ed-col) * 2 + var(--ed-gutter));
+/* 宽屏标题区双栏(创始人:「每个页面空白处太多了,这个不解决吗」)——
+   窄标题 + 窄导语全部堆在左边,右侧整条空白,而且每页每个版块重复一次,
+   是全站残余空白的最大单一来源。≥78rem 改为「左题右导语」横排:
+   眉标与标题占第一栏,导语(最后一个 <p>)去右栏对齐底线,标题区填满轴线。 */
+@media (min-width: 78rem) {
+  html[data-editorial][data-brand] .ck-section > .ck-wrap > header,
+  html[data-editorial][data-brand] .ck-section > .ck-wrap > .head {
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 30ch) minmax(0, 60ch);
+    justify-content: space-between;
+    align-items: end;
+    column-gap: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
+  }
+  html[data-editorial][data-brand] .ck-section > .ck-wrap > header > *,
+  html[data-editorial][data-brand] .ck-section > .ck-wrap > .head > * {
+    grid-column: 1;
+  }
+  html[data-editorial][data-brand] .ck-section > .ck-wrap > header > p:last-child:not(:first-child),
+  html[data-editorial][data-brand] .ck-section > .ck-wrap > .head > p:last-child:not(:first-child) {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: end;
+    margin: 0;
+  }
 }
+
+/* ── ④(已删)交替偏置:偶数版块整体右移两栏 ─────────────────
+   死因:创始人放大浏览产品页「很乱!」+ 能力页截图「这么大的空白处,设计不行」。
+   viewport 栅格(--ed-col 按 100vw 算)在宽屏把偶数版块推出 300px+,
+   文字块又各自带 24ch/40rem 的窄上限 —— 结果就是内容七零八落地漂在
+   大画布上,没有一条公共轴线。杂志式偏置在印刷页距固定时成立,
+   在 966→2560 自适应画布上,「不对称」退化成「散架」。
+   现在全站回归单一左轴:所有版块同一起笔线,留白只出现在右侧和版块之间。 */
 
 /* ── ⑤ 网格改成不等宽:第一格占两倍,后面依次收窄 ───────────── */
 html[data-editorial][data-brand] .matrix .grid {
   grid-template-columns: 1.6fr 1fr 1fr 1fr;
   align-items: start;
+}
+/* 5 项以上的矩阵(如能力页的六大核心能力)换成 3 列等宽:
+   1.6fr 首格强调是为「四项核心能力」设计的,6 项塞进 4 列会在
+   第二行留两个空洞 —— 数量变了,版式跟着变,而不是内容迁就版式。 */
+html[data-editorial][data-brand] .matrix .grid:has(> :nth-child(5)) {
+  grid-template-columns: repeat(3, 1fr);
 }
 /* 这里原本让第 2/3/4 格依次下沉 3/6/9rem,做成阶梯 —— 已删除。
    删的理由不是口味,是它读错了内容:
@@ -78,18 +117,15 @@ html[data-editorial][data-brand] .matrix .grid {
    杂志式错落成立有个前提:错落的东西彼此没有可比性(图配文、引言配正文)。
    四个同构的能力卡是最有可比性的一组,必须对齐,让人一眼横着扫完。 */
 
-/* ── ⑥ 产品网格:第一张占两格,做成杂志式主次 ───────────────── */
-html[data-editorial][data-brand] .pg .grid {
-  grid-template-columns: repeat(12, 1fr);
-}
-html[data-editorial][data-brand] .pg .card { grid-column: span 3; }
-html[data-editorial][data-brand] .pg .card:nth-child(1) { grid-column: span 6; }
-html[data-editorial][data-brand] .pg .card:nth-child(1) .shotwrap { aspect-ratio: 16 / 10; }
-html[data-editorial][data-brand] .pg .card:nth-child(6) { grid-column: span 6; }
-html[data-editorial][data-brand] .pg .card:nth-child(6) .shotwrap { aspect-ratio: 16 / 10; }
+/* ── ⑥(已删)产品网格杂志式主次 ─────────────────────────────
+   原来这里把 .pg 网格改成 12 栏:第 1/6 张占双格(16:10),其余 1/4 宽。
+   在「产品目录只有 3 件」的真实数据下,渲染成一宽两窄、
+   窄卡里产品名一字一行竖排 —— 杂志式错落的前提是内容异构,
+   同构的产品卡必须等宽等比(和品类图的 1:1 标准同一条纪律)。
+   货架回归组件自身的 auto-fill 等宽网格,不在皮肤层做手脚。 */
 
 /* ── ⑦ 留白不均:相邻版块的上下间距刻意不同,形成呼吸 ────────── */
-html[data-editorial][data-brand] .ck-section:nth-of-type(3n + 1) { padding-block: calc(var(--ck-section-py) * 1.5); }
+html[data-editorial][data-brand] .ck-section:nth-of-type(3n + 1) { padding-block: var(--ck-section-py);  /* 09-17 「太多空余」:不再 ×1.5 */ }
 html[data-editorial][data-brand] .ck-section:nth-of-type(3n + 2) { padding-block: calc(var(--ck-section-py) * 0.7); }
 
 /* ── ⑧ 数字墙:超大字 + 细标签,数字之间不用等宽格 ──────────── */
@@ -106,12 +142,8 @@ html[data-editorial][data-brand] .proof .v {
 
 /* 窄屏回归单列 —— 编辑式版面在手机上会挤,不硬撑 */
 @media (max-width: 60rem) {
-  html[data-editorial][data-brand] .ck-section:nth-of-type(even) > .ck-wrap { padding-inline-start: var(--ed-gutter); }
   html[data-editorial][data-brand] .matrix .grid,
   html[data-editorial][data-brand] .statwall .grid,
   html[data-editorial][data-brand] .proof .nums { grid-template-columns: 1fr 1fr; }
-  html[data-editorial][data-brand] .pg .card,
-  html[data-editorial][data-brand] .pg .card:nth-child(1),
-  html[data-editorial][data-brand] .pg .card:nth-child(6) { grid-column: span 6; }
   html[data-editorial][data-brand] .hero .hl { text-align: start; margin-inline-start: 0; }
 }

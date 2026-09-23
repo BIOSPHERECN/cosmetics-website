@@ -1,4 +1,5 @@
 ---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 /**
  * AI 共创工作台 —— 一句话说需求,拿到可打样的配方方案。
@@ -82,7 +83,7 @@ const T = zh ? {
 };
 /* 外壳来自与全站同一处 —— 这两页的内容是写死的,但它们仍是这个站的页面,
    必须共用页头、导航与页脚,否则点进去像掉到了别人网站上。 */
-const shell = await pageShell(db, Astro.url, lang);
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
 ---
 
@@ -90,7 +91,7 @@ const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
   locale={lang}
   school={shell.variant?.school ?? 'atelier'}
   variant={shell.site?.variant ?? 'v1'}
-  brand={shell.site?.id ?? 'beauty2oem'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
   title={T.title}
   description={T.lead}
   siteName={shell.site?.name ?? '帛卉'}
@@ -144,7 +145,7 @@ const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
     /* 同 skin 页:只写组件样式,配色走全站令牌 */
 
     .wrap { max-width: var(--ck-maxw, 72rem); margin: 0 auto;
-            padding: clamp(2rem, 5vw, 4rem) var(--ck-gutter, 1.25rem) 5rem; }
+            padding: clamp(2rem, 5vw, 4rem) var(--ck-gutter, 1.25rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }
     .eyebrow { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase;
                color: var(--ck-accent); margin: 0 0 .625rem; }
     .wrap > h1 { max-width: 20ch; line-height: 1.1; letter-spacing: -0.025em;
@@ -216,7 +217,8 @@ const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
              background: var(--ck-surface); cursor: pointer; font: inherit; }
   </style>
 
-  <script is:inline define:vars={{ lang, T }}>
+
+<script is:inline define:vars={{ lang, T, SITE_ID: shell.site?.id ?? "beauty2oem" }}>
   (() => {
     const $ = (id) => document.getElementById(id);
     const brief = $('brief'), go = $('go'), msg = $('msg'), out = $('out');
@@ -243,7 +245,7 @@ const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
       try {
         const r = await fetch('/api/studio', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ input, lang, site: new URLSearchParams(location.search).get('site') || 'beauty2oem' }),
+          body: JSON.stringify({ input, lang, site: SITE_ID }),
         });
         const d = await r.json();
         if (!d.ok) throw new Error(d.msg || '生成失败');
@@ -309,5 +311,22 @@ const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
       go.disabled = false; go.textContent = T.run;
     });
   })();
+  </script>
+
+  <script is:inline>
+    /* 选品链路把「方向 + 配方号 + 包材号」带过来:?brief=… 直接填进输入框,
+       客户不用把刚做的选择再复述一遍(闭环的最后一米,少一次复制粘贴就少一次流失)。 */
+    (function prefillFromQuery() {
+      try {
+        const q = new URLSearchParams(location.search);
+        const b = q.get('brief');
+        if (!b) return;
+        const el = document.querySelector('#brief');
+        if (!el) return;
+        el.value = b.slice(0, 600);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.focus();
+      } catch { /* 预填失败不影响正常使用 */ }
+    })();
   </script>
 </BaseLayout>

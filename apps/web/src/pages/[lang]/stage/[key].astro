@@ -1,0 +1,239 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 每一站的总览页 —— 顶栏七个版块,点进来先看这一站有什么,再选子项。
+ *
+ * 创始人 2026-09-11 02:3x:「导航栏每个版块,要不然不点击放上去展示下拉,要不然就是点击进入总览,然后也显示下拉。
+ * 你现在点击进入就是一个版块!和以前的概念完全不同了。」—— 之前顶级项直接落到某个子页(点「配方」进的是配方货架),
+ * 站里其余入口就丢了。现在:悬停出下拉(零 JS,CSS 已有),点击进这一页 —— 这一站的所有入口一张卡一个,带一句说明和实数。
+ *
+ * 子项不在这里重复配:直接用导航树里这一站的 children(数据库驱动,后台改导航这里自动跟),
+ * 这里只补每个子项的一句话说明与计数;说明按 slug 对,对不上的只显示标签。
+ * 序号只在页内小字里出现(「第 3 站 · 共 7 站」),顶栏标签不带数字 —— 创始人问「为什么每个版块前面加数字」,去掉。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { CHAIN_COUNTS } from '@cosmetic/core/content/chain.ts';
+import { pageShell } from '../../../lib/shell';
+import { getCounts } from '../../../lib/counts';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const key = String(Astro.params.key ?? '');
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const B = `/${lang}`;
+
+const ORDER = ['source', 'containers', 'formula', 'products', 'compliance', 'market'] as const;
+type Key = typeof ORDER[number];
+if (!(ORDER as readonly string[]).includes(key)) return new Response(null, { status: 404 });
+
+const STAGE: Record<Key, { zh: [string, string, string]; en: [string, string, string] }> = {
+  source: {
+    zh: ['源头 · 原料', '一味原料从哪来', '产区是地理事实,基地是企业线索,原料库讲机理与配伍,各国目录判它能不能进目的市场 —— 四个入口互相挂链接,从哪进都能走通。'],
+    en: ['Source · botanicals', 'Where a botanical comes from', 'Regions are geography, bases are supplier leads, the library explains mechanism and compatibility, the inventories tell you whether it may enter a market. Four doors, all cross-linked.'],
+  },
+  containers: {
+    zh: ['包材', '先定瓶,再定料;外盒、彩盒、烟包膜也在这一站', '瓶、罐、管、泵头、喷头,白底实拍,按类型、材质、容量、适配剂型筛;外盒、礼盒、彩盒、说明书、烟包膜同属包材,工序上排在灌装之后。'],
+    en: ['Packaging', 'Pick the bottle, then the bulk; cartons and films live here too', 'Bottles, jars, tubes, pumps and sprayers shot on white, filtered by type, material, capacity and format; outer cartons, gift boxes, folding boxes, leaflets and films are packaging too, one step after filling.'],
+  },
+  formula: {
+    zh: ['配方', '料体怎么来', '在册配方按品类、功效、剂型分,每支写关键成分与可售市场;背后是实验室、技术团队和 AI 共创工作台。'],
+    en: ['Formulas', 'How the bulk is made', 'Formulas by category, benefit and format, each with key actives and eligible markets; behind them the lab, the technical team and the AI co-creation bench.'],
+  },
+  products: {
+    zh: ['成品', '走完整条链的东西', '成品品类、生产制造、工厂与产能、OEM/ODM 服务、品牌孵化 —— 从这里看我们做出来的,和我们怎么做出来的。'],
+    en: ['Finished products', 'What ran the whole chain', 'Product categories, manufacturing, plants and capacity, OEM/ODM services, brand incubation — what we make and how we make it.'],
+  },
+  compliance: {
+    zh: ['质检 · 合规', '出厂前的最后两道', '质量与合规讲持有的资质与文件,质检体系讲每个检验点怎么测、依据什么;各国法规与东南亚通报账号讲目的市场怎么进。'],
+    en: ['QC · compliance', 'The last two gates before shipping', 'Quality and compliance covers certifications and documents, the QC system covers how each checkpoint is tested and on what basis; market regulations and ASEAN notification accounts cover entry.'],
+  },
+  market: {
+    zh: ['市场 · 获客', '卖出去', '海外爆款调研、买手问答、选型对比、客户场景、常见问题、行业资讯、AI 肌肤检测 —— 给采购和品牌方做决定用的材料。'],
+    en: ['Market · buyers', 'Getting it sold', 'Overseas bestseller research, buyer Q&A, comparisons, client scenarios, FAQ, industry news and AI skin reading — material for buyers and brand owners to decide with.'],
+  },
+};
+
+/* 子项说明按 slug 对;计数 key 在下面用 D1 填 */
+const DESC: Record<string, { zh: string; en: string; n?: string; unit?: [string, string] }> = {
+  'origin': { zh: '91 个国内主产区,一味原料指得出来的地。', en: '91 domestic growing regions, the place a botanical actually comes from.', n: 'regions', unit: ['个产区', 'regions'] },
+  'ingredients': { zh: '草本原料档案:INCI、机理、用量、配伍禁忌,并联各国目录。', en: 'Botanical files: INCI, mechanism, use level, incompatibilities, linked to market inventories.', n: 'ingredients', unit: ['味', 'botanicals'] },
+  'classics': { zh: '古方库:外用美容方的方名、出处、药味与现代对应,抽检确认的置顶。', en: 'Classical formula library: external-use beauty formulas with source, herbs and modern counterpart.', n: 'classics', unit: ['方', 'formulas'] },
+  'bases': { zh: '企业与基地线索:在哪、种什么、加工到哪步、有什么证、还有什么要核。', en: 'Company and base leads: where, what crop, processing depth, certifications, open questions.', n: 'bases', unit: ['家', 'leads'] },
+  'inci': { zh: '十个官方目录一站查:中国、欧盟、东盟、日本、韩国、加拿大、美国、巴西。', en: 'Ten official inventories in one search: China, EU, ASEAN, Japan, Korea, Canada, US, Brazil.', n: 'inci', unit: ['条', 'entries'] },
+  'graph': { zh: '原料 · 古方 · 配方 · 工艺的关系图,可视化可拖拽。', en: 'Botanicals, classical formulas, formulas and processes as one navigable graph.', n: 'graph', unit: ['个节点', 'nodes'] },
+  'search': { zh: '问一句话,拿一段有出处的回答;先查站内库再补全网。', en: 'Ask once, get a sourced answer; our library first, then the open web.' },
+  'packaging': { zh: '瓶罐管泵喷,白底实拍,按类型 / 材质 / 容量 / 剂型筛。', en: 'Bottles, jars, tubes, pumps, sprayers on white; filter by type, material, capacity, format.', n: 'packaging', unit: ['款', 'items'] },
+  'capabilities/packaging': { zh: '包材方案:结构、材质、配色与合规标识怎么落。', en: 'Packaging solutions: structure, materials, colourways and compliance marks.' },
+  'pack': { zh: 'AI 包装设计:说一句需求,出版式草案。', en: 'AI packaging design: describe the brief, get layout drafts.' },
+  'formulas': { zh: '在册配方按品类、功效、剂型翻,看中就报编码。', en: 'Formulas by category, benefit and format; quote the code.', n: 'formulas', unit: ['支', 'formulas'] },
+  'rnd/formulation': { zh: '技术与配方:团队、方法与配方开发流程。', en: 'Technology and formulation: team, methods, development flow.' },
+  'rnd/lab': { zh: '实验室与检测:仪器、方法与检验能力。', en: 'Laboratory and testing: instruments, methods, capability.' },
+  'studio': { zh: 'AI 共创工作台:从一句需求到配方方向与包材建议。', en: 'AI co-creation bench: from a brief to formula direction and packaging suggestions.' },
+  'ai': { zh: 'AI 工作台总入口:搜索、共创、肌肤检测、包装设计。', en: 'All AI tools: search, co-creation, skin reading, packaging design.' },
+  'packaging/?t=use-gift,outer-carton': { zh: '外盒、礼盒、套装盒。', en: 'Outer cartons, gift boxes, sets.', n: 'cartons', unit: ['款', 'items'] },
+  'packaging/?t=rigid-box,leaflet,overwrap-film,shrink-sleeve,seal-sticker': { zh: '彩盒、说明书、烟包膜、热缩套、封口贴。', en: 'Folding boxes, leaflets, overwrap film, shrink sleeves, seal stickers.', n: 'paper', unit: ['款', 'items'] },
+  'products': { zh: '成品品类:已经走完整条链的例子,从料体到外盒。', en: 'Product categories: examples that ran the whole chain, bulk to carton.', n: 'products', unit: ['例', 'products'] },
+  'capabilities/manufacturing': { zh: '生产制造:车间、产线与在线质量记录。', en: 'Manufacturing: workshops, lines, in-line quality records.' },
+  'about/plants': { zh: '工厂与产能:厂区、面积、产线与日产能。', en: 'Plants and capacity: sites, floor area, lines, daily output.' },
+  'services': { zh: 'OEM/ODM 服务:从打样到交付的个性化服务清单。', en: 'OEM/ODM services: from sampling to delivery.' },
+  'capabilities/incubation': { zh: '品牌孵化:新品牌从 0 到 1 我们接哪几段。', en: 'Brand incubation: which stages we take on for a new brand.' },
+  'capabilities': { zh: '工厂实力总览。', en: 'Factory capabilities overview.' },
+  'quality': { zh: '质量与合规:持有的认证与一票货需要的文件。', en: 'Quality and compliance: certifications held and documents a shipment needs.' },
+  'qc': { zh: '质检体系:从来料到留样,每个检验点测什么、依据什么。', en: 'QC system: from incoming to retained samples, what each checkpoint tests and on what basis.', n: 'qc', unit: ['个检验项', 'checks'] },
+  'regulations': { zh: '各国法规:主管机构、上市路径、责任人、标签、最近修订。', en: 'Regulations by market: authority, entry route, responsible person, labeling, latest change.', n: 'regs', unit: ['个市场', 'markets'] },
+  'compliance': { zh: '东南亚六国通报账号门槛。', en: 'ASEAN notification account requirements, six markets.' },
+  'guides': { zh: '选型指南:怎么选剂型、包材、市场。', en: 'Guides: choosing formats, packaging, markets.' },
+  'brands': { zh: '全球化妆品品牌目标清单:官网、母公司、公开营收、企业联系渠道、切入点。', en: 'Global brand target list: site, parent, public revenue, corporate contacts, our angle.', n: 'brands', unit: ['家', 'brands'] },
+  'trends/reports': { zh: '爆款监控报告:按周归组、一天一份,区域与平台分节,看结论与跨平台对比。', en: 'Bestseller monitor reports: grouped by week, one per day, by region and platform.', n: 'reports', unit: ['天', 'days'] },
+  'trends': { zh: '海外爆款调研:按平台 / 品类 / 品牌翻,带来源。', en: 'Overseas bestseller research by platform, category, brand, with sources.', n: 'trends', unit: ['条', 'items'] },
+  'answers': { zh: '买手问答:先给结论和数字,再给做法。', en: 'Buyer Q&A: conclusion and numbers first, then the how.', n: 'answers', unit: ['篇', 'answers'] },
+  'compare': { zh: '选型对比:剂型、包材、市场两两比。', en: 'Comparisons: formats, packaging, markets side by side.' },
+  'cases': { zh: '客户场景:什么样的客户,我们怎么接。', en: 'Client scenarios: who comes to us and how we take it on.' },
+  'faq': { zh: '常见问题。', en: 'Frequently asked questions.' },
+  'news': { zh: '行业资讯:去 AI 味的行业动态。', en: 'Industry news.', n: 'news', unit: ['篇', 'articles'] },
+  'skin': { zh: 'AI 肌肤检测:上传一张脸,给护理方向。', en: 'AI skin reading: upload a face, get a care direction.' },
+};
+
+/* 实数:一次 batch 取,只取这一站用得到的 */
+const counts: Record<string, number> = {
+  regions: 91, packaging: CHAIN_COUNTS.packaging, cartons: CHAIN_COUNTS.carton, formulas: CHAIN_COUNTS.formula, products: CHAIN_COUNTS.product, ingredients: CHAIN_COUNTS.ingredient,
+};
+const Q: Record<string, string> = {
+  bases: 'SELECT COUNT(*) n FROM herb_bases', classics: 'SELECT COUNT(*) n FROM classics', inci: 'SELECT COUNT(*) n FROM inci_catalog',
+  graph: "SELECT COUNT(*) n FROM kg_nodes", paper: "SELECT COUNT(*) n FROM packaging WHERE status='active' AND type IN ('rigid-box','leaflet','overwrap-film','shrink-sleeve','seal-sticker')",
+  qc: 'SELECT COUNT(*) n FROM qc_items', regs: 'SELECT COUNT(*) n FROM regulations', trends: "SELECT COUNT(*) n FROM ecom_items", reports: 'SELECT COUNT(*) n FROM trend_reports', brands: 'SELECT COUNT(*) n FROM brand_leads', weeks: "SELECT COUNT(DISTINCT strftime('%Y-%W', date)) n FROM trend_reports", answers: 'SELECT COUNT(*) n FROM geo_answers', news: 'SELECT COUNT(*) n FROM news WHERE is_published = 1',
+};
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const node = (shell.nav ?? []).find((n: any) => n.slug === `stage/${key}`);
+const kids: { slug: string; label: string }[] = (node?.children ?? []).filter((c: any) => c.slug !== `stage/${key}`);
+if (db) {
+  const need = [...new Set(kids.map((c) => DESC[c.slug]?.n).filter((k): k is string => !!k && Q[k] != null))];
+  /* 先读 tools/counts-refresh.py 写好的缓存行(1 行);没有再现算(每个 COUNT 全表扫)。 */
+  const cached = await getCounts(db);
+  const miss = need.filter((k) => typeof cached?.[k] !== 'number');
+  need.forEach((k) => { if (typeof cached?.[k] === 'number') counts[k] = cached![k] as number; });
+  if (miss.length) {
+    try {
+      const res = await db.batch(miss.map((k) => db.prepare(Q[k])));
+      miss.forEach((k, i) => { counts[k] = Number((res[i]?.results?.[0] as any)?.n ?? 0); });
+    } catch { /* 某张表不存在就不显示数字 */ }
+  }
+}
+const H = (slug: string) => (slug.includes('?') ? `${B}/${slug}` : `${B}/${slug}/`);
+const S = STAGE[key as Key][zh ? 'zh' : 'en'];
+const idx = ORDER.indexOf(key as Key);
+const prev = idx > 0 ? ORDER[idx - 1] : null; const next = idx < ORDER.length - 1 ? ORDER[idx + 1] : null;
+const path = `${B}/stage/${key}/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const T = zh ? { stageOf: `第 ${idx + 1} 站 · 共 ${ORDER.length} 站`, enter: '进入', prev: '上一站', next: '下一站', all: '整条链路', ask: '不知道从哪一站进?把品类和目标市场发给我们,我们按链路给你排一遍。', inq: '发起询盘' }
+             : { stageOf: `Stage ${idx + 1} of ${ORDER.length}`, enter: 'Open', prev: 'Previous stage', next: 'Next stage', all: 'Whole chain', ask: 'Not sure where to enter? Send the category and target market and we walk you through the chain.', inq: 'Send an inquiry' };
+const fmt = (n: number) => n.toLocaleString(zh ? 'zh-CN' : 'en-US');
+/* GEO 直答块(创始人 2026-09-11 转来的打法第二步:「首段直接给出 100 字以内的核心答案」)。
+   每站一句,数字只用本页刚查到的 counts,查不到就不带数字 —— 直答里的数一定与页面其它地方一致。 */
+const N = (k: string) => (counts[k] ? fmt(counts[k]) : '');
+const ANSWER: Record<Key, [string, string]> = {
+  source: [`帛卉的原料这样来:${N('bases') ? N('bases') + ' 个草本基地线索、' : ''}${N('graph') ? '图谱 ' + N('graph') + ' 个节点、' : ''}${N('classics') ? N('classics') + ' 条古方候选、' : ''}10 国成分目录逐味核对,每种原料标产区、机理与目的市场能否使用。`,
+           `Botanicals at BIOSPHERE come with provenance: ${N('bases') ? N('bases') + ' base leads, ' : ''}${N('graph') ? 'a ' + N('graph') + '-node knowledge graph, ' : ''}${N('classics') ? N('classics') + ' classical-formula candidates, ' : ''}and 10 national ingredient inventories checked per ingredient for region, mechanism and market eligibility.`],
+  containers: [`包材在这一站选:瓶、罐、管、泵头按类型、材质、容量、剂型筛,白底实拍、报编码即可对款;${N('paper') ? '外盒与彩盒等 ' + N('paper') + ' 款' : '外盒与彩盒'}同属包材;选定一支瓶可一键生成外包装设计。`,
+               `Pick packaging here: bottles, jars, tubes and pumps filtered by type, material, capacity and format, shot on white, ordered by code; ${N('paper') ? N('paper') + ' cartons and boxes' : 'cartons and boxes'} are packaging too; any bottle can go straight to a one-click carton design.`],
+  formula: [`配方从在册配方库起步:按品类、功效、剂型选,每支写关键成分、可售市场与起订量;成分比例不公开,卖点与合规状态公开;实验室与 AI 共创台负责改配方。`,
+            `Formulas start from the registered library: pick by category, benefit and format, each listing key actives, eligible markets and MOQ; ratios stay private, claims and compliance status are public; the lab and the AI bench adapt them.`],
+  products: [`成品这一站看做出来的东西和产能:成品品类、成熟代工产品展示、工厂与产线、OEM/ODM 服务与品牌孵化;数据以官网公开口径为准,不含估算。`,
+             `Finished products show what came off the chain: categories, a showcase of past OEM work, plants and lines, OEM/ODM services and brand incubation; figures follow the public site, never estimates.`],
+  compliance: [`出厂前两道关:质检体系${N('qc') ? '按 ' + N('qc') + ' 个检验项' : ''}写明怎么测、依据什么;合规给出持有资质与文件清单;${N('regs') ? N('regs') + ' 个市场的' : '各国'}法规页讲主管机构、上市路径、责任人与标签要求。`,
+               `Two gates before shipping: the QC system ${N('qc') ? 'covers ' + N('qc') + ' checkpoints, each with method and basis' : 'states method and basis per checkpoint'}; compliance lists certifications and documents; ${N('regs') ? N('regs') + ' market' : 'market'} regulation pages give authority, entry route, responsible person and labeling.`],
+  market: [`市场这一站给采购和品牌方做决定的材料:${N('reports') ? '跨境爆款监控日报 ' + N('reports') + ' 期、' : '跨境爆款监控、'}${N('answers') ? '买手问答 ' + N('answers') + ' 篇、' : '买手问答、'}选型对比、客户场景与行业资讯,结论和数字先给,做法在后。`,
+           `Market material for buyers and brand owners: ${N('reports') ? N('reports') + ' bestseller monitoring reports, ' : 'bestseller monitoring, '}${N('answers') ? N('answers') + ' buyer answers, ' : 'buyer answers, '}comparisons, client scenarios and industry news — conclusion and numbers first, method after.`],
+};
+const answer = ANSWER[key as Key][zh ? 0 : 1];
+const ld = {
+  '@context': 'https://schema.org', '@type': 'CollectionPage', name: S[0], description: S[2], url: origin + path,
+  hasPart: kids.map((c) => ({ '@type': 'WebPage', name: c.label, url: origin + H(c.slug) })),
+};
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={`${S[0]} · ${S[1]}`} description={answer}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <header class="hd">
+      <p class="eyebrow">{T.stageOf}</p>
+      <h1>{S[0]} <span class="sub">{S[1]}</span></h1>
+      <p class="answer">{answer}</p>
+      <p class="lede">{S[2]}</p>
+    </header>
+
+    <ol class="rail" aria-label={T.all}>
+      {ORDER.map((k, i) => (
+        <li class:list={{ on: k === key }}><a href={`${B}/stage/${k}/`}><i>{i + 1}</i>{STAGE[k][zh ? 'zh' : 'en'][0]}</a></li>
+      ))}
+    </ol>
+
+    <ul class="cards">
+      {kids.map((c) => {
+        const d = DESC[c.slug]; const n = d?.n ? counts[d.n] : undefined;
+        return (
+          <li>
+            <a class="card" href={H(c.slug)}>
+              <h2>{c.label}</h2>
+              {d && <p>{zh ? d.zh : d.en}</p>}
+              {n != null && n > 0 && d?.unit && <b class="n">{fmt(n)} <i>{zh ? d.unit[0] : d.unit[1]}</i></b>}
+              <span class="go">{T.enter} →</span>
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+
+    <nav class="pn">
+      {prev && <a href={`${B}/stage/${prev}/`}>← {T.prev}:{STAGE[prev][zh ? 'zh' : 'en'][0]}</a>}
+      {next && <a class="nx" href={`${B}/stage/${next}/`}>{T.next}:{STAGE[next][zh ? 'zh' : 'en'][0]} →</a>}
+    </nav>
+    <p class="ask">{T.ask} <a href={`${B}/contact/`}>{T.inq}</a></p>
+  </main>
+  <SiteFooter locale={lang} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .hd { display: grid; gap: .75rem; margin-bottom: 1.25rem; max-width: 62rem; }
+  .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: clamp(1.75rem, 3.2vw, 2.5rem); line-height: 1.2; margin: 0; text-wrap: balance; }
+  h1 .sub { display: block; font-size: .5em; font-weight: 500; opacity: .6; margin-top: .375rem; }
+  .lede { font-size: 1rem; line-height: 1.75; opacity: .85; margin: 0; }
+  .answer { font-size: 1.0625rem; line-height: 1.7; margin: 0 0 .75rem; padding: .75rem 1rem; border-left: 3px solid var(--ck-accent, #7C4DA8); background: rgb(0 0 0/.03); border-radius: 0 10px 10px 0; max-width: 62rem; }
+  .rail { list-style: none; margin: 0 0 1.75rem; padding: 0; display: flex; flex-wrap: wrap; gap: .375rem; }
+  .rail a { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; padding: 0 .875rem; border-radius: 999px; text-decoration: none; color: inherit;
+            border: 1px solid var(--ck-line, rgba(0,0,0,.16)); font-size: .9375rem; }
+  .rail i { font-style: normal; font-size: .75rem; width: 1.25rem; height: 1.25rem; border-radius: 50%; display: inline-grid; place-items: center; border: 1px solid currentColor; opacity: .7; font-variant-numeric: tabular-nums; }
+  .rail .on a { background: var(--ck-ink, #111); color: var(--ck-paper, #fff); }
+  .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; }
+  .card { display: grid; gap: .5rem; height: 100%; padding: 1.125rem 1.25rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; text-decoration: none; color: inherit; }
+  .card:hover { border-color: currentColor; }
+  .card h2 { font-size: 1.125rem; margin: 0; line-height: 1.35; }
+  .card p { margin: 0; font-size: .9375rem; line-height: 1.65; opacity: .75; }
+  .card .n { font-size: 1.375rem; font-variant-numeric: tabular-nums; }
+  .card .n i { font-style: normal; font-size: .8125rem; opacity: .6; font-weight: 400; margin-left: .25rem; }
+  .card .go { margin-top: auto; font-size: .875rem; opacity: .7; }
+  .pn { display: flex; justify-content: space-between; gap: 1rem; margin: 2rem 0 0; flex-wrap: wrap; }
+  .pn a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 1rem; border-radius: 10px; text-decoration: none; color: inherit; border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
+  .pn .nx { margin-left: auto; }
+  .ask { margin: 1.75rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
+  @media (min-width: 900px) { main { padding: 2rem 1.5rem 4rem; } .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1400px) { .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+</style>

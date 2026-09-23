@@ -1,0 +1,112 @@
+---
+/**
+ * 爆款周报 —— tools/market/report.py 生成的榜单分析(数字层可复核 + 模型洞察),这里只展示。
+ * 创始人 2026-09-15:「爆款分析报告,你有隔几天就调研吗」「最好可以生成一个图表展现,有销量走向数据分析」。
+ * 公开的 /trends/market/ 给客户看榜单;这一页给老板/研发/业务看「所以我们该做什么」。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { mdLite } from '../../lib/md-lite';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const want = url.searchParams.get('d') ?? '';
+const { results: dates } = await c.db.prepare(`SELECT date FROM market_reports WHERE platform='amazon' ORDER BY date DESC LIMIT 30`).all<{ date: string }>();
+const date = dates.some((d) => d.date === want) ? want : dates[0]?.date;
+const row = date ? await c.db.prepare(`SELECT json, md, created_at FROM market_reports WHERE date=? AND platform='amazon'`).bind(date).first<{ json: string; md: string; created_at: string }>() : null;
+const rep = row ? JSON.parse(row.json) : null;
+const CAT: Record<string, string> = { beauty: '美妆总榜', 'skin-care': '护肤', face: '面部护理', 'face-cleansers': '洁面', sunscreen: '防晒', 'hair-care': '洗护发', makeup: '彩妆', 'lip-care': '唇部护理', 'shampoo-conditioner': '洗发水/护发素', 'hair-masks': '发膜', 'hair-oils': '护发油', scalp: '头皮护理', 'makeup-face': '面部彩妆', 'makeup-eyes': '眼部彩妆', 'makeup-lips': '唇部彩妆' };
+const kwGroups = rep ? [...new Set((rep.keywords as any[]).map((k) => k.group))] : [];
+---
+
+<AdminShell title="爆款周报" active="market" email={c.sess.email} tenant={c.tenant}>
+  <h1>爆款周报 · Amazon 美国</h1>
+  <p class="lead">每天 06:30 抓 15 个美妆畅销榜(本机计划任务 BohuiMarketDaily),周报按最新快照对比上一份:新进榜、上升最快、价格带、品牌集中度、标题卖点词频。数字层可复核,模型只写洞察。</p>
+
+  {!rep ? <div class="empty">还没有报告。跑 <code>python tools/market/report.py</code>。</div> : (
+    <>
+      <div class="bar">
+        <span>报告日期</span>
+        {dates.map((d) => <a class:list={['btn', d.date === date && 'pri']} href={`?d=${d.date}`}>{d.date}</a>)}
+        <span class="hint">对比 {rep.prev ?? '(首份,无对比)'} · {rep.n} 个商品 · {rep.cats.length} 个榜单 · 模型 {rep.model ?? '—'}</span>
+        <a class="btn" href="/en/trends/market/" target="_blank">公开页 ↗</a>
+      </div>
+
+      <div class="grid2">
+        <section class="panel">
+          <b>洞察(模型按上面的数字写,引用了类目与词频)</b>
+          <div class="md" set:html={mdLite(row!.md || '(模型未返回)')} />
+        </section>
+        <section class="panel">
+          <b>标题卖点词频 · 市场在为什么买单</b>
+          <div class="tabs">{kwGroups.map((g, i) => <button class:list={['tab', i === 0 && 'on']} data-g={g}>{g}</button>)}</div>
+          <div id="ch-kw" style="height:26rem"></div>
+        </section>
+      </div>
+
+      <h2>各榜单</h2>
+      <div class="cats">
+        {rep.cats.map((k: any) => (
+          <details class="cat">
+            <summary>
+              <b>{CAT[k.key] ?? k.key}</b>
+              <span class="m">中位价 ${k.median_price ?? '—'}</span>
+              <span class="m">前五品牌占 {Math.round((k.brand_top5_share ?? 0) * 100)}%</span>
+              <span class="m">均分 {k.avg_rating}</span>
+              {k.new.length > 0 && <span class="pill p-ok">新进榜 {k.new.length}</span>}
+              {k.climbers.length > 0 && <span class="pill p-warn">上升 {k.climbers.length}</span>}
+            </summary>
+            <div class="cb">
+              <div class="col">
+                <b>Top 10</b>
+                <ol>{k.top.map((t: any) => <li>{t.title} <span class="dim">${t.price ?? '—'} · {t.rating ?? '—'}★ · {t.reviews ?? 0}</span></li>)}</ol>
+              </div>
+              <div class="col">
+                <b>价格带</b>
+                <ul>{Object.entries(k.price_bands).map(([b, n]) => <li>{b} <span class="dim">{n as number} 个</span></li>)}</ul>
+                <b>前五品牌</b>
+                <ul>{k.top_brands.map((b: any) => <li>{b.brand} <span class="dim">{b.n}</span></li>)}</ul>
+                {k.new.length > 0 && <><b>新进榜</b><ul>{k.new.map((t: any) => <li>#{t.rank} {t.title}</li>)}</ul></>}
+                {k.climbers.length > 0 && <><b>上升最快</b><ul>{k.climbers.map((t: any) => <li>▲{t.up} → #{t.rank} {t.title}</li>)}</ul></>}
+              </div>
+            </div>
+          </details>
+        ))}
+      </div>
+      <script type="application/json" id="kw" is:inline set:html={JSON.stringify(rep.keywords)} />
+    </>
+  )}
+
+  <style>
+    .bar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;font-size:.8125rem;color:var(--ad-soft)} .hint{color:var(--ad-faint)}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.5rem}
+    .panel{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:1rem 1.125rem} .panel>b{font-size:.8125rem;display:block;margin-bottom:.5rem}
+    .md{font-size:.875rem;line-height:1.7} .md :global(h3){font-size:.9375rem;margin:1rem 0 .375rem} .md :global(ul),.md :global(ol){padding-left:1.25rem} .md :global(li){margin-bottom:.25rem}
+    .tabs{display:flex;gap:.375rem;margin-bottom:.5rem} .tab{font:inherit;font-size:.75rem;padding:.25rem .625rem;border:1px solid var(--ad-line);border-radius:999px;background:transparent;cursor:pointer} .tab.on{background:#10131a;color:#fff;border-color:#10131a}
+    h2{font-size:1rem;margin:0 0 .625rem}
+    .cats{display:grid;gap:.5rem}
+    .cat{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;overflow:hidden}
+    .cat>summary{padding:.625rem 1rem;cursor:pointer;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;list-style:none;font-size:.875rem} .cat>summary::-webkit-details-marker{display:none}
+    .cat[open]>summary{border-bottom:1px solid var(--ad-line);background:#fafbfc} .m{color:var(--ad-soft);font-size:.8125rem}
+    .cb{display:grid;grid-template-columns:3fr 2fr;gap:1rem;padding:1rem 1.125rem;font-size:.8125rem} .cb b{display:block;margin:.5rem 0 .25rem;font-size:.75rem;color:var(--ad-faint)}
+    .cb ol,.cb ul{margin:0;padding-left:1.125rem} .cb li{margin-bottom:.1875rem} .dim{color:var(--ad-faint);white-space:nowrap}
+    @media (max-width:60rem){.grid2,.cb{grid-template-columns:1fr}}
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.6.0/echarts.min.js" is:inline defer></script>
+  <script is:inline>
+    window.addEventListener('load', () => {
+      const el = document.getElementById('ch-kw'); if (!el || !window.echarts) return;
+      const all = JSON.parse(document.getElementById('kw').textContent); const ch = echarts.init(el, null, { renderer: 'svg' });
+      const draw = (g) => { const d = all.filter((k) => k.group === g).slice(0, 18).reverse();
+        ch.setOption({ grid: { left: 96, right: 24, top: 8, bottom: 24 }, tooltip: { trigger: 'axis' }, xAxis: { type: 'value', minInterval: 1 },
+          yAxis: { type: 'category', data: d.map((k) => k.kw), axisLabel: { fontSize: 11 } },
+          series: [{ type: 'bar', data: d.map((k) => k.n), itemStyle: { color: '#10131a', borderRadius: [0, 3, 3, 0] }, label: { show: true, position: 'right', fontSize: 10 } }] }, true); };
+      const tabs = [...document.querySelectorAll('.tab')]; draw(tabs[0]?.dataset.g);
+      tabs.forEach((t) => t.addEventListener('click', () => { tabs.forEach((x) => x.classList.toggle('on', x === t)); draw(t.dataset.g); }));
+      addEventListener('resize', () => ch.resize());
+    });
+  </script>
+</AdminShell>

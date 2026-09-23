@@ -15,14 +15,61 @@ binding = "DB"
 database_name = "bohui-cms-v2"
 database_id = "ea5b0da4-7f96-48bf-8fca-dc7193a9596d"
 
+# 图片桶 —— 原生绑定。2026-09-07 起桶迁到本账号,不再走跨账号 S3 签名。
+# 原生绑定比 S3 快(免一次签名与外部 HTTP)、免密钥、也不再有跨账号泄密面。
+# 迁移期间两条路并存:R2_BUCKET/MEDIA_DRIVER 那套仍在,切干净后再撤。
+[[r2_buckets]]
+binding = "PHOTO"
+bucket_name = "bohui-photo"
+
+# 访问打点 —— Analytics Engine。
+# 为什么不用 Cloudflare Web Analytics:它靠页面里的 JS 信标统计,
+# 而**AI 爬虫不执行 JS** —— 我们最想看的那部分流量它恰恰看不见。
+# 也不用 zone 级 GraphQL:那需要给 token 加 zone.analytics.read 权限,
+# 而账号级 token 一旦进了 Worker,泄漏面就是整个账号。
+# AE 是原生绑定,不带任何凭据,写入按请求计,读取走账号级 GraphQL(现有 token 就够)。
+[[analytics_engine_datasets]]
+binding = "PULSE"
+dataset = "bohui_pulse"
+
 # Astro 会话存储(适配器要求存在此绑定)
 [[kv_namespaces]]
 binding = "SESSION"
 id = "a461419944d4422cb81e374a391632ce"
 
+# ── 发信(2026-09-18 邮件中心)────────────────────────────────────
+# Cloudflare Email Sending(Beta,账号级「电子邮件服务 → 电子邮件发送」,Workers Paid;每月含 3,000 封,之后 $0.35/千封)。
+# 绑定本身不校验域名,可先部署;创始人在面板「接入域名 biosphere-ai.com」(自动加 DKIM/SPF/DMARC)后 send() 才成功,
+# 之前会抛 E_SENDER_NOT_VERIFIED,lib/mail.ts 自动退到 Resend(RESEND_API_KEY,secret)或把按钮置灰。
+# 若部署报 send_email 相关错误(账号没开通 Email Service),注释掉下面两行即可,发信自动走备选。
+[[send_email]]
+name = "EMAIL"
+
+# ── 知识库检索 ────────────────────────────────────────────────────
+# 2026-09-08。选品台此前是「大模型解析出关键词 → SQL 精确匹配 + LIKE」——
+# 客户说「适合油痘肌、夏天用不闷的清爽精华」,我们只能压成
+# benefits=['oil-control'] 去查表,语义全丢了。
+#
+# 这一层解的是**站内检索**,与 GEO 无关:外部 AI 抓不到向量库,
+# 它们读的是公开 HTML。两条线不要混。
+#
+# 1024 维对应 @cf/baai/bge-m3(多语言,中英混排的配方名与包材名都吃得下);
+# 换模型必须重建索引 —— 维度不同的向量放在同一个索引里,检索结果是噪音。
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "bohui-kb"
+
+# Workers AI —— 只用来做 embedding。生成类调用仍走舰队:
+# 2026-09-02 实测 Agnes 的出图接口从 Worker 调必 429(共享出口 IP)。
+[ai]
+binding = "AI"
+
 [vars]
 MEDIA_DRIVER = "r2-s3"
 R2_BUCKET = "bohui-photo"
+# Turnstile 的 site key 是公开值(会渲染进登录页 HTML),放明文没问题;
+# 配了它登录页才出验证组件,secret 端的校验开关是 TURNSTILE_SECRET(wrangler secret)。
+TURNSTILE_SITE_KEY = "0x4AAAAAAEh9PTvpt4eaYV_q"
 
 # 说明:R2 走 S3 兼容接口而非绑定 —— 桶在创始人主账号、站点在 BIOSPHERECN 账号,
 # 绑定只能同账号。凭据用 `wrangler secret put` 注入,不写在本文件。

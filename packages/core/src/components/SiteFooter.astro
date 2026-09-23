@@ -18,7 +18,12 @@ export interface Props {
   email: string;
   /** 互链是否可点(实验室内嵌预览时置 false,避免跳出画廊) */
   linkSiblings?: boolean;
+  /** 可选:显式传联络方式;不传则读 Astro.locals.contact(middleware 从 sites 表注入) */
+  whatsapp?: string | null;
+  wechat?: string | null;
   showLocaleSwitch?: boolean;
+  /** 纯中文站(BEAUTY2OEM,09-23 创始人「纯中文,不需要英文」):不出邮箱 / WhatsApp,微信有号才出,联系入口给简报表单 */
+  cnOnly?: boolean;
   /** 惰性模式:风格实验室的预览页用。站内导航指向 # 而非真实路径,避免点出 404 */
   inert?: boolean;
   /** 导航树,与页头同源(数据库驱动);不传则退回最小导航 */
@@ -27,7 +32,7 @@ export interface Props {
 
 const {
   locale, path, site, siblings, email,
-  linkSiblings = true, showLocaleSwitch = true, inert = false, nav,
+  linkSiblings = true, showLocaleSwitch = true, inert = false, nav, cnOnly = false,
 } = Astro.props;
 const tr = t(locale);
 const year = 2026;
@@ -37,6 +42,11 @@ const L = (p: string) => (inert ? '#' : `/${locale}${p}`);
 const items = nav?.length
   ? [{ slug: '', label: tr('nav.home') }, ...nav]
   : [{ slug: '', label: tr('nav.home') }, { slug: 'contact', label: tr('nav.contact') }];
+/* (行业资讯已作为 pages 行进了导航树,这里不再手动追加 —— 追加过一次,页脚出现双份) */
+/* 联络方式:页面可显式传 whatsapp/wechat,否则读 middleware 注入的 locals.contact;wa 只留数字(wa.me 要求不带 + 和空格) */
+const _contact = ((Astro.locals as any)?.contact ?? {}) as { whatsapp?: string | null; wechat?: string | null };
+const wa = String((Astro.props as any).whatsapp ?? _contact.whatsapp ?? '').replace(/\D/g, '');
+const wx = String((Astro.props as any).wechat ?? _contact.wechat ?? '').trim();
 ---
 
 <footer class="ft">
@@ -44,20 +54,40 @@ const items = nav?.length
     <div class="col brandcol">
       <strong class="name">{site.name}</strong>
       <p class="zh">{site.nameZh}</p>
-      <p class="group">帛卉集团 BOHUI GROUP · {tr('footer.groupLine')}</p>
+      {/* 品牌口径(创始人 2026-08-31 定稿):中文「帛卉化妆品」,英文只用 BIOSPHERE,
+          不打集团旗号;法人全称只出现在法务页。 */}
+      <p class="group">{cnOnly ? '帛卉化妆品 · 广州工厂' : <>{locale.startsWith('zh') ? '帛卉化妆品 BIOSPHERE' : 'BIOSPHERE'} · {tr('footer.groupLine')}</>}</p>
     </div>
 
-    <nav class="col" aria-label={tr('footer.nav')}>
-      <h2 class="ch">{tr('footer.nav')}</h2>
-      <ul class="list">
-        {items.map((n) => <li><a href={L(n.slug ? `/${n.slug}/` : '/')}>{n.label}</a></li>)}
-      </ul>
-    </nav>
+    {/* 站内导航列已删(创始人 2026-08-31:「和顶部导航基本重复,这个部分可以不要了」)。
+        吸顶导航全程可见,页脚重复一遍只占地方;联系方式与法务链保留。 */}
 
     <div class="col">
       <h2 class="ch">{tr('footer.contact')}</h2>
       <ul class="list">
-        <li><a href={`mailto:${email}`}>{email}</a></li>
+        {cnOnly && <li><a href={L('/brief/')}>提交店铺,拿机会简报 →</a></li>}
+        {cnOnly && wx && <li class="plain wx">微信:{wx}</li>}
+        {!cnOnly && email && <li><a href={`mailto:${email}`}>{email}</a></li>}
+        {/* WhatsApp:海外采购最常用的联络方式,而站上一直一个入口都没有。
+            wa.me 是官方短链,点开直接进对话,不需要对方先存号码 ——
+            这一步的摩擦少一点,询盘就多一分。
+            号码同时进 Organization 结构化数据(见 BaseLayout),
+            让搜索引擎与 AI 答案引擎知道「这家工厂怎么联系」。 */}
+        {/* 号码从后台「站点总览」的设置来(middleware 注入 Astro.locals.contact);没填就退回「填表单我们联系你」。
+            wa.me 是官方短链,点开直接进对话,不需要对方先存号码。 */}
+        {cnOnly ? null : wa ? (
+          <li><a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer" class="wa">
+            <span aria-hidden="true">💬</span> WhatsApp +{wa}
+          </a></li>
+        ) : (
+          <li><a href={`/${locale}/contact/`} rel="noopener" class="wa">
+            <span aria-hidden="true">💬</span> WhatsApp / WeChat:填询盘表单后我们联系你
+          </a></li>
+        )}
+        {/* WeChat:统一用英文写法「WeChat」,18 个语种都不翻译 ——
+            创始人 2026-09-10 04:40:「统一 WeChat,这样翻译也不会乱」。
+            微信号本身是标识符,翻译或本地化它只会让客户搜不到人。 */}
+        {!cnOnly && <li class="plain wx"><span aria-hidden="true">💬</span> WeChat{wx ? `: ${wx}` : ''}</li>}
         <li class="plain">{site.domain}</li>
       </ul>
     </div>
@@ -88,11 +118,28 @@ const items = nav?.length
 
   <div class="ck-wrap bottom">
     <p class="rights">© {year} {site.name}. {tr('footer.rights')}</p>
+    {/* 隐私与法律声明:页面早就有(/privacy /terms),只是页脚一直没挂链接。
+        对 Google 收录不是硬前提,但它是最基础的信任信号,
+        AdSense / 购物类审核则是硬要求 —— 挂上有益无害。
+        11 门生成语种还没有这两个键,tr 会返回 undefined,所以兜英文默认。 */}
+    {/* 法务四件套(创始人对齐国际站惯例:「按 Google 的规定,底部还有几个协议?」)。
+        Google 搜索本身不硬性规定数量;四件套是信任惯例 + AdSense/Merchant 的合规预留。 */}
+    <nav class="legal" aria-label={tr('footer.privacy') ?? 'Privacy Policy'}>
+      <a href={inert ? '#' : `/${locale}/privacy/`}>{tr('footer.privacy') ?? 'Privacy Policy'}</a>
+      <span aria-hidden="true">·</span>
+      <a href={inert ? '#' : `/${locale}/cookies/`}>{cnOnly ? '浏览数据说明' : (tr('footer.cookies') ?? 'Cookie Policy')}</a>
+      <span aria-hidden="true">·</span>
+      <a href={inert ? '#' : `/${locale}/terms/`}>{tr('footer.legal') ?? 'Legal Notices'}</a>
+      <span aria-hidden="true">·</span>
+      <a href={inert ? '#' : `/${locale}/disclaimer/`}>{tr('footer.disclaimer') ?? 'Disclaimer'}</a>
+    </nav>
     {showLocaleSwitch && <LocaleSwitch locale={locale} path={path} drop="up" />}
   </div>
 </footer>
 
 <style>
+  .list .wa { display: inline-flex; align-items: center; gap: .375rem; font-weight: 550; }
+  .list .wa:hover { color: var(--ck-accent); }
   .ft {
     background: var(--ck-surface-alt);
     border-top: var(--ck-border-w) solid var(--ck-line);
@@ -118,13 +165,13 @@ const items = nav?.length
   .group {
     margin-top: 0.875rem;
     color: var(--ck-ink-faint);
-    font-size: 0.75rem;
+    font-size: max(0.75rem, 14px);
     letter-spacing: 0.02em;
     max-width: 26rem;
   }
 
   .ch {
-    font-size: 0.6875rem;
+    font-size: max(0.6875rem, 14px);
     font-weight: 700;
     letter-spacing: var(--ck-tracking-eyebrow);
     text-transform: var(--ck-eyebrow-transform);
@@ -134,7 +181,7 @@ const items = nav?.length
   .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
   .list a { text-decoration: none; }
   .list a:hover { color: var(--ck-ink); }
-  .plain { color: var(--ck-ink-faint); font-family: var(--ck-font-mono); font-size: 0.75rem; }
+  .plain { color: var(--ck-ink-faint); font-family: var(--ck-font-mono); font-size: max(0.75rem, 14px); }
 
   /* 品牌生态互链:四格并排,悬停时强调色顶条亮起 */
   .sibs {
@@ -159,12 +206,12 @@ const items = nav?.length
   .sn {
     display: block;
     font-family: var(--ck-font-head);
-    font-size: 0.8125rem;
+    font-size: max(0.8125rem, 14px);
     font-weight: 700;
     letter-spacing: 0.04em;
     color: var(--ck-ink);
   }
-  .sd { display: block; margin-top: 0.25rem; font-size: 0.75rem; color: var(--ck-ink-faint); }
+  .sd { display: block; margin-top: 0.25rem; font-size: max(0.75rem, 14px); color: var(--ck-ink-faint); }
 
   .bottom {
     display: flex;
@@ -174,10 +221,16 @@ const items = nav?.length
     flex-wrap: wrap;
     padding-block: 1.125rem;
     border-top: var(--ck-border-w) solid var(--ck-line);
-    font-size: 0.75rem;
+    font-size: max(0.75rem, 14px);
     color: var(--ck-ink-faint);
   }
   .rights { margin: 0; }
+  /* flex-wrap + nowrap:窄屏下让整条链接换行,而不是链接内部断字(「隐私政/策」) */
+  .legal { display: flex; flex-wrap: wrap; gap: 0.375rem 0.625rem; align-items: baseline; font-size: var(--ck-small); }
+  .legal a { white-space: nowrap; }
+  .legal a { color: var(--ck-ink-faint); text-decoration: none; }
+  .legal a:hover { color: var(--ck-ink); text-decoration: underline; text-underline-offset: 3px; }
+  .legal span { color: var(--ck-ink-faint); }
 
   @media (max-width: 52rem) {
     .top { grid-template-columns: 1fr 1fr; }

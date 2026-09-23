@@ -8,6 +8,7 @@
  */
 import type { APIRoute } from 'astro';
 import { apiGuard, json, logRevision } from '../../../lib/guard';
+import { snapPage, rollbackPage, putDraft, dropDraft } from '../../../lib/page-versions';
 
 export const prerender = false;
 
@@ -19,9 +20,24 @@ export const POST: APIRoute = async ({ request }) => {
   if (c instanceof Response) return c;
 
   try {
-    const { page_id, meta, blocks } = (await request.json()) as
-      { page_id: number; meta: MetaRow[]; blocks: BlockRow[] };
+    const { page_id, meta, blocks, mode, action } = (await request.json()) as
+      { page_id: number; meta: MetaRow[]; blocks: BlockRow[]; mode?: 'draft' | 'publish'; action?: 'rollback' | 'discard' };
     if (!page_id) return json({ ok: false, msg: '缺少 page_id' }, 400);
+
+    /* A9 · 09-23:草稿 / 发布 / 撤销(WordPress 那套)。
+       存草稿只进 page_versions,线上一个字不动;发布前先存整页快照,「撤销上一次改动」就是还原它。 */
+    if (action === 'rollback') {
+      const r = await rollbackPage(c.db, page_id);
+      if (!r.ok) return json({ ok: false, msg: '没有可以撤销的改动了' }, 400);
+      await logRevision(c.db, 'pages', page_id, null, null, { action: 'rollback', to: r.at, note: r.note }, c.sess.uid);
+      return json({ ok: true, at: r.at, note: r.note });
+    }
+    if (action === 'discard') { await dropDraft(c.db, page_id); return json({ ok: true }); }
+    if (mode === 'draft') {
+      await putDraft(c.db, page_id, c.sess.uid, { meta: meta ?? [], blocks: (blocks ?? []) as any });
+      return json({ ok: true, draft: true });
+    }
+    const backup = await snapPage(c.db, page_id, c.sess.uid, '发布前');
 
     let nMeta = 0;
     for (const m of meta ?? []) {
@@ -61,7 +77,8 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     await c.db.prepare(`UPDATE pages SET updated_at=datetime('now') WHERE id=?`).bind(page_id).run();
-    return json({ ok: true, meta: nMeta, blocks: nBlk });
+    await dropDraft(c.db, page_id);   // 发布了,草稿就用完了
+    return json({ ok: true, meta: nMeta, blocks: nBlk, backup });
   } catch (e) {
     return json({ ok: false, msg: `保存失败:${e instanceof Error ? e.message.slice(0, 200) : String(e)}` }, 500);
   }

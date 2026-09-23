@@ -1,0 +1,117 @@
+---
+/**
+ * AI 调用与成本 —— fleet.ts 每次调用落 ai_runs 一行(0087),这里按供应商 / 提示词汇总,附最近明细。
+ * 依据:GPT 设计包原则「每次 AI 调用记 model+prompt 版本+输入哈希+tokens+耗时」;成本只按 providers 单价算,单价空就显示「未设单价」不编数字。
+ * 表还没建好时显示「数据准备中」,不 500。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const d = [1, 7, 30].includes(Number(url.searchParams.get('d'))) ? Number(url.searchParams.get('d')) : 1;
+/* ai_runs.ts 是 D1 CURRENT_TIMESTAMP 的 UTC 'YYYY-MM-DD HH:MM:SS',把窗口起点写成同一格式做字符串比较;
+   今日 = 北京时间今天 00:00,7/30 日 = 现在往前推 */
+const utc = (t: number) => new Date(t).toISOString().slice(0, 19).replace('T', ' ');
+const bjToday = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Shanghai' });
+const since = d === 1 ? utc(Date.parse(bjToday + 'T00:00:00+08:00')) : utc(Date.now() - d * 86400e3);
+
+type Agg = { k: string | null; n: number; okn: number; tin: number | null; tout: number | null; ms: number | null; cost: number | null; nocost: number };
+type Run = { id: number; ts: string; prompt_key: string | null; provider: string | null; model: string | null; entity_type: string | null; entity_id: string | null;
+  tokens_in: number | null; tokens_out: number | null; latency_ms: number | null; ok: number | null; error: string | null };
+const AGG = `COUNT(*) n, SUM(COALESCE(ok,0)) okn, SUM(tokens_in) tin, SUM(tokens_out) tout, AVG(latency_ms) ms, SUM(cost_est) cost, SUM(cost_est IS NULL) nocost`;
+let byProv: Agg[] = [], byKey: Agg[] = [], recent: Run[] = [], ready = true;
+try {
+  const [a, b, r] = await c.db.batch([
+    c.db.prepare(`SELECT provider k, ${AGG} FROM ai_runs WHERE ts>=? GROUP BY provider ORDER BY n DESC`).bind(since),
+    c.db.prepare(`SELECT prompt_key k, ${AGG} FROM ai_runs WHERE ts>=? GROUP BY prompt_key ORDER BY n DESC`).bind(since),
+    c.db.prepare(`SELECT id, ts, prompt_key, provider, model, entity_type, entity_id, tokens_in, tokens_out, latency_ms, ok, error FROM ai_runs WHERE ts>=? ORDER BY id DESC LIMIT 100`).bind(since),
+  ]);
+  byProv = a.results as Agg[]; byKey = b.results as Agg[]; recent = r.results as Run[];
+} catch { ready = false; }
+
+const sum = (f: (x: Agg) => number | null) => byProv.reduce((s, x) => s + (f(x) ?? 0), 0);
+const total = { n: sum((x) => x.n), okn: sum((x) => x.okn), tin: sum((x) => x.tin), tout: sum((x) => x.tout), cost: sum((x) => x.cost), nocost: sum((x) => x.nocost) };
+const fmt = (n: number | null | undefined) => (n ?? 0).toLocaleString('en-US');
+const rate = (x: { n: number; okn: number }) => x.n ? `${Math.round((x.okn / x.n) * 100)}%` : '—';
+const cny = (x: number | null) => `¥${(x ?? 0).toFixed(2)}`;
+---
+
+<AdminShell title="AI 调用与成本" active="ai-runs" email={c.sess.email} tenant={c.tenant}>
+  <h1>AI 调用与成本</h1>
+  <p class="lead">每次模型调用一行:供应商、模型、提示词版本、tokens、耗时、成败。成本按 <a href="/bohui/models/">模型舰队</a> 里填的每百万 tokens 单价估算,没填的只记 tokens。</p>
+
+  <div class="bar">
+    {[[1, '今日'], [7, '7 日'], [30, '30 日']].map(([v, t]) => <a class:list={['btn', v === d && 'pri']} href={`?d=${v}`}>{t}</a>)}
+    <span class="hint">自 {since} UTC 起</span>
+  </div>
+
+  {!ready ? (
+    <div class="empty">数据准备中 —— ai_runs 表还没建(迁移 0087),fleet.ts 接上后每次调用都会落一行。</div>
+  ) : (
+    <>
+      <div class="cards">
+        <div class="card"><div class="k">调用数</div><div class="v">{fmt(total.n)}</div></div>
+        <div class="card"><div class="k">成功率</div><div class="v">{rate(total)}</div></div>
+        <div class="card"><div class="k">tokens 入 / 出</div><div class="v small">{fmt(total.tin)} / {fmt(total.tout)}</div></div>
+        <div class="card"><div class="k">估算成本</div><div class="v small">{total.n && total.nocost === total.n ? <a class="nop" href="/bohui/models/">未设单价</a> : cny(total.cost)}</div>
+          {total.nocost > 0 && total.nocost < total.n && <div class="s">{fmt(total.nocost)} 条未设单价,未计入</div>}</div>
+      </div>
+
+      {[['按供应商', '供应商', byProv], ['按提示词', 'prompt_key', byKey]].map(([title, col, rows]) => (
+        <section class="sec">
+          <h2>{title}</h2>
+          {(rows as Agg[]).length === 0 ? <div class="empty">这个时间窗口内没有调用。</div> : (
+            <table>
+              <thead><tr><th>{col}</th><th class="r">调用数</th><th class="r">成功率</th><th class="r">tokens 入</th><th class="r">tokens 出</th><th class="r">平均耗时</th><th class="r">估算成本</th></tr></thead>
+              <tbody>{(rows as Agg[]).map((x) => (
+                <tr>
+                  <td><b>{x.k ?? '(未记)'}</b></td>
+                  <td class="r num">{fmt(x.n)}</td>
+                  <td class:list={['r', 'num', x.okn < x.n && 'warn']}>{rate(x)}</td>
+                  <td class="r num">{fmt(x.tin)}</td>
+                  <td class="r num">{fmt(x.tout)}</td>
+                  <td class="r num">{x.ms == null ? '—' : `${(x.ms / 1000).toFixed(1)} s`}</td>
+                  <td class="r num">{x.nocost === x.n ? <a class="nop" href="/bohui/models/">未设单价</a> : <>{cny(x.cost)}{x.nocost > 0 && <span class="dim"> ({x.nocost} 条未计)</span>}</>}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          )}
+        </section>
+      ))}
+
+      <section class="sec">
+        <h2>最近 100 条明细</h2>
+        {recent.length === 0 ? <div class="empty">这个时间窗口内没有调用。</div> : (
+          <table class="det">
+            <thead><tr><th>时间</th><th>prompt_key</th><th>供应商 · 模型</th><th>对象</th><th class="r">tokens</th><th class="r">耗时</th><th>结果</th><th>错误</th></tr></thead>
+            <tbody>{recent.map((r) => (
+              <tr>
+                <td class="dim">{(r.ts ?? '').slice(5, 16)}</td>
+                <td>{r.prompt_key ?? '—'}</td>
+                <td>{r.provider ?? '—'}<span class="dim"> · {r.model ?? '—'}</span></td>
+                <td class="dim">{[r.entity_type, r.entity_id].filter(Boolean).join(' #')}</td>
+                <td class="r num">{fmt(r.tokens_in)} / {fmt(r.tokens_out)}</td>
+                <td class="r num">{r.latency_ms == null ? '—' : `${(r.latency_ms / 1000).toFixed(1)} s`}</td>
+                <td><span class:list={['pill', r.ok ? 'p-ok' : 'p-bad']}>{r.ok ? '成功' : '失败'}</span></td>
+                <td class="err">{(r.error ?? '').slice(0, 120)}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        )}
+      </section>
+    </>
+  )}
+
+  <style>
+    .hint{color:var(--ad-faint);font-size:.75rem}
+    .card .v.small{font-size:1.25rem} .nop{color:var(--ad-warn);font-size:.875rem}
+    .sec{margin-top:1.5rem} h2{font-size:1rem;margin:0 0 .5rem}
+    th.r,td.r{text-align:right} .warn{color:var(--ad-warn);font-weight:600}
+    .dim{color:var(--ad-faint);font-size:.75rem} .err{color:var(--ad-bad);font-size:.75rem;max-width:20rem;word-break:break-word}
+    table.det{font-size:.8125rem}
+  </style>
+</AdminShell>

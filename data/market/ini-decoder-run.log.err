@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "F:\0cosmetic\cosmetic-sites\tools\market\ini_decoder.py", line 222, in <module>
+    asyncio.run(main())
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\asyncio\runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "F:\0cosmetic\cosmetic-sites\tools\market\ini_decoder.py", line 186, in main
+    elif not A.limit: await page.wait_for_timeout(random.randint(1200, 2500))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\async_api\_generated.py", line 11824, in wait_for_timeout
+    await self._impl_obj.wait_for_timeout(timeout=timeout)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_page.py", line 1113, in wait_for_timeout
+    await self._main_frame.wait_for_timeout(timeout)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_frame.py", line 862, in wait_for_timeout
+    await self._channel.send("waitForTimeout", None, {"waitTimeout": timeout})
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 69, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python312\Lib\site-packages\playwright\_impl\_connection.py", line 559, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.TargetClosedError: Page.wait_for_timeout: Target page, context or browser has been closed

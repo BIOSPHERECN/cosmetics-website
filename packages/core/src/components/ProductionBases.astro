@@ -28,12 +28,19 @@ export interface Props {
   items: BaseItem[];
   /** 汇总行的三个标签(各语言由调用方传入) */
   labels?: { bases: string; area: string; species: string };
+  /**
+   * 是否渲染汇总行。汇总的品种数是把 focus 按顿号拆出来数的 ——
+   * 这只对「focus=品种清单」的养殖名册成立;focus 写成描述句的版块
+   * (如产区介绍)会被数出一个不存在的品种数(origin 页实测「11 在培品种」)。
+   * 数字纪律:算不准的数,宁可不显示。
+   */
+  summary?: boolean;
   /** 名册脚注,例如「持续整合中」 */
   footnote?: string;
 }
 
 const {
-  locale, eyebrow, title, intro, items = [], footnote,
+  locale, eyebrow, title, intro, items = [], footnote, summary = true,
   labels = { bases: '基地', area: '种植面积', species: '在培品种' },
 } = Astro.props;
 const tr = t(locale);
@@ -67,7 +74,7 @@ const species = new Set(
       {intro && <p class="intro">{intro}</p>}
     </header>
 
-    {grow.length > 0 && (
+    {summary && grow.length > 0 && (
       <dl class="sum">
         <div><dt class="v">{items.length}</dt><dd>{labels.bases}</dd></div>
         {totalArea > 0 && (
@@ -140,7 +147,10 @@ const species = new Set(
     margin: 2.5rem 0 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    /* auto-fit 而非 auto-fill:基地只有两三个时,auto-fill 会保留一排空轨道,
+       两张 345px 窄卡孤在 1800 版心左边(能力页实测)。auto-fit 折叠空轨,
+       几个基地就平分整幅 —— 版心 1800 是铁令,内容必须自己填满。 */
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
     gap: var(--ck-gap);
   }
   .base {

@@ -13,6 +13,23 @@ export interface Props {
 }
 
 const { title, note, items } = Astro.props;
+
+/*
+ * ★ 数据来自后台,后台的数据来自人手输入 —— 不能假设字段一定在 ★
+ *
+ * 原来这里直接 c.label.slice(0,2)。一条数据少了 label,整页就是
+ * 「HTTP 200 + 0 字节」的空白 —— 没有报错、没有提示,运营只会看到白屏。
+ * 一个字段缺失的代价不该是整站那一页打不开。
+ *
+ * 顺带兼容 name/title 两种写法:同一个概念在别处叫 name,
+ * 内容是人填的,不该因为叫法不同就崩。
+ */
+const rows = (Array.isArray(items) ? items : [])
+  .map((c: any) => ({
+    label: String(c?.label ?? c?.name ?? c?.title ?? '').trim(),
+    note: c?.note ?? c?.code ?? '',
+  }))
+  .filter((c) => c.label);
 ---
 
 <section class="certwall ck-section" aria-label={title}>
@@ -20,7 +37,7 @@ const { title, note, items } = Astro.props;
     <h2>{title}</h2>
     {note && <p class="note">{note}</p>}
     <ul class="grid">
-      {items.map((c) => (
+      {rows.map((c) => (
         <li class="cert">
           <span class="mark" aria-hidden="true">{c.label.slice(0, 2).toUpperCase()}</span>
           <span class="body">
@@ -73,7 +90,7 @@ const { title, note, items } = Astro.props;
     border-radius: var(--ck-radius);
     font-family: var(--ck-font-head);
     font-weight: 700;
-    font-size: 0.8125rem;
+    font-size: max(0.8125rem, 14px);
     letter-spacing: 0.02em;
   }
   .body {
@@ -90,4 +107,8 @@ const { title, note, items } = Astro.props;
     font-size: var(--ck-small);
     color: var(--ck-ink-faint);
   }
+  /* 创始人:手机不要一行单图 —— 图网格保持 2 列 */
+  @media (max-width: 40rem) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.75rem; } }
+  /* 创始人:图下文字手机端太大 —— 降档 */
+  @media (max-width: 40rem) { .label { font-size: max(0.8125rem, 14px); } }
 </style>

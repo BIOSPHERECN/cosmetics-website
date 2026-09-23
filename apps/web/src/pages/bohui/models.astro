@@ -20,7 +20,7 @@ if (!sess) return Astro.redirect('/bohui/login/');
 
 type Row = {
   id: string; label: string; base_url: string; model: string; tier: number;
-  can_image: number; can_video: number; is_free: number; enabled: number; nkeys: number;
+  can_image: number; can_video: number; is_free: number; enabled: number; nkeys: number; k1: string | null;
   last_ok: number | null; last_ms: number | null; last_note: string | null; last_check_at: string | null;
   can_vision: number; vision_model: string | null;
 };
@@ -31,7 +31,9 @@ if (db) {
       `SELECT id,label,base_url,model,tier,can_image,can_video,can_vision,vision_model,is_free,enabled,
               last_ok,last_ms,last_note,last_check_at,
               CASE WHEN api_keys='' THEN 0
-                   ELSE LENGTH(api_keys)-LENGTH(REPLACE(api_keys,',',''))+1 END AS nkeys
+                   ELSE LENGTH(api_keys)-LENGTH(REPLACE(api_keys,',',''))+1 END AS nkeys,
+              CASE WHEN instr(coalesce(api_keys,''),',')>0
+                   THEN substr(api_keys,1,instr(api_keys,',')-1) ELSE api_keys END AS k1
          FROM providers ORDER BY tier, id`,
     )
     .all<Row>();
@@ -65,6 +67,7 @@ const imageReady = ready.filter((r) => r.can_image).length;
   )}
 
   <p class="probe">
+    <button type="button" class="btn pri" id="pingall">一键体检全部</button>
     <button type="button" class="btn" id="vprobe">实测:哪几家真能读图</button>
     <span class="hintline">发一张 8×8 的小图问颜色 —— 能不能读图不靠翻文档,测一次就知道。</span>
   </p>
@@ -108,9 +111,13 @@ const imageReady = ready.filter((r) => r.can_image).length;
             <td>
               {/* autocomplete="new-password":这一格是 type=password,
                   不加这句浏览器会把整页当登录表单,把保存的邮箱塞进上面的输入框 */}
+              {/* 创始人:「key 要像大多数人那样,开头和结尾可见、中间隐藏」——
+                  脱敏预览(前6后4)只进占位符,完整值仍然只写不读 */}
               <input class="k" name={`key-${r.id}`} data-f="api_keys" type="password"
                      autocomplete="new-password" spellcheck="false"
-                     placeholder={r.nkeys ? `已配 ${r.nkeys} 个 · 留空不改` : '未配置'} />
+                     placeholder={r.nkeys && r.k1 && r.k1.length > 12
+                       ? `${r.k1.slice(0, 6)}……${r.k1.slice(-4)}${r.nkeys > 1 ? ` 等 ${r.nkeys} 把` : ''} · 留空不改`
+                       : r.nkeys ? `已配 ${r.nkeys} 个 · 留空不改` : '未配置'} />
             </td>
             <td>
               <span class="state" data-res={r.id}>
@@ -189,11 +196,11 @@ const imageReady = ready.filter((r) => r.can_image).length;
     td input { font-size: .8125rem; padding: .375rem .5rem; }
     input.k, td input[data-f="base_url"], td input[data-f="model"] { font-family: ui-monospace, monospace; font-size: .75rem; }
     .tags { display: flex; gap: .25rem; align-items: center; flex-wrap: wrap; margin-top: .3125rem; }
-    .tags code { font-size: .6875rem; color: var(--ad-faint); }
-    .tag { font-size: .625rem; padding: .0625rem .3125rem; border-radius: 3px; background: #eef0f3; color: var(--ad-soft); }
+    .tags code { font-size: .75rem; color: var(--ad-faint); }
+    .tag { font-size: .75rem; padding: .0625rem .3125rem; border-radius: 3px; background: #eef0f3; color: var(--ad-soft); }
     .tag.free { background: #e8eff6; color: var(--ad-accent); }
     .state { display: inline-flex; flex-direction: column; gap: .25rem; align-items: flex-start; }
-    .state .ms { font-size: .6875rem; color: var(--ad-faint); font-variant-numeric: tabular-nums; }
+    .state .ms { font-size: .75rem; color: var(--ad-faint); font-variant-numeric: tabular-nums; }
     .ops { display: flex; gap: .3125rem; }
     .ops .btn { padding: .3125rem .5rem; font-size: .75rem; }
 
@@ -243,6 +250,29 @@ const imageReady = ready.filter((r) => r.can_image).length;
       await post({ id: b.dataset.toggle, action: 'toggle' });
       location.reload();
     }));
+
+    /* 一键体检(创始人 2026-09-01):串行 + 1.2s 间隔逐家跑 ——
+       并发齐射会把共用同一把 key 的几条线瞬间打成 429,测出一堆假故障。 */
+    document.getElementById('pingall')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget; btn.disabled = true;
+      const ids = [...document.querySelectorAll('[data-ping]')].map((b) => b.dataset.ping);
+      let done = 0;
+      for (const id of ids) {
+        btn.textContent = `体检中 ${++done}/${ids.length}…`;
+        const out = document.querySelector(`[data-res="${id}"]`);
+        try {
+          const d = await (await fetch('/api/admin/fleet-health?id=' + encodeURIComponent(id))).json();
+          const x = (d.list || [])[0];
+          if (out && x) {
+            out.innerHTML = '<span class="pill ' + (x.ok ? 'p-ok' : 'p-bad') + '"></span><span class="ms"></span>';
+            out.querySelector('.pill').textContent = x.note || (x.ok ? '正常' : '异常');
+            out.querySelector('.ms').textContent = x.ms ? x.ms + 'ms' : '';
+          } else if (out) { out.innerHTML = '<span class="pill">跳过</span>'; }
+        } catch { if (out) out.innerHTML = '<span class="pill p-bad">请求失败</span>'; }
+        await new Promise((r) => setTimeout(r, 1200));
+      }
+      btn.textContent = '一键体检全部'; btn.disabled = false;
+    });
 
     document.querySelectorAll('[data-ping]').forEach((b) => b.addEventListener('click', async () => {
       const id = b.dataset.ping, out = document.querySelector(`[data-res="${id}"]`);

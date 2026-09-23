@@ -1,0 +1,252 @@
+---
+/**
+ * 产品批量导入(A9 · 2026-09-23)
+ *
+ * 复用 B2 线的历史产品导入(tools/b2o-products/import.py):同一张模板、同一张暂存表 product_staging、同一套发布规则。
+ * 三步:下载模板 → 拖进填好的表看体检 → 放进待发布区、勾选发布为草稿产品。接口见 api/admin/product-import.ts。
+ * 表格在浏览器里解析,不引任何外部库(beauty2oem 面向国内,不走 CDN):
+ *   .xlsx 本质是 zip,用浏览器自带的 DecompressionStream 解压,读第一张表;
+ *   .csv 先按 UTF-8 解,不是 UTF-8 就按 GBK 解(中文 Excel 另存的 CSV 默认是 GBK)。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+---
+
+<AdminShell title="批量导入产品" active="products" email={c.sess.email} tenant={c.tenant}>
+  <nav class="crumb"><a href="/bohui/products/">产品与剂型</a> › <b>批量导入</b></nav>
+  <h1>批量导入产品</h1>
+  <p class="lead">三步:填模板 → 拖进来看体检结果 → 勾选发布。一次最多 500 行。发布出去的都是<b>草稿</b>,前台看不到,逐个补图、点「AI 帮我填」后再上架。
+    成本、配方比例、客户名只进后台,永不对外。</p>
+
+  <section class="box">
+    <h2>① 下载模板</h2>
+    <p class="t">红色表头必填(产品名、品类、剂型),品类和剂型从下拉里选。模板第三页「字段说明」写了每一列怎么填。</p>
+    <a class="btn pri" href="/bohui-files/product-import-template-v1.xlsx" download="历史产品导入模板-v1.xlsx">下载模板(Excel)</a>
+  </section>
+
+  <section class="box">
+    <h2>② 把填好的表拖进来</h2>
+    <label id="drop" class="drop">
+      <input id="file" type="file" accept=".xlsx,.csv" hidden />
+      <b>拖到这里,或点这里选文件</b><span class="t">支持 Excel(.xlsx)和 CSV;带图片的大批量请交技术线用导入脚本</span>
+    </label>
+    <p id="msg" class="msg"></p>
+    <div id="res" hidden>
+      <p id="sum" class="t"></p>
+      <table class="pre">
+        <thead><tr><th style="width:4.5rem">表格行</th><th>产品名</th><th style="width:6rem">结果</th><th>说明</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <p class="acts"><button id="stage" class="btn pri" disabled>放进待发布区</button> <span id="stmsg" class="t"></span></p>
+    </div>
+  </section>
+
+  <section class="box">
+    <h2>③ 待发布区 <span class="t">(勾选后发布为本站草稿产品)</span></h2>
+    <div class="bar"><select id="batch"><option value="">选一个批次…</option></select></div>
+    <div id="stg" hidden>
+      <table class="pre">
+        <thead><tr><th style="width:3rem"><input type="checkbox" id="all" aria-label="全选" /></th><th>产品名</th><th style="width:9rem">品类 / 剂型</th><th style="width:6rem">状态</th><th>说明</th></tr></thead>
+        <tbody id="srows"></tbody>
+      </table>
+      <p class="acts"><button id="pub" class="btn pri" disabled>发布选中的为草稿产品</button> <span id="pubmsg" class="t"></span></p>
+    </div>
+  </section>
+</AdminShell>
+
+<style>
+  .crumb { font-size: .8125rem; color: var(--ad-faint); margin-bottom: .5rem; }
+  .crumb a { color: inherit; }
+  .box { background: var(--ad-panel, #fff); border: 1px solid var(--ad-line); border-radius: 10px; padding: 1.125rem 1.25rem; margin-bottom: 1rem; max-width: 64rem; }
+  .box h2 { font-size: 1rem; }
+  .t { font-size: .875rem; color: var(--ad-soft, #555); }
+  .drop { display: flex; flex-direction: column; gap: .375rem; align-items: center; justify-content: center; padding: 2rem;
+    border: 2px dashed var(--ad-line); border-radius: 10px; cursor: pointer; font-size: .9375rem; }
+  .drop.over { border-color: var(--ad-accent); background: var(--ad-accent-soft); }
+  .msg { font-size: .875rem; min-height: 1.3em; }
+  .msg.bad { color: var(--ad-bad); }
+  .pre td { font-size: .875rem; vertical-align: top; }
+  .pre tr.bad td { background: var(--ad-bad-soft); }
+  .pre tr.bad td:last-child { color: var(--ad-bad); }
+  .pre tr.ok td:last-child { color: var(--ad-ok); }
+  .acts { margin-top: 1rem; }
+  .pre tr.rv td:nth-child(3) { color: var(--ad-warn); }
+  .pre tr.dup td { color: var(--ad-faint); }
+  .pre input { width: auto; }
+</style>
+
+<script is:inline>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const say = (t, bad) => { $('#msg').textContent = t; $('#msg').className = 'msg' + (bad ? ' bad' : ''); };
+
+  /* ── CSV:RFC 4180(引号内可含逗号、换行,"" 转义)── */
+  function parseCSV(text) {
+    const out = []; let row = [], cur = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === ',') { row.push(cur); cur = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cur); out.push(row); row = []; cur = ''; }
+      else cur += ch;
+    }
+    if (cur || row.length) { row.push(cur); out.push(row); }
+    return out;
+  }
+  function decode(buf) {
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(buf).replace(/^﻿/, ''); }
+    catch { return new TextDecoder('gbk').decode(buf); }
+  }
+
+  /* ── XLSX:zip 中央目录 → 解压 sharedStrings 与第一张表 → 按单元格坐标还原二维表 ── */
+  async function unzip(buf) {
+    const dv = new DataView(buf), u8 = new Uint8Array(buf), files = {};
+    let e = buf.byteLength - 22;
+    while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+    if (e < 0) throw new Error('不是有效的 Excel 文件');
+    let p = dv.getUint32(e + 16, true);
+    const n = dv.getUint16(e + 10, true);
+    for (let k = 0; k < n; k++) {
+      const method = dv.getUint16(p + 10, true), size = dv.getUint32(p + 20, true);
+      const nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+      const off = dv.getUint32(p + 42, true);
+      const name = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nl));
+      files[name] = async () => {
+        const start = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true);
+        const raw = u8.subarray(start, start + size);
+        if (method === 0) return new TextDecoder().decode(raw);
+        const ds = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        return new Response(ds).text();
+      };
+      p += 46 + nl + xl + cl;
+    }
+    return files;
+  }
+  async function parseXLSX(buf) {
+    const z = await unzip(buf);
+    const xml = (s) => new DOMParser().parseFromString(s, 'application/xml');
+    const ss = z['xl/sharedStrings.xml'] ? [...xml(await z['xl/sharedStrings.xml']()).getElementsByTagName('si')]
+      .map((si) => [...si.getElementsByTagName('t')].map((t) => t.textContent).join('')) : [];
+    const sheet = z['xl/worksheets/sheet1.xml'] || z[Object.keys(z).find((k) => /^xl\/worksheets\/sheet\d+\.xml$/.test(k))];
+    if (!sheet) throw new Error('Excel 里没找到工作表');
+    const col = (ref) => [...ref.replace(/\d+/g, '')].reduce((a, ch) => a * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+    const out = [];
+    for (const r of xml(await sheet()).getElementsByTagName('row')) {
+      const line = []; let auto = 0;
+      for (const cEl of r.getElementsByTagName('c')) {
+        const ref = cEl.getAttribute('r'), t = cEl.getAttribute('t');
+        const i = ref ? col(ref) : auto; auto = i + 1;
+        const v = cEl.getElementsByTagName('v')[0]?.textContent ?? '';
+        line[i] = t === 's' ? (ss[Number(v)] ?? '') : t === 'inlineStr' ? [...cEl.getElementsByTagName('t')].map((x) => x.textContent).join('') : v;
+      }
+      out[Number(r.getAttribute('r')) - 1 || out.length] = [...line].map((x) => x ?? '');
+    }
+    return [...out].map((x) => x ?? []);
+  }
+
+  let parsed = [], fname = '';
+  async function load(file) {
+    say('读取中…'); $('#res').hidden = true;
+    try {
+      const buf = await file.arrayBuffer();
+      const grid = /\.xlsx$/i.test(file.name) ? await parseXLSX(buf) : parseCSV(decode(buf));
+      const head = (grid[0] || []).map((h) => String(h ?? '').trim());
+      if (!head.some((h) => h.replace(/[*＊]/g, '') === '产品名')) throw new Error('第一行必须是模板的表头(至少有「产品名」列)—— 请用上面的模板');
+      parsed = [];
+      grid.slice(1).forEach((cells, i) => {
+        const o = { _line: i + 2 };
+        head.forEach((h, k) => { if (h) o[h] = String(cells[k] ?? '').trim(); });
+        if (head.some((h) => h && o[h])) parsed.push(o);   // 空行跳过
+      });
+      if (!parsed.length) throw new Error('表里没有要导入的行');
+      fname = file.name;
+      say('体检中…');
+      const r = await post({ op: 'check', rows: parsed });
+      if (!r.ok) throw new Error(r.msg || '体检失败');
+      show(r.report); say('');
+    } catch (e) { say(e.message || '读不了这个文件', true); }
+  }
+
+  const post = (b) => fetch('/api/admin/product-import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) })
+    .then((r) => r.json()).catch(() => ({ ok: false, msg: '网络断了,稍后再试' }));
+  const CLS = { 成功: 'ok', 需人工: 'rv', 失败: 'bad', 重复: 'dup' };
+  const td = (tr, v) => { const x = document.createElement('td'); x.textContent = v; tr.appendChild(x); return x; };
+  function show(report) {
+    const tb = $('#rows'); tb.innerHTML = '';
+    const n = { 成功: 0, 需人工: 0, 失败: 0, 重复: 0 };
+    for (const r of report) {
+      n[r.result]++;
+      const tr = document.createElement('tr'); tr.className = CLS[r.result];
+      [r.row, r.name || '', r.result, (r.issues || []).join(';') || '—'].forEach((v) => td(tr, v));
+      tb.appendChild(tr);
+    }
+    const go = n.成功 + n.需人工;
+    $('#sum').textContent = `共 ${report.length} 行:成功 ${n.成功} · 需人工看一眼 ${n.需人工} · 失败 ${n.失败}(红色,改好表格重新拖进来)· 重复跳过 ${n.重复}`;
+    $('#stage').disabled = !go;
+    $('#stage').textContent = go ? `把 ${go} 行放进待发布区` : '没有可以导入的行';
+    $('#res').hidden = false;
+  }
+  $('#stage').addEventListener('click', async () => {
+    $('#stage').disabled = true; $('#stmsg').textContent = '写入中…';
+    const r = await post({ op: 'stage', rows: parsed, file: fname });
+    if (!r.ok) { $('#stmsg').textContent = r.msg || '没写进去'; $('#stage').disabled = false; return; }
+    $('#stmsg').textContent = `已放进待发布区(批次 ${r.batch},${r.staged} 行),在下面第 ③ 步勾选发布。`;
+    await batches(r.batch);
+  });
+
+  /* ── 待发布区 ── */
+  async function batches(pick) {
+    const r = await fetch('/api/admin/product-import').then((x) => x.json()).catch(() => ({}));
+    const sel = $('#batch'); sel.length = 1;
+    (r.batches || []).forEach((b) => sel.add(new Option(`${b.batch_id} · ${b.file} · 待发布 ${b.waiting} / 共 ${b.n}`, b.batch_id)));
+    if (pick) { sel.value = pick; await rows(pick); }
+  }
+  const ST = { pending: '待审', review: '需人工', approved: '已审', published: '已发布' };
+  async function rows(batch) {
+    $('#stg').hidden = !batch; if (!batch) return;
+    const r = await fetch('/api/admin/product-import?batch=' + encodeURIComponent(batch)).then((x) => x.json()).catch(() => ({}));
+    const tb = $('#srows'); tb.innerHTML = '';
+    for (const x of r.rows || []) {
+      const tr = document.createElement('tr'); tr.className = x.status === 'review' ? 'rv' : x.status === 'published' ? 'dup' : 'ok';
+      const c0 = document.createElement('td');
+      if (x.status !== 'published') {
+        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = x.id; cb.checked = x.status !== 'review';
+        c0.appendChild(cb);
+      }
+      tr.appendChild(c0);
+      td(tr, x.name_zh);
+      td(tr, `${x.category} / ${x.format}${x.capacity ? ' · ' + x.capacity : ''}`);
+      td(tr, ST[x.status] || x.status);
+      let iss = []; try { iss = JSON.parse(x.issues_json || '[]'); } catch {}
+      const last = td(tr, iss.join(';') || '—');
+      if (x.product_id) { last.textContent = ''; last.append(Object.assign(document.createElement('a'), { href: '/bohui/product-edit/?id=' + x.product_id, textContent: '去补图、发布 →' })); }
+      tb.appendChild(tr);
+    }
+    sync();
+  }
+  const picked = () => [...document.querySelectorAll('#srows input:checked')].map((i) => Number(i.value));
+  const sync = () => { const n = picked().length; $('#pub').disabled = !n; $('#pub').textContent = n ? `发布选中的 ${n} 个为草稿产品` : '先勾选要发布的行'; };
+  $('#srows').addEventListener('change', sync);
+  $('#all').addEventListener('change', (e) => { document.querySelectorAll('#srows input').forEach((i) => { i.checked = e.target.checked; }); sync(); });
+  $('#batch').addEventListener('change', (e) => rows(e.target.value));
+  $('#pub').addEventListener('click', async () => {
+    const ids = picked(); if (!ids.length) return;
+    $('#pub').disabled = true; $('#pubmsg').textContent = '发布中…';
+    const r = await post({ op: 'publish', ids });
+    $('#pubmsg').textContent = r.ok ? `已发布 ${r.published} 个草稿产品。点每行的「去补图、发布」逐个上架。` : (r.msg || '发布失败');
+    await rows($('#batch').value);
+  });
+  batches();
+
+  const drop = $('#drop');
+  ['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if (f) load(f); });
+  $('#file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) load(f); e.target.value = ''; });
+})();
+</script>

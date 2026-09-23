@@ -1,0 +1,209 @@
+---
+/**
+ * 效果图提示词 —— 2026-09-17 创始人:「后台要有个图片转提示词」「工具都很强大,提示词不行,AI图就很惨」
+ * 「GitHub和很多网站都有反向推理是什么提示词的」「提示词方面一定要优化」「一定要看参考样例的规范」。
+ * 上半:图 → 提示词(fleet.vision 反推六要素 + 中英提示词,可存入库);下半:提示词库(72 条参考样例反推 + 自存),
+ * 每条可复制、可「用它出图」(补产品四要素 → fleet.image 一张 → 存 media)。接口 /api/admin/prompts。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+// 类目 id 与 0084 迁移 / packaging.type 对齐
+const CATS: [string, string][] = [['dropper-bottle', '精华瓶/滴管瓶'], ['jar', '面霜罐'], ['tube', '软管'], ['pump-bottle', '按压/乳液瓶'], ['gift-set', '套装/礼盒'], ['lifestyle', '人物/生活方式']];
+const { results: counts } = await c.db.prepare(`SELECT category, COUNT(*) n FROM render_prompts GROUP BY category`).all<{ category: string; n: number }>();
+const total = counts.reduce((s, r) => s + r.n, 0);
+---
+
+<AdminShell title="效果图提示词" active="prompts" email={c.sess.email} tenant={c.tenant}>
+  <h1>效果图提示词</h1>
+  <p class="lead">
+    「工具都很强大,提示词不行,AI 图就很惨」—— 这里两件事:<b>看图反推提示词</b>(把参考图诺鸟那种商业渲染拆成光位 / 机位 / 道具 / 配色 / 情绪 + 可直接喂生图模型的英文),
+    以及<b>提示词库</b>(当前 {total} 条,其中 72 条由参考样例反推),选一条、填产品四要素,一键出图。
+  </p>
+
+  <h2>图片转提示词</h2>
+  <div class="card">
+    <label class="drop" id="drop">
+      <span>点这里选一张效果图(或拖进来)</span>
+      <input id="pick" type="file" accept="image/*" hidden />
+    </label>
+    <p class="tip">图只在内存里压到 1024 传给视觉模型,不入库;「存入库」存的是文字。</p>
+    <div class="row">
+      <button class="btn pri" id="go" disabled>反推提示词</button>
+      <span class="msg" id="msg"></span>
+    </div>
+    <div id="rev" hidden>
+      <div class="six" id="six"></div>
+      <div class="pp"><div class="ph"><b>prompt_en</b><button class="btn sm" data-copy="ren">复制</button></div><textarea id="ren" rows="6"></textarea></div>
+      <div class="pp"><div class="ph"><b>prompt_zh</b><button class="btn sm" data-copy="rzh">复制</button></div><textarea id="rzh" rows="4"></textarea></div>
+      <div class="row">
+        <select id="rcat">{CATS.map(([id, zh]) => <option value={id}>{zh}</option>)}</select>
+        <button class="btn" id="save">存入库</button>
+        <span class="tip" id="rby"></span>
+      </div>
+    </div>
+  </div>
+
+  <h2>提示词库</h2>
+  <div class="card">
+    <div class="row">
+      <span class="tip">出图时套用的产品四要素(英文,给生图模型):</span>
+      <input id="p_product" placeholder="product,如 30ml airless pump bottle" />
+      <input id="p_material" placeholder="material,如 frosted glass" />
+      <input id="p_color" placeholder="color,如 sage green" />
+      <input id="p_cap" placeholder="cap,如 brushed gold" />
+    </div>
+    <div class="row">
+      <select id="cat">
+        <option value="">全部类目</option>
+        {CATS.map(([id, zh]) => <option value={id}>{zh}({counts.find((r) => r.category === id)?.n ?? 0})</option>)}
+      </select>
+      <span class="tip">样例缩略图:参考样例暂在本地素材目录,未传 R2,只显示文件名;后续传了会自动显示。</span>
+    </div>
+  </div>
+  <div class="lib" id="lib"></div>
+
+  <style>
+    h2 { font-size: 1.125rem; margin: 1.5rem 0 .75rem; }
+    .card { background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: 10px;
+            padding: 1.25rem; display: grid; gap: .875rem; margin-bottom: 1rem; }
+    .drop { width: 100%; max-width: 22rem; aspect-ratio: 4/3; border: 2px dashed var(--ad-line);
+            border-radius: 9px; display: grid; place-items: center; cursor: pointer;
+            background: #FBFCFB; color: var(--ad-faint); font-size: .875rem; overflow: hidden; }
+    .drop:hover, .drop.over { border-color: var(--ad-accent); }
+    .drop img { width: 100%; height: 100%; object-fit: contain; }
+    .tip { font-size: .8125rem; color: var(--ad-faint); margin: 0; }
+    .msg { font-size: .8125rem; color: var(--ad-bad); }
+    .row { display: flex; gap: .625rem; align-items: center; flex-wrap: wrap; }
+    .row input, .row select { font-size: .875rem; padding: .4rem .6rem; border: 1px solid var(--ad-line); border-radius: 7px; min-width: 12rem; }
+    .btn.sm { font-size: .75rem; padding: .25rem .6rem; }
+    .six { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: .5rem; }
+    .six div { font-size: .8125rem; background: #FAFBFB; border: 1px solid var(--ad-line); border-radius: 7px; padding: .5rem .625rem; line-height: 1.5; }
+    .six b { color: var(--ad-faint); font-weight: 600; margin-right: .375rem; }
+    .pp { display: grid; gap: .375rem; }
+    .ph { display: flex; justify-content: space-between; align-items: center; font-size: .8125rem; }
+    textarea { width: 100%; font-size: .875rem; line-height: 1.55; padding: .625rem; border: 1px solid var(--ad-line); border-radius: 7px; resize: vertical; }
+    .lib { display: grid; gap: .75rem; }
+    .it { background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: 10px; padding: .875rem 1rem;
+          display: grid; grid-template-columns: 9rem 1fr; gap: .875rem; }
+    .th { width: 9rem; height: 9rem; border-radius: 7px; background: #FAFBFB; border: 1px solid var(--ad-line);
+          display: grid; place-items: center; font-size: .75rem; color: var(--ad-faint); text-align: center; padding: .5rem; overflow: hidden; }
+    .th img { width: 100%; height: 100%; object-fit: cover; }
+    .ib { display: grid; gap: .5rem; min-width: 0; }
+    .ih { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; font-size: .8125rem; color: var(--ad-faint); }
+    .ih b { color: var(--ad-ink, inherit); font-size: .9375rem; }
+    .ih .sp { margin-left: auto; display: flex; gap: .375rem; }
+    .en, .zh { font-size: .875rem; line-height: 1.55; margin: 0; white-space: pre-wrap; word-break: break-word; }
+    .zh { color: var(--ad-faint); }
+    .meta { font-size: .75rem; color: var(--ad-faint); line-height: 1.6; }
+    .out { display: grid; gap: .375rem; }
+    .out img { max-width: 24rem; width: 100%; border-radius: 7px; border: 1px solid var(--ad-line); }
+    .out pre { font-size: .75rem; white-space: pre-wrap; word-break: break-word; background: #FAFBFB; border: 1px solid var(--ad-line); border-radius: 7px; padding: .5rem; margin: 0; }
+    @media (max-width: 40rem) { .it { grid-template-columns: 1fr; } }
+  </style>
+
+  <script is:inline>
+  (() => {
+    const $ = (id) => document.getElementById(id);
+    const api = async (body) => { const r = await fetch('/api/admin/prompts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); return r.json(); };
+    const copy = (t, btn) => navigator.clipboard.writeText(t).then(() => { const o = btn.textContent; btn.textContent = '已复制'; setTimeout(() => btn.textContent = o, 1200); });
+    const CAT = { 'dropper-bottle': '精华瓶/滴管瓶', jar: '面霜罐', tube: '软管', 'pump-bottle': '按压/乳液瓶', 'gift-set': '套装/礼盒', lifestyle: '人物/生活方式' };
+
+    /* ── 上半:图 → 提示词 ── 压图逻辑与 vision.astro 同一套 */
+    const pick = $('pick'), drop = $('drop'), go = $('go'), msg = $('msg');
+    let dataUrl = null, last = null;
+    const load = async (f) => {
+      if (!f) return;
+      const bmp = await createImageBitmap(f);
+      const s = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+      const cv = new OffscreenCanvas(Math.round(bmp.width * s), Math.round(bmp.height * s));
+      cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height); bmp.close();
+      let q = .85, blob = await cv.convertToBlob({ type: 'image/jpeg', quality: q });
+      while (blob.size > 1400000 && q > .4) { q -= .12; blob = await cv.convertToBlob({ type: 'image/jpeg', quality: q }); }
+      dataUrl = await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+      drop.innerHTML = ''; const img = document.createElement('img'); img.src = dataUrl; img.alt = ''; drop.appendChild(img); drop.appendChild(pick);
+      go.disabled = false;
+    };
+    pick.addEventListener('change', () => load(pick.files && pick.files[0]));
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); load(e.dataTransfer.files && e.dataTransfer.files[0]); });
+
+    go.addEventListener('click', async () => {
+      go.disabled = true; go.textContent = '视觉模型看图中,约 10-30 秒…'; msg.textContent = '';
+      try {
+        const d = await api({ op: 'reverse', image: dataUrl });
+        if (!d.ok) throw new Error(d.msg);
+        last = d;
+        $('six').innerHTML = '';
+        [['scene', '场景'], ['lighting', '光位'], ['camera', '机位'], ['props', '道具'], ['palette', '配色'], ['mood', '情绪']].forEach(([k, zh]) => {
+          const el = document.createElement('div'); const b = document.createElement('b'); b.textContent = zh; el.appendChild(b); el.appendChild(document.createTextNode(d[k] || '—')); $('six').appendChild(el);
+        });
+        $('ren').value = d.prompt_en; $('rzh').value = d.prompt_zh;
+        $('rby').textContent = `由 ${d.model || d.provider} 反推,${d.ms}ms`;
+        $('rev').hidden = false;
+      } catch (e) { msg.textContent = e.message || '反推失败'; }
+      go.disabled = false; go.textContent = '反推提示词';
+    });
+    document.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => copy($(b.dataset.copy).value, b)));
+    $('save').addEventListener('click', async () => {
+      if (!last) return;
+      const d = await api({ op: 'save', ...last, prompt_en: $('ren').value, prompt_zh: $('rzh').value, category: $('rcat').value });
+      msg.textContent = d.ok ? `已存入库 #${d.id}` : d.msg;
+      if (d.ok) list();
+    });
+
+    /* ── 下半:提示词库 ── */
+    const lib = $('lib');
+    const product = () => ({ product: $('p_product').value.trim(), material: $('p_material').value.trim(), color: $('p_color').value.trim(), cap: $('p_cap').value.trim() });
+    async function list() {
+      lib.innerHTML = '<p class="tip">加载中…</p>';
+      const d = await api({ op: 'list', category: $('cat').value });
+      if (!d.ok) { lib.innerHTML = ''; msg.textContent = d.msg; return; }
+      lib.innerHTML = '';
+      d.list.forEach((x) => {
+        const el = document.createElement('div'); el.className = 'it';
+        const th = document.createElement('div'); th.className = 'th';
+        if (x.sample_img && x.sample_img.startsWith('/media/')) { const im = document.createElement('img'); im.src = x.sample_img; im.alt = ''; th.appendChild(im); }
+        else th.textContent = x.sample_img ? `样例 ${x.sample_img.split('/').pop()}(未传 R2)` : '无样例图';
+        const ib = document.createElement('div'); ib.className = 'ib';
+        const ih = document.createElement('div'); ih.className = 'ih';
+        ih.innerHTML = '<b></b><span class="pill"></span><span class="src"></span><span class="sp"><button class="btn sm c-en">复制英文</button><button class="btn sm c-zh">复制中文</button><button class="btn sm pri rd">用它出图</button></span>';
+        ih.querySelector('b').textContent = `#${x.id} ${x.scene || ''}`;
+        ih.querySelector('.pill').textContent = CAT[x.category] || x.category;
+        ih.querySelector('.src').textContent = x.src === 'reference' ? '参考样例反推' : '后台反推';
+        const en = document.createElement('p'); en.className = 'en'; en.textContent = x.prompt_en;
+        const zh = document.createElement('p'); zh.className = 'zh'; zh.textContent = x.prompt_zh || '';
+        const meta = document.createElement('p'); meta.className = 'meta';
+        meta.textContent = ['光位:' + (x.lighting || '—'), '机位:' + (x.camera || '—'), '道具:' + (x.props || '—'), '配色:' + (x.palette || '—'), '情绪:' + (x.mood || '—')].join(' · ');
+        const out = document.createElement('div'); out.className = 'out';
+        ih.querySelector('.c-en').addEventListener('click', (e) => copy(x.prompt_en, e.target));
+        ih.querySelector('.c-zh').addEventListener('click', (e) => copy(x.prompt_zh || '', e.target));
+        const rd = ih.querySelector('.rd');
+        rd.addEventListener('click', async () => {
+          const p = product();
+          if (!p.product) { $('p_product').focus(); msg.textContent = '先在上方填产品(product)'; return; }
+          rd.disabled = true; rd.textContent = '出图中,约 30-90 秒…'; out.innerHTML = '';
+          try {
+            const d2 = await api({ op: 'render', id: x.id, ...p });
+            if (!d2.ok) throw new Error(d2.msg);
+            const im = document.createElement('img'); im.src = d2.url; im.alt = '';
+            const pre = document.createElement('pre'); pre.textContent = d2.prompt;
+            const a = document.createElement('a'); a.href = d2.url; a.target = '_blank'; a.textContent = `已存媒体库 ${d2.url}`; a.className = 'tip';
+            out.append(im, a, pre);
+          } catch (e) { const n = document.createElement('p'); n.className = 'msg'; n.textContent = e.message || '出图失败'; out.appendChild(n); }
+          rd.disabled = false; rd.textContent = '用它出图';
+        });
+        ib.append(ih, en, zh, meta, out); el.append(th, ib); lib.appendChild(el);
+      });
+      if (!d.list.length) lib.innerHTML = '<p class="tip">这个类目还没有提示词。</p>';
+    }
+    $('cat').addEventListener('change', list);
+    list();
+  })();
+  </script>
+</AdminShell>

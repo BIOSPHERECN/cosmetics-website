@@ -1,0 +1,96 @@
+---
+/**
+ * ESG 规则表(只读)—— 创始人 2026-09-18:「开发部是需要符合 ESG 规范全绿的配方,看看怎么对应法规要求」。
+ * 四支柱 regulatory 法规 / environment 环境 / social 社会 / safety 安全;每条带 basis(法规名 + 条款)与 note「以最新官方文本为准」。
+ * 数据源 esg_rules(0089 迁移,tools/esg/rules-seed.py 灌);lab 与 admin 都能看(pageGuard 过即可,不看比例不需 canRecipe)。
+ * 表还没灌时不 500:每句兜 []。
+ */
+import LabShell from '../../../layouts/LabShell.astro';
+import { pageGuard } from '../../../lib/guard';
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+const url = new URL(Astro.request.url);
+const mk = (url.searchParams.get('mk') ?? '').slice(0, 8);
+const q = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
+
+const PILLARS: [string, string][] = [['regulatory', '法规'], ['environment', '环境'], ['social', '社会'], ['safety', '安全']];
+/* 市场码 → 中文;州级 / 地区级也列出(us 目标市场时 us-ca / us-hi 规则给出并标「州级」) */
+const MK_ZH: Record<string, string> = { eu: '欧盟', cn: '中国', us: '美国', 'us-ca': '美国·加州(州级)', 'us-hi': '美国·夏威夷(州级)', kr: '韩国', jp: '日本', asean: '东南亚', br: '巴西', ca: '加拿大', fr: '法国', palau: '帕劳', id: '印尼' };
+const MT_ZH: Record<string, string> = { key: '精确', prefix: '前缀', contains: '包含', regex: '正则', tag: '标签', registry: '目录' };
+const AP_ZH: Record<string, string> = { all: '全部', 'rinse-off': '淋洗', 'leave-on': '驻留', sunscreen: '防晒' };
+
+const conds: string[] = ['active = 1']; const bind: unknown[] = [];
+/* scope='ALL' 永远生效;其余逗号串里含该码才算(instr 而非 LIKE:D1 长中文 LIKE 有坑,码是 ASCII 但保持一致) */
+if (mk) { conds.push(`(scope = 'ALL' OR instr(',' || scope || ',', ?) > 0)`); bind.push(`,${mk},`); }
+if (q) { conds.push(`(pattern LIKE ? OR title_zh LIKE ? OR reason_zh LIKE ? OR basis LIKE ?)`); const l = `%${q}%`; bind.push(l, l, l, l); }
+const none = () => ({ results: [] as any[] });
+const { results: rows } = await c.db.prepare(`SELECT * FROM esg_rules WHERE ${conds.join(' AND ')} ORDER BY pillar, severity DESC, id LIMIT 800`).bind(...bind).all<any>().catch(none);
+const groups = PILLARS.map(([k, zh]) => ({ k, zh, list: rows.filter((r: any) => r.pillar === k) }));
+const link = (over: Record<string, string>) => { const u = new URLSearchParams({ mk, q, ...over }); for (const k of [...u.keys()]) if (!u.get(k)) u.delete(k); const s = u.toString(); return `/bohui/formula-lab/esg/${s ? `?${s}` : ''}`; };
+const scopeZh = (s: string | null) => (!s || s === 'ALL' ? '全部市场' : s.split(',').map((x) => MK_ZH[x.trim()] ?? x.trim()).join('、'));
+---
+
+<LabShell title="ESG 规则表" email={c.sess.email} tenant={c.tenant}>
+  <div class="esgp">
+    <header class="hh">
+      <div><h1>ESG 规则表 <small>四支柱 · 共 {rows.length} 条 · 红 = 目标市场禁用 / 超限量 / 客户标准明确排除;黄 = 有限量 / 条件 / 需声明 / 需证书 / 争议成分;绿 = 都不命中。条款日期以最新官方文本为准。</small></h1></div>
+      <a class="btn" href="/bohui/formula-lab/">配方实验室</a>
+    </header>
+    <form class="filters" method="get">
+      <div class="row">
+        <span>市场</span>
+        <a class:list={['chip', !mk && 'on']} href={link({ mk: '' })}>全部</a>
+        {Object.entries(MK_ZH).map(([k, zh]) => <a class:list={['chip', mk === k && 'on']} href={link({ mk: k })}>{zh}</a>)}
+      </div>
+      <div class="row">
+        <span>搜索</span>
+        <input type="hidden" name="mk" value={mk} />
+        <input name="q" value={q} placeholder="成分名 / INCI / 法规名" /><button class="btn pri" type="submit">找</button>
+      </div>
+    </form>
+    {rows.length === 0 && <div class="empty">还没有规则(表未灌,或筛选没命中)。</div>}
+    {groups.filter((g) => g.list.length > 0).map((g) => (
+      <section class="grp">
+        <h2>{g.zh} <small>{g.list.length} 条</small></h2>
+        <table class="tbl">
+          <thead><tr><th>匹配</th><th>等级</th><th>标题</th><th>原因</th><th>市场 · 剂型</th><th>依据</th><th>生效</th><th>限量</th><th>备注</th></tr></thead>
+          <tbody>
+            {g.list.map((r: any) => (
+              <tr class:list={[r.severity]}>
+                <td class="mono"><small class="soft">{MT_ZH[r.match_type] ?? r.match_type}</small><br />{r.pattern}</td>
+                <td><span class:list={['pill', r.severity === 'red' ? 'p-bad' : 'p-warn']}>{r.severity === 'red' ? '红' : '黄'}</span></td>
+                <td>{r.title_zh}</td>
+                <td class="soft">{r.reason_zh}</td>
+                <td class="nw">{scopeZh(r.scope)}<br /><small class="soft">{AP_ZH[r.applies] ?? r.applies}</small></td>
+                <td>{r.basis_url ? <a href={r.basis_url} target="_blank" rel="noopener">{r.basis} ↗</a> : r.basis}</td>
+                <td class="nw">{r.effective_from || <span class="soft">—</span>}</td>
+                <td class="nw">{r.limit_pct != null ? `${r.limit_pct}%` : '—'}</td>
+                <td class="soft">{r.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    ))}
+  </div>
+</LabShell>
+<style>
+  .esgp { max-width: 112.5rem; margin: 0 auto; }
+  .hh { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: .75rem; }
+  h1 { font-size: 1.375rem; margin: 0; } h1 small { display: block; font-size: .8125rem; font-weight: 400; color: var(--ad-side-dim); margin-top: .25rem; line-height: 1.5; }
+  h2 { font-size: 1.0625rem; margin: 1rem 0 .375rem; } h2 small { font-weight: 400; color: var(--ad-side-dim); font-size: .8125rem; }
+  .filters { background: var(--ad-panel); border: 1px solid var(--ad-side-line); border-radius: 14px; padding: .625rem 1rem; margin-bottom: .75rem; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem; margin: .25rem 0; }
+  .row > span { width: 2.5rem; font-size: .8125rem; color: var(--ad-side-dim); }
+  .chip { border: 1px solid var(--ad-side-line); background: var(--ad-sunk); border-radius: 999px; padding: .25rem .75rem; font-size: .8125rem; color: var(--ad-ink); text-decoration: none; }
+  .chip.on { background: var(--ad-ink); color: #fff; border-color: var(--ad-ink); }
+  .row input[name=q] { flex: 1; min-width: 12rem; padding: .375rem .625rem; border: 1px solid var(--ad-side-line); border-radius: 8px; font-size: .875rem; }
+  .tbl { width: 100%; border-collapse: collapse; background: var(--ad-panel); border: 1px solid var(--ad-side-line); border-radius: 14px; font-size: .8125rem; }
+  .tbl th, .tbl td { padding: .5rem .625rem; border-bottom: 1px solid var(--ad-side-line); vertical-align: top; text-align: left; }
+  .tbl th { background: var(--ad-sunk); font-weight: 600; }
+  .tbl tr.red td:first-child { box-shadow: inset 3px 0 var(--ad-bad); } .tbl tr.yellow td:first-child { box-shadow: inset 3px 0 #E0A800; }
+  .nw { white-space: nowrap; } .soft { color: var(--ad-side-dim); } .mono { font-family: ui-monospace, monospace; font-size: .75rem; }
+  .empty { text-align: center; color: var(--ad-side-dim); padding: 2rem; }
+  @media (max-width: 60rem) { .nw { white-space: normal; } }
+</style>

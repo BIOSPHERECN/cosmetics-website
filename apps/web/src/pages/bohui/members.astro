@@ -1,0 +1,73 @@
+---
+/**
+ * 网站会员(2026-09-23):注册名单 + 今日用量;管理员改档位(免费每天 20 条 / 付费每天 100 条)或停用。
+ * 注册会员就是线索,业务部看得见名单(改不了档位)。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { bjDay, limitFor, DAILY } from '../../lib/quota';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+if (!['admin', 'viewer', 'sales'].includes(String(c.sess.role))) return Astro.redirect('/bohui/');
+const isAdmin = c.sess.role === 'admin';
+const q = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 100);
+const ok = Astro.url.searchParams.get('ok');
+const bad = Astro.url.searchParams.get('e');
+const W = q ? 'WHERE m.email LIKE ?' : '';
+const bind = q ? [`%${q}%`] : [];
+const total = (await c.db.prepare(`SELECT COUNT(*) n FROM mb_members m ${W}`).bind(...bind).first<{ n: number }>().catch(() => null))?.n ?? 0;
+const rows = ((await c.db.prepare(
+  `SELECT m.id, m.email, m.plan_id, m.status, m.country, m.created_at, m.last_login_at,
+          (SELECT COUNT(*) FROM mb_views v WHERE v.member_id = m.id AND v.day = ?) AS today
+     FROM mb_members m ${W} ORDER BY m.id DESC LIMIT 300`).bind(bjDay(), ...bind).all<any>().catch(() => ({ results: [] }))).results ?? []) as any[];
+---
+
+<AdminShell title="网站会员" active="members" email={c.sess.email} tenant={c.tenant}>
+  <h1>网站会员</h1>
+  <p class="lead">共 {total} 位。免费会员每天可看 {DAILY.free} 条、付费 {DAILY.pro} 条 —— 成分解读、原料、配方详情与 AI 搜索共用,按不同条目计,北京时间零点清零。
+    付费不走线上支付:谈妥后管理员在这里改档位,即时生效。</p>
+  {ok && <p class="lead" role="status">已保存(会员 #{ok})。</p>}
+  {bad && <p class="lead" role="alert">没保存:参数不对或会员不存在。</p>}
+
+  <form class="bar" method="get">
+    <input name="q" value={q} placeholder="按邮箱搜" />
+    <button class="btn pri" type="submit">搜索</button>
+    {q && <a class="btn" href="/bohui/members/">清空</a>}
+  </form>
+
+  {rows.length === 0 ? (
+    <div class="empty">还没有会员。访客在前台点开成分解读、原料或配方详情时会被引导用邮箱注册。</div>
+  ) : (
+    <table>
+      <thead><tr><th>邮箱</th><th>档位</th><th>今日已看</th><th>注册(UTC)</th><th>最近登录(UTC)</th><th>国家</th>{isAdmin && <th>改档位 / 状态</th>}</tr></thead>
+      <tbody>{rows.map((r) => (
+        <tr>
+          <td>{r.email}{r.status !== 'active' && <span class="pill"> 已停用</span>}</td>
+          <td>{r.plan_id === 'free' ? '免费' : '付费'}</td>
+          <td>{r.today} / {limitFor(r.plan_id)}</td>
+          <td>{String(r.created_at ?? '').slice(0, 16)}</td>
+          <td>{String(r.last_login_at ?? '').slice(0, 16)}</td>
+          <td>{r.country ?? '—'}</td>
+          {isAdmin && (
+            <td>
+              <form method="post" action="/api/admin/member" class="bar">
+                <input type="hidden" name="id" value={r.id} />
+                <select name="plan_id" aria-label="档位">
+                  <option value="free" selected={r.plan_id === 'free'}>免费({DAILY.free}/天)</option>
+                  <option value="pro" selected={r.plan_id !== 'free'}>付费({DAILY.pro}/天)</option>
+                </select>
+                <select name="status" aria-label="状态">
+                  <option value="active" selected={r.status === 'active'}>正常</option>
+                  <option value="disabled" selected={r.status !== 'active'}>停用</option>
+                </select>
+                <button class="btn" type="submit">保存</button>
+              </form>
+            </td>
+          )}
+        </tr>))}
+      </tbody>
+    </table>
+  )}
+</AdminShell>

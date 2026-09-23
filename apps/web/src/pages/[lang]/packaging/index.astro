@@ -1,0 +1,372 @@
+---
+import { TERMS_CONFIRMED } from '../../../lib/terms';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT, type Locale } from '@cosmetic/core/i18n';
+/**
+ * 包材库货架 —— 与配方库、原料库共用 ShelfPage(创始人:「产品库、包材库是一样的结构」)。
+ *
+ * 这一页重建过两次:
+ *   一版把 819 页供应商图册整页摊出来,里面混着别家 logo、公司简介、展会照片,已全部下架;
+ *   二版换成 packaging 表的 42 条示例规格,能用但太薄。
+ * 现在是第三版:接了一家自有目录站的近四千款白底实拍,一款一条。
+ *
+ * 数据量变了,取数方式也必须变。前两版是「整表读进内存,在 JS 里筛与计数」——
+ * 42 行时这样最省事,4,000 行时就是每次请求都把整张表搬一遍,
+ * Workers 免费版的 CPU 与 D1 读次数都吃不住。所以改成:
+ *   · 筛选项计数走 SQL 的 GROUP BY(三条小查询,只回几十行);
+ *   · 列表走 WHERE + LIMIT,一页最多 60 条。
+ * 代价是多几条查询,收益是无论库里有四千款还是四万款,单次请求的开销都是常数。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import ShelfPage from '@cosmetic/core/components/ShelfPage.astro';
+import { buildChain } from '@cosmetic/core/content/chain.ts';
+import { pageShell } from '../../../lib/shell';
+import { PACK_SHELF } from '@cosmetic/core/generated/pack-shelf.ts';
+import { PACK_TYPE_LABEL, PACK_USE_LABEL, PACK_GROUP, packGroup, FMT_LABEL, label,
+         packName, dualCapacity, materialFamily, packDesignHref } from '../../../lib/catalog';
+
+export const prerender = false;
+
+const PAGE = 60;
+
+const lang = (Astro.params.lang ?? 'zh-cn') as Locale; // astro check: 路由参数是 string,与 pack.astro 同法收窄
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/packaging/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const url = new URL(Astro.url);
+
+const pick = (k: string) => (url.searchParams.get(k) ?? '').split(',').map((s) => s.trim())
+  .filter((s) => /^[\w一-龥+\-. ]{1,24}$/.test(s)).slice(0, 6);
+const fGrp = pick('g'), fType = pick('t'), fMat = pick('a'), fFmt = pick('f');
+/* 用途维度(膏霜瓶/乳液瓶/洗护瓶…)。与结构维度并存,不互相覆盖 —— 
+   客户找瓶子问的是「我做乳液用哪支」,不是「我要泵头瓶」。 */
+const fUse = pick('u');
+/* 容量档(创始人 2026-09-17:左栏分类树「下面再放容量、材质、供应商等筛选组」)。
+   库里 capacity 是「100ml/120ml/150ml」这种多规格串,一款落进它任一规格所在的档。
+   供应商不做:卡片规矩是「只出现我们自己的编码,不出现供应商名」。 */
+const CAP_BUCKETS: [string, number, number][] = [
+  ['0-30', 0, 30], ['31-60', 31, 60], ['61-120', 61, 120], ['121-250', 121, 250], ['251-500', 251, 500], ['500+', 501, Infinity],
+];   // 键只用 pick() 放行的字符(数字、-、+),显示时再补单位
+const capBuckets = (cap: string) => {
+  const out = new Set<string>();
+  for (const m of String(cap ?? '').matchAll(/(\d+(?:\.\d+)?)\s*(?:ml|g)/gi)) {
+    const n = parseFloat(m[1]);
+    const b = CAP_BUCKETS.find(([, lo, hi]) => n >= lo && n <= hi);
+    if (b) out.add(b[0]);
+  }
+  return out;
+};
+const fCap = pick('c').filter((v) => CAP_BUCKETS.some(([k]) => k === v));
+const page = Math.max(1, Math.min(80, parseInt(url.searchParams.get('p') ?? '1', 10) || 1));
+
+/** 大类是从具体类型算出来的,SQL 里没有这一列 —— 展开成它包含的类型再进 WHERE */
+const typesInGroups = (gs: string[]) =>
+  gs.length === 0 ? [] : Object.keys(PACK_TYPE_LABEL).filter((t) => gs.includes(packGroup(t)));
+
+const where: string[] = [`status IN ('sample','active')`];
+const args: unknown[] = [];
+const inList = (col: string, vals: string[]) => {
+  if (!vals.length) return;
+  where.push(`${col} IN (${vals.map(() => '?').join(',')})`);
+  args.push(...vals);
+};
+inList('type', fType.length ? fType : typesInGroups(fGrp));
+if (fFmt.length) {
+  where.push(`(${fFmt.map(() => 'compat_formats LIKE ?').join(' OR ')})`);
+  args.push(...fFmt.map((v) => `%${v}%`));
+}
+/* 材质大类是把整句描述归并出来的,SQL 里只能用关键词近似先收窄范围;
+   展示时仍以 catalog.ts 的归并结果为准,两边口径才一致。 */
+if (fMat.length) {
+  const kw: Record<string, string[]> = {
+    'PCR 再生料': ['PCR'], 'PCR resin': ['PCR'], 玻璃: ['玻璃'], Glass: ['玻璃'],
+    铝: ['铝'], Aluminium: ['铝'], PETG: ['PETG'], PET: ['PET'], PP: ['PP'],
+    PE: ['PE', 'HDPE'], 亚克力: ['亚克力', 'PMMA'], Acrylic: ['亚克力', 'PMMA'],
+    纸材: ['纸'], Paper: ['纸'], 竹木: ['竹', '木'],
+  };
+  const ors: string[] = [];
+  for (const m of fMat) for (const k of (kw[m] ?? [m])) { ors.push('material LIKE ?'); args.push(`%${k}%`); }
+  if (ors.length) where.push(`(${ors.join(' OR ')})`);
+}
+/* ── 取数:整库快照,零 D1 读 ────────────────────────────────────────
+   2026-09-07 第二次打爆 D1 之后改成这样。上一版每次请求查五条 SQL,
+   其中列表那条因为排序里的相关子查询,单次读 392 万行(表只有 3,716 行)——
+   补索引 + 改 EXISTS 后降到一万一,353 倍。但即便一万一,
+   17 语种 × 62 页 × 若干筛选组合被爬一轮仍是几百万行,
+   而免费档一天只有五百万。货架页不该占这个额度的大头。
+
+   现在列表、筛选、计数、翻页全在内存里算:
+     · 零 D1 读 —— 数据层挂了货架照常显示;
+     · 3,716 行的线性筛选在 Workers 的 10 ms CPU 里绰绰有余;
+     · 快照已按「有实拍的在前」排好序,运行时只切片,不再排序。
+   代价:新包材入库后要跑 `python tools/pack-shelf-snapshot.py` 再发布。
+   这批数据是批量爬取整理的,本来就跟着发布走,不是逐条手改。 */
+
+const matKw: Record<string, string[]> = {
+  'PCR 再生料': ['PCR'], 'PCR resin': ['PCR'], 玻璃: ['玻璃'], Glass: ['玻璃'],
+  铝: ['铝'], Aluminium: ['铝'], PETG: ['PETG'], PET: ['PET'], PP: ['PP'],
+  PE: ['PE', 'HDPE'], 亚克力: ['亚克力', 'PMMA'], Acrylic: ['亚克力', 'PMMA'],
+  纸材: ['纸'], Paper: ['纸'], 竹木: ['竹', '木'],
+};
+const wantTypes = fType.length ? new Set(fType)
+  : fGrp.length ? new Set(Object.keys(PACK_TYPE_LABEL).filter((t) => fGrp.includes(packGroup(t))))
+  : null;
+
+const hit = (r: typeof PACK_SHELF[number]) => {
+  if (wantTypes && !wantTypes.has(r.type)) return false;
+  if (fUse.length && !fUse.includes(r.useType)) return false;
+  if (fFmt.length && !fFmt.some((v) => r.compatFormats.includes(v))) return false;
+  if (fMat.length) {
+    const m = r.material ?? '';
+    if (!fMat.some((f) => (matKw[f] ?? [f]).some((k) => m.includes(k)))) return false;
+  }
+  if (fCap.length) { const b = capBuckets(r.capacity); if (!fCap.some((v) => b.has(v))) return false; }
+  return true;
+};
+
+const matched = fGrp.length + fType.length + fMat.length + fFmt.length + fUse.length + fCap.length === 0
+  ? PACK_SHELF : PACK_SHELF.filter(hit);
+const total = matched.length;
+const pages = Math.max(1, Math.ceil(total / PAGE));
+/* 页码超出范围就夹到最后一页。手输跳页、旧链接、爬虫拼出来的 ?p=999
+   都会落到这里 —— 给一个空货架等于告诉人「没货」,那是假的。 */
+const cur = Math.min(page, pages);
+const rowsForCards = matched.slice((cur - 1) * PAGE, cur * PAGE);
+
+/* 筛选项的计数按「其余条件已生效」算 —— 点开材质那一栏看到的数字,
+   是「在当前类型下这种材质有几款」,不是全库有几款。
+   数字对不上点进去的结果,比不给数字更糟。 */
+const grpCount = new Map<string, number>();
+const typeCount = new Map<string, number>();
+const matCount = new Map<string, number>();
+const useCount = new Map<string, number>();
+const fmtCount = new Map<string, number>();
+const capCount = new Map<string, number>();
+for (const r of PACK_SHELF) {
+  const t = r.type;
+  const inType = !wantTypes || wantTypes.has(t);
+  const inFmt = !fFmt.length || fFmt.some((v) => r.compatFormats.includes(v));
+  const inMat = !fMat.length
+    || fMat.some((f) => (matKw[f] ?? [f]).some((k) => (r.material ?? '').includes(k)));
+  const inUse = !fUse.length || fUse.includes(r.useType);
+  const caps = capBuckets(r.capacity);
+  const inCap = !fCap.length || fCap.some((v) => caps.has(v));
+  if (inType && inFmt && inMat && inCap && r.useType) useCount.set(r.useType, (useCount.get(r.useType) ?? 0) + 1);
+  if (inFmt && inMat && inUse && inCap) {
+    typeCount.set(t, (typeCount.get(t) ?? 0) + 1);
+    const g = packGroup(t);
+    grpCount.set(g, (grpCount.get(g) ?? 0) + 1);
+  }
+  if (inType && inFmt && inUse && inCap) {
+    const fam = materialFamily(r.material, zh);
+    if (fam) matCount.set(fam, (matCount.get(fam) ?? 0) + 1);
+  }
+  if (inType && inMat && inUse && inCap) {
+    for (const v of String(r.compatFormats ?? '').split(',').map((x) => x.trim())) {
+      if (v && FMT_LABEL[v]) fmtCount.set(v, (fmtCount.get(v) ?? 0) + 1);
+    }
+  }
+  if (inType && inMat && inUse && inFmt) for (const b of caps) capCount.set(b, (capCount.get(b) ?? 0) + 1);
+}
+
+/* 2026-09-11 创始人:「目前的分类点击,经常无法选上」—— 根因:拼链接的三处都漏了「按用途」这一维(u),
+   点用途选项拼出来的地址跟当前页一模一样,等于没点。三处一起补上。 */
+const toggleHref = (key: string, cur: string[], v: string) => {
+  const next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v];
+  const p = new URLSearchParams();
+  for (const [k, arr] of [['u', fUse], ['g', fGrp], ['t', fType], ['a', fMat], ['f', fFmt], ['c', fCap]] as [string, string[]][]) {
+    const use = k === key ? next : arr;
+    if (use.length) p.set(k, use.join(','));
+  }
+  const q = p.toString();
+  return q ? `${path}?${q}` : path;
+};
+const pageHref = (n: number) => {
+  const p = new URLSearchParams();
+  for (const [k, arr] of [['u', fUse], ['g', fGrp], ['t', fType], ['a', fMat], ['f', fFmt], ['c', fCap]] as [string, string[]][]) {
+    if (arr.length) p.set(k, arr.join(','));
+  }
+  if (n > 1) p.set('p', String(n));
+  const q = p.toString();
+  return q ? `${path}?${q}` : path;
+};
+
+/* 跳页是 GET 表单,浏览器会丢掉 action 上的查询串 ——
+   当前筛选得靠隐藏域原样带过去,否则跳一页等于把筛选全清了。 */
+const jumpHidden = ([['u', fUse], ['g', fGrp], ['t', fType], ['a', fMat], ['f', fFmt], ['c', fCap]] as [string, string[]][])
+  .filter(([, arr]) => arr.length)
+  .map(([k, arr]) => ({ name: k, value: arr.join(',') }));
+
+/* 这一页已经不查库了,货架的数据全在快照里 —— 数据层挂了页面照样完整。
+   外壳(站点信息与导航)那几条小查询由 pageShell 自己兜底。 */
+
+const T = zh ? {
+  eyebrow: '包材库', filters: '筛选', clearAll: '清除全部', results: '款',
+  empty: '这些条件下没有包材,放宽一个再试。', shotPending: '实拍整理中',
+  use: '按用途', grp: '大类', type: '具体类型', mat: '材质', fmt: '适配剂型', cap: '容量', tree: '瓶型分类', all: '全部',
+  title: '包材库 —— 瓶型、泵头、软管,报编码就能对上款',
+  lede: `一款一条:类型、材质、容量都写在明处,图是实物白底照。
+         看中哪一款把编码发给我们,不用再描述「就那个圆圆的白瓶子」。`,
+  moq: '起订', days: '打样天', sample: '示例规格', ref: '参考价', design: '设计',
+  /* 单位是展示文案,跟页面语种走 —— 存进库里就等于把中文发到英文页上 */
+  priceUnit: '/ 只 · FOB 广州',
+  note: `尺寸、口径与起订量以实物打样与书面确认为准。标注的参考价用于判断量级,不是报价 ——
+         实际价格随数量、配色、工艺与批次变动。需要某一款的完整尺寸图与样件,发编码给我们。`,
+  prev: '上一页', next: '下一页', pageOf: '分页',
+  jumpPre: '到', jumpPost: '页', go: '确定',
+} : {
+  eyebrow: 'Packaging library', filters: 'Filters', clearAll: 'Clear all', results: 'items',
+  empty: 'Nothing matches these filters. Loosen one and try again.', shotPending: 'Photography pending',
+  use: 'By use', grp: 'Group', type: 'Type', mat: 'Material', fmt: 'Fits format', cap: 'Capacity', tree: 'Categories', all: 'All',
+  title: 'Packaging library — bottles, pumps and tubes, matched by code',
+  lede: `One row per item, with type, material and capacity stated, and a real product shot on white.
+         Send us the code instead of describing "the round white one".`,
+  moq: 'MOQ', days: 'Sampling', sample: 'Sample spec', ref: 'Indicative', design: 'Design',
+  priceUnit: '/ pc · FOB Guangzhou',
+  note: `Dimensions, neck sizes and MOQ are confirmed at sampling and in writing. Any price shown indicates order of
+         magnitude only and is not a quotation. Send us a code for full dimension drawings and physical samples.`,
+  prev: 'Previous', next: 'Next', pageOf: 'Pagination',
+  jumpPre: 'Go to page', jumpPost: '', go: 'Go',
+};
+
+const opt = (m: Map<string, number>, key: string, cur: string[], lab: (v: string) => string) =>
+  [...m.entries()].filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).slice(0, 14)
+    .map(([v, n]) => ({ label: lab(v), value: v, count: n, href: toggleHref(key, cur, v), on: cur.includes(v) }));
+
+/* ── 左栏分类树(创始人 2026-09-17:「还是要好像他们(参考站)那样在左侧去排列」)──
+   一级=瓶型(type),二级=材质大类;单选:点一级把 t 换成它并清掉 g,点二级再定 a。
+   用途 / 剂型 / 容量 这几维在链接里原样带着 —— 树是换根,不是清空。
+   二级只在当前一级下展开,数量沿用上面按「其余条件已生效」算出来的 matCount。 */
+const treeHref = (type?: string, mat?: string) => {
+  const p = new URLSearchParams();
+  for (const [k, arr] of [['u', fUse], ['f', fFmt], ['c', fCap]] as [string, string[]][]) if (arr.length) p.set(k, arr.join(','));
+  if (type) p.set('t', type);
+  if (mat) p.set('a', mat);
+  const q = p.toString();
+  return q ? `${path}?${q}` : path;
+};
+const treeRootOn = fType.length === 0 && fGrp.length === 0;
+const tree = [
+  { label: T.all, count: treeRootOn ? total : undefined, href: treeHref(), on: treeRootOn },
+  ...[...typeCount.entries()].filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])
+    .map(([t, n]) => {
+      const on = fType.length === 1 && fType[0] === t;
+      return {
+        label: label(PACK_TYPE_LABEL, t, zh), count: n, href: treeHref(t), on,
+        children: on ? [...matCount.entries()].filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1])
+          .map(([m, c]) => ({ label: m, count: c, href: treeHref(t, fMat.length === 1 && fMat[0] === m ? undefined : m),
+                              on: fMat.includes(m) })) : undefined,
+      };
+    }),
+];
+
+const facets = [
+  { title: T.use, options: opt(useCount, 'u', fUse, (v) => label(PACK_USE_LABEL, v, zh)) },
+  { title: T.grp, options: opt(grpCount, 'g', fGrp, (v) => label(PACK_GROUP, v, zh)) },
+  /* 「具体类型」组已由分类树承担,不再重复摆一遍 */
+  { title: T.cap, options: [...capCount.entries()].filter(([, n]) => n > 0)
+      .sort((a, b) => CAP_BUCKETS.findIndex(([k]) => k === a[0]) - CAP_BUCKETS.findIndex(([k]) => k === b[0]))
+      .map(([v, n]) => ({ label: `${v} ml/g`, value: v, count: n, href: toggleHref('c', fCap, v), on: fCap.includes(v) })) },
+  { title: T.mat, options: opt(matCount, 'a', fMat, (v) => v) },
+  { title: T.fmt, options: opt(fmtCount, 'f', fFmt, (v) => label(FMT_LABEL, v, zh)) },
+].filter((f) => f.options.length > 1);
+
+const active = [
+  ...fUse.map((v) => ({ label: label(PACK_USE_LABEL, v, zh), href: toggleHref('u', fUse, v) })),
+  ...fGrp.map((v) => ({ label: label(PACK_GROUP, v, zh), href: toggleHref('g', fGrp, v) })),
+  ...fType.map((v) => ({ label: label(PACK_TYPE_LABEL, v, zh), href: toggleHref('t', fType, v) })),
+  ...fMat.map((v) => ({ label: v, href: toggleHref('a', fMat, v) })),
+  ...fFmt.map((v) => ({ label: label(FMT_LABEL, v, zh), href: toggleHref('f', fFmt, v) })),
+  ...fCap.map((v) => ({ label: `${v} ml/g`, href: toggleHref('c', fCap, v) })),
+];
+
+/* 取数失败和「库里真的没有」必须分得开:一个条件都没勾却一件都取不到,
+   而缓存里明明记着几千款 —— 那是取数出了问题,不是没货。
+   昨夜 D1 读额度耗尽时页面照常返回 200 却空空如也,我到第二天早上才发现。
+   这一段就是为了让下一次第一眼就能看出来。 */
+
+const shelfItems = rowsForCards.map((r) => ({
+  code: r.code,
+  href: `/${lang}/packaging/${r.code}/`,
+  name: packName(r, zh),
+  category: label(PACK_TYPE_LABEL, r.type, zh),
+  image: r.hasImg ? `/pack/${r.code}` : undefined,
+  imageAlt: `${r.code} ${label(PACK_TYPE_LABEL, r.type, zh)}`,
+  chips: [dualCapacity(r.capacity), materialFamily(r.material, zh)].filter(Boolean),
+  meta: [
+    /* 参考价是区间字符串,币种已经写在里面(例如「$0.20-0.32」)——
+       不要再补 ¥,也不要 Number():两者一起会渲染成「¥NaN」。 */
+    r.priceRef ? `${T.ref} ${r.priceRef} ${T.priceUnit}` : '',
+    TERMS_CONFIRMED && r.moq ? `${T.moq} ${Number(r.moq).toLocaleString()}` : '',   // 工厂口径未确认前不显示(lib/terms.ts)
+    TERMS_CONFIRMED && r.leadDays ? `${T.days} ${r.leadDays}` : '',
+  ].filter(Boolean).join(' · '),
+  badge: r.status === 'sample' ? T.sample : undefined,
+  /* 创始人:「选1个瓶子就可以有功能键,一键生成包装设计」——
+     货架卡片上也放一个小入口,不用先点进详情页才能用。 */
+  designHref: packDesignHref(lang, r, zh),
+  designLabel: T.design,
+  /* 创始人 2026-09-11 19:4x:「点图片跳到设计」—— 图直达一键设计并带上这支瓶子;名字仍进详情 */
+  imageHref: packDesignHref(lang, r, zh),
+}));
+
+/* ItemList —— 2026-09-07 外部诊断:这一页只有 Organization,
+   AI 读不出「这是一个可列举的产品集合」,只当成一段普通文案。
+   选品页有 ItemList 而包材库没有,恰恰是被检索概率更高的那个缺着。
+   只列当前页的 60 条(带编码与图),不把 4,518 条全塞进去 ——
+   结构化数据是给机器读的索引,不是数据库转储。 */
+const itemListLd = shelfItems.length ? {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: T.title,
+  numberOfItems: total,
+  itemListElement: shelfItems.slice(0, 60).map((it, i) => ({
+    '@type': 'ListItem', position: (cur - 1) * PAGE + i + 1,
+    item: {
+      '@type': 'Product', name: it.name, sku: it.code,
+      url: `${origin}${it.href}`,
+      ...(it.image ? { image: `${origin}${it.image}` } : {}),
+      ...(it.category ? { category: it.category } : {}),
+    },
+  })),
+} : null;
+
+const indexable = shell.site?.is_live === 1 && active.length === 0 && cur === 1;
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'} title={T.title} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={indexable} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <ShelfPage
+      eyebrow={T.eyebrow} title={T.title} lede={T.lede}
+      facets={facets} tree={tree} treeTitle={T.tree} items={shelfItems} total={total}
+      tabs={buildChain(lang, fGrp.length === 1 && fGrp[0] === 'carton' ? 'carton' : 'packaging')}
+      pager={pages <= 1 ? undefined : {
+        page: cur, pages, href: pageHref, action: path, hidden: jumpHidden,
+        labels: { summary: zh ? `共 ${pages} 页` : `${pages} pages`,
+                  jumpPre: T.jumpPre, jumpPost: T.jumpPost, go: T.go,
+                  prev: T.prev, next: T.next, nav: T.pageOf } }}
+      active={active} clearHref={path} note={T.note}
+      labels={{ filters: T.filters, clearAll: T.clearAll, empty: T.empty,
+                results: T.results, shotPending: T.shotPending }} />
+  </main>
+  {itemListLd && <script type="application/ld+json" set:html={JSON.stringify(itemListLd)} is:inline />}
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+
+  <style>
+  </style>
+</BaseLayout>

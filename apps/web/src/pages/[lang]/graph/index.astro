@@ -1,0 +1,658 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 化妆品知识图谱 —— 4,135 个实体、1,914 条超边,可搜、可顺着关系走。
+ *
+ * 由来(2026-09-10,创始人:「hyper-extract 更好的知识图谱,你看下怎么样重构系统。
+ * 化妆品很多方面的知识,你需要去网上建立一套完整的知识库了」)。
+ *
+ * **为什么是超边,不是普通的两两关系:**
+ * 配方知识天生是多元的。「甘草提取物 + 阳离子调理剂 + 清洁体系 → 泡沫质量下降、粘度掉」
+ * 是一条五方参与的事实;拆成两两边,「在什么体系下」这个前提就丢了,剩下的两两关系单看全是错的。
+ * 所以这里的边带 participants 数组:中位 4 个参与者,81% 在 3 个以上。
+ * 这也是这一页最有用的地方 —— 客户点开一个原料,看到的不是「它和谁有关」,
+ * 而是「它在哪几种组合里会出什么事」。
+ *
+ * **诚实标注(不许省):**
+ * 图谱是模型从**我们自己的语料**(配方库、原料档案、合规索引、产品册)里抽出来的,
+ * 属于机器推演,不是原文直证,更不是法规原文。页面上必须写明这一点并给出「以官方文本为准」,
+ * 否则客户会把机器抽的关系当成我们背书的结论 —— 那是要出事的。
+ *
+ * 刻意不做的事:
+ *   - 不给 4,135 个实体各开一个静态详情页(薄页灌水),用 `?n=` 在同一页展开。
+ *   - 不做力导向图可视化。手机上没法用,而客户真正要的是「和什么有关、有什么禁忌」这几行字。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { searchHint } from '../../../lib/searchhint';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+/* 检索索引只有中英两套字段;其他语种的访客要被明确告知,别让他搜空了以为我们没有 */
+const sHint = searchHint(lang);
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const url = new URL(Astro.url);
+const q = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
+const nid = Math.max(0, Number(url.searchParams.get('n') ?? 0) || 0);
+const kind = (url.searchParams.get('t') ?? '').trim().slice(0, 20);
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/graph/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+
+let node: any = null;
+let edges: any[] = [];
+let hits: any[] = [];
+let gNodes: any[] = [];
+let gEdges: any[] = [];
+let types: any[] = [];
+let total = 0;
+
+if (db) {
+  try {
+    if (nid) {
+      node = await db.prepare('SELECT id, name, type, description, origin FROM kg_nodes WHERE id = ?').bind(nid).first<any>();
+      if (node) {
+        /* 一个实体参与的全部超边,连同同一条边上的其他参与者。
+           分三步查而不是写相关子查询 —— 相关子查询在这个库上把 3,716 行读成过 392 万行。 */
+        const mine = ((await db.prepare(
+          'SELECT edge_id FROM kg_edge_nodes WHERE node_id = ? LIMIT 120').bind(nid).all<any>()).results ?? []);
+        const ids = (mine as any[]).map((r) => Number(r.edge_id)).filter(Boolean);
+        if (ids.length) {
+          const ph = ids.map(() => '?').join(',');
+          const es = ((await db.prepare(
+            `SELECT id, name, type, description, arity, origin FROM kg_edges WHERE id IN (${ph}) ORDER BY origin, arity DESC, id`)
+            .bind(...ids).all<any>()).results ?? []);
+          const ps = ((await db.prepare(
+            `SELECT en.edge_id AS eid, n.id AS nid, n.name AS name, n.type AS type
+               FROM kg_edge_nodes en JOIN kg_nodes n ON n.id = en.node_id
+              WHERE en.edge_id IN (${ph})`).bind(...ids).all<any>()).results ?? []);
+          const byEdge = new Map<number, any[]>();
+          for (const p of ps as any[]) {
+            const k = Number(p.eid);
+            if (!byEdge.has(k)) byEdge.set(k, []);
+            byEdge.get(k)!.push(p);
+          }
+          edges = (es as any[]).map((e) => ({ ...e, parts: byEdge.get(Number(e.id)) ?? [] }));
+        }
+      }
+    } else if (q) {
+      hits = ((await db.prepare(
+        'SELECT id, name, type, description, origin FROM kg_nodes WHERE name LIKE ? ORDER BY origin, LENGTH(name), id LIMIT 60')
+        .bind(`%${q}%`).all<any>()).results ?? []);
+    } else {
+      types = ((await db.prepare(
+        'SELECT type, COUNT(*) n FROM kg_nodes GROUP BY type ORDER BY n DESC LIMIT 14').all<any>()).results ?? []);
+      hits = kind
+        ? ((await db.prepare(
+            'SELECT id, name, type, description, origin FROM kg_nodes WHERE type = ? ORDER BY id LIMIT 60')
+            .bind(kind).all<any>()).results ?? [])
+        : ((await db.prepare(
+            "SELECT id, name, type, description, origin FROM kg_nodes WHERE origin IN ('classic','sourced') ORDER BY origin, id LIMIT 60").all<any>()).results ?? []);
+    }
+    /* ── 可视化用的子图 ──────────────────────────────────────────────
+       创始人 2026-09-10 09:2x:「你这不是应该也有真的知识图谱 OB 那样的展现吗,
+       你现在是纯文字啊」。之前刻意没做力导向图,理由是手机上没法用 —— 他否了,那就做。
+
+       **超图怎么画:** 一条超边有 3–29 个参与者,画不成一根线。
+       标准做法是二部展开:超边本身也变成一个点(下面叫 hub),
+       它和每个参与者连一根线。于是一条 5 方超边在图上就是一颗五角星,
+       「这五个是一件事」这个信息还在,不会退化成 10 条两两边。
+
+       **为什么要限量:** 全图 4,474 点 / 1,974 边,一次性画出来在手机上就是一团毛球,
+       既看不出结构也点不中。所以按当前视角只取一小片:
+       实体页取它的 1 跳邻域,类型页取该类型,首页取古方 + 产区那两批(结构最漂亮)。 */
+    let edgeIds: number[] = [];
+    if (nid && edges.length) {
+      edgeIds = edges.map((e: any) => Number(e.id)).slice(0, 40);
+    } else {
+      let seed: number[] = [];
+      if (q || kind) seed = (hits as any[]).map((h) => Number(h.id)).slice(0, 40);
+      if (seed.length) {
+        const ph = seed.map(() => '?').join(',');
+        edgeIds = (((await db.prepare(
+          `SELECT DISTINCT edge_id AS eid FROM kg_edge_nodes WHERE node_id IN (${ph}) LIMIT 70`)
+          .bind(...seed).all<any>()).results ?? []) as any[]).map((r) => Number(r.eid));
+      } else {
+        edgeIds = (((await db.prepare(
+          "SELECT id FROM kg_edges WHERE origin IN ('classic','sourced') ORDER BY origin, arity DESC LIMIT 70")
+          .all<any>()).results ?? []) as any[]).map((r) => Number(r.id));
+      }
+    }
+    if (edgeIds.length) {
+      const ph2 = edgeIds.map(() => '?').join(',');
+      const geRes = await db.prepare(
+        `SELECT id, name, type, origin, arity FROM kg_edges WHERE id IN (${ph2})`)
+        .bind(...edgeIds).all<any>();
+      const ge = (geRes.results ?? []) as any[];
+      const gpRes = await db.prepare(
+        `SELECT en.edge_id AS eid, n.id AS nid, n.name AS name, n.type AS type, n.origin AS origin
+           FROM kg_edge_nodes en JOIN kg_nodes n ON n.id = en.node_id
+          WHERE en.edge_id IN (${ph2})`).bind(...edgeIds).all<any>();
+      const gp = (gpRes.results ?? []) as any[];
+      const seen = new Map<number, any>();
+      const byE = new Map<number, number[]>();
+      for (const r of gp) {
+        const k = Number(r.eid);
+        if (!byE.has(k)) byE.set(k, []);
+        // 点太多就停 —— 手机上超过 300 个点就成毛球了
+        if (seen.size < 300 || seen.has(Number(r.nid))) {
+          byE.get(k)!.push(Number(r.nid));
+          if (!seen.has(Number(r.nid))) {
+            seen.set(Number(r.nid), { i: Number(r.nid), n: String(r.name), t: String(r.type || ''), o: String(r.origin || 'machine') });
+          }
+        }
+      }
+      gNodes = [...seen.values()];
+      gEdges = ge.map((e) => ({ i: Number(e.id), n: String(e.name), t: String(e.type || ''), o: String(e.origin || 'machine'), p: byE.get(Number(e.id)) ?? [] }))
+                 .filter((e) => e.p.length >= 2);
+    }
+    const c = await db.prepare('SELECT COUNT(*) n FROM kg_nodes').first<any>();
+    total = Number(c?.n ?? 0);
+  } catch { /* 图谱表还没建好时不该把整页拖垮 */ }
+}
+
+const T = zh ? {
+  eyebrow: '知识图谱',
+  title: '化妆品知识图谱',
+  lede: `${total.toLocaleString()} 个实体,按「多方参与」组织的关系网 —— 点开一个原料或工艺,看到的不是「它和谁有关」,而是「它在哪几种组合里会出什么事」。`,
+  note: '图谱有两种来源,页面上分开标注:标「古籍记载」的来自公有领域医籍,只列药味不列剂量,组成以通行本为准;标「机器抽取」的由模型从帛卉自有语料(配方库、原料档案、合规索引、产品册)自动抽取,属机器推演,不是原文直证。两者都不是功效宣称,也不是法规原文 —— 任何法规与安全结论以官方文本和第三方检测报告为准。',
+  ph: '搜实体:原料名、工艺、法规、市场…',
+  search: '搜索', clear: '清空', back: '返回图谱',
+  found: (n: number) => `列出 ${n} 个实体`,
+  empty: '没找到。试试更短的词,比如「甘草」「乳化」「通报」。',
+  rel: '参与的关系', none: '这个实体暂时没有抽到关系。',
+  arity: (n: number) => `${n} 方参与`,
+  ask: '想确认某条关系在你的目标市场怎么落地?把配方方向发给我们。',
+  types: '按类型浏览', all: '全部', relFallback: '关系', inquiry: '发起询盘',
+  oClassic: '古籍记载', oMachine: '机器抽取', oSourced: '站内档案',
+  vizAlt: '知识图谱关系图:圆点是实体,方点是一条超边,连线表示参与',
+  vizHub: '一条超边', vizFit: '复位',
+  vizTip: '点圆点进入该实体;拖动平移,滚轮或 ± 缩放。超边是方点 —— 一条边连着它的全部参与者。',
+  classicHint: '默认先列古方、药材与原料主产区;机器抽取的部分请用上面的搜索框或类型标签进入。',
+} : {
+  eyebrow: 'Knowledge graph',
+  title: 'Cosmetics knowledge graph',
+  lede: `${total.toLocaleString()} entities linked by multi-party relations — open an ingredient or a process and you see what happens in which combination, not just what it relates to.`,
+  note: 'Two sources, labelled separately on every card. Entries marked "From classical texts" come from public-domain Chinese medical classics; herbs are listed without dosages and compositions follow the common editions. Entries marked "Machine-extracted" are derived by a model from BIOSPHERE own-corpus material (formulation library, ingredient dossiers, compliance index, product catalogue). Neither is an efficacy claim or regulatory text — regulatory and safety conclusions follow the official texts and third-party test reports.',
+  ph: 'Search entities: ingredient, process, regulation, market…',
+  search: 'Search', clear: 'Clear', back: 'Back to graph',
+  found: (n: number) => `${n} entities listed`,
+  empty: 'No match. Try a shorter term.',
+  rel: 'Relations it takes part in', none: 'No relation extracted for this entity yet.',
+  arity: (n: number) => `${n} participants`,
+  ask: 'Want to know how one of these relations plays out in your target market? Send us the formulation direction.',
+  types: 'Browse by type', all: 'All', relFallback: 'Relation', inquiry: 'Send an inquiry',
+  oClassic: 'From classical texts', oMachine: 'Machine-extracted', oSourced: 'Site dossier',
+  vizAlt: 'Knowledge graph: circles are entities, squares are hyperedges, lines mean participation',
+  vizHub: 'A hyperedge', vizFit: 'Reset',
+  vizTip: 'Tap a circle to open that entity. Drag to pan, wheel or +/- to zoom. A square is one hyperedge joined to all of its participants.',
+  classicHint: 'Classical formulas, herbs and ingredient source regions are listed first. Use the search box or a type tag to reach the machine-extracted part.',
+};
+
+const ld = [
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}/${lang}/` },
+      { '@type': 'ListItem', position: 2, name: T.title, item: origin + path },
+    ],
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'Dataset',
+    name: T.title, description: T.note, url: origin + path,
+    creator: { '@type': 'Organization', name: shell.site?.name ?? 'BIOSPHERE' },
+  },
+];
+/* JSON 直接内联进页面,省一次请求。'<' 要转义成 unicode 转义序列,
+   否则实体名里若出现 '</script' 就把这段脚本提前截断 —— 这类注入很难查。 */
+const gJson = JSON.stringify({ n: gNodes, e: gEdges })
+  .split(String.fromCharCode(60)).join(String.fromCharCode(92) + 'u003c');
+const indexable = shell.site?.is_live === 1 && !q && !nid && !kind;
+const href = (p: Record<string, string>) => path + '?' + new URLSearchParams(p).toString();
+/* 三种来源必须一眼分得开:古籍记载 / 站内档案 / 机器抽取。
+   混在一起显示,客户会把模型抽的关系当成我们背书的结论。 */
+const srcLabel = (o: string) => (o === 'classic' ? T.oClassic : o === 'sourced' ? T.oSourced : T.oMachine);
+const srcClass = (o: string) => (o === 'machine' ? 'mc' : 'cl');
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={node ? `${node.name} · ${T.title}` : T.title} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={indexable} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{node ? node.name : T.title}</h1>
+      {node
+        ? <p class="lede">{node.type && <span class="tag">{node.type}</span>}<span class:list={['tag', 'src', srcClass(node.origin)]}>{srcLabel(node.origin)}</span>{node.description}</p>
+        : <p class="lede">{T.lede}</p>}
+      <form class="search" method="get" action={path}>
+        <input type="search" name="q" value={q} placeholder={T.ph} aria-label={T.ph} maxlength="60" />
+        <button type="submit">{T.search}</button>
+        {(q || nid || kind) && <a class="clear" href={path}>{node ? T.back : T.clear}</a>}
+      </form>
+      {sHint && <p class="shint">{sHint}</p>}
+    <p class="note">{T.note}</p>
+    </header>
+
+    {gNodes.length > 1 && (
+      <figure class="viz" id="kgwrap">
+        <canvas id="kgc" role="img" aria-label={T.vizAlt}></canvas>
+        <div class="vizbar">
+          <button type="button" data-kg="out" aria-label="缩小">−</button>
+          <button type="button" data-kg="in" aria-label="放大">+</button>
+          <button type="button" data-kg="fit">{T.vizFit}</button>
+        </div>
+        <figcaption class="vizcap">
+          <span class="lg"><i class="d cl"></i>{T.oClassic}</span>
+          <span class="lg"><i class="d sc"></i>{T.oSourced}</span>
+          <span class="lg"><i class="d mc"></i>{T.oMachine}</span>
+          <span class="lg"><i class="d hb"></i>{T.vizHub}</span>
+          <span class="lgt">{T.vizTip}</span>
+        </figcaption>
+        <script id="kgd" type="application/json" set:html={gJson} is:inline />
+      </figure>
+    )}
+
+    {node ? (
+      <section class="body">
+        <h2>{T.rel}</h2>
+        {edges.length === 0 ? <p class="empty">{T.none}</p> : (
+          <ol class="edges">
+            {edges.map((e) => (
+              <li class="edge">
+                <p class="et"><span class="tag">{e.type || T.relFallback}</span><span class:list={['tag', 'src', srcClass(e.origin)]}>{srcLabel(e.origin)}</span><span class="ar">{T.arity(e.arity)}</span></p>
+                <h3>{e.name}</h3>
+                {e.description && <p class="ed">{e.description}</p>}
+                <ul class="ps">
+                  {e.parts.filter((p: any) => Number(p.nid) !== nid).map((p: any) => (
+                    <li><a href={href({ n: String(p.nid) })}>{p.name}</a></li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+    ) : (
+      <section class="body">
+        {!q && types.length > 0 && (
+          <nav class="types" aria-label={T.types}>
+            <a class:list={['chip', { on: !kind }]} href={path}>{T.all}</a>
+            {types.map((t) => (
+              <a class:list={['chip', { on: kind === t.type }]} href={href({ t: t.type })}>{t.type}（{t.n}）</a>
+            ))}
+          </nav>
+        )}
+        <p class="count">{T.found(hits.length)}{!q && !kind && <span class="hint"> · {T.classicHint}</span>}</p>
+        {hits.length === 0 ? <p class="empty">{T.empty}</p> : (
+          <ul class="nodes">
+            {hits.map((n) => (
+              <li>
+                <a href={href({ n: String(n.id) })}>
+                  <span class="nn">{n.name}</span>
+                  <span class="tags">{n.type && <span class="tag">{n.type}</span>}<span class:list={['tag', 'src', srcClass(n.origin)]}>{srcLabel(n.origin)}</span></span>
+                  {n.description && <span class="nd">{n.description}</span>}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    )}
+
+    <p class="ask">{T.ask} <a href={`/${lang}/contact/`}>{T.inquiry}</a></p>
+  </main>
+  <script is:inline>
+/* 知识图谱力导向渲染 —— 自己写,不引第三方库。
+   d3-force + d3-selection 压完仍有 ~90KB,而这里要的只是「斥力 + 弹簧 + 向心」三条力
+   和一个 canvas 画笔,一百来行就够。多一个库就多一份要跟着升级的东西。
+
+   超图怎么画:一条超边有 3–29 个参与者,画不成一根线。二部展开 ——
+   超边自己也是一个点(方块 hub),它和每个参与者连一根线。
+   一条 5 方超边于是成为一颗五角星,「这五个是一件事」这个信息保住了。 */
+(function () {
+  var box = document.getElementById('kgwrap');
+  var cv = document.getElementById('kgc');
+  var src = document.getElementById('kgd');
+  if (!box || !cv || !src) return;
+  var raw;
+  try { raw = JSON.parse(src.textContent || '{}'); } catch (e) { return; }
+  var ents = raw.n || [], hyper = raw.e || [];
+  if (ents.length < 2) return;
+
+  var ctx = cv.getContext('2d');
+  var COL = { classic: '#b0522c', sourced: '#2f6b4f', machine: '#5f6f8c', hub: '#9aa3b2' };
+  var css = getComputedStyle(document.documentElement);
+  var ink = (css.getPropertyValue('--ck-ink') || '#1a1a1a').trim() || '#1a1a1a';
+
+  /* ── 建点建边 ─────────────────────────────────────────── */
+  var nodes = [], byId = {}, links = [];
+  /* 循环变量一律 var 在各自的 for 里声明。
+     2026-09-10 09:3x 栽过一次:i/j 是 IIFE 作用域的共享变量,而 tick() 内部也在用 i。
+     预热循环 `for (i = 0; i < 420; i++) tick();` 每轮都被 tick() 把 i 改回 nodes.length,
+     420 > 189 时永远退不出去,页面主线程直接卡死(截图与 JS 注入全部超时)。
+     更早写 120 时"能跑",是因为 189 > 120 循环只执行了一次 —— 布局没跑开,点挤成一条斜带。
+     同一个 bug 的两种症状。 */
+  var e, a, b;
+  for (var i = 0; i < ents.length; i++) {
+    a = { id: ents[i].i, kind: 'e', name: ents[i].n, type: ents[i].t, origin: ents[i].o, deg: 0 };
+    nodes.push(a); byId['e' + a.id] = a;
+  }
+  for (var i = 0; i < hyper.length; i++) {
+    e = hyper[i];
+    b = { id: e.i, kind: 'h', name: e.n, type: e.t, origin: e.o, deg: 0 };
+    nodes.push(b); byId['h' + b.id] = b;
+    for (var j = 0; j < e.p.length; j++) {
+      a = byId['e' + e.p[j]];
+      if (!a) continue;
+      links.push({ s: b, t: a });
+      a.deg++; b.deg++;
+    }
+  }
+  if (!links.length) return;
+
+  /* 初始位置摆成一个圈:全部堆在原点的话前几十帧只在解重叠,看着像卡死 */
+  var R0 = 260;
+  for (var i = 0; i < nodes.length; i++) {
+    var ang = (i / nodes.length) * Math.PI * 2;
+    nodes[i].x = Math.cos(ang) * R0 * (nodes[i].kind === 'h' ? 0.6 : 1);
+    nodes[i].y = Math.sin(ang) * R0 * (nodes[i].kind === 'h' ? 0.6 : 1);
+    nodes[i].vx = 0; nodes[i].vy = 0;
+  }
+
+  var W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var tx = 0, ty = 0, scale = 1;
+  var alpha = 1, decay = 0.982, running = false;
+
+  function resize() {
+    var w = box.clientWidth || 320;
+    var h = Math.max(320, Math.min(560, Math.round(w * 0.62)));
+    W = w; H = h;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  function radius(n) {
+    if (n.kind === 'h') return 3.5 + Math.min(3, n.deg * 0.28);
+    return 4 + Math.min(7, n.deg * 0.9);
+  }
+
+  function tick() {
+    var k = alpha;
+    /* 斥力:O(n^2)。点上限 300 左右,一帧 9 万次,手机也扛得住;
+       真要更大规模再上四叉树,现在上就是过度设计。 */
+    for (var i = 0; i < nodes.length; i++) {
+      var p = nodes[i];
+      for (var j = i + 1; j < nodes.length; j++) {
+        var qn = nodes[j];
+        var dx = qn.x - p.x, dy = qn.y - p.y;
+        var d2 = dx * dx + dy * dy;
+        if (d2 < 0.01) { dx = (Math.random() - 0.5); dy = (Math.random() - 0.5); d2 = 0.01; }
+        if (d2 > 360000) continue;
+        var f = (p.kind === 'h' || qn.kind === 'h' ? 1400 : 3200) / d2 * k;
+        var d = Math.sqrt(d2);
+        var ux = dx / d, uy = dy / d;
+        p.vx -= ux * f; p.vy -= uy * f;
+        qn.vx += ux * f; qn.vy += uy * f;
+      }
+    }
+    /* 弹簧:hub 与参与者之间 */
+    for (var i = 0; i < links.length; i++) {
+      var L = links[i];
+      var dx2 = L.t.x - L.s.x, dy2 = L.t.y - L.s.y;
+      var dd = Math.sqrt(dx2 * dx2 + dy2 * dy2) || 0.01;
+      var want = 68;
+      var ff = (dd - want) / dd * 0.06 * k;
+      L.s.vx += dx2 * ff; L.s.vy += dy2 * ff;
+      L.t.vx -= dx2 * ff; L.t.vy -= dy2 * ff;
+    }
+    /* 向心 + 阻尼 */
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      n.vx -= n.x * 0.0009 * k; n.vy -= n.y * 0.0009 * k;
+      n.vx *= 0.9; n.vy *= 0.9;
+      n.x += n.vx; n.y += n.vy;
+    }
+    alpha *= decay;
+  }
+
+  function fit() {
+    var minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9;
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].x < minx) minx = nodes[i].x;
+      if (nodes[i].y < miny) miny = nodes[i].y;
+      if (nodes[i].x > maxx) maxx = nodes[i].x;
+      if (nodes[i].y > maxy) maxy = nodes[i].y;
+    }
+    var w = Math.max(1, maxx - minx), h = Math.max(1, maxy - miny);
+    scale = Math.min(W / (w + 90), H / (h + 90));
+    scale = Math.max(0.18, Math.min(2.4, scale));
+    tx = W / 2 - ((minx + maxx) / 2) * scale;
+    ty = H / 2 - ((miny + maxy) / 2) * scale;
+  }
+
+  function short(s) { return s.length > 9 ? s.slice(0, 8) + '…' : s; }
+
+  function draw() {
+    if (!W) return;
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    ctx.translate(tx, ty); ctx.scale(scale, scale);
+    ctx.lineWidth = 1 / scale;
+    ctx.strokeStyle = 'rgba(128,132,140,0.34)';
+    ctx.beginPath();
+    for (var i = 0; i < links.length; i++) {
+      ctx.moveTo(links[i].s.x, links[i].s.y);
+      ctx.lineTo(links[i].t.x, links[i].t.y);
+    }
+    ctx.stroke();
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i], r = radius(n);
+      if (n.kind === 'h') {
+        ctx.fillStyle = COL.hub;
+        ctx.fillRect(n.x - r, n.y - r, r * 2, r * 2);
+      } else {
+        ctx.fillStyle = COL[n.origin] || COL.machine;
+        ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    /* 标签只给「看得清且值得看」的点:缩得太小时全画上去就是一团糊 */
+    var showAll = scale > 0.85;
+    ctx.fillStyle = ink;
+    ctx.font = (11 / scale).toFixed(2) + 'px system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (var i = 0; i < nodes.length; i++) {
+      var m = nodes[i];
+      if (m.kind === 'h') continue;
+      if (!showAll && m.deg < 4) continue;
+      ctx.fillText(short(m.name), m.x, m.y + radius(m) + 2 / scale);
+    }
+    ctx.restore();
+  }
+
+  function loop() {
+    tick(); draw();
+    if (alpha > 0.012) { requestAnimationFrame(loop); } else { running = false; }
+  }
+  function kick(a) {
+    alpha = a || 0.7;
+    if (!running) { running = true; requestAnimationFrame(loop); }
+  }
+
+  /* ── 交互:拖动平移、滚轮缩放、点实体进入 ─────────────── */
+  var down = false, sx = 0, sy = 0, moved = 0, px = 0, py = 0;
+  function pt(ev) {
+    var r = cv.getBoundingClientRect();
+    var c = ev.touches && ev.touches[0] ? ev.touches[0] : ev;
+    return { x: c.clientX - r.left, y: c.clientY - r.top };
+  }
+  function start(ev) { var p = pt(ev); down = true; moved = 0; sx = p.x; sy = p.y; px = p.x; py = p.y; }
+  function move(ev) {
+    if (!down) return;
+    var p = pt(ev);
+    tx += p.x - px; ty += p.y - py;
+    moved += Math.abs(p.x - px) + Math.abs(p.y - py);
+    px = p.x; py = p.y;
+    draw();
+    if (ev.cancelable) ev.preventDefault();
+  }
+  function end(ev) {
+    if (!down) return;
+    down = false;
+    if (moved > 8) return;
+    var p = { x: sx, y: sy };
+    var wx = (p.x - tx) / scale, wy = (p.y - ty) / scale;
+    var best = null, bd = 1e9;
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (n.kind !== 'e') continue;
+      var dx = n.x - wx, dy = n.y - wy, d = dx * dx + dy * dy;
+      var rr = radius(n) + 10 / scale;
+      if (d < rr * rr && d < bd) { bd = d; best = n; }
+    }
+    if (best) {
+      var u = new URL(window.location.href);
+      u.searchParams.delete('q'); u.searchParams.delete('t'); u.searchParams.delete('p');
+      u.searchParams.set('n', String(best.id));
+      window.location.href = u.toString();
+    }
+  }
+  cv.addEventListener('mousedown', start);
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  cv.addEventListener('touchstart', start, { passive: true });
+  cv.addEventListener('touchmove', move, { passive: false });
+  cv.addEventListener('touchend', end);
+  cv.addEventListener('wheel', function (ev) {
+    ev.preventDefault();
+    var p = pt(ev);
+    var f = ev.deltaY < 0 ? 1.12 : 0.89;
+    var ns = Math.max(0.15, Math.min(3, scale * f));
+    tx = p.x - (p.x - tx) * (ns / scale);
+    ty = p.y - (p.y - ty) * (ns / scale);
+    scale = ns; draw();
+  }, { passive: false });
+  box.addEventListener('click', function (ev) {
+    var t = ev.target.getAttribute && ev.target.getAttribute('data-kg');
+    if (!t) return;
+    if (t === 'fit') { fit(); draw(); return; }
+    var f = t === 'in' ? 1.25 : 0.8;
+    var ns = Math.max(0.15, Math.min(3, scale * f));
+    tx = W / 2 - (W / 2 - tx) * (ns / scale);
+    ty = H / 2 - (H / 2 - ty) * (ns / scale);
+    scale = ns; draw();
+  });
+  window.addEventListener('resize', function () { resize(); fit(); draw(); });
+
+  /* 先跑一批不画的迭代把布局甩开,再入场 —— 免得用户看着点从一个圈慢慢炸开 */
+  /* 先在后台把布局跑开再画第一帧:上一版只跑 120 步就入场,
+     点还挤成一条斜带,看着像坏了。预热期把 alpha 按住不衰减,力才推得动。 */
+  resize();
+  var keep = alpha;
+  for (var warm = 0; warm < 420; warm++) { alpha = 1; tick(); }
+  alpha = keep;
+  fit();
+  draw();
+  if (!window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches) kick(0.45);
+})();
+
+  </script>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  .shint { margin: .5rem 0 0; font-size: .875rem; line-height: 1.6; opacity: .75;
+           border-left: 2px solid currentColor; padding-left: .625rem; }
+  /* 关系图 —— 手机上高度按宽度算,不写死;canvas 自己处理 devicePixelRatio */
+  .viz { margin: 0 0 1.5rem; position: relative; border: 1px solid var(--ck-line, rgba(0,0,0,.12));
+         border-radius: 14px; overflow: hidden; background: var(--ck-paper, rgba(0,0,0,.015)); }
+  .viz canvas { display: block; width: 100%; touch-action: none; cursor: grab; }
+  .viz canvas:active { cursor: grabbing; }
+  .vizbar { position: absolute; top: .625rem; right: .625rem; display: flex; gap: .375rem; }
+  .vizbar button { min-width: 44px; min-height: 44px; font-size: 1rem; line-height: 1;
+                   border-radius: 10px; cursor: pointer; color: inherit;
+                   border: 1px solid var(--ck-line, rgba(0,0,0,.18));
+                   background: var(--ck-bg, rgba(255,255,255,.86)); }
+  .vizcap { display: flex; flex-wrap: wrap; gap: .5rem .875rem; align-items: center;
+            padding: .625rem .875rem; font-size: .8125rem; opacity: .75;
+            border-top: 1px solid var(--ck-line, rgba(0,0,0,.1)); }
+  .lg { display: inline-flex; align-items: center; gap: .375rem; }
+  .lgt { flex: 1 1 100%; opacity: .8; line-height: 1.55; }
+  .d { width: .625rem; height: .625rem; border-radius: 50%; display: inline-block; }
+  .d.cl { background: #b0522c; } .d.sc { background: #2f6b4f; }
+  .d.mc { background: #5f6f8c; } .d.hb { background: #9aa3b2; border-radius: 2px; }
+  /* 手机优先:正文不小于 14px,可点区域不小于 44px —— tools/mobile-lint.py 会卡这两条 */
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .hd { display: grid; gap: .625rem; margin-bottom: 1.5rem; }
+  .eyebrow { font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: 1.625rem; line-height: 1.25; margin: 0; text-wrap: balance; }
+  .lede { font-size: .9375rem; line-height: 1.7; opacity: .82; margin: 0; }
+  .note { font-size: .8125rem; line-height: 1.6; opacity: .62; margin: 0;
+          border-left: 2px solid currentColor; padding-left: .75rem; }
+  .search { display: flex; gap: .5rem; flex-wrap: wrap; margin: .25rem 0 0; }
+  .search input { flex: 1 1 14rem; min-height: 44px; padding: 0 .875rem; font-size: 1rem;
+                  border: 1px solid var(--ck-line, rgba(0,0,0,.18)); border-radius: 10px;
+                  background: transparent; color: inherit; }
+  .search button, .search .clear { min-height: 44px; display: inline-flex; align-items: center;
+                  padding: 0 1.125rem; font-size: .9375rem; border-radius: 10px; cursor: pointer;
+                  border: 1px solid var(--ck-line, rgba(0,0,0,.18)); background: transparent;
+                  color: inherit; text-decoration: none; }
+  .types { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1rem; }
+  .chip { min-height: 44px; display: inline-flex; align-items: center; padding: 0 .875rem;
+          font-size: .875rem; border-radius: 999px; text-decoration: none; color: inherit;
+          border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
+  .chip.on { background: var(--ck-ink, #111); color: var(--ck-paper, #fff); }
+  .count { font-size: .875rem; opacity: .6; margin: 0 0 .75rem; }
+  .nodes { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
+  .nodes a { display: grid; gap: .25rem; padding: .875rem 1rem; min-height: 44px;
+             border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 12px;
+             text-decoration: none; color: inherit; }
+  .nodes a:hover { border-color: var(--ck-ink, rgba(0,0,0,.4)); }
+  .nn { font-size: 1rem; font-weight: 600; }
+  .nd { font-size: .875rem; line-height: 1.6; opacity: .7; }
+  .tags { display: flex; flex-wrap: wrap; gap: .375rem; }
+  .src.cl { border-style: solid; opacity: .9; }
+  .src.mc { border-style: dashed; opacity: .6; }
+  .hint { opacity: .75; }
+  .tag { display: inline-block; font-size: .75rem; padding: .125rem .5rem; border-radius: 999px;
+         border: 1px solid var(--ck-line, rgba(0,0,0,.18)); opacity: .75; margin-right: .5rem; }
+  .edges { list-style: none; padding: 0; margin: 0; display: grid; gap: .875rem; }
+  .edge { padding: 1rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 12px; }
+  .edge h3 { font-size: 1rem; margin: .25rem 0 .375rem; line-height: 1.45; }
+  .et { margin: 0; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+  .ar { font-size: .75rem; opacity: .55; }
+  .ed { font-size: .875rem; line-height: 1.65; opacity: .78; margin: 0 0 .625rem; }
+  .ps { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .ps a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 .75rem;
+          font-size: .875rem; border-radius: 999px; text-decoration: none; color: inherit;
+          border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
+  .empty { font-size: .9375rem; opacity: .7; }
+  .ask { margin-top: 2rem; font-size: .9375rem; line-height: 1.7; opacity: .8; }
+  h2 { font-size: 1.125rem; margin: 0 0 .75rem; }
+  @media (min-width: 900px) {
+    main { padding: 2rem 1.5rem 4rem; }
+    h1 { font-size: 2.25rem; }
+    .nodes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>

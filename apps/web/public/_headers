@@ -20,10 +20,9 @@
 #     stale-while-revalidate   过期后先拿旧的显示,后台悄悄更新
 #   换图后最长一天全网见效,而 99% 的请求不再回源。
 
-/media/shots/*
-  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
-
-/media/medierba/*
+# 2026-08-31 实测:factory/bohui/origin 子目录漏在规则外,还是 max-age=0 ——
+# 手机整页几十张图每次全量重下,灰块半天不出图。合并成一条盖住整个 /media/。
+/media/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 
 # 字体不会变,可以放心长缓存

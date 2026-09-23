@@ -1,0 +1,184 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 原料目录检索 —— 版块首页,按国家/地区列出各自的官方原料目录。
+ *
+ * 由来(创始人 2026-09-10 10:1x:「要好像其他版块一样设置版块,点击进来,
+ * 显示多国的规范,尽可能全球更多的,而不是单个国家」)。
+ *
+ * 原来这一页直接就是中国《已使用化妆品原料目录》的表格 —— 对做出口的客户,
+ * 它只回答了「中国能不能用」,而他真正要问的是「我要卖的那几个国家分别能不能用」。
+ * 所以改成版块:这一页只做入口与说明,具体检索进 `/inci/{目录 id}/`。
+ *
+ * **状态如实标。** 抓到了就写条数,没抓到就写「待抓取」并给官方链接 ——
+ * 拿欧盟附录冒充东盟、或者拿一个目录的数据填到另一个目录名下,
+ * 客户拿去做通报错一条就是退件,这种便宜占不得。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { getCounts } from '../../../lib/counts';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+
+let regs: any[] = [];
+let counts: Record<string, number> = {};
+if (db) {
+  try {
+    regs = ((await db.prepare(
+      'SELECT id, region, name_zh, name_en, issuer_zh, issuer_en, official_url, note_zh, note_en, status'
+      + ' FROM inci_registry ORDER BY sort_order, id').all<any>()).results ?? []) as any[];
+    const cached = (await getCounts(db))?.registry;
+    if (cached) { for (const [k, v] of Object.entries(cached)) counts[k] = Number(v); }
+    else {
+      const c = ((await db.prepare(
+        'SELECT registry, COUNT(*) n FROM inci_catalog GROUP BY registry').all<any>()).results ?? []) as any[];
+      for (const r of c) counts[String(r.registry)] = Number(r.n);
+    }
+  } catch { regs = []; }
+}
+const done = regs.filter((r) => counts[r.id]);
+const totalRows = Object.values(counts).reduce((a, b) => a + b, 0);
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/inci/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+
+const T = zh ? {
+  eyebrow: '法规工具',
+  title: '各国原料目录检索',
+  lede: `按国家与地区收录官方原料目录与禁限用清单,目前 ${regs.length} 个目录、已入库 ${totalRows.toLocaleString()} 条可检索。`
+      + '做一款出口产品要过的不是一张表,而是每个目标市场各一张 —— 这里把它们放在一处。',
+  note: '本站不改写官方文本,也不做跨目录的等价映射:欧盟与东盟的附录结构相似但不等同,'
+      + '各国还会叠加本国规定。收录不等于批准;任何结论以最新官方文本为准。',
+  rows: (n: number) => `已入库 ${n.toLocaleString()} 条`,
+  pending: '待抓取 · 先看官方原文',
+  open: '进入检索',
+  src: '官方来源',
+  ask: '要确认某个成分在你的目标市场能不能用、能加多少?把配方方向发给我们,按市场逐条核。',
+  inquiry: '发起询盘',
+  herbs: '想看帛卉自己写的原料档案(机理、配伍禁忌、投料要点)?去草本原料库。',
+  herbsCta: '草本原料库 · 149 味',
+} : {
+  eyebrow: 'Regulatory tools',
+  title: 'Ingredient inventories by market',
+  lede: `Official ingredient inventories and prohibited/restricted lists by country and region — ${regs.length} registries, `
+      + `${totalRows.toLocaleString()} searchable entries ingested so far. An export product has to clear one list per market, not one list in total.`,
+  note: 'We do not rewrite official texts and we do not map one registry onto another: the EU and ASEAN annexes are '
+      + 'similar but not identical, and countries add national requirements. Listing is not approval; the latest official text prevails.',
+  rows: (n: number) => `${n.toLocaleString()} entries`,
+  pending: 'Not ingested yet — official source',
+  open: 'Search',
+  src: 'Official source',
+  ask: 'Need to confirm whether an ingredient is usable in your target markets and at what level? Send us the formulation direction.',
+  inquiry: 'Send an inquiry',
+  herbs: 'Looking for BIOSPHERE’s own ingredient dossiers (mechanism, incompatibilities, plant notes)?',
+  herbsCta: 'Herbal ingredient library',
+};
+
+const ld = [
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}/${lang}/` },
+      { '@type': 'ListItem', position: 2, name: T.title, item: origin + path },
+    ],
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'ItemList',
+    name: T.title,
+    itemListElement: regs.map((r, i) => ({
+      '@type': 'ListItem', position: i + 1,
+      name: zh ? r.name_zh : (r.name_en || r.name_zh),
+      url: `${origin}/${lang}/inci/${r.id}/`,
+    })),
+  },
+];
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color}
+  theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+      <p class="note">{T.note}</p>
+    </header>
+
+    <ul class="regs">
+      {regs.map((r) => {
+        const n = counts[r.id] ?? 0;
+        return (
+          <li class:list={['reg', { live: n > 0 }]}>
+            <p class="region">{r.region}</p>
+            <h2>{zh ? r.name_zh : (r.name_en || r.name_zh)}</h2>
+            <p class="issuer">{zh ? r.issuer_zh : (r.issuer_en || r.issuer_zh)}</p>
+            <p class="desc">{zh ? r.note_zh : (r.note_en || r.note_zh)}</p>
+            <p class="foot">
+              {n > 0
+                ? <a class="go" href={`/${lang}/inci/${r.id}/`}>{T.open} · {T.rows(n)}</a>
+                : <span class="wait">{T.pending}</span>}
+              <a class="src" href={r.official_url} target="_blank" rel="noopener nofollow">{T.src} ↗</a>
+            </p>
+          </li>
+        );
+      })}
+    </ul>
+
+    <p class="ask">{T.herbs} <a href={`/${lang}/ingredients/`}>{T.herbsCta}</a></p>
+    <p class="ask">{T.ask} <a href={`/${lang}/contact/`}>{T.inquiry}</a></p>
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .hd { display: grid; gap: .75rem; margin-bottom: 1.75rem; max-width: 60rem; }
+  .eyebrow { font-size: .8125rem; letter-spacing: .14em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: clamp(1.625rem, 3vw, 2.25rem); line-height: 1.24; margin: 0; text-wrap: balance; }
+  .lede { font-size: 1rem; line-height: 1.75; opacity: .85; margin: 0; }
+  .note { font-size: .875rem; line-height: 1.7; opacity: .62; margin: 0;
+          border-left: 2px solid currentColor; padding-left: .75rem; }
+  .regs { list-style: none; padding: 0; margin: 0; display: grid; gap: .875rem; }
+  .reg { display: grid; gap: .375rem; padding: 1.125rem 1.25rem;
+         border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; }
+  .reg.live { border-color: var(--ck-ink, rgba(0,0,0,.34)); }
+  .region { margin: 0; font-size: .8125rem; letter-spacing: .1em; opacity: .6; }
+  .reg h2 { font-size: 1.125rem; line-height: 1.4; margin: 0; }
+  .issuer { margin: 0; font-size: .875rem; opacity: .7; }
+  .desc { margin: .25rem 0 0; font-size: .9375rem; line-height: 1.72; opacity: .82; }
+  .foot { margin: .625rem 0 0; display: flex; flex-wrap: wrap; gap: .5rem .875rem; align-items: center; }
+  .go { min-height: 44px; display: inline-flex; align-items: center; padding: 0 1rem;
+        font-size: .9375rem; font-weight: 600; border-radius: 10px; text-decoration: none;
+        background: var(--ck-ink, #111); color: var(--ck-paper, #fff); }
+  .wait { min-height: 44px; display: inline-flex; align-items: center; padding: 0 .875rem;
+          font-size: .9375rem; border-radius: 10px; opacity: .62;
+          border: 1px dashed var(--ck-line, rgba(0,0,0,.3)); }
+  .src { min-height: 44px; display: inline-flex; align-items: center; font-size: .9375rem; color: inherit; }
+  .ask { margin: 1.75rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
+  @media (min-width: 900px) {
+    main { padding: 2rem 1.5rem 4rem; }
+    .regs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>

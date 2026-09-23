@@ -71,7 +71,7 @@ const isImg = (s: string) => /^(\/|https?:|data:)/.test(s);
   .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1.5rem; }
   .more {
     flex: none;
-    font-size: 0.75rem;
+    font-size: max(0.75rem, 14px);
     text-transform: uppercase;
     letter-spacing: 0.2em;
     color: color-mix(in srgb, var(--dtc-ink) 50%, transparent);
@@ -113,7 +113,7 @@ const isImg = (s: string) => /^(\/|https?:|data:)/.test(s);
     padding: 0.1875rem 0.5rem;
     background: var(--dtc-ink);
     color: #fff;
-    font-size: 0.625rem;
+    font-size: max(0.625rem, 14px);
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
@@ -128,16 +128,18 @@ const isImg = (s: string) => /^(\/|https?:|data:)/.test(s);
     background-position: center;
   }
 
-  .nm { margin: 0.5rem 0 0; font-size: 0.8125rem; font-weight: 700; }
+  .nm { margin: 0.5rem 0 0; font-size: max(0.8125rem, 14px); font-weight: 700; }
   .en {
     margin: 0.1875rem 0 0;
-    font-size: 0.75rem;
+    font-size: max(0.75rem, 14px);
     letter-spacing: 0.04em;
     color: color-mix(in srgb, var(--dtc-ink) 45%, transparent);
   }
   .note {
     margin: 0.375rem 0 0;
-    font-size: 0.75rem;
+    font-size: max(0.75rem, 14px);
     color: color-mix(in srgb, var(--dtc-ink) 60%, transparent);
   }
+  /* 创始人:图下文字手机端太大 —— 降档 */
+  @media (max-width: 40rem) { .nm { font-size: max(0.75rem, 14px); } .pr { font-size: max(0.6875rem, 14px); } }
 </style>

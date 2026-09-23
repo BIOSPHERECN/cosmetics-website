@@ -1,0 +1,105 @@
+---
+/**
+ * 机会看板 —— 总裁四问的前三问(WorkBuddy 原型驾驶舱思路):
+ *   这个季度能不能完成数?  目标 / 已赢 / 加权预测 / 缺口 / 管道覆盖(≥3x 才健康)
+ *   钱压在哪一关?          各阶段金额与条数
+ *   单子是怎么丢的?        丢单原因分布
+ * 加权预测 = Σ(金额 × 阶段赢率)。目标先用 ?target= 传(默认 50 万美元/季),等设置页再落库。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { STAGES, OPEN_STAGES } from '../../lib/crm';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+const url = new URL(Astro.request.url);
+const co = Number(url.searchParams.get('co')) || 0;
+const target = Number(url.searchParams.get('target')) || 500000;
+const qStart = (() => { const d = new Date(); const m = Math.floor(d.getMonth() / 3) * 3; return `${d.getFullYear()}-${String(m + 1).padStart(2, '0')}-01`; })();
+
+const { results: deals } = await c.db.prepare(
+  `SELECT d.*, c.name AS company, c.country, u.email AS owner, CAST(julianday('now') - julianday(d.updated_at) AS INTEGER) AS idle
+     FROM deals d JOIN companies c ON c.id=d.company_id LEFT JOIN users u ON u.id=d.owner_uid ${co ? 'WHERE d.company_id=?' : ''} ORDER BY d.updated_at DESC`
+).bind(...(co ? [co] : [])).all<any>();
+const open = deals.filter((d: any) => OPEN_STAGES.includes(d.stage));
+const won = deals.filter((d: any) => d.stage === 'won' && String(d.updated_at) >= qStart);
+const lost = deals.filter((d: any) => d.stage === 'lost');
+const sum = (a: any[]) => a.reduce((s, d) => s + (Number(d.amount) || 0), 0);
+const weighted = open.reduce((s: number, d: any) => s + (Number(d.amount) || 0) * (d.prob || 0) / 100, 0);
+const wonAmt = sum(won), pipeline = sum(open);
+const gap = Math.max(0, target - wonAmt - weighted);
+const coverage = target ? pipeline / target : 0;
+const byStage = OPEN_STAGES.map((k) => ({ k, label: STAGES[k][0], prob: STAGES[k][1], items: open.filter((d: any) => d.stage === k), amt: sum(open.filter((d: any) => d.stage === k)) }));
+const reasons = Object.entries(lost.reduce((m: Record<string, number>, d: any) => { const r = d.lost_reason || '未填'; m[r] = (m[r] || 0) + 1; return m; }, {})).sort((a, b) => b[1] - a[1]);
+const noAmount = open.filter((d: any) => !d.amount).length;
+const fmt = (n: number) => '$' + Math.round(n).toLocaleString();
+const chart = { stages: byStage.map((s) => s.label), amt: byStage.map((s) => Math.round(s.amt)), n: byStage.map((s) => s.items.length), reasons };
+---
+
+<AdminShell title="机会看板" active="deals" email={c.sess.email} tenant={c.tenant}>
+  <h1>机会看板{co ? ' · 单个客户' : ''}</h1>
+  <p class="lead">加权预测 = Σ(金额 × 阶段赢率):需求确认 10% → 方案 25% → 打样 40% → 报价 60% → 谈判 80%。管道覆盖 = 在手金额 ÷ 目标,≥3x 才健康。{noAmount > 0 && <b>还有 {noAmount} 个机会没填金额,预测会偏低。</b>}</p>
+
+  <div class="kpi">
+    <div><b>{fmt(target)}</b><span>本季目标 <a href={`?target=${target}`} title="改 URL 里的 target= 即可">改</a></span></div>
+    <div><b>{fmt(wonAmt)}</b><span>本季已赢 · {won.length} 单</span></div>
+    <div class="acc"><b>{fmt(weighted)}</b><span>加权预测(在手 {open.length} 个)</span></div>
+    <div><b>{fmt(gap)}</b><span>缺口</span></div>
+    <div class:list={[coverage >= 3 ? 'ok' : coverage >= 1.5 ? 'warn' : 'bad']}><b>{coverage.toFixed(1)}x</b><span>管道覆盖(在手 {fmt(pipeline)})</span></div>
+    <div><b>{lost.length}</b><span>丢单</span></div>
+  </div>
+  <div class="charts">
+    <div class="ch"><b>钱压在哪一关</b><div id="ch-st" style="height:14rem"></div></div>
+    <div class="ch"><b>单子怎么丢的</b>{reasons.length ? <div id="ch-lost" style="height:14rem"></div> : <p class="dim">还没有丢单记录。丢单时选原因,这里就有图。</p>}</div>
+  </div>
+  <script type="application/json" id="dd" is:inline set:html={JSON.stringify(chart)} />
+
+  <div class="board">
+    {byStage.map((s) => (
+      <section class="col">
+        <header><b>{s.label}</b><span>{s.prob}% · {s.items.length} 个 · {fmt(s.amt)}</span></header>
+        {s.items.map((d: any) => (
+          <div class:list={['card', d.idle >= 7 && 'late']}>
+            <a href={`/bohui/companies/?open=${d.company_id}`}><b>{d.company}</b></a>
+            <span class="nm">{d.name}</span>
+            <span class="am">{d.amount ? fmt(d.amount) : '金额未填'}{d.close_date ? ` · ${d.close_date}` : ''}</span>
+            <span class="mt">{(d.owner || '').replace(/@.*$/, '') || '公海'} · {d.idle} 天没动 <button class="tm" data-matter={d.id} title="进业务协同工作台:一条事项从待确认跟到已回款">转为事项</button></span>
+          </div>
+        ))}
+        {s.items.length === 0 && <p class="dim">空</p>}
+      </section>
+    ))}
+  </div>
+
+  <style>
+    .kpi{display:grid;grid-template-columns:repeat(6,1fr);gap:.5rem;margin:1rem 0} @media (max-width:64rem){.kpi{grid-template-columns:repeat(3,1fr)}}
+    .kpi div{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:.75rem 1rem;display:grid} .kpi b{font-size:1.375rem;font-variant-numeric:tabular-nums} .kpi span{font-size:.75rem;color:var(--ad-faint)}
+    .kpi .acc b{color:#0b6e64} .kpi .ok b{color:#166534} .kpi .warn b{color:#b45309} .kpi .bad b{color:#b91c1c}
+    .charts{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem} @media (max-width:64rem){.charts{grid-template-columns:1fr}}
+    .ch{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:.75rem 1rem} .ch>b{font-size:.8125rem} .dim{color:var(--ad-faint);font-size:.8125rem}
+    .board{display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem;overflow-x:auto} @media (max-width:64rem){.board{grid-template-columns:repeat(5,14rem)}}
+    .col{background:#f4f6f8;border:1px solid var(--ad-line);border-radius:9px;padding:.5rem;min-height:12rem}
+    .col header{display:grid;font-size:.8125rem;margin:.125rem .25rem .5rem} .col header span{font-size:.75rem;color:var(--ad-faint)}
+    .card{display:grid;gap:.125rem;background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:7px;padding:.5rem .625rem;margin-bottom:.375rem;text-decoration:none;color:inherit;font-size:.8125rem}
+    .card a{color:inherit;text-decoration:none} .card:hover{border-color:#94a3b8} .tm{font:inherit;font-size:.75rem;color:var(--ad-accent);background:none;border:0;padding:0;cursor:pointer;margin-left:.25rem} .tm:hover{text-decoration:underline} .card.late{border-inline-start:3px solid #dc2626} .card b{font-size:.8125rem} .nm{color:var(--ad-soft)} .am{font-variant-numeric:tabular-nums} .mt{font-size:.75rem;color:var(--ad-faint)}
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.6.0/echarts.min.js" is:inline defer></script>
+  <script is:inline>
+    // 转为事项:机会 → 业务协同工作台(同一机会只建一条未终止的),跳过去直接打开
+    document.querySelectorAll('button[data-matter]').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true; const r = await fetch('/api/admin/matters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'from_deal', deal_id: +b.dataset.matter }) });
+      const d = await r.json().catch(() => ({})); if (d.ok) location.assign('/bohui/workbench/?open=' + d.id + '#detail'); else { b.disabled = false; alert(d.msg || '失败'); }
+    }));
+    window.addEventListener('load', () => {
+      if (!window.echarts) return; const d = JSON.parse(document.getElementById('dd').textContent);
+      const st = echarts.init(document.getElementById('ch-st'), null, { renderer: 'svg' });
+      st.setOption({ grid: { left: 64, right: 16, top: 12, bottom: 24 }, tooltip: { trigger: 'axis', formatter: (p) => `${p[0].name}<br>$${Number(p[0].value).toLocaleString()} · ${d.n[p[0].dataIndex]} 个` },
+        xAxis: { type: 'category', data: d.stages, axisLabel: { fontSize: 11 } }, yAxis: { type: 'value', axisLabel: { formatter: (v) => '$' + (v >= 1000 ? (v / 1000) + 'k' : v) } },
+        series: [{ type: 'bar', data: d.amt, itemStyle: { color: '#0b6e64', borderRadius: [3, 3, 0, 0] }, label: { show: true, position: 'top', fontSize: 10, formatter: (p) => d.n[p.dataIndex] + ' 个' } }] });
+      const el = document.getElementById('ch-lost');
+      if (el) { const lo = echarts.init(el, null, { renderer: 'svg' }); lo.setOption({ tooltip: { trigger: 'item' }, series: [{ type: 'pie', radius: ['40%', '70%'], data: d.reasons.map(([n, v]) => ({ name: n, value: v })), label: { fontSize: 11 } }] }); addEventListener('resize', () => lo.resize()); }
+      addEventListener('resize', () => st.resize());
+    });
+  </script>
+</AdminShell>

@@ -1,0 +1,18 @@
+HTTP/1.1 200 Connection established
+
+HTTP/1.1 200 OK
+Date: Mon, 07 Sep 2026 01:34:29 GMT
+Content-Type: text/html
+Transfer-Encoding: chunked
+Connection: keep-alive
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+Referrer-Policy: strict-origin-when-cross-origin
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Report-To: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=n7mrG7Tct3eQd%2BRCW1VIbEB2ZS%2BN1vt5m66CNooogHsTucOADT6XgFkhpggS4H%2F661tIIJcNiGBrYSskqykL4p9QyupfQZBPqc7yiKrvSYwdEagJvoidlO%2Fsv9aJmMiIdsse"}]}
+Nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+Server: cloudflare
+CF-RAY: a371f8ab4d90fcf2-SIN
+alt-svc: h3=":443"; ma=86400
+

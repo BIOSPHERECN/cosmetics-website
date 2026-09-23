@@ -1,0 +1,102 @@
+---
+/**
+ * 开头直答 —— GEO 里性价比最高的一块版式。
+ *
+ * AI 答案引擎抓页面时,优先取那些**直接回答问题**的段落。
+ * 一篇先讲品牌故事、第三屏才说清能做什么的页面,模型很难从中提炼出
+ * 「这家能做什么」;而一段 100–150 字、开门见山回答核心疑问的文字,
+ * 会被整段引用,并在答案里带出品牌名。
+ *
+ * B2B 的"核心疑问"和电商不一样。
+ * 电商问「新手帐篷怎么选」;采购问的是:
+ *   找代工厂要看哪几项?OEM 和 ODM 差在哪?起订量多少?打样多久?
+ *   出口到某个市场要准备什么文件?
+ * 这些问题的答案本来就该写在页面最前面 —— 就算没有 AI,采购也是这么读的。
+ *
+ * 版式上刻意做得像「一段话」而不是「一个营销版块」:
+ * 没有大标题压顶、没有按钮抢焦点。它的任务是被读完,不是被看见。
+ */
+export interface QA { q: string; a: string }
+export interface Props {
+  /** 这一页要回答的那个问题,写成访客会搜的样子 */
+  question: string;
+  /** 100–150 字的直接回答。第一句就要给结论,不要铺垫 */
+  answer: string;
+  /** 顺带回答的常见问题;会同时进 FAQPage 结构化数据 */
+  faqs?: QA[];
+  tone?: 'paper' | 'sand';
+}
+const { question, answer, faqs = [], tone = 'paper' } = Astro.props;
+---
+
+{/* 容器从 dtc-wrap-prose(768 居中)换成 ck-wrap:
+    创始人限定全站版心 1800,窄柱居中会在页面上另起一条轴(产品页实拍:
+    FAQ 缩进 380px,与相邻版块起笔线错开)。直答列宽仍收在 62ch 保可读,
+    FAQ 按对展开成多栏填满轴线 —— dl > div > dt+dd 是合法结构。 */}
+<section class:list={['ans', tone]} aria-label={question}>
+  <div class="ck-wrap">
+    {/* 用 h2 而不是 h1:页面上已经有 h1 了,两个 h1 会让抓取器判不出主标题 */}
+    <h2 class="q">{question}</h2>
+    <p class="a">{answer}</p>
+
+    {faqs.length > 0 && (
+      <dl class="faq">
+        {faqs.map((f) => (
+          <div class="qa">
+            <dt>{f.q}</dt>
+            <dd>{f.a}</dd>
+          </div>
+        ))}
+      </dl>
+    )}
+  </div>
+</section>
+
+<style>
+  .ans { padding-block: clamp(2rem, 4vw, 3rem); }
+  .ans.paper { background: var(--dtc-paper, #f9f8f5); }
+  .ans.sand { background: var(--dtc-sand, #eeeedc); }
+
+  .q {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.125rem, 0.9rem + 1vw, 1.5rem);
+    font-weight: 700;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  /* 答案本身用比正文略大的字号 —— 它是这一页最该被读完的一段,
+     而不是可以略过的导语。 */
+  .a {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.85;
+    color: color-mix(in srgb, currentColor 82%, transparent);
+    max-width: 62ch;
+  }
+
+  /* FAQ 多栏铺满 1800 轴:每对问答是一个单元,列宽 24rem 起自动分栏 —
+     宽屏 3 栏、中屏 2 栏、窄屏 1 栏,轴线永远和相邻版块对齐 */
+  .faq {
+    margin: 2rem 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+    gap: 1.5rem 3.5rem;
+  }
+  .faq dt {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  .faq dd {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    line-height: 1.75;
+    color: color-mix(in srgb, currentColor 68%, transparent);
+    max-width: 62ch;
+  }
+
+  @media (max-width: 40rem) {
+    .a { font-size: 0.9375rem; }
+  }
+</style>

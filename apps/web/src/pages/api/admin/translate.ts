@@ -24,7 +24,7 @@ export const prerender = false;
 
 /** 已上线的语种 —— 与 packages/core/src/i18n 的 LOCALES 保持一致 */
 const LOCALES = [
-  'en', 'zh-cn', 'ja', 'ko', 'id', 'ms', 'th', 'vi', 'hi', 'bn', 'tl', 'ur', 'pa', 'te', 'ta', 'mr', 'gu', 'jv', 'fr', 'de', 'es', 'it', 'pt', 'nl', 'pl', 'sv', 'da', 'fi', 'no', 'cs', 'el', 'hu', 'ro', 'uk', 'ru', 'pt-br', 'es-mx', 'ar', 'tr', 'fa', 'he', 'sw', 'ha', 'am', 'kk', 'uz',
+  'en', 'zh-cn', 'jp', 'kr', 'fr', 'de', 'ru', 'id', 'my', 'th', 'vn', 'ph', 'es', 'pt', 'ar', 'tr', 'in',
 ];
 
 type Row = { kind: 'site' | 'page' | 'product' | 'block'; id: number | string; label: string };

@@ -32,11 +32,17 @@ const { text, linkText, linkHref, bg, fg } = Astro.props;
     background: var(--dtc-strip);
     color: var(--dtc-strip-ink);
     text-align: center;
-    font-size: 0.8125rem;
+    font-size: max(0.8125rem, 14px);
     font-weight: 500;
     letter-spacing: 0.04em;
   }
-  .inner { padding-block: 0.75rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
-  .strip a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  /* 创始人:「发起询盘放到右边,是不是搭配一点」—— 文案居左、询盘链接靠右 */
+  .inner { padding-block: 0.75rem; display: flex; gap: 0.5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; text-align: start; }
+  .strip a { color: inherit; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
   .strip a:hover { opacity: 0.8; }
+  /* 手机:字号再降一档,一行放得下 */
+  @media (max-width: 40rem) {
+    .strip { font-size: max(0.6875rem, 14px); letter-spacing: 0.02em; }
+    .inner { padding-block: 0.5rem; }
+  }
 </style>

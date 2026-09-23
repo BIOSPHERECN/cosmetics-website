@@ -1,0 +1,96 @@
+---
+/**
+ * 数字实力条 —— 阿里工厂店铺开篇必有的那一行。
+ *
+ * 「成立 12 年 · 厂房 28,000㎡ · 产线 16 条 · 出口 43 国」——
+ * 四五个硬数字横着一排,是采购判断「这家够不够大」最快的入口。
+ * 它必须紧跟在店招后面:陌生人做生意,规模是第一个要回答的问题。
+ *
+ * 一个刻意的克制:**不做数字滚动动画**。
+ * 那种从 0 跳到 28000 的效果在国内 B 端站上泛滥,而它有两个实际坏处 ——
+ * 数字跳动的两秒里没人读得进去,以及它让人下意识觉得「这数是编的」。
+ * 真实的产能数据不需要靠动画来显得可信。
+ */
+export interface Stat {
+  /** 数值本身,如 28,000 */
+  value: string;
+  /** 单位或后缀,如 ㎡ / 条 / 国 */
+  unit?: string;
+  /** 这个数字是什么 */
+  label: string;
+}
+export interface Props {
+  items: Stat[];
+  /** 深色条(压在图上或作为分隔)还是浅色条 */
+  tone?: 'ink' | 'paper';
+}
+const { items = [], tone = 'ink' } = Astro.props;
+---
+
+<section class:list={['sb', tone]} aria-label="核心数据">
+  <div class="dtc-wrap-wide grid">
+    {items.map((s) => (
+      <div class="cell">
+        <p class="v">
+          <b>{s.value}</b>{s.unit && <em>{s.unit}</em>}
+        </p>
+        <p class="l">{s.label}</p>
+      </div>
+    ))}
+  </div>
+</section>
+
+<style>
+  .sb { padding-block: 1.5rem; }
+  .sb.ink { background: var(--dtc-ink); color: #fff; }
+  .sb.paper { background: var(--dtc-sand); color: var(--dtc-ink); border-block: 1px solid var(--dtc-line); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 1.5rem 1rem;
+  }
+  /* 分隔线用伪元素而不是 border,这样最后一列不用单独清掉 */
+  .cell { position: relative; padding-inline: 1rem; text-align: center; }
+  .cell + .cell::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    top: 12%;
+    height: 76%;
+    border-inline-start: 1px solid currentColor;
+    opacity: 0.18;
+  }
+
+  .v { margin: 0; display: flex; align-items: baseline; justify-content: center; gap: 0.125rem; }
+  .v b {
+    font-size: clamp(1.375rem, 1.05rem + 1vw, 2rem);   /* 全局审查:50px 级数字压到 36px 顶 */
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    /* 等宽数字:一排数字对不齐会显得随意,而这一排恰恰是在讲"我们很规整" */
+    font-variant-numeric: tabular-nums;
+  }
+  .v em { font-style: normal; font-size: 0.9375rem; font-weight: 500; opacity: 0.7; }
+  .l {
+    margin: 0.5rem 0 0;
+    font-size: max(0.8125rem, 14px);
+    letter-spacing: 0.06em;
+    opacity: 0.72;
+  }
+
+  /* 64rem 以下 4 格会折成 3+1(创始人手机版截图实锤)—— 提前进 2×2 */
+  @media (max-width: 64rem) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .cell:nth-child(3)::before { display: none; }   /* 第二行行首不画竖线 */
+  }
+  @media (max-width: 40rem) {
+    .cell + .cell::before { display: none; }
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 1.25rem 0.5rem; }
+    /* 375 宽下「> 20,000㎡」会折行错位 —— 数字降档到一行放得下 */
+    .cell { padding-inline: 0.25rem; }
+    .v b { font-size: 1.375rem; }
+    .v em { font-size: max(0.75rem, 14px); }
+    .l { font-size: max(0.75rem, 14px); margin-top: 0.375rem; }
+  }
+</style>

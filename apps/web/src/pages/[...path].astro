@@ -25,6 +25,7 @@ import StatementFooter from '@cosmetic/core/components/StatementFooter.astro';
 import SocialProof from '@cosmetic/core/components/SocialProof.astro';
 import InquiryForm from '@cosmetic/core/components/InquiryForm.astro';
 import InquiryBand from '@cosmetic/core/components/InquiryBand.astro';
+import InquiryFormLite from '@cosmetic/core/components/InquiryFormLite.astro';
 /* DTC 品牌版式(MEDIERBA 自有品牌站)—— 复刻 biosphere-group 的 medierba 页 */
 import AnnounceBar from '@cosmetic/core/components/dtc/AnnounceBar.astro';
 import Slideshow from '@cosmetic/core/components/dtc/Slideshow.astro';
@@ -36,15 +37,24 @@ import Statement from '@cosmetic/core/components/dtc/Statement.astro';
 import Perks from '@cosmetic/core/components/dtc/Perks.astro';
 import SocialWall from '@cosmetic/core/components/dtc/SocialWall.astro';
 import Signup from '@cosmetic/core/components/dtc/Signup.astro';
+/* 工厂店铺版式(阿里国际站里化妆品工厂店的那一套) */
+import StoreHero from '@cosmetic/core/components/dtc/StoreHero.astro';
+import StatsBand from '@cosmetic/core/components/dtc/StatsBand.astro';
+import ProcGrid from '@cosmetic/core/components/dtc/ProcGrid.astro';
+import ProcRibbon from '@cosmetic/core/components/dtc/ProcRibbon.astro';
+import AnswerBlock from '@cosmetic/core/components/dtc/AnswerBlock.astro';
 import Motion from '../components/Motion.astro';
-import BrandEcosystem from '../components/BrandEcosystem.astro';
+// BrandEcosystem 已下线:「先删除集团,只是帛卉」(2026-08-31)
 import ProductGrid from '../components/ProductGrid.astro';
 import InquiryCart from '../components/InquiryCart.astro';
-import { getSiteByHost, getSiteById, getPageBundle, getEcosystem, DEFAULT_LANG, type Lang } from '../lib/db';
+import FactoryBlock from '../components/FactoryBlock.astro';
+import { getSiteByHost, getSiteById, getPageBundle, DEFAULT_LANG, type Lang } from '../lib/db';
+import { orgJsonLd, siteJsonLd, breadcrumbJsonLd, faqJsonLd, productJsonLd, itemListJsonLd } from '../lib/jsonld';
 import { isLocale, t as uiT, isLocale as _l } from '@cosmetic/core/i18n';
 import { getVariant, getSite as getStaticSite } from '@cosmetic/core/registry';
 // Astro v6 起 Astro.locals.runtime.env 已移除,绑定改从 cloudflare:workers 取
 import { env } from 'cloudflare:workers';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 
 export const prerender = false;
 
@@ -67,23 +77,55 @@ const lang: Lang = isLocale(segs[0]) ? (segs.shift() as Lang) : DEFAULT_LANG;
 const tSkip = uiT(lang as any)('a11y.skip');
 const slug = segs.join('/');
 
-/* ── 解析站点:线上按域名;预览域名/本地按 ?site= 回退 ─────────── */
+/* ── 解析站点:线上按域名;预览域名/本地按 ?site= 回退 ───────────
+ *
+ * ?site= 必须**粘住**,不能只作用于当前这一次请求。
+ * 原因是实测踩出来的:在预览域名上带 ?site=biosphere-ai 打开首页没问题,
+ * 但页面里所有链接的 href 都是 /zh-cn/about/ —— 不带参数。
+ * 一点导航,Worker 就退回按域名判站,而预览域名不属于任何站,
+ * 于是掉进兜底的 beauty2oem。用户看到的是「点一下就跳到别的网站」。
+ *
+ * 解法是把选择记进 cookie:域名能判出站时**永远以域名为准**(线上不受影响),
+ * 判不出来时才读 cookie。所以这段逻辑只在预览域名和本地生效。
+ */
 const hostname = Astro.url.hostname;
-const override = Astro.url.searchParams.get('site');
+const COOKIE = 'bohui_site';
+const override = Astro.url.searchParams.get('site') ?? Astro.cookies.get(COOKIE)?.value ?? null;
+if (Astro.url.searchParams.get('site')) {
+  Astro.cookies.set(COOKIE, Astro.url.searchParams.get('site')!, {
+    path: '/', httpOnly: true, sameSite: 'lax', maxAge: 60 * 60 * 24,
+  });
+}
 
 let bundle = null;
 let dbError: string | null = null;
+/* 额度用尽和「没绑数据库」是两码事,给客户看的话也完全不同 —— 分开判 */
+let quotaHit = false;
 
 if (!db) {
   dbError = 'D1 未绑定(本地开发请用 wrangler pages dev,或在 Pages 项目里绑定 DB)';
 } else {
   try {
-    const site = override
-      ? await getSiteById(db, override, lang)
-      : (await getSiteByHost(db, hostname, lang)) ?? (await getSiteById(db, 'beauty2oem', lang));
+    // 域名优先。cookie 只在域名判不出站时才用得上 ——
+    // 否则一个访客在预览域名选过 biosphere-ai,再去 beauty2oem.com
+    // 就会看到错的站,那是比"点击跳站"严重得多的故障。
+    const byHost = await getSiteByHost(db, hostname, lang);
+    const site = byHost
+      ?? (override ? await getSiteById(db, override, lang) : null)
+      /* 兜底按域名回到本站,绝不硬编码别的站(2026-09-07 跨站串标题事故) */
+      ?? (siteIdForHost(Astro.url.hostname) ? await getSiteById(db, siteIdForHost(Astro.url.hostname)!, lang) : null);
     if (site) bundle = await getPageBundle(db, site.id, slug, lang);
   } catch (e) {
     dbError = e instanceof Error ? e.message : String(e);
+    quotaHit = /daily row read limit|exceeded .*limit|7500/i.test(dbError);
+    /* 503 而不是 200:错误页以 200 返回时会被边缘缓存整整一小时,
+       一次十分钟的抖动因此变成一个多小时的「整站坏掉」——
+       2026-09-07 就是这么让创始人看到坏页面而我这边一切正常的。
+       503 + Retry-After 也告诉搜索引擎「稍后再来」,而不是把错误页当正文收录。 */
+    Astro.response.status = 503;
+    Astro.response.headers.set('x-bh-degraded', '1');
+    Astro.response.headers.set('Cache-Control', 'no-store');
+    Astro.response.headers.set('Retry-After', '1800');
   }
 }
 
@@ -95,7 +137,15 @@ if (!bundle && !dbError) {
 const site = bundle?.site;
 const staticSite = site ? (() => { try { return getStaticSite(site.id); } catch { return null; } })() : null;
 const variant = staticSite ? getVariant(staticSite, site!.variant) : null;
-const email = `inquiry@${site?.domain ?? 'bohui.group'}`;
+/* 联系邮箱从站点设置读(后台站点总览可改);空则回落 inquiry@域名 */
+const email = site?.contact_email || `inquiry@${site?.domain ?? 'bohui.group'}`;
+/* BEAUTY2OEM 纯中文站(09-23 创始人「纯中文,不需要英文」):无语言 / 币种切换、无邮箱、无 WhatsApp(sites 行里 whatsapp 已清空)、无询盘车 */
+const cnOnly = site?.id === 'beauty2oem';
+const showCart = !cnOnly;
+const fxEmail = cnOnly ? '' : email;
+const contactWa: string | null = ((Astro.locals as any)?.contact ?? {}).whatsapp ?? null;
+const contactWx: string | null = ((Astro.locals as any)?.contact ?? {}).wechat ?? null;
+const cartHref = `/${lang}/contact/`;
 const path = `/${lang}/${slug ? slug + '/' : ''}`;
 
 const PENDING: Record<Lang, string> = {
@@ -122,8 +172,7 @@ const DEMO_TEXTURE: Record<string, 'cream' | 'fluid' | 'powder' | 'gel'> = {
   'biosphere-oralcare': 'gel',
 };
 
-/** 集团生态(大脑 + 四平台),页脚前渲染 */
-const eco = db && bundle ? await getEcosystem(db, lang).catch(() => null) : null;
+// 集团生态查询已下线(「先删除集团,只是帛卉」2026-08-31)—— 顺带少一次 D1 往返
 
 /*
  * 通告条从版块里抽出来单独处理:它渲染在页头**之上**,不在 <main> 里,
@@ -154,21 +203,23 @@ const bodyBlocks = (bundle?.blocks ?? []).filter((b) => b.type !== 'announce');
  * 但「对得上号的占位图」和「一张多孔菌」是两回事。
  */
 const DEMO_PRODUCTS = [
-  { id: 'serum', name: '精华液', summary: '水感或油感基质,活性物浓度可定制', image: '/media/16', moq: '3,000 支起',
+  // 兜底数据。真数据来自 products 页上 type='formats' 的版块 ——
+  // 见下面 formatItems 的注释,那里说明了为什么不能硬编码在这里。
+  { id: 'serum', name: '精华液', summary: '水感或油感基质,活性物浓度可定制', image: '/media/16', moq: '',
     options: { 容量: ['30ml', '50ml'], 包材: ['玻璃滴管瓶', '真空泵瓶'] } },
-  { id: 'cream', name: '面霜', summary: '真空乳化,常温与冷制工艺可选', image: '/media/10', moq: '3,000 罐起',
+  { id: 'cream', name: '面霜', summary: '真空乳化,常温与冷制工艺可选', image: '/media/10', moq: '',
     options: { 容量: ['30g', '50g'], 包材: ['玻璃罐', 'PP 罐'] } },
-  { id: 'mask', name: '面膜', summary: '水洗式与贴片式,精华液配比可调', image: '/media/17', moq: '10,000 片起',
+  { id: 'mask', name: '面膜', summary: '水洗式与贴片式,精华液配比可调', image: '/media/17', moq: '',
     options: { 规格: ['单片装', '盒装 5 片'], 基布: ['天丝', '生物纤维'] } },
-  { id: 'cleanser', name: '洁面', summary: '氨基酸与皂基两条路线', image: '/media/11', moq: '5,000 支起',
+  { id: 'cleanser', name: '洁面', summary: '氨基酸与皂基两条路线', image: '/media/11', moq: '',
     options: { 容量: ['100ml', '150ml'], 形态: ['膏状', '慕斯'] } },
-  { id: 'toothpaste', name: '牙膏', summary: '低研磨配方,益生菌可添加', image: '/media/12', moq: '10,000 支起',
+  { id: 'toothpaste', name: '牙膏', summary: '低研磨配方,益生菌可添加', image: '/media/12', moq: '',
     options: { 容量: ['100g', '120g'], 管材: ['铝塑复合管', '可回收单材质管'] } },
-  { id: 'powder', name: '粉体彩妆', summary: '压粉与散粉,色号按 Pantone 打样', image: '/media/13', moq: '5,000 盒起',
+  { id: 'powder', name: '粉体彩妆', summary: '压粉与散粉,色号按 Pantone 打样', image: '/media/13', moq: '',
     options: { 形态: ['压粉饼', '散粉'], 盘型: ['单色', '四色'] } },
-  { id: 'oil', name: '精华油', summary: '植物基油相,冷压原料可溯源', image: '/media/14', moq: '3,000 支起',
+  { id: 'oil', name: '精华油', summary: '植物基油相,冷压原料可溯源', image: '/media/14', moq: '',
     options: { 容量: ['20ml', '30ml'], 包材: ['滴管瓶', '按压瓶'] } },
-  { id: 'balm', name: '膏体唇部', summary: '润唇与有色唇膏,蜡体配比可调', image: '/media/15', moq: '8,000 支起',
+  { id: 'balm', name: '膏体唇部', summary: '润唇与有色唇膏,蜡体配比可调', image: '/media/15', moq: '',
     options: { 形态: ['管状', '罐装'], 色号: ['单色', '定制'] } },
 ];
 
@@ -178,9 +229,15 @@ const CART_LABELS: Record<Lang, any> = {
   en: { open: 'Inquiry list', empty: 'No formats selected yet', remove: 'Remove', submit: 'Send the whole list', count: 'Selected', hint: 'We reply in writing within two working days.' },
   ja: { open: 'お問い合わせリスト', empty: 'まだ剤形が選ばれていません', remove: '削除', submit: 'リストをまとめて送信', count: '選択中', hint: '2 営業日以内に書面でご回答します。' },
 };
-const ECO_TEXT: Record<Lang, { title: string; intro: string }> = {
-  'zh-cn': { title: '集团品牌生态', intro: '以 BIOSPHERE-AI 为科技大脑,构建美妆与口腔健康产业生态;通过智能制造平台赋能全球品牌,以自有品牌传递草本科技之美。' },
-  en: { title: 'Brand ecosystem', intro: 'BIOSPHERE-AI serves as the technology core, powering global brands through our manufacturing platforms and expressing herbal science through our own brand.' },
+/* 「集团品牌生态」段与 ECO_TEXT 已删(创始人 2026-08-31:「先删除集团,只是帛卉」)——
+   站点叙事回归帛卉一家;四个姊妹域名本就未接入,生态段对访客是四条死链。
+   数据层 sites 表不动,以后要恢复只需把这段渲染加回来。 */
+
+/* 真实产品目录的标题。和「可做剂型」是两块,文案必须分开 ——
+   两块都叫「可做剂型」会让人以为页面重复了。 */
+const CATALOG_TEXT: Record<string, { title: string; intro: string }> = {
+  'zh-cn': { title: '产品目录', intro: '以下为在产成品。看中哪一款,直接加入询盘车一次性提交。' },
+  en: { title: 'Product catalogue', intro: 'Products currently in production. Add what you need and send the list in one go.' },
 };
 
 const GRID_TEXT: Record<Lang, { title: string; intro: string; add: string; moq: string }> = {
@@ -199,14 +256,182 @@ const pick = <T,>(m: Record<string, T>, l: string): T => m[l] ?? m.en ?? m['zh-c
 
 /** 内容改完即时生效,但同一秒内的重复请求走边缘缓存,避免每次都打 D1 */
 Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=300');
+
+/* ── 剂型清单 ──────────────────────────────────────────────
+ * 这份清单原来是**硬编码**在本文件里的中文常量,后果很具体:
+ * 英文访客打开产品页,看到的是「精华液 / 水感或油感基质 / MOQ 3,000 支起」——
+ * 整段中文。翻译管线只处理数据库里的内容,碰不到代码里的字符串。
+ * 而那些 MOQ 数字还是编的:公司资料写的是「柔性起订量」,没有具体值。
+ *
+ * 改成从版块读:运营能在后台改,翻译能自动跟上,数字也回到资料的口径。
+ * 版块缺失时才退回本文件顶部的兜底常量(至少不是空白页)。
+ */
+/* ── 真实产品目录 ──────────────────────────────────────────
+ * 后台的产品管理写的是 products 表,而这一页原来只渲染「可做剂型」——
+ * 结果运营辛苦录进去的产品在前台一个都看不到,那个功能等于死路。
+ *
+ * 两者是不同的东西,所以并列展示而不是二选一:
+ *   剂型  = 我们能做什么(询盘车按这个下单)
+ *   产品  = 具体的成品 SKU,有图有规格
+ * 产品表为空时这一段整个不出现 —— 空标题下面顶着一片留白最难看。
+ */
+/* 品类筛选:首页品类卡点进来带 ?cat=,这一页就只显示那个品类。
+   「要可以点进去,看到更多的产品」—— 点进来还是全量列表的话,
+   点击就没有意义了。筛选放在 SQL 里而不是渲染层,列表大了也不用改。 */
+const catFilter = (Astro.url.searchParams.get('cat') ?? '').trim().slice(0, 24);
+const catalog = bundle?.page.template === 'products' && db && site
+  ? ((await db.prepare(
+      /* 列必须显式写死,**不要改成 p.*** ——
+         products 表里有 internal_note 一列,存的是「哪些话不能对外说」的合规提醒
+         和未经第三方验证的内部研发数字(SPF 提升 64%、修复 +19.07% 之类)。
+         写成 p.* 就等于把它们送进渲染层,只差有人加一行显示。 */
+      `SELECT p.id, p.slug, p.moq, p.cover_media, p.category,
+              (SELECT x.name    FROM product_i18n x WHERE x.product_id=p.id
+                ORDER BY CASE x.lang WHEN ? THEN 0 WHEN 'en' THEN 1 ELSE 2 END LIMIT 1) AS name,
+              (SELECT x.summary FROM product_i18n x WHERE x.product_id=p.id
+                ORDER BY CASE x.lang WHEN ? THEN 0 WHEN 'en' THEN 1 ELSE 2 END LIMIT 1) AS summary
+         FROM products p
+        WHERE p.site_id = ? AND p.status = 'published'
+          AND (? = '' OR p.category = ?)
+        ORDER BY p.is_featured DESC, p.sort_order, p.id LIMIT 60`,
+    ).bind(lang, lang, site.id, catFilter, catFilter).all<any>().catch(() => ({ results: [] }))).results ?? [])
+  : [];
+
+/* 品类项圈(chips):只列**真有产品**的品类并带数量 ——
+   点下去是空结果的筛选项,没人会用第二次。 */
+/* 原来只在产品页查(筛选条用);创始人:「导航栏产品品类也下拉分类!」——
+   顶部导航每页都在,品类清单改为全页可用(一条 GROUP BY,开销可忽略) */
+const catCounts = db && site
+  ? ((await db.prepare(
+      `SELECT category, COUNT(*) n FROM products
+        WHERE site_id = ? AND status = 'published' GROUP BY category ORDER BY n DESC`,
+    ).bind(site.id).all<{ category: string; n: number }>().catch(() => ({ results: [] }))).results ?? [])
+  : [];
+const CAT_LABEL: Record<string, Record<string, string>> = {
+  'zh-cn': { skincare: '护肤', makeup: '彩妆', oral: '口腔护理', kids: '儿童护肤', body: '身体护理', hair: '洗护', cleansing: '洁护', all: '全部' },
+  en: { skincare: 'Skincare', makeup: 'Makeup', oral: 'Oral care', kids: 'Kids', body: 'Body care', hair: 'Hair', cleansing: 'Cleansing', all: 'All' },
+};
+const catLabel = (c: string) => (CAT_LABEL[lang] ?? CAT_LABEL.en)[c] ?? c;
+
+/* 顶部导航版:给「产品品类」挂品类下拉(有产品的品类才进菜单,空筛选没人点第二次)。
+   子项 slug 带查询串(products/?cat=x),SiteHeader 对含 ? 的 slug 走免尾斜杠直链。 */
+const navForHeader = (bundle?.nav ?? []).map((n: any) =>
+  n.slug === 'products' && !(n.children?.length) && catCounts.length
+    ? { ...n, children: catCounts.slice(0, 6).map((c) => ({ slug: `products/?cat=${encodeURIComponent(c.category)}`, label: catLabel(c.category) })) }
+    : n);
+
+/* ── 产品集模式 ────────────────────────────────────────────
+ * 带 ?cat= 进来 = 访客刚点了品类卡,他要的是**这个品类的产品**。
+ * 原来点进来落在页面顶部,又是同一套「可做品类 + 时效 + FAQ」营销块,
+ * 真正的目录埋在半页之下 ——「点击品类,要进入产品集」说的就是这个。
+ * 所以带 ?cat 时营销版块整体让位,页面只剩:
+ *   品类页头(h1)→ 品类项圈 → 产品目录 → 可做剂型(询盘车)→ 询盘带。
+ * 询盘带单独捞出来是因为它是转化出口,砍营销块不能把它一起砍掉。 */
+const collectionMode = bundle?.page.template === 'products' && !!catFilter;
+/* 09-21 22:3x 工厂版首页改成七种 fx_* 版块(见 packages/core/src/blocks.ts family='factory'),首页每一行都在后台加 / 删 / 排 / 换图;整体组件 HomeFactory 已退役。 */
+const inquiryBlock = collectionMode
+  ? bundle?.blocks.find((b) => b.type === 'inquiry')
+  : undefined;
+
+const formatBlock = bundle?.blocks.find((b) => b.type === 'formats');
+const formatItems = Array.isArray((formatBlock?.data as any)?.items) && (formatBlock!.data as any).items.length
+  ? (formatBlock!.data as any).items
+  : DEMO_PRODUCTS;
+
+/* ── 结构化数据 ────────────────────────────────────────────
+   给搜索引擎出富摘要,也给 AI 答案引擎取事实。
+   只放页面上真实存在的内容 —— 结构化数据和正文对不上会被判为 spam。 */
+const base0 = `https://${site?.domain ?? 'bohui.group'}`;
+const trail = slug
+  ? slug.split('/').map((seg, i, arr) => {
+      const href = `/${lang}/${arr.slice(0, i + 1).join('/')}/`;
+      const node = bundle?.nav.find((n) => n.slug === arr[i])
+        ?? bundle?.nav.flatMap((n) => n.children).find((c) => c.slug === arr[i]);
+      return { label: node?.label ?? seg, href };
+    })
+  : [];
+/* FAQ 来自页面上真实存在的「开头直答」版块 —— 不凭空造。
+   结构化数据里写页面上没有的内容,搜索引擎判为 spam,得不偿失。 */
+const faqItems = (bundle?.blocks ?? [])
+  .filter((b) => b.type === 'answer')
+  .flatMap((b) => {
+    const d = b.data as any;
+    const own = d?.question && d?.answer ? [{ q: String(d.question), a: String(d.answer) }] : [];
+    const more = Array.isArray(d?.faqs)
+      ? d.faqs.filter((f: any) => f?.q && f?.a).map((f: any) => ({ q: String(f.q), a: String(f.a) }))
+      : [];
+    return [...own, ...more];
+  });
+
+const jsonLd = [
+  orgJsonLd(base0, site?.name ?? 'BIOSPHERE', lang, bundle?.page.seo_desc ?? site?.tagline ?? ''),
+  siteJsonLd(base0, site?.name ?? 'BIOSPHERE'),
+  breadcrumbJsonLd(base0, lang, path, uiT(lang as any)('nav.home'), trail),
+  faqJsonLd(faqItems),
+  /* 产品结构化数据。AI 引擎回答「有没有能做草本精华的中国工厂」时,
+     靠的是它能确定的事实 —— 页面上的产品名对机器是字符串,
+     放进 Product schema 才是一条可引用的数据。价格刻意不写:代工按单报价。 */
+  ...(catalog.length
+    ? [itemListJsonLd(base0, lang, catalog.map((p: any) => ({ slug: p.slug, name: p.name ?? p.slug }))),
+       ...catalog.slice(0, 24).map((p: any) => productJsonLd(base0, lang, {
+         slug: p.slug, name: p.name ?? p.slug, summary: p.summary,
+         category: p.category, moq: p.moq,
+         image: p.cover_media ? `/media/${p.cover_media}` : null,
+       }))]
+    : []),
+].filter(Boolean) as Record<string, unknown>[];
+
+/* 分享缩略图:优先用本页第一张通栏/店招图,没有就退回厂区外观 */
+const ogImage = (() => {
+  for (const b of bundle?.blocks ?? []) {
+    const img = (b.data as any)?.image;
+    if (typeof img === 'string' && img.startsWith('/media/')) return img;
+  }
+  return '/media/57';
+})();
 ---
 
 {dbError ? (
-  <html lang="zh-CN"><head><meta charset="utf-8" /><title>数据源未就绪</title></head>
-  <body style="font-family:system-ui;padding:3rem;max-width:44rem;margin:auto;line-height:1.7">
-    <h1 style="font-size:1.5rem">数据源未就绪</h1>
-    <p style="color:#555">{dbError}</p>
-    <p style="color:#888;font-size:.875rem">这是配置问题,不是代码问题。绑定 D1 后刷新即可。</p>
+  /* 这一页原来一律说「这是配置问题,绑定 D1 后刷新即可」——
+     2026-09-07 日读额度耗尽时它照样这么说,把人引去查绑定,白折腾一场。
+     错误页最该做的是**说清楚到底怎么了、什么时候好、现在能去哪**,
+     而不是抛一句放之四海皆准的猜测。 */
+  <html lang="zh-CN"><head><meta charset="utf-8" />
+    <title>{quotaHit ? '内容服务稍后恢复' : '数据源未就绪'}</title>
+    <meta name="robots" content="noindex" />
+  </head>
+  <body style="font-family:system-ui;padding:3rem 1.25rem;max-width:44rem;margin:auto;line-height:1.8;color:#1d1d1f">
+    <h1 style="font-size:1.5rem;margin:0 0 1rem">{quotaHit ? '这一页稍后恢复' : '数据源未就绪'}</h1>
+    {quotaHit ? (
+      <>
+        <p style="color:#555;margin:0 0 1rem">
+          今天的数据库读取额度已用完(免费额度按 UTC 零点重置,也就是北京时间早上八点),
+          这一页的内容要等额度恢复后才能取到。站点本身没有故障。
+        </p>
+        {/* 只给一句道歉是不够的 —— 来的人是想找工厂,不是来看故障说明。
+            这几个页面不查库(内容随发布打包),现在就是完整的,
+            所以把整条产线链路摆出来,让人能接着往下走。 */}
+        <p style="color:#555;margin:0 0 1.5rem">这几个页面不依赖数据库,现在就是完整的:</p>
+        <p style="margin:0 0 1.25rem;font-size:1.0625rem">
+          <a href={`/${lang}/packaging/`} style="margin-right:1rem">① 包材 3,716 款</a>
+          <span style="color:#bbb;margin-right:1rem">→</span>
+          <a href={`/${lang}/formulas/`} style="margin-right:1rem">② 配方 100 支</a>
+          <span style="color:#bbb;margin-right:1rem">→</span>
+          <a href={`/${lang}/packaging/?t=use-gift,outer-carton`} style="margin-right:1rem">③ 包装盒 92 款</a>
+        </p>
+        <p style="margin:0 0 2rem">
+          <a href={`/${lang}/services/`} style="margin-right:1.25rem">个性化 OEM/ODM 服务</a>
+          <a href={`/${lang}/ingredients/`} style="margin-right:1.25rem">原料库</a>
+          <a href={`/${lang}/selector/`} style="margin-right:1.25rem">选品链路</a>
+          <a href={`/${lang}/contact/`}>联系我们</a>
+        </p>
+      </>
+    ) : (
+      <>
+        <p style="color:#555">{dbError}</p>
+        <p style="color:#888;font-size:.875rem">数据库绑定异常,请检查 Worker 的 DB binding。</p>
+      </>
+    )}
   </body></html>
 ) : (
 <BaseLayout
@@ -220,6 +445,8 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
   title={bundle!.page.title}
   description={bundle!.page.seo_desc ?? ''}
   indexable={site!.is_live === 1}
+  ogImage={ogImage}
+  jsonLd={jsonLd}
   brandColor={site!.brand_color}
   theme={(site as any)!.theme ?? 'noir'}
 >
@@ -267,9 +494,9 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
   {/* 深金主题走报头式导航(N6);白底主题保留原导航 —— 两套并存,不互相破坏 */}
   {((site as any)!.theme ?? 'noir') === 'noir' ? (
     <MastheadNav locale={lang} path={path} siteName={site!.name}
-                 siteNameZh={site!.tagline ?? ''} nav={bundle!.nav} />
+                 siteNameZh={site!.tagline ?? ''} nav={navForHeader} />
   ) : (
-    <SiteHeader locale={lang} path={path} siteName={site!.name} siteNameZh={site!.tagline ?? ''} nav={bundle!.nav} />
+    <SiteHeader locale={lang} path={path} siteName={site!.name} siteNameZh={site!.tagline ?? ''} nav={navForHeader} showLocaleSwitch={!cnOnly} />
   )}
 
   <main id="main">
@@ -283,16 +510,20 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
     {/* banner 与 hero 一样自带 <h1>(BigBanner 第 66 行),所以两者任一存在都不再出页头带。
         漏掉 banner 的后果是双重的:首页同时有两个 h1(搜索引擎不知道该信哪个),
         版式上还多出一条 400px 的标题带把首屏大图整个压到折叠线以下 —— 大图看不见就白做了。 */}
-    {!bodyBlocks.some((b) => ['hero', 'banner', 'slideshow', 'bandimg'].includes(b.type)) && (
+    {(collectionMode
+      || !bodyBlocks.some((b) => ['hero', 'banner', 'slideshow', 'bandimg', 'storehero', 'fx_hero'].includes(b.type))) && (
       <section class="ck-section pagehead">
         <div class="ck-wrap">
-          <h1>{bundle!.page.title}</h1>
-          {bundle!.page.seo_desc && <p class="ph-lead">{bundle!.page.seo_desc}</p>}
+          {/* 产品集模式:h1 就是品类名,访客一眼确认「我进对地方了」 */}
+          <h1>{collectionMode ? `${catLabel(catFilter)} · ${pick(CATALOG_TEXT, lang).title}` : bundle!.page.title}</h1>
+          {collectionMode
+            ? <p class="ph-lead">{pick(CATALOG_TEXT, lang).intro}</p>
+            : bundle!.page.seo_desc && <p class="ph-lead">{bundle!.page.seo_desc}</p>}
         </div>
       </section>
     )}
 
-    {bodyBlocks.map((b) => {
+    {(collectionMode ? [] : bodyBlocks).map((b) => {
       const d = b.data as any;
       switch (b.type) {
         case 'hero':
@@ -304,8 +535,17 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
           // 数据侧已回填,但兜底留在代码里:以后任何人清空标题都不会再漏出空 h1。
           return (
             <Hero
-              hero={{ ...d, title: (d.title ?? '').trim() || bundle!.page.title }}
-              ctaHref={`/${lang}/contact/`}
+              /* 字段映射,不是多余的一行:块里存的是 body / ctaText,
+                 而 Hero 组件读的是 lead / ctaPrimary —— 名字对不上就渲染成空。
+                 表现是导语整段消失、CTA 变成一个没有字的蓝方块
+                 (2026-09-09 创始人在种植基地页截图指出)。 */
+              hero={{
+                ...d,
+                title: (d.title ?? '').trim() || bundle!.page.title,
+                lead: d.lead ?? d.body ?? '',
+                ctaPrimary: d.ctaPrimary ?? d.ctaText ?? '',
+              }}
+              ctaHref={d.ctaHref ?? `/${lang}/contact/`}
               highlights={d.stats ?? []}
               image={d.image ?? DEMO_SHOT[site!.id]}
               imageAlt={d.imageAlt ?? ''}
@@ -349,6 +589,7 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
               locale={lang}
               eyebrow={d.eyebrow} title={d.title} intro={d.intro}
               items={d.items ?? []} labels={d.labels} footnote={d.footnote}
+              summary={d.summary !== false}
             />
           );
         case 'proof':
@@ -356,13 +597,39 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
         case 'form':
           return <InquiryForm title={d.title} intro={d.intro} labels={d.labels} email={email} subject={`[${site!.name}] ${d.title}`} />;
         case 'prose':
-          // 正文段落 —— 内页的主体。行宽收在 68 字符内,超过就不好读了
+          // 正文段落 —— 内页的主体。窄屏单栏(行宽 44rem 内保可读);
+          // 宽屏改双栏杂志流:版心 1800 是铁令(创始人),一根窄文字柱
+          // 杵在宽画布左边就是「这么大的空白处」—— 双栏让文字填满轴线,
+          // 每栏行宽仍在可读范围内。
           return (
             <section class="ck-section" style="background:var(--ck-bg)">
               <div class="ck-wrap">
-                <div style="max-width:44rem;display:grid;gap:1.25rem" data-reveal="stagger">
+                <div class="prose-flow" data-reveal="stagger">
                   {(d.paragraphs ?? []).map((t: string) => (
-                    <p style="font-size:1.0625rem;line-height:1.75;color:var(--ck-ink-soft)">{t}</p>
+                    <p>{t}</p>
+                  ))}
+                </div>
+              </div>
+            </section>
+          );
+        case 'legal':
+          /* 法务文档:编号分节 + 段落/条目。创始人拿古方 AI 星图的隐私政策对比后
+             点名重做(「太不专业了」)—— 两段话确实撑不起一份隐私政策。
+             结构上对齐那边的成熟版式:生效日期、编号章节、条目列表。 */
+          return (
+            <section class="ck-section" style="background:var(--ck-bg)">
+              <div class="ck-wrap">
+                <div class="legaldoc" data-reveal>
+                  {d.effective && <p class="ld-date">{d.effective}</p>}
+                  {(d.sections ?? []).map((s: any, i: number) => (
+                    <section class="ld-sec">
+                      {s.h && <h2>{i + 1}. {s.h}</h2>}
+                      {(s.ps ?? []).map((t: string) => <p>{t}</p>)}
+                      {Array.isArray(s.items) && s.items.length > 0 && (
+                        <ul>{s.items.map((t: string) => <li>{t}</li>)}</ul>
+                      )}
+                      {(s.tail ?? []).map((t: string) => <p>{t}</p>)}
+                    </section>
                   ))}
                 </div>
               </div>
@@ -397,6 +664,24 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
           return <Perks image={d.image} items={d.items ?? []} veil={d.veil} />;
         case 'social':
           return <SocialWall title={d.title ?? ''} handle={d.handle} items={d.items ?? []} tone={d.tone} />;
+        case 'storehero':
+          return <StoreHero image={d.image} alt={d.alt} company={d.company ?? ''} tagline={d.tagline}
+                            badges={d.badges ?? []} ctaText={d.ctaText} ctaHref={d.ctaHref ?? `/${lang}/contact/`}
+                            secondText={d.secondText} secondHref={d.secondHref ?? `/${lang}/products/`}
+                            cardRight={!!d.cardRight} />;
+        case 'statsband':
+          return <StatsBand items={d.items ?? []} tone={d.tone} />;
+        case 'procgrid':
+          return <ProcGrid eyebrow={d.eyebrow} title={d.title ?? ''} intro={d.intro}
+                           items={d.items ?? []} cols={d.cols ?? 3} tone={d.tone} />;
+        case 'answer':
+          return <AnswerBlock question={d.question ?? ''} answer={d.answer ?? ''}
+                              faqs={d.faqs ?? []} tone={d.tone} />;
+        case 'procribbon':
+          return <ProcRibbon eyebrow={d.eyebrow} title={d.title ?? ''} intro={d.intro}
+                             steps={d.steps ?? []} tone={d.tone} />;
+        case 'fx_hero': case 'fx_six': case 'fx_opps': case 'fx_latest': case 'fx_bases': case 'fx_steps': case 'fx_contact': case 'fx_cards': case 'fx_ledger': case 'fx_brief':
+          return <FactoryBlock type={b.type} data={d} lang={lang} db={db} siteName={site!.name} email={fxEmail} whatsapp={contactWa} wechat={contactWx} />;
         case 'signup':
           return <Signup title={d.title ?? ''} body={d.body} placeholder={d.placeholder ?? 'Email'}
                          button={d.button ?? 'OK'} note={d.note} siteId={site!.id} tone={d.tone} />;
@@ -404,46 +689,104 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
           return null;
       }
     })}
+    {/* 产品页:品类项圈 → 真实产品目录 → 可做剂型(询盘车)。
+        项圈只列真有产品的品类并带数量,点空结果的筛选项没人会用第二次。 */}
+    {bundle!.page.template === 'products' && catCounts.length > 0 && (
+      <nav class="catbar" aria-label={catLabel('all')}>
+        <div class="ck-wrap">
+          <a class:list={['chip', { on: !catFilter }]} href={`/${lang}/products/`}>
+            {catLabel('all')}（{catCounts.reduce((a, c) => a + c.n, 0)}）
+          </a>
+          {catCounts.map((c) => (
+            <a class:list={['chip', { on: catFilter === c.category }]}
+               href={`/${lang}/products/?cat=${c.category}`}>
+              {catLabel(c.category)}（{c.n}）
+            </a>
+          ))}
+        </div>
+      </nav>
+    )}
+    {catalog.length > 0 && (
+      <ProductGrid
+        dense
+        {/* 品类名已在产品集模式的 h1 里,这里再带前缀就是同屏重复 */}
+        title={pick(CATALOG_TEXT, lang).title}
+        intro={collectionMode ? undefined : pick(CATALOG_TEXT, lang).intro}
+        items={catalog.map((p: any) => ({
+          id: p.slug, name: p.name ?? p.slug,
+          summary: p.summary ?? '',
+          image: p.cover_media ? `/media/${p.cover_media}` : '',
+          /* products.moq 是无语种结构列,存的是中文口径 —— 非中文页兜英文,
+             别让英文目录卡上蹦中文(巡检实拍抓到的) */
+          moq: /[一-鿿]/.test(p.moq ?? '') && lang !== 'zh-cn' && lang !== 'zh-tw'
+            ? 'Flexible MOQ · by category & packaging' : (p.moq ?? ''),
+          options: {},
+          /* 图和名字点进详情页 —— 访客看到产品卡的第一反应就是点它 */
+          href: `/${lang}/product/${p.slug}/`,
+        }))}
+        addLabel={pick(GRID_TEXT, lang).add}
+        moqLabel={pick(GRID_TEXT, lang).moq}
+      />
+    )}
+    {/* 筛到空品类:说清楚为什么空、下一步去哪 —— 半屏空白是最伤的收尾 */}
+    {bundle!.page.template === 'products' && catFilter && catalog.length === 0 && (
+      <section class="catempty">
+        <div class="ck-wrap">
+          <p>{lang === 'zh-cn'
+            ? `「${catLabel(catFilter)}」的在售清单整理中 —— 该品类可做,剂型能力见下方,或直接发起询盘。`
+            : `The "${catLabel(catFilter)}" catalogue is being prepared — we do make this category. See the formats below, or start an inquiry.`}</p>
+          <a class="chip" href={`/${lang}/products/`}>{catLabel('all')}</a>
+        </div>
+      </section>
+    )}
     {/* 产品页:剂型网格 —— 逛→选规格→就地加入询盘车 */}
     {bundle!.page.template === 'products' && (
       <ProductGrid
         title={pick(GRID_TEXT, lang).title}
         intro={pick(GRID_TEXT, lang).intro}
-        items={DEMO_PRODUCTS}
+        items={formatItems}
         addLabel={pick(GRID_TEXT, lang).add}
         moqLabel={pick(GRID_TEXT, lang).moq}
       />
     )}
+    {/* 产品集模式砍掉了营销版块,但询盘带是转化出口,单独补回收尾 */}
+    {collectionMode && inquiryBlock && (
+      <InquiryBand inquiry={inquiryBlock.data as any} href={`/${lang}/contact/`} email={email} />
+    )}
+
+    {/* 联系页必须有一张真表单 —— 这一页是「发起询盘」「发送这套方案」的落点,
+        以前只有一个 mailto 链接,手机上点了多半什么都不发生,线索就这么丢了。 */}
+    {bundle!.page.template === 'contact' && (
+      <InquiryFormLite lang={lang} email={email} />
+    )}
   </main>
 
-  {eco?.hub && (
-    <BrandEcosystem
-      locale={lang}
-      hub={eco.hub}
-      children={eco.children}
-      currentId={site!.id}
-      title={pick(ECO_TEXT, lang).title}
-      intro={pick(ECO_TEXT, lang).intro}
-    />
-  )}
-
-  <InquiryCart labels={pick(CART_LABELS, lang)} submitHref={`/${lang}/contact/`} />
+  {showCart && <InquiryCart labels={pick(CART_LABELS, lang)} submitHref={cartHref} />}
 
   {((site as any)!.theme ?? 'noir') === 'noir' ? (
     <StatementFooter
       locale={lang} path={path} siteName={site!.name}
       statement={site!.tagline ?? site!.name}
       email={email} nav={bundle!.nav}
-      siblings={(eco?.children ?? []).map((c: any) => ({ name: c.name, href: `https://${c.domain}` }))}
+      siblings={[]}
     />
   ) : (
-    <SiteFooter locale={lang} path={path} site={{ ...staticSite!, name: site!.name }} siblings={[]} email={email} nav={bundle!.nav} />
+    <SiteFooter locale={lang} path={path} site={{ ...staticSite!, name: site!.name }} siblings={[]} email={email} nav={bundle!.nav} showLocaleSwitch={!cnOnly} cnOnly={cnOnly} />
   )}
   <Motion />
 </BaseLayout>
 )}
 
 <style>
+  /* 法务文档:行宽 42rem(约 65 字符),法律文本更要克制行宽 */
+  .legaldoc { max-width: 42rem; display: grid; gap: 2rem; }
+  .legaldoc .ld-date { color: var(--ck-ink-faint); font-size: var(--ck-small); margin: 0; }
+  .legaldoc .ld-sec { display: grid; gap: 0.75rem; }
+  .legaldoc h2 { font-size: 1.1875rem; margin: 0; }
+  .legaldoc p { margin: 0; line-height: 1.8; color: var(--ck-ink-soft); }
+  .legaldoc ul { margin: 0; padding-inline-start: 1.25rem; display: grid; gap: 0.5rem; }
+  .legaldoc li { line-height: 1.7; color: var(--ck-ink-soft); }
+
   /* 内页页头。上下留白比常规版块小 —— 它是引子不是内容,
      占太多屏会把真正的内容推下去。 */
   .pagehead {
@@ -463,5 +806,13 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
     color: var(--ck-ink-soft);
     font-size: 1.0625rem;
     line-height: 1.7;
+  }
+
+  /* prose 版块:窄屏单栏,宽屏双栏杂志流(版心 1800 铁令下填满轴线) */
+  .prose-flow { max-width: 44rem; display: grid; gap: 1.25rem; }
+  .prose-flow p { margin: 0; font-size: 1.0625rem; line-height: 1.75; color: var(--ck-ink-soft); }
+  @media (min-width: 78rem) {
+    .prose-flow { max-width: none; display: block; columns: 2; column-gap: 4rem;  /* 09-17 「太多空余」 */ }
+    .prose-flow p { break-inside: avoid; margin: 0 0 1.25rem; }
   }
 </style>

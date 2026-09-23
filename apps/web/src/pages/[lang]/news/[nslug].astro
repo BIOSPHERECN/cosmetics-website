@@ -1,0 +1,155 @@
+---
+/**
+ * 资讯详情 —— /{lang}/news/{slug}/
+ * 每条做足 SEO/GEO(创始人指令):
+ *   独立 slug + 首段直答(summary 顶格)+ NewsArticle JSON-LD
+ *   (含 isBasedOn 指向信息来源,声明这是基于公开报道的原创转述)。
+ * 正文是 AI 改写的原创快讯,不是转载;来源仅作署名链接(nofollow)。
+ */
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { env } from 'cloudflare:workers';
+import { pageShell } from '../../../lib/shell';
+import { isLang, DEFAULT_LANG, type Lang } from '../../../lib/db';
+import { orgJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
+
+export const prerender = false;
+
+const db = (env as any).DB as D1Database | undefined;
+const rawLang = Astro.params.lang ?? DEFAULT_LANG;
+const lang: Lang = (isLang(rawLang) ? rawLang : DEFAULT_LANG) as Lang;
+const zh = lang === 'zh-cn' || lang === 'zh-tw';
+const nslug = String(Astro.params.nslug ?? '');
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const base = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const path = `/${lang}/news/${nslug}/`;
+
+const row = db ? await db.prepare(
+  `SELECT * FROM news WHERE slug = ? AND is_published = 1`,
+).bind(nslug).first<any>() : null;
+if (!row) return Astro.redirect(`/${lang}/news/`, 302);
+
+/* 浏览计数 —— 「热度」排序的数据源。SSR 无缓存,每次真实到达都 +1;
+   够排序用就行,不追求去重去爬虫的分析精度 */
+await db!.prepare(`UPDATE news SET views = views + 1 WHERE id = ?`).bind(row.id).run().catch(() => {});
+
+const title = (zh ? row.title_zh : row.title_en) || row.title_en || row.title_zh;
+const summary = (zh ? row.summary_zh : row.summary_en) || row.summary_en || row.summary_zh || '';
+const body = ((zh ? row.body_zh : row.body_en) || row.body_en || row.body_zh || '') as string;
+/* 展示与结构化数据一律用**新闻原始日期**(orig_date),入库时刻只作兜底 ——
+   「发布时间从2年前」那种错位,伤的是整个栏目的可信度 */
+const dateFull = String(row.orig_date || row.published_at || '');
+const date = dateFull.slice(0, 10);
+
+const TOPIC: Record<string, string> = zh
+  ? { ingredient: '新原料', tech: '新技术', product: '爆款观察', brand: '品牌动态', regulation: '法规', industry: '行业' }
+  : { ingredient: 'Ingredients', tech: 'Technology', product: 'Products', brand: 'Brands', regulation: 'Regulation', industry: 'Industry' };
+const T = zh
+  ? { back: '← 全部资讯', src: '信息来源',
+      note: '注:本文由 BIOSPHERE 编辑基于公开报道整理改写,配图为 AI 生成插画;内容不代表来源方观点,详情以来源报道为准。',
+      cta: '想把行业趋势变成你的产品?发起询盘 →' }
+  : { back: '← All news', src: 'Source',
+      note: 'Note: compiled and rewritten by BIOSPHERE editors from public reporting; illustration AI-generated. See the source for full details.',
+      cta: 'Turn trends into your product — start an inquiry →' };
+
+const jsonLd = [
+  orgJsonLd(base, shell.site?.name ?? 'BIOSPHERE', lang, summary),
+  breadcrumbJsonLd(base, lang, path, zh ? '首页' : 'Home', [
+    { label: zh ? '行业资讯' : 'Industry News', href: `/${lang}/news/` },
+    { label: title, href: path },
+  ]),
+  {
+    '@context': 'https://schema.org', '@type': 'NewsArticle',
+    '@id': `${base}${path}`, headline: title,
+    ...(summary ? { description: summary } : {}),
+    inLanguage: zh ? 'zh-CN' : 'en',
+    datePublished: dateFull.replace(' ', 'T') + 'Z',
+    author: { '@type': 'Organization', name: shell.site?.name ?? 'BIOSPHERE-AI', url: base },
+    publisher: { '@id': `${base}/#organization` },
+    isBasedOn: row.source_url,
+    about: TOPIC[row.topic] ?? row.topic,
+    ...(row.cover_media ? { image: `${base}/media/${row.cover_media}` } : {}),
+    mainEntityOfPage: `${base}${path}`,
+  },
+] as Record<string, unknown>[];
+---
+
+<BaseLayout
+  locale={lang}
+  school={shell.variant?.school ?? 'atelier'}
+  variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? 'biosphere-ai'}
+  title={title}
+  description={summary}
+  siteName={shell.site?.name ?? '帛卉'}
+  siteUrl={base}
+  path={path}
+  indexable={shell.site?.is_live === 1}
+  brandColor={shell.site?.brand_color}
+  theme={(shell.site as any)?.theme ?? 'noir'}
+  jsonLd={jsonLd}
+>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+
+  <main id="main" class="na">
+    <article class="ck-wrap">
+      <p class="crumb"><a href={`/${lang}/news/`}>{T.back}</a></p>
+      <div class="meta">
+        <span class="topic">{TOPIC[row.topic] ?? row.topic}</span>
+        <time datetime={date}>{date}</time>
+      </div>
+      <h1>{title}</h1>
+      {row.cover_media && (
+        <figure class="cover">
+          <img src={`/media/${row.cover_media}`} alt={title} decoding="async" />
+          <figcaption>{zh ? 'AI 编辑插画' : 'AI editorial illustration'}</figcaption>
+        </figure>
+      )}
+      {/* 首段直答:GEO 的答案引擎抓的就是这一段 */}
+      {summary && <p class="lede">{summary}</p>}
+      <div class="body">
+        {/* 深度稿协议:「## 」开头的行是小节标题(编辑管线产出),转 h2;其余成段 */}
+        {body.split(/\n+/).filter(Boolean).map((p: string) =>
+          p.startsWith('## ')
+            ? <h2 class="sec">{p.slice(3).trim()}</h2>
+            : <p>{p}</p>)}
+      </div>
+      <p class="src">{T.src}:<a href={row.source_url} rel="nofollow noopener" target="_blank">{row.source_name}</a>
+        {row.extra_sources && <span class="xsrc">{zh ? ' · 综合参考:' : ' · Also referenced: '}{row.extra_sources}</span>}</p>
+      <p class="note">{T.note}</p>
+      <p class="cta-line"><a class="cta" href={`/${lang}/contact/`}>{T.cta}</a></p>
+    </article>
+  </main>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  .na { background: var(--ck-bg); padding-block: 3rem 4rem; }
+  article { max-width: 44rem; }
+  .crumb { margin-bottom: 1.5rem; }
+  .crumb a { color: var(--ck-ink-faint); text-decoration: none; }
+  .meta { display: flex; gap: 1rem; align-items: baseline; font-size: max(0.8125rem, 14px); color: var(--ck-ink-faint); }
+  .topic { color: var(--ck-accent); font-weight: 600; }
+  h1 { margin: 0.625rem 0 1rem; }
+  .lede { font-size: 1.0625rem; line-height: 1.75; color: var(--ck-ink);
+          border-inline-start: 3px solid var(--ck-accent); padding-inline-start: 1rem; margin-bottom: 1.25rem; }
+  .body p { line-height: 1.85; color: var(--ck-ink-soft); margin: 0 0 1rem; }
+  .cover { margin: 1.25rem 0; }
+  .cover img { width: 100%; border-radius: var(--ck-radius-lg); display: block; }
+  .cover figcaption { font-size: max(0.6875rem, 14px); color: var(--ck-ink-faint); margin-top: 0.375rem; }
+  .body .sec { font-size: 1.1875rem; margin: 1.75rem 0 0.75rem; color: var(--ck-ink); }
+  .src { font-size: var(--ck-small); color: var(--ck-ink-faint); }
+  .src a { color: var(--ck-ink-soft); }
+  .note { font-size: max(0.75rem, 14px); color: var(--ck-ink-faint); border-top: 1px solid var(--ck-line);
+          padding-top: 0.875rem; margin-top: 1.5rem; }
+  .cta-line { margin-top: 1.5rem; }
+  .cta { display: inline-block; background: var(--ck-accent); color: var(--ck-on-accent);
+         padding: 0.75rem 1.375rem; border-radius: var(--ck-cta-radius); text-decoration: none; font-weight: 600; }
+  .cta:hover { background: var(--ck-accent-deep); }
+</style>

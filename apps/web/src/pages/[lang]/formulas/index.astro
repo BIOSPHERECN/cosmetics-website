@@ -1,0 +1,198 @@
+---
+import { TERMS_CONFIRMED } from '../../../lib/terms';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 配方库货架 —— 和包材库共用 ShelfPage(创始人 2026-09-06:「产品库、包材库是一样的结构」)。
+ *
+ * 之前配方只有详情页没有货架页:客户只能从选品链路走完六步才见得到配方,
+ * 或者直接拿到一个编码。想「先随便看看你们能做什么」的人没有入口。
+ *
+ * 筛选全部走 <a href>,不用 JS —— 每一个筛选面都是一个可被抓取的独立 URL,
+ * 这正是同行做不到的地方(他们整站客户端渲染,这些面机器读不到)。
+ *
+ * D1 用量:整表只有一百行,一次全取回来在内存里筛与计数,
+ * 比每换一个条件就发三四条 GROUP BY 便宜得多;页面本身走边缘缓存。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import ShelfPage from '@cosmetic/core/components/ShelfPage.astro';
+import { buildChain } from '@cosmetic/core/content/chain.ts';
+import { pageShell } from '../../../lib/shell';
+import { SHELF_SNAPSHOT } from '@cosmetic/core/generated/shelf-snapshot.ts';
+import { FMT_LABEL, BEN_LABEL, CAT_LABEL, formulaName } from '../../../lib/catalog';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/formulas/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const url = new URL(Astro.url);
+
+const pick = (k: string) => (url.searchParams.get(k) ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 6);
+const fCat = pick('c'), fFmt = pick('f'), fBen = pick('b'), fMkt = pick('m');
+
+let rows: any[] = [];
+if (db) {
+  try {
+    rows = ((await db.prepare(
+      `SELECT code, category, format, benefits, moq, lead_days, markets, cost_band, ai_summary, status
+         FROM formulas WHERE status IN ('sample','active') ORDER BY code`).all<any>()).results ?? []) as any[];
+  } catch { rows = []; }
+}
+
+/* 同包材库与原料库:D1 不可用时用快照兜第一屏,并如实说明。 */
+const snapF = (SHELF_SNAPSHOT as any).formulas;
+const degraded = rows.length === 0 && !!snapF?.items?.length;
+if (degraded) rows = snapF.items;
+
+const has = (csv: string, v: string) => String(csv ?? '').split(',').map((s) => s.trim()).includes(v);
+const match = (r: any) =>
+  (fCat.length === 0 || fCat.includes(r.category)) &&
+  (fFmt.length === 0 || fFmt.includes(r.format)) &&
+  (fBen.length === 0 || fBen.some((b) => has(r.benefits, b))) &&
+  (fMkt.length === 0 || fMkt.some((m) => has(r.markets, m)));
+const items = rows.filter(match);
+
+/** 计数时排除自己这一组的条件,否则勾了一个之后同组其它选项全变 0,看着像没内容 */
+const countBy = (group: 'c' | 'f' | 'b' | 'm', value: string) =>
+  rows.filter((r) =>
+    (group === 'c' || fCat.length === 0 || fCat.includes(r.category)) &&
+    (group === 'f' || fFmt.length === 0 || fFmt.includes(r.format)) &&
+    (group === 'b' || fBen.length === 0 || fBen.some((b) => has(r.benefits, b))) &&
+    (group === 'm' || fMkt.length === 0 || fMkt.some((m) => has(r.markets, m))) &&
+    (group === 'c' ? r.category === value
+      : group === 'f' ? r.format === value
+      : group === 'b' ? has(r.benefits, value)
+      : has(r.markets, value))).length;
+
+/** 勾上就加进去,已勾再点就去掉 —— 纯链接实现的多选 */
+const toggleHref = (key: string, cur: string[], v: string) => {
+  const next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v];
+  const p = new URLSearchParams();
+  const all: [string, string[]][] = [['c', fCat], ['f', fFmt], ['b', fBen], ['m', fMkt]];
+  for (const [k, arr] of all) {
+    const use = k === key ? next : arr;
+    if (use.length) p.set(k, use.join(','));
+  }
+  const q = p.toString();
+  return q ? `${path}?${q}` : path;
+};
+
+const uniq = (xs: string[]) => [...new Set(xs.filter(Boolean))];
+const catVals = uniq(rows.map((r) => r.category));
+const topBy = (vals: string[], known: Record<string, unknown>, n: number) => {
+  const f = new Map<string, number>();
+  for (const v of vals) if (v && known[v]) f.set(v, (f.get(v) ?? 0) + 1);
+  return [...f.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([v]) => v);
+};
+const fmtVals = topBy(rows.map((r) => r.format), FMT_LABEL, 12);
+const benVals = topBy(rows.flatMap((r) => String(r.benefits ?? '').split(',').map((s) => s.trim())), BEN_LABEL, 12);
+const mktVals = uniq(rows.flatMap((r) => String(r.markets ?? '').split(',').map((s) => s.trim()))).slice(0, 10);
+
+const L = (m: Record<string, [string, string]>, k: string) => (m[k] ? (zh ? m[k][0] : m[k][1]) : k);
+
+/* 降级渲染的内容是好的(快照),但不能进边缘缓存 ——
+   否则数据层恢复之后,访客还要再吃一小时的陈旧快照。 */
+if (degraded) {
+  Astro.response.headers.set('x-bh-degraded', '1');
+  Astro.response.headers.set('Cache-Control', 'no-store');
+}
+
+const T = zh ? {
+  eyebrow: '配方库', filters: '筛选', clearAll: '清除全部', results: '条', empty: '这些条件下没有配方,放宽一个再试。',
+  shotPending: '实拍整理中',
+  cat: '品类', fmt: '剂型', ben: '功效方向', mkt: '可售市场',
+  title: '配方库 —— 按剂型、功效、市场翻,看中就报编码',
+  lede: `每一条都写明剂型、关键活性物方向、起订量与打样周期。点进去是完整规格,
+         底部两个按钮:索取样品、定制这一款。规格为示例参数,实际以打样与书面确认为准。`,
+  moq: '起订', days: '打样天',
+  note: '本页规格为示例参数,用于说明我们能做的方向。实际配方、起订量与周期以打样与书面确认为准,不含报价。',
+  sample: '示例规格',
+  bands: { low: '经济', mid: '中档', high: '高端' } as Record<string, string>,
+  degraded: '数据服务正在恢复,当前显示的是最近一次的快照,筛选暂不可用。',
+} : {
+  eyebrow: 'Formula library', filters: 'Filters', clearAll: 'Clear all', results: 'items',
+  empty: 'Nothing matches these filters. Loosen one and try again.',
+  shotPending: 'Photography pending',
+  cat: 'Category', fmt: 'Format', ben: 'Claim direction', mkt: 'Markets',
+  title: 'Formula library — browse by format, claim and market, then quote the code',
+  lede: `Every entry states format, active direction, MOQ and sampling time. Open one for the full specification
+         and two buttons: request a sample, or customise it. Specifications are sample parameters confirmed at sampling.`,
+  moq: 'MOQ', days: 'Sampling',
+  note: 'Specifications on this page are sample parameters describing what we can build. Actual formula, MOQ and lead times are confirmed at sampling and in writing. No pricing implied.',
+  sample: 'Sample spec',
+  bands: { low: 'Value', mid: 'Mid', high: 'Premium' } as Record<string, string>,
+  degraded: 'The data service is recovering; this is the most recent snapshot and filtering is temporarily unavailable.',
+};
+
+const facets = [
+  { title: T.cat, options: catVals.map((v) => ({ label: L(CAT_LABEL, v), value: v, count: countBy('c', v), href: toggleHref('c', fCat, v), on: fCat.includes(v) })) },
+  { title: T.fmt, options: fmtVals.map((v) => ({ label: L(FMT_LABEL, v), value: v, count: countBy('f', v), href: toggleHref('f', fFmt, v), on: fFmt.includes(v) })) },
+  { title: T.ben, options: benVals.map((v) => ({ label: L(BEN_LABEL, v), value: v, count: countBy('b', v), href: toggleHref('b', fBen, v), on: fBen.includes(v) })) },
+  { title: T.mkt, options: mktVals.map((v) => ({ label: v, value: v, count: countBy('m', v), href: toggleHref('m', fMkt, v), on: fMkt.includes(v) })) },
+].map((f) => ({ ...f, options: f.options.filter((o) => (o.count ?? 0) > 0 || o.on) }))
+ .filter((f) => f.options.length > 1);
+
+const active = [
+  ...fCat.map((v) => ({ label: L(CAT_LABEL, v), href: toggleHref('c', fCat, v) })),
+  ...fFmt.map((v) => ({ label: L(FMT_LABEL, v), href: toggleHref('f', fFmt, v) })),
+  ...fBen.map((v) => ({ label: L(BEN_LABEL, v), href: toggleHref('b', fBen, v) })),
+  ...fMkt.map((v) => ({ label: v, href: toggleHref('m', fMkt, v) })),
+];
+
+const shelfItems = items.slice(0, 120).map((r) => ({
+  code: r.code,
+  href: `/${lang}/formula/${r.code}/`,
+  name: formulaName(r, zh),
+  category: L(CAT_LABEL, r.category),
+  chips: [
+    ...(r.markets ? [String(r.markets).split(',').slice(0, 2).map((m) => m.trim()).join(' · ')] : []),
+    ...(r.cost_band ? [T.bands[r.cost_band] ?? r.cost_band] : []),
+  ],
+  meta: [
+    /* 起订 / 打样天:工厂口径未确认前不显示(lib/terms.ts) */
+    TERMS_CONFIRMED && r.moq ? `${T.moq} ${Number(r.moq).toLocaleString()}` : '',
+    TERMS_CONFIRMED && r.lead_days ? `${T.days} ${r.lead_days}` : '',
+  ].filter(Boolean).join(' · '),
+  badge: r.status === 'sample' ? T.sample : undefined,
+}));
+
+/* 筛选面是可被抓取的独立 URL,但没必要让搜索引擎收录几十种组合 —— 只让无条件那一面进索引 */
+const indexable = shell.site?.is_live === 1 && active.length === 0;
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'} title={T.title} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={indexable} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    {degraded && <p class="degraded">{T.degraded}</p>}
+    <ShelfPage
+      tabs={buildChain(lang, 'formula')}
+      eyebrow={T.eyebrow} title={T.title} lede={T.lede}
+      facets={facets} items={shelfItems} total={items.length}
+      active={active} clearHref={path} note={T.note}
+      labels={{ filters: T.filters, clearAll: T.clearAll, empty: T.empty,
+                results: T.results, shotPending: T.shotPending }} />
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <style>
+    .degraded { max-width: min(112.5rem, 100%); margin: 0 auto;
+                padding: 0 var(--ck-gutter, 1.25rem); font-size: .8125rem;
+                color: var(--ck-ink-soft); line-height: 1.7; }
+  </style>
+</BaseLayout>

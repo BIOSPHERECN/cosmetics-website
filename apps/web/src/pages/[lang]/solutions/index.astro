@@ -1,0 +1,15 @@
+---
+/**
+ * /solutions/ → /services/ 永久跳转。
+ *
+ * 创始人 2026-09-07:「解决方案不要和别人的网站布局一样,可改成服务,
+ * 把所有的变成一个网页…很多内容都是一样的」。
+ *
+ * 十页的字一个没丢,全部搬到 /services/ 的对应锚点。这里留一个 301 而不是
+ * 直接删文件:页是 2026-09-06 才上线的,可能已经被抓过一轮;
+ * 删成 404 会让搜索引擎判为「站点在掉页」,301 则把权重原样交过去。
+ */
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn';
+return Astro.redirect(`/${lang}/services/`, 301);
+---

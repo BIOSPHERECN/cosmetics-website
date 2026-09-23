@@ -1,0 +1,17 @@
+---
+/**
+ * /solutions/{slug}/ → /services/#{slug} 永久跳转。
+ *
+ * 十个方案页合进了一页(创始人 2026-09-07),每个方案在新页上是一个锚点段,
+ * 所以跳转带上锚点 —— 落地就在原来那一段,不是让人从头再找一遍。
+ *
+ * slug 先对着常量核一遍:核不上的直接跳总页,不把任意字符串塞进 Location 头。
+ */
+import { SOLUTIONS } from '@cosmetic/core/content/solutions.ts';
+
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn';
+const slug = String(Astro.params.slug ?? '');
+const known = SOLUTIONS.some((s) => s.slug === slug);
+return Astro.redirect(`/${lang}/services/${known ? `#${slug}` : ''}`, 301);
+---

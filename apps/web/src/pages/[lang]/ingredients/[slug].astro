@@ -1,0 +1,287 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 原料详情页 —— 与配方、包材共用 ItemDetail。
+ *
+ * 排序有讲究:配伍禁忌、稳定性、投料要点放在最前面,机理放后面。
+ * 因为看这一页的人分两类 —— 品牌方想知道「这东西干什么用」,配方师想知道「它会怎么坑我」。
+ * 前者一句机理就够,后者才是会把页面存下来的人。
+ *
+ * 三条不写:不写功效承诺(只写方向)、不写法规限值当事实(只写方向 + 以官方文本为准)、
+ * 不写没依据的数字。这一批入库前的独立核验就抓出十六处违反,所以规则写在这里,不靠自觉。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import ItemDetail from '@cosmetic/core/components/ItemDetail.astro';
+import { pageShell } from '../../../lib/shell';
+import { BEN_LABEL, FMT_LABEL, label } from '../../../lib/catalog';
+import { inciKey as cnKey } from '../../../lib/inci-key';
+import { factKey, ingredientSlug } from '../../../lib/decoder';
+import CatalogIngredient from './_CatalogIngredient.astro';
+import MemberGate from '../../../components/MemberGate.astro';
+import { pageGate, paywallLd } from '../../../lib/member';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const slug = String(Astro.params.slug ?? '').toLowerCase().slice(0, 80);   // 目录原料 slug 截 80(与 structures.py 同)
+const db = (env as any).DB as D1Database | undefined;
+
+const g = db ? await db.prepare(
+  `SELECT * FROM ingredients WHERE slug = ? AND status='published'`)
+  .bind(slug).first<any>().catch(() => null) : null;
+
+/* 目录原料页(创始人 2026-09-17:「那么多这种资源库,都要抓回来,图文的方式展示」):
+   旧 149 条查不到时按 slug 反推 inci_key —— 连字符换空格大写 = cn-nmpa 那套键(非字母数字压空格),先精确配 inci_catalog;
+   ingredient_facts / eu-cosing 的键保留标点(1,2-HEXANEDIOL),对它们把连字符当 LIKE 通配再试一次。 */
+let hit: { fk: string; ck: string; fact: any | null } | null = null;
+if (!g && db && slug) {
+  const ck = slug.replace(/-+/g, ' ').toUpperCase().trim();
+  /* T 审查:slug 截 80 后(与 ingredientSlug / sitemap 同口径)LIKE 无尾通配会配不上全名,截断了就补一个 % 前缀匹配 */
+  const like = ck.replace(/ /g, '%') + '%';   // 09-23:原来只有截断 slug 才补尾 %,以「)」结尾的键因此全 404(sitemap 抽查查出)
+  /* 09-23 A1:LIKE 首段是字面前缀(首个 % 之前),补一个 [lo, hi) 区间让它走 inci_key 索引 ——
+     原来两条都全表扫:facts 每次 5,8xx 行、inci_catalog 每次 57,0xx 行(每小时合计上亿行)。键全是大写,区间比较与 LIKE 等价 */
+  const lo = like.split(/[%_]/)[0], hi = lo.slice(0, -1) + String.fromCharCode(lo.charCodeAt(lo.length - 1) + 1);
+  const fact = await db.prepare(`SELECT * FROM ingredient_facts WHERE inci_key >= ? AND inci_key < ? AND (inci_key = ? OR inci_key LIKE ?) ORDER BY (inci_key = ?) DESC, length(inci_key) LIMIT 1`)
+    .bind(lo, hi, ck, like, ck).first<any>().catch(() => null);
+  if (fact) hit = { fk: fact.inci_key, ck: cnKey(fact.inci_key), fact };
+  else {
+    const c = await db.prepare(`SELECT inci, inci_key FROM inci_catalog WHERE inci_key = ? ORDER BY registry LIMIT 1`).bind(ck).first<any>().catch(() => null)
+      /* 只有带连字符的 slug 才值得全表 LIKE(57k 行):eu-cosing 独有的键带标点,精确配不上 */
+      ?? (slug.includes('-') ? await db.prepare(`SELECT inci, inci_key FROM inci_catalog WHERE inci_key >= ? AND inci_key < ? AND inci_key LIKE ? ORDER BY length(inci_key) LIMIT 1`).bind(lo, hi, like).first<any>().catch(() => null) : null);
+    if (c) hit = { fk: factKey(String(c.inci ?? c.inci_key)), ck: cnKey(String(c.inci ?? c.inci_key)), fact: null };
+  }
+  /* 规范 slug 不一致就 301(与 /decoder/ 同做法),别让同一成分挂两个地址 */
+  if (hit && ingredientSlug(hit.fk) !== slug) return Astro.redirect(`/${lang}/ingredients/${ingredientSlug(hit.fk)}/`, 301);
+}
+if (!g && !hit) return new Response(null, { status: 404 });
+/* 会员限额(2026-09-23):与成分解读详情共用一个每日配额;未登录只出名称 / INCI / 类别 + 登录入口 */
+const gt = await pageGate(Astro, env, db, `ing:${g?.slug ?? slug}`);
+const full = gt.state === 'bot' || gt.state === 'full';
+
+const related = db && g ? (((await db.prepare(
+  `SELECT slug, inci, name_zh, functions FROM ingredients
+    WHERE family = ? AND slug <> ? AND status='published' LIMIT 6`)
+  .bind(g.family, g.slug).all<any>().catch(() => ({ results: [] }))).results ?? []) as any[]) : [];
+
+/* 国家目录对账(2026-09-09)。
+   《已使用化妆品原料目录(2021年版)》是国家药监局 2021 年第 62 号公告的附件,
+   8,972 条,收录在我国境内生产、销售的化妆品**已经用过**的原料,并给出最高历史使用量。
+   按公告说明八,这个量可以直接作为《化妆品安全评估报告(简化版)》的证据。
+
+   为什么值得挂在原料页上:客户问「这个能加多少」,以前只能答「按法规」——
+   那等于没答。现在能答「淋洗类历史最高 X%、驻留类 Y%,出处是国家目录第 N 号」。
+
+   匹配走 inci_key(去括号俗名后的归一化 INCI):目录把甘草写成
+   GLYCYRRHIZA GLABRA (LICORICE) ROOT EXTRACT,精确匹配会掉 22 条。 */
+const inciKey = String(g?.inci ?? '').toUpperCase()
+  .replace(/[（(][^）)]*[）)]/g, ' ').replace(/[^A-Z0-9]+/g, ' ').trim();
+/* 七个已入库目录一次查完(精确 inci_key)。2026-09-10 实测 149 味里:CosIng 命中 131、中国目录 125、
+   欧盟附录 4(水杨酸、薄荷油、苦橙花油、檀香油 —— 都是限用)、加拿大 1。
+   客户问的是「我要卖的那几个国家分别能不能用」,一张表按市场给,比一句「按法规」有用得多。 */
+const cats: any[] = db && inciKey ? (((await db.prepare(
+  `SELECT registry, no, name_zh, max_rinse, max_leave, note, source
+     FROM inci_catalog WHERE inci_key = ? ORDER BY registry`)
+  .bind(inciKey).all<any>().catch(() => ({ results: [] }))).results ?? []) as any[]) : [];
+const cat = cats.find((c) => String(c.registry) === 'cn-nmpa-2021') ?? null;
+const regs: any[] = db && g ? (((await db.prepare(
+  `SELECT id, region, name_zh, name_en, status FROM inci_registry ORDER BY sort_order`)
+  .all<any>().catch(() => ({ results: [] }))).results ?? []) as any[]) : [];
+/* 禁限用表(负面清单)里没出现 ≠ 可用;正面目录里没出现 = 未收录。两句话不能混,分开写。 */
+const NEG = new Set(['eu-annex', 'asean-acd', 'jp-std', 'ca-hotlist', 'us-fda', 'cn-stsc', 'kr-safety', 'br-anvisa']);
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/ingredients/${g?.slug ?? ''}/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const fns = String(g?.functions ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+const fmts = String(g?.formats ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+const name = zh ? g?.name_zh : g?.inci;
+
+const T = zh ? {
+  home: '首页', lib: '草本原料库',
+  shotPending: '配图整理中', specs: '规格', parts: '部件参数', related: '同类其它原料',
+  faqH: '常见问题', partCode: '编码',
+  inci: 'INCI', cas: 'CAS', fam: '类别', use: '常见添加', ph: '适用 pH', band: '成本档',
+  bands: { low: '经济', mid: '中档', high: '高端' } as Record<string, string>,
+  catH: '国家目录收录情况', catNo: '目录序号', catZh: '标准中文名称',
+  mktH: '各市场目录状态(按 INCI 精确对账)',
+  mktHit: (no: string) => `已列入(${no})`,
+  mktNegMiss: '禁限用表未列出 —— 不等于无限制,以该市场全文与责任人复核为准',
+  mktPosMiss: '未收录',
+  mktPending: '目录待抓取,先看官方原文',
+  mktNote: '对账按 INCI 名精确匹配,别名与盐/酯形式可能漏配;各目录以最新官方文本为准。',
+  catRinse: '淋洗类最高历史使用量', catLeave: '驻留类最高历史使用量',
+  catNote: '目录备注', catSrc: '数据出处',
+  secWhy: '它解决什么问题', secBad: '配伍禁忌与翻车点', secStab: '稳定性',
+  secFactory: '工厂投料要点', secMkt: '市场方向', secBase: '基本信息',
+  aliases: '别名与学名', fmt: '适合剂型', halal: '清真与素食', conf: '依据强度',
+  ask: '就这个原料问我们', sel: '走一遍选品链路', kg: '在知识图谱里查它的关联',
+  ctaNote: '想用这个方向做产品?把你的定位告诉我们,配方师会回你能不能做、用什么剂型、大概什么周期。',
+  note: '本页为配方学与工厂经验的公开常识整理,供选型参考。不构成功效承诺;添加区间是公开常见范围,不是法规限值;各市场可用性与限制以最新官方文本为准,由品牌方与其责任人复核。',
+} : {
+  home: 'Home', lib: 'Ingredients',
+  shotPending: 'Imagery pending', specs: 'Specification', parts: 'Components',
+  related: 'Others in this family', faqH: 'Frequently asked', partCode: 'Code',
+  inci: 'INCI', cas: 'CAS', fam: 'Family', use: 'Typical use level', ph: 'pH window', band: 'Cost band',
+  bands: { low: 'Value', mid: 'Mid', high: 'Premium' } as Record<string, string>,
+  catH: 'Listing in the China inventory', catNo: 'Inventory no.', catZh: 'Standard Chinese name',
+  mktH: 'Status by market inventory (exact INCI match)',
+  mktHit: (no: string) => `Listed (${no})`,
+  mktNegMiss: 'Not on the prohibited/restricted list — not the same as unrestricted; check the full text and the responsible person',
+  mktPosMiss: 'Not listed',
+  mktPending: 'Registry not ingested yet — see the official source',
+  mktNote: 'Matched on the exact INCI name; salts, esters and synonyms may be missed. The latest official text prevails.',
+  catRinse: 'Max historical use, rinse-off', catLeave: 'Max historical use, leave-on',
+  catNote: 'Inventory note', catSrc: 'Source',
+  secWhy: 'What it addresses', secBad: 'Incompatibilities and failure points', secStab: 'Stability',
+  secFactory: 'Processing notes', secMkt: 'Market direction', secBase: 'Basics',
+  aliases: 'Synonyms and botanical name', fmt: 'Suits formats', halal: 'Halal and vegan', conf: 'Evidence strength',
+  ask: 'Ask us about this ingredient', sel: 'Run the selector', kg: 'See it in the knowledge graph',
+  ctaNote: 'Want to build around this direction? Tell us your positioning and our formulators will tell you whether it works, in which format, and roughly on what timeline.',
+  note: 'Compiled from published formulation knowledge and factory experience for selection reference. Not an efficacy claim; use levels describe common published ranges, not regulatory limits; market availability is governed by the latest official texts and reviewed by the brand and its responsible person.',
+};
+
+const keyFacts = [
+  { k: T.inci, v: g?.inci || '—' },
+  { k: T.fam, v: g?.family || '—' },
+  /* 顶部关键数只放数字区间;「非法规限值」那句留在下面的完整说明里。
+     注意要连括号一起去掉 —— 第一版只去了括号里的字,页面上就出现了「0.5–5%()」。 */
+  ...(g?.use_level ? [{ k: T.use, v: String(g.use_level).replace(/[((][^))]*非法规限值[^))]*[))]/g, '').trim() || g.use_level }] : []),
+  ...(g?.ph_range && g.ph_range !== '未确认' ? [{ k: T.ph, v: g.ph_range }] : []),
+];
+
+/* 顺序刻意这样排:先说会怎么坑你,再说它好在哪。
+   看这一页看到底的人是配方师,他们关心的就是前三段。 */
+const sections = [
+  ...(g?.incompatible ? [{ title: T.secBad, rows: [{ k: '', v: g.incompatible }] }] : []),
+  ...(g?.stability ? [{ title: T.secStab, rows: [{ k: '', v: g.stability }] }] : []),
+  ...(g?.factory_note ? [{ title: T.secFactory, rows: [{ k: '', v: g.factory_note }] }] : []),
+  ...(g?.mechanism_zh ? [{ title: T.secWhy, rows: [{ k: '', v: g.mechanism_zh }] }] : []),
+  {
+    title: T.secMkt,
+    rows: [
+      ...(g?.market_cn ? [{ k: '中国 / CN', v: g.market_cn }] : []),
+      ...(g?.market_eu ? [{ k: '欧盟 / EU', v: g.market_eu }] : []),
+      ...(g?.market_us ? [{ k: '美国 / US', v: g.market_us }] : []),
+      ...(g?.market_apac ? [{ k: '亚太 / APAC', v: g.market_apac }] : []),
+    ],
+  },
+  {
+    title: T.catH,
+    rows: cat ? [
+      { k: T.catNo, v: cat.no },
+      ...(cat.name_zh ? [{ k: T.catZh, v: cat.name_zh }] : []),
+      ...(cat.max_rinse ? [{ k: T.catRinse, v: `${cat.max_rinse}%` }] : []),
+      ...(cat.max_leave ? [{ k: T.catLeave, v: `${cat.max_leave}%` }] : []),
+      ...(cat.note ? [{ k: T.catNote, v: cat.note }] : []),
+      { k: T.catSrc, v: cat.source },
+    ] : [],
+  },
+  {
+    title: T.mktH,
+    rows: [
+      ...regs.map((r) => {
+        const hit = cats.find((c) => String(c.registry) === String(r.id));
+        const nm = zh ? `${r.region} · ${r.name_zh}` : `${r.region} · ${r.name_en || r.name_zh}`;
+        const v = hit
+          ? `${T.mktHit(String(hit.no))}${hit.note ? ' · ' + String(hit.note).slice(0, 220) : ''}`
+          : (String(r.status) !== 'live' ? T.mktPending : (NEG.has(String(r.id)) ? T.mktNegMiss : T.mktPosMiss));
+        return { k: nm, v };
+      }),
+      { k: '', v: T.mktNote },
+    ],
+  },
+  {
+    title: T.secBase,
+    rows: [
+      ...(g?.aliases ? [{ k: T.aliases, v: g.aliases }] : []),
+      ...(g?.cas ? [{ k: T.cas, v: g.cas }] : []),
+      ...(fmts.length ? [{ k: T.fmt, v: fmts.map((f) => label(FMT_LABEL, f, zh)).join(' · ') }] : []),
+      ...(g?.halal_vegan ? [{ k: T.halal, v: g.halal_vegan }] : []),
+      ...(g?.cost_band ? [{ k: T.band, v: T.bands[g.cost_band] ?? g.cost_band }] : []),
+      ...(g?.confidence ? [{ k: T.conf, v: g.confidence }] : []),
+    ],
+  },
+].filter((s) => s.rows.length > 0);
+
+const ld = [
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: T.home, item: `${origin}/${lang}/` },
+      { '@type': 'ListItem', position: 2, name: T.lib, item: `${origin}/${lang}/ingredients/` },
+      { '@type': 'ListItem', position: 3, name, item: origin + path },
+    ],
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'DefinedTerm',
+    name, alternateName: g?.inci,
+    description: String(g?.mechanism_zh ?? '').slice(0, 300),
+    inDefinedTermSet: { '@type': 'DefinedTermSet', name: T.lib, url: `${origin}/${lang}/ingredients/` },
+  },
+];
+/* 付费段 = ItemDetail 里除结尾那段以外的全部 .sec(预览版正好一段都不出) */
+const ldOut = [...(full ? ld : ld.slice(0, 1)), paywallLd(origin + path, String(name ?? ''), '.item > .sec:not(.end)')];
+---
+
+{/* 旧 149 条走 ItemDetail 原样;其余成分走目录原料页(v2) */}
+{!g && hit ? <CatalogIngredient lang={lang} fk={hit.fk} ck={hit.ck} fact={hit.fact} shell={shell} gt={gt} /> : g && (
+<BaseLayout
+  locale={lang as any} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'} title={`${name} · ${T.lib}`}
+  description={full ? String(g.mechanism_zh ?? '').slice(0, 160) : `${name} · ${g.inci} · ${T.lib}`}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <ItemDetail
+      breadcrumb={[
+        { label: T.home, href: `/${lang}/` },
+        { label: T.lib, href: `/${lang}/ingredients/` },
+        { label: name },
+      ]}
+      eyebrow={fns.map((f) => label(BEN_LABEL, f, zh)).join(' · ')}
+      code={g.inci}
+      name={name}
+      headline={zh ? undefined : g.name_zh}
+      hideEmptyGallery={true}
+      keyFacts={full ? keyFacts : keyFacts.slice(0, 2)}
+      ctas={[
+        { label: T.ask, href: `/${lang}/contact/?ingredient=${g.slug}`, primary: true },
+        { label: T.sel, href: `/${lang}/selector/` },
+        /* 知识图谱入口。/trends/ 与 /compliance/ 建好之后站上没有一个链接指向,
+           等于没交付 —— 同样的错不犯第二遍:每建一页,当天就把入口挂上。 */
+        { label: T.kg,
+          /* 去掉括号里的部位注释再去搜:图谱里的节点叫「光果甘草提取物」,
+             而原料库里叫「光果甘草(根)提取物」—— 整串拿去 LIKE 一条都匹配不上。 */
+          href: `/${lang}/graph/?q=${encodeURIComponent(String(zh ? g.name_zh : g.inci)
+                    .replace(/[（(][^）)]*[）)]/g, '').trim())}` },
+      ]}
+      ctaNote={T.ctaNote}
+      sections={full ? sections : []}
+      related={(full ? related : []).map((r: any) => ({
+        code: r.slug, href: `/${lang}/ingredients/${r.slug}/`,
+        name: zh ? r.name_zh : r.inci,
+        chip: String(r.functions ?? '').split(',')[0]?.trim()
+          ? label(BEN_LABEL, String(r.functions).split(',')[0].trim(), zh) : '',
+      }))}
+      note={T.note}
+      labels={{ shotPending: T.shotPending, specs: T.specs, parts: T.parts,
+                related: T.related, faq: T.faqH, partCode: T.partCode }}>
+      <MemberGate lang={lang} g={gt} next={path} what={['完整资料', 'the full profile']} />
+    </ItemDetail>
+  </main>
+  <SiteFooter locale={lang as any} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <script type="application/ld+json" set:html={JSON.stringify(ldOut)} is:inline />   {/* T 审查:显式 is:inline 消 astro(4000) 警告,与 _CatalogIngredient 同写法 */}
+</BaseLayout>
+)}

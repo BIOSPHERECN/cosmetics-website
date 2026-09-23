@@ -44,6 +44,8 @@ const ALLOWED = new Map<string, string>([
   ['image/webp', 'webp'],
   ['image/avif', 'avif'],
   ['image/svg+xml', 'svg'],
+  /* 公司视频位要用;R2 通了之后 10MB 上限内的短视频可直传 */
+  ['video/mp4', 'mp4'],
 ]);
 
 /** 单文件上限 10MB —— 运营直接传手机原图很容易超,超了给人话提示而不是 500 */
@@ -96,44 +98,40 @@ const enc = (s: string) => encodeURIComponent(s).replace(/[!'()*]/g, (c) => '%' 
 
 /** AWS SigV4 签名的 PUT —— R2 的 S3 接口区域固定为 auto */
 async function r2Put(env: StorageEnv, key: string, body: ArrayBuffer, mime: string): Promise<StoredObject> {
-  const host = `${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-  const path = `/${env.R2_BUCKET}/${key.split('/').map(enc).join('/')}`;
-  const now = new Date();
-  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
-  const dateStamp = amzDate.slice(0, 8);
-  const payloadHash = await sha256Hex(body);
-
-  const canonicalHeaders =
-    `content-type:${mime}\nhost:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
-  const signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
-  const canonicalRequest = `PUT\n${path}\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
-  const scope = `${dateStamp}/auto/s3/aws4_request`;
-  const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${scope}\n${await sha256Hex(canonicalRequest)}`;
-
-  let sig: ArrayBuffer = await hmac(new TextEncoder().encode(`AWS4${env.R2_SECRET_ACCESS_KEY}`), dateStamp);
-  sig = await hmac(sig, 'auto');
-  sig = await hmac(sig, 's3');
-  sig = await hmac(sig, 'aws4_request');
-  sig = await hmac(sig, stringToSign);
-  const signature = [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
-
-  const res = await fetch(`https://${host}${path}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': mime,
-      'x-amz-content-sha256': payloadHash,
-      'x-amz-date': amzDate,
-      Authorization:
-        `AWS4-HMAC-SHA256 Credential=${env.R2_ACCESS_KEY_ID}/${scope}, ` +
-        `SignedHeaders=${signedHeaders}, Signature=${signature}`,
-    },
-    body,
-  });
-  if (!res.ok) {
-    throw new Error(`R2 写入失败 ${res.status}:${(await res.text()).slice(0, 200)}`);
-  }
+  /* 写图也只走原生绑定(2026-09-07,同 r2Get 的理由)。
+     绑定写比签名 S3 少一次外部 HTTP,也不必在边缘上带密钥。 */
+  const native = (env as any).PHOTO as R2Bucket | undefined;
+  if (!native) throw new Error('PHOTO binding 不在,无法写入图片');
+  await native.put(key, body, { httpMetadata: { contentType: mime } });
   const base = (env.R2_PUBLIC_BASE || '').replace(/\/$/, '');
   return { key, url: base ? `${base}/${key}` : `/media/${key}`, bytes: body.byteLength, mime };
+}
+
+
+/** SigV4 签名的 GET —— 私有桶回源代理用。
+ *  桶不开公开访问(hosonzuo 主账号的桶,保持私有最省心),
+ *  /media/{id} 命中 r2 驱动且无公开域名时,由本函数签名取回并流式转发。 */
+/**
+ * 取图 —— **只走原生绑定**。
+ *
+ * 2026-09-07 傍晚:9,134 个对象已全部迁到网站所在账号,创始人明确
+ * 「只有唯一的账号」。所以这里删掉了原来的跨账号 S3 签名兜底。
+ *
+ * 为什么要删而不是留着保险:那条路要带着旧账号的 Access Key 与 Secret
+ * 跑在边缘上,而它已经没有任何对象可取 —— 一条取不到东西的路径,
+ * 留下的只有泄密面。桶本身原样保留(创始人要拿它建另一个站),
+ * 只是网站不再持有它的钥匙。
+ */
+export async function r2Get(env: StorageEnv, key: string): Promise<Response> {
+  const native = (env as any).PHOTO as R2Bucket | undefined;
+  if (!native) return new Response('no bucket binding', { status: 503 });
+  const obj = await native.get(key).catch(() => null);
+  if (!obj) return new Response('Not found', { status: 404 });
+  const h = new Headers();
+  obj.writeHttpMetadata(h);
+  h.set('etag', obj.httpEtag);
+  if (!h.has('content-type')) h.set('content-type', 'application/octet-stream');
+  return new Response(obj.body, { headers: h });
 }
 
 /* ══════════════════════════════════════════════════════════════════════

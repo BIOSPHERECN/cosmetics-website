@@ -1,0 +1,217 @@
+---
+/**
+ * 客户 —— CRM v1 的主表。询盘、外联名单「转客户」都落到这里;一家客户一条时间线(活动),机会挂在客户下。
+ * 公海:owner_uid 为空的客户谁都能认领;认领后归属锁定,别人不能改(WorkBuddy 原型 admin.ts 的防抢单思路)。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { STAGES, KINDS, LOST_REASONS } from '../../lib/crm';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const q = (url.searchParams.get('q') ?? '').trim();
+const mine = url.searchParams.get('mine') === '1';
+const pool = url.searchParams.get('pool') === '1';
+const type = url.searchParams.get('type') ?? '';
+const open = Number(url.searchParams.get('open')) || 0;
+const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
+const PER = 25;
+
+const where: string[] = [], bind: unknown[] = [];
+if (q) { where.push('(c.name LIKE ? OR c.website LIKE ? OR c.country LIKE ? OR c.tags LIKE ?)'); bind.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
+if (mine) { where.push('c.owner_uid=?'); bind.push(c.sess.uid); }
+if (pool) where.push('c.owner_uid IS NULL');
+if (type) { where.push('c.type=?'); bind.push(type); }
+const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
+const total = (await c.db.prepare(`SELECT COUNT(*) n FROM companies c ${W}`).bind(...bind).first<{ n: number }>())?.n ?? 0;
+const { results: rows } = await c.db.prepare(
+  `SELECT c.*, u.email AS owner_email,
+          (SELECT COUNT(*) FROM deals d WHERE d.company_id=c.id AND d.stage NOT IN ('won','lost')) AS open_deals,
+          (SELECT COALESCE(SUM(amount*prob/100.0),0) FROM deals d WHERE d.company_id=c.id AND d.stage NOT IN ('won','lost')) AS weighted,
+          (SELECT MAX(created_at) FROM activities a WHERE a.company_id=c.id) AS last_act,
+          CAST(julianday('now') - julianday(COALESCE((SELECT MAX(created_at) FROM activities a WHERE a.company_id=c.id), c.created_at)) AS INTEGER) AS idle
+     FROM companies c LEFT JOIN users u ON u.id=c.owner_uid ${W}
+    ORDER BY CASE WHEN c.id=? THEN 0 ELSE 1 END, c.updated_at DESC LIMIT ? OFFSET ?`
+).bind(...bind, open, PER, (page - 1) * PER).all<any>();
+
+const ids = rows.map((r: any) => r.id);
+const ph = ids.map(() => '?').join(',');
+const contacts = ids.length ? (await c.db.prepare(`SELECT * FROM contacts WHERE company_id IN (${ph}) ORDER BY id`).bind(...ids).all<any>()).results : [];
+const deals = ids.length ? (await c.db.prepare(`SELECT * FROM deals WHERE company_id IN (${ph}) ORDER BY CASE WHEN stage IN ('won','lost') THEN 1 ELSE 0 END, updated_at DESC`).bind(...ids).all<any>()).results : [];
+const acts = ids.length ? (await c.db.prepare(`SELECT a.*, u.email AS who FROM activities a LEFT JOIN users u ON u.id=a.uid WHERE a.company_id IN (${ph}) ORDER BY a.id DESC`).bind(...ids).all<any>()).results : [];
+const quotes = ids.length ? (await c.db.prepare(`SELECT * FROM quotes WHERE company_id IN (${ph}) ORDER BY id DESC`).bind(...ids).all<any>().catch(() => ({ results: [] as any[] }))).results : [];
+const samples = ids.length ? (await c.db.prepare(`SELECT * FROM samples WHERE company_id IN (${ph}) ORDER BY id DESC`).bind(...ids).all<any>().catch(() => ({ results: [] as any[] }))).results : [];
+const isAdmin = c.sess.role === 'admin';   // 成本 / 毛利只给 admin 看(字段级脱敏)
+const TIER: Record<string, [string, string]> = { A: ['A 核心', 'p-ok'], B: ['B 活跃', 'p-ok'], C: ['C 沉睡', 'p-warn'], D: ['D 流失', 'p-bad'] };
+const QS: Record<string, string> = { draft: '草稿', sent: '已发', accepted: '已接受', rejected: '被拒', expired: '过期' };
+const SS: Record<string, string> = { sent: '已寄出', received: '已签收', feedback: '有反馈', 'no-response': '无回应' };
+const QPH = '一行一项:品名 | 数量 | 单价' + (isAdmin ? ' | 成本(选填,只有管理员看得到)' : '') + String.fromCharCode(10) + '例:Hyaluronic Serum 30ml | 5000 | 1.85' + (isAdmin ? ' | 1.10' : '');
+const { results: types } = await c.db.prepare(`SELECT type, COUNT(*) n FROM companies WHERE type IS NOT NULL GROUP BY type ORDER BY n DESC`).all<any>();
+const kpi = await c.db.prepare(`SELECT COUNT(*) n, SUM(owner_uid IS NULL) pool, SUM(owner_uid=?) mine FROM companies`).bind(c.sess.uid).first<any>();
+const pages = Math.max(1, Math.ceil(total / PER));
+const link = (p: number) => { const u = new URLSearchParams(url.searchParams); u.set('p', String(p)); u.delete('open'); return `?${u}`; };
+---
+
+<AdminShell title="客户" active="companies" email={c.sess.email} tenant={c.tenant}>
+  <h1>客户</h1>
+  <p class="lead">共 {kpi?.n ?? 0} 家 · 公海 {kpi?.pool ?? 0} · 我的 {kpi?.mine ?? 0}。询盘页、定向外联页点「转客户」就进这里;一家一条时间线,机会挂客户下。</p>
+
+  <form class="bar" method="get">
+    <input name="q" value={q} placeholder="搜公司 / 官网 / 国家 / 标签…" style="max-width:16rem" />
+    <select name="type"><option value="">全部类型</option>{types.map((t: any) => <option value={t.type} selected={t.type === type}>{t.type}({t.n})</option>)}</select>
+    <label class="chk"><input type="checkbox" name="mine" value="1" checked={mine} /> 只看我的</label>
+    <label class="chk"><input type="checkbox" name="pool" value="1" checked={pool} /> 公海</label>
+    <button class="btn pri" type="submit">筛选</button>
+    {(q || mine || pool || type) && <a class="btn" href="/bohui/companies/">清空</a>}
+    <button class="btn" type="button" data-new>+ 手动建档</button>
+    <a class="btn" href="/api/admin/crm-export" title="按 WorkBuddy 原型的对象结构导出,可直接导进它">⤓ 导出 JSON</a>
+  </form>
+
+  <form class="newco" id="newco" hidden>
+    <input name="name" placeholder="公司名 *" required /><input name="country" placeholder="国家" /><input name="website" placeholder="官网" />
+    <select name="type"><option value="品牌方">品牌方</option><option value="贸易商">贸易商</option><option value="代工客户">代工客户</option><option value="连锁渠道">连锁渠道</option></select>
+    <select name="channel"><option value="">来源渠道</option>{['独立站', '展会', 'LinkedIn', '转介绍', 'AI 获客', '官网表单', '海关数据'].map((x) => <option value={x}>{x}</option>)}</select>
+    <input name="tags" placeholder="标签(逗号分隔)" /><button class="btn pri" type="submit">建档</button>
+  </form>
+
+  {rows.length === 0 ? <div class="empty">还没有客户。去询盘或定向外联页点「转客户」。</div> : (
+    <div class="list">
+      {rows.map((r: any) => { const cs = contacts.filter((x: any) => x.company_id === r.id); const ds = deals.filter((x: any) => x.company_id === r.id); const as = acts.filter((x: any) => x.company_id === r.id); return (
+        <details class="co" data-id={r.id} open={r.id === open}>
+          <summary>
+            <b>{r.name}</b>
+            <span class="m">{r.country || '—'}{r.type ? ` · ${r.type}` : ''}{r.channel ? ` · ${r.channel}` : ''}</span>
+            {r.open_deals > 0 && <span class="pill p-ok">{r.open_deals} 个机会 · 加权 ${Math.round(r.weighted).toLocaleString()}</span>}
+            {r.tier && TIER[r.tier] && <span class:list={['pill', TIER[r.tier][1]]} title={`近 12 个月 ${r.orders_12m ?? '?'} 单 · $${Math.round(r.amount_12m ?? 0).toLocaleString()} · 最近下单 ${r.last_order_at ?? '?'}`}>{TIER[r.tier][0]}</span>}
+            {r.owner_uid ? <span class="pill">{(r.owner_email || '').replace(/@.*$/, '')}</span> : <span class="pill p-warn">公海</span>}
+            <span class:list={['idle', r.idle >= 7 && 'late']}>{r.idle} 天没动</span>
+          </summary>
+          <div class="body">
+            <div class="cols">
+              <div>
+                <dl>
+                  <dt>官网</dt><dd>{r.website ? <a href={r.website} target="_blank" rel="noreferrer">{r.website}</a> : '—'}</dd>
+                  <dt>年采购量</dt><dd>{r.annual_volume || '—'}</dd>
+                  <dt>标签</dt><dd>{r.tags || '—'}</dd>
+                  <dt>备注</dt><dd class="pre">{r.note || '—'}</dd>
+                  <dt>来源</dt><dd>{r.source === 'inquiry' ? <a href="/bohui/inquiries/">询盘 #{r.source_id}</a> : r.source === 'prospect' ? <a href={`/bohui/prospects/?q=${encodeURIComponent(r.name.split('(')[0])}`}>定向外联 #{r.source_id}</a> : '手动'}</dd>
+                </dl>
+                <b class="h">联系人</b>
+                <ul class="cl">{cs.map((x: any) => <li>{x.name}{x.title ? ` · ${x.title}` : ''}{x.email ? <> · <a href={`mailto:${x.email}`}>{x.email}</a></> : null}{x.whatsapp ? ` · WA ${x.whatsapp}` : ''}{x.linkedin ? <> · <a href={x.linkedin} target="_blank" rel="noreferrer">LinkedIn</a></> : null}</li>)}{cs.length === 0 && <li class="dim">还没有联系人</li>}</ul>
+                <form class="inline" data-contact><input name="name" placeholder="姓名 *" required /><input name="title" placeholder="职位" /><input name="email" placeholder="邮箱" /><input name="whatsapp" placeholder="WhatsApp" /><button class="btn">加联系人</button></form>
+                <b class="h">机会</b>
+                <ul class="dl">{ds.map((d: any) => (
+                  <li data-deal={d.id}>
+                    <span class:list={['st', d.stage]}>{STAGES[d.stage]?.[0] ?? d.stage}</span> <b>{d.name}</b>
+                    <span class="dim">{d.amount ? ` $${Number(d.amount).toLocaleString()} × ${d.prob}%` : ' 金额未填'}{d.close_date ? ` · 预计 ${d.close_date}` : ''}{d.stage === 'lost' && d.lost_reason ? ` · ${d.lost_reason}` : ''}</span>
+                    <select data-stage>{Object.entries(STAGES).map(([k, v]) => <option value={k} selected={k === d.stage}>{v[0]} {v[1]}%</option>)}</select>
+                    <input data-amount type="number" min="0" step="100" value={d.amount ?? ''} placeholder="金额 USD" /><input data-close type="date" value={d.close_date ?? ''} />
+                    <select data-lost hidden={d.stage !== 'lost'}><option value="">丢单原因</option>{LOST_REASONS.map((x) => <option value={x} selected={x === d.lost_reason}>{x}</option>)}</select>
+                    <button class="btn" data-save>保存</button>
+                  </li>))}{ds.length === 0 && <li class="dim">还没有机会</li>}</ul>
+                <form class="inline" data-newdeal><input name="name" placeholder="机会名(如:洗发水 5,000 支)*" required style="min-width:14rem" /><input name="amount" type="number" min="0" step="100" placeholder="金额 USD" /><input name="close_date" type="date" /><button class="btn">+ 机会</button></form>
+                {(() => { const qs = quotes.filter((x: any) => x.company_id === r.id); const ss = samples.filter((x: any) => x.company_id === r.id); return (<>
+                <b class="h">报价单{qs.length ? `(${qs.length})` : ''}</b>
+                <ul class="dl">{qs.map((qq: any) => { const ls = (() => { try { return JSON.parse(qq.lines_json); } catch { return []; } })(); return (
+                  <li data-quote={qq.id}>
+                    <span class:list={['st', qq.status === 'accepted' ? 'won' : qq.status === 'rejected' ? 'lost' : 'quote']}>{QS[qq.status] ?? qq.status}</span> <b>{qq.code}</b>
+                    <span class="dim">{ls.length} 项 · 合计 {Number(qq.subtotal).toLocaleString()} {qq.currency}{isAdmin && qq.margin != null ? ` · 毛利 ${qq.margin}%` : ''}{qq.valid_until ? ` · 有效至 ${qq.valid_until}` : ''}</span>
+                    <details class="ql"><summary>明细</summary><table><tr><th>品名</th><th>数量</th><th>单价</th>{isAdmin && <th>成本</th>}</tr>{ls.map((l: any) => <tr><td>{l.name}</td><td>{l.qty}</td><td>{l.unit_price}</td>{isAdmin && <td>{l.cost ?? '—'}</td>}</tr>)}</table></details>
+                    <select data-qstatus>{Object.entries(QS).map(([k, v]) => <option value={k} selected={k === qq.status}>{v}</option>)}</select>
+                  </li>); })}{qs.length === 0 && <li class="dim">还没有报价单</li>}</ul>
+                <form class="qform" data-newquote>
+                  <textarea name="lines" rows="3" placeholder={QPH}></textarea>
+                  <div class="row"><select name="deal_id"><option value="">不关联机会</option>{ds.map((d: any) => <option value={d.id}>{d.name}</option>)}</select><select name="currency"><option>USD</option><option>EUR</option><option>IDR</option><option>MYR</option><option>AED</option><option>CNY</option></select><input name="valid_until" type="date" title="有效期" /><button class="btn">+ 报价单</button></div>
+                </form>
+                <b class="h">寄样{ss.length ? `(${ss.length})` : ''}</b>
+                <ul class="dl">{ss.map((sp: any) => (
+                  <li data-sample={sp.id}>
+                    <span class:list={['st', sp.status === 'feedback' ? 'won' : sp.status === 'no-response' ? 'lost' : 'sampling']}>{SS[sp.status] ?? sp.status}</span> <b>{sp.items}</b>
+                    <span class="dim">寄出 {sp.sent_at}{sp.tracking ? ` · ${sp.carrier ?? ''} ${sp.tracking}` : ''} · 反馈截止 {sp.feedback_due}{sp.feedback ? ` · ${sp.feedback}` : ''}</span>
+                    {!sp.feedback && <><input data-fb placeholder="记录客户反馈…" style="min-width:12rem" /><button class="btn" data-fbsave>记反馈</button></>}
+                  </li>))}{ss.length === 0 && <li class="dim">还没有寄样</li>}</ul>
+                <form class="inline" data-newsample><input name="items" placeholder="寄了什么(如:身体乳 3 款 × 50ml)*" required style="min-width:14rem" /><input name="sent_at" type="date" title="寄出日" /><input name="tracking" placeholder="快递单号" /><select name="deal_id"><option value="">不关联机会</option>{ds.map((d: any) => <option value={d.id}>{d.name}</option>)}</select><button class="btn">+ 寄样</button></form>
+                </>); })()}
+              </div>
+              <div>
+                <b class="h">时间线{as.length ? `(${as.length})` : ''}</b>
+                <form class="actform" data-act>
+                  <select name="kind">{Object.entries(KINDS).filter(([k]) => !['status', 'system'].includes(k)).map(([k, v]) => <option value={k}>{v}</option>)}</select>
+                  <select name="deal_id"><option value="">不关联机会</option>{ds.map((d: any) => <option value={d.id}>{d.name}</option>)}</select>
+                  <textarea name="text" rows="2" maxlength="4000" placeholder="记一条:打了电话说了什么、发了报价、寄了样…(贴 WhatsApp 记录可点 AI 总结)"></textarea>
+                  <div class="ab"><button class="btn" type="button" data-sum>AI 总结</button><button class="btn pri" type="submit">记录</button></div>
+                </form>
+                <ol class="tl">{as.map((a: any) => <li class:list={['tli', a.kind]}><span class="k">{KINDS[a.kind] ?? a.kind}</span><span class="tx">{a.text}</span><span class="meta">{(a.who || '系统').replace(/@.*$/, '')} · {String(a.created_at).slice(5, 16)}</span></li>)}</ol>
+              </div>
+            </div>
+            <div class="ops">
+              {!r.owner_uid && <button class="btn pri" data-claim>认领</button>}
+              {r.owner_uid === c.sess.uid && <button class="btn" data-release title="放回公海">放回公海</button>}
+              <a class="btn" href={`/bohui/deals/?co=${r.id}`}>看板里看</a>
+            </div>
+          </div>
+        </details>
+      ); })}
+    </div>
+  )}
+  {pages > 1 && <div class="pager">{page > 1 && <a class="btn" href={link(page - 1)}>上一页</a>}<span>第 {page} / {pages} 页 · 共 {total}</span>{page < pages && <a class="btn" href={link(page + 1)}>下一页</a>}</div>}
+  <div id="toast" class="toast" hidden></div>
+
+  <style>
+    .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem;flex-wrap:wrap} .bar input,.bar select{width:auto} .chk{font-size:.8125rem;display:flex;gap:.25rem;align-items:center}
+    .newco{display:flex;gap:.5rem;flex-wrap:wrap;background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:.75rem;margin-bottom:.75rem} .newco input,.newco select{width:auto;font-size:.8125rem}
+    .list{display:grid;gap:.5rem}
+    .co{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;overflow:hidden}
+    .co>summary{padding:.625rem 1rem;cursor:pointer;display:flex;gap:.625rem;align-items:center;flex-wrap:wrap;list-style:none;font-size:.875rem} .co>summary::-webkit-details-marker{display:none}
+    .co[open]>summary{border-bottom:1px solid var(--ad-line);background:#fafbfc} .m{color:var(--ad-soft)}
+    .idle{margin-left:auto;font-size:.75rem;color:var(--ad-faint)} .idle.late{color:#dc2626;font-weight:600}
+    .body{padding:1rem 1.125rem} .cols{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem} @media (max-width:64rem){.cols{grid-template-columns:1fr}}
+    dl{display:grid;grid-template-columns:5rem 1fr;gap:.375rem .75rem;margin:0 0 .75rem;font-size:.8125rem} dt{color:var(--ad-faint)} dd{margin:0} .pre{white-space:pre-wrap}
+    .h{display:block;font-size:.75rem;color:var(--ad-faint);margin:.75rem 0 .375rem;text-transform:uppercase;letter-spacing:.04em}
+    .cl,.dl{margin:0 0 .5rem;padding:0;list-style:none;font-size:.8125rem} .cl li,.dl li{margin-bottom:.375rem;display:flex;gap:.375rem;align-items:center;flex-wrap:wrap} .dim{color:var(--ad-faint)}
+    .dl select,.dl input{width:auto;font-size:.75rem;padding:.2rem .375rem} .dl input[type=number]{width:7rem} .dl input[type=date]{width:8.5rem}
+    .st{font-size:.75rem;padding:.0625rem .5rem;border-radius:999px;background:#f1f5f9;color:#475569} .st.won{background:#dcfce7;color:#166534} .st.lost{background:#fee2e2;color:#991b1b} .st.quote,.st.negotiate{background:#ede9fe;color:#5b21b6} .st.sampling{background:#ffedd5;color:#9a3412}
+    .inline{display:flex;gap:.375rem;flex-wrap:wrap;margin-bottom:.5rem} .inline input{width:auto;font-size:.8125rem;padding:.3rem .5rem;min-width:7rem}
+    .actform{display:grid;gap:.375rem;margin-bottom:.75rem} .actform select{width:auto;font-size:.8125rem} .actform textarea{font:inherit;font-size:.8125rem;padding:.5rem .625rem;border:1px solid var(--ad-line);border-radius:6px;resize:vertical} .ab{display:flex;gap:.5rem;justify-content:flex-end}
+    .tl{list-style:none;margin:0;padding:0;display:grid;gap:.4375rem;max-height:28rem;overflow:auto}
+    .tli{display:grid;grid-template-columns:4rem 1fr;gap:.25rem .625rem;font-size:.8125rem;border-inline-start:2px solid var(--ad-line);padding-inline-start:.625rem}
+    .tli.status,.tli.system{border-inline-start-color:var(--ad-accent,#2563eb)} .k{color:var(--ad-faint);font-size:.75rem} .tx{white-space:pre-wrap;line-height:1.55} .meta{grid-column:2;color:var(--ad-faint);font-size:.75rem}
+    .ops{display:flex;gap:.5rem;margin-top:.75rem;padding-top:.75rem;border-top:1px dashed var(--ad-line)}
+    .qform{display:grid;gap:.375rem;margin-bottom:.5rem} .qform textarea{font:inherit;font-size:.8125rem;padding:.5rem .625rem;border:1px solid var(--ad-line);border-radius:6px;resize:vertical} .qform .row{display:flex;gap:.375rem;flex-wrap:wrap} .qform select,.qform input{width:auto;font-size:.8125rem}
+    .ql{font-size:.75rem} .ql summary{cursor:pointer;color:var(--ad-soft)} .ql table{border-collapse:collapse;margin-top:.25rem} .ql th,.ql td{border:1px solid var(--ad-line);padding:.125rem .5rem;font-weight:400}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--ad-soft)}
+    .toast{position:fixed;right:1.25rem;bottom:1.25rem;background:#10131a;color:#fff;padding:.625rem 1rem;border-radius:7px;font-size:.8125rem;z-index:9} [hidden]{display:none !important}
+  </style>
+  <script is:inline>
+    const t = document.getElementById('toast'); const say = (m) => { t.textContent = m; t.hidden = false; setTimeout(() => { t.hidden = true; }, 1800); };
+    const call = async (body) => (await fetch('/api/admin/crm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json().catch(() => ({}));
+    const reload = (id) => { const u = new URL(location.href); if (id) u.searchParams.set('open', id); setTimeout(() => location.assign(u), 350); };
+    const cid = (el) => +el.closest('.co').dataset.id;
+    document.querySelector('[data-new]')?.addEventListener('click', () => { const f = document.getElementById('newco'); f.hidden = !f.hidden; f.querySelector('input')?.focus(); });
+    document.getElementById('newco')?.addEventListener('submit', async (e) => { e.preventDefault(); const d = await call({ op: 'company', ...Object.fromEntries(new FormData(e.target)) }); d.ok ? (say('已建档'), reload(d.id)) : say(d.msg || '失败'); });
+    document.querySelectorAll('[data-contact]').forEach((f) => f.addEventListener('submit', async (e) => { e.preventDefault(); const d = await call({ op: 'contact', company_id: cid(f), ...Object.fromEntries(new FormData(f)) }); d.ok ? (say('已加'), reload(cid(f))) : say(d.msg || '失败'); }));
+    document.querySelectorAll('[data-newdeal]').forEach((f) => f.addEventListener('submit', async (e) => { e.preventDefault(); const d = await call({ op: 'deal', company_id: cid(f), ...Object.fromEntries(new FormData(f)) }); d.ok ? (say('已建机会'), reload(cid(f))) : say(d.msg || '失败'); }));
+    document.querySelectorAll('[data-act]').forEach((f) => f.addEventListener('submit', async (e) => { e.preventDefault(); const o = Object.fromEntries(new FormData(f)); if (!o.text.trim()) return; const d = await call({ op: 'activity', company_id: cid(f), ...o }); d.ok ? (say('已记录'), reload(cid(f))) : say(d.msg || '失败'); }));
+    document.querySelectorAll('[data-sum]').forEach((b) => b.addEventListener('click', async () => {
+      const box = b.closest('form').querySelector('textarea'); const text = box.value.trim(); if (text.length < 20) { box.placeholder = '先把往来记录整段贴进来'; box.focus(); return; }
+      b.disabled = true; b.textContent = '总结中…'; const r = await fetch('/api/admin/inquiry-summarize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) }); const d = await r.json().catch(() => ({}));
+      b.disabled = false; b.textContent = 'AI 总结'; d.ok ? (box.value = d.summary, box.rows = 6) : say(d.msg || '总结失败');
+    }));
+    document.querySelectorAll('[data-stage]').forEach((s) => s.addEventListener('change', () => { const li = s.closest('li'); li.querySelector('[data-lost]').hidden = s.value !== 'lost'; }));
+    document.querySelectorAll('[data-save]').forEach((b) => b.addEventListener('click', async () => {
+      const li = b.closest('li'); const d = await call({ op: 'deal', id: +li.dataset.deal, stage: li.querySelector('[data-stage]').value, amount: li.querySelector('[data-amount]').value, close_date: li.querySelector('[data-close]').value, lost_reason: li.querySelector('[data-lost]').value });
+      d.ok ? (say('已保存'), reload(cid(li))) : say(d.msg || '失败');
+    }));
+    document.querySelectorAll('[data-newquote]').forEach((f) => f.addEventListener('submit', async (e) => { e.preventDefault(); const o = Object.fromEntries(new FormData(f));
+      const lines = String(o.lines || '').split(String.fromCharCode(10)).map((l) => l.split('|').map((x) => x.trim())).filter((a) => a[0]).map((a) => ({ name: a[0], qty: a[1], unit_price: a[2], cost: a[3] ?? '' }));
+      const d = await call({ op: 'quote', company_id: cid(f), deal_id: o.deal_id, currency: o.currency, valid_until: o.valid_until, lines }); d.ok ? (say('已建报价单 ' + d.code), reload(cid(f))) : say(d.msg || '失败'); }));
+    document.querySelectorAll('[data-qstatus]').forEach((sel) => sel.addEventListener('change', async () => { const li = sel.closest('li'); const d = await call({ op: 'quote', id: +li.dataset.quote, status: sel.value }); d.ok ? (say('已更新'), reload(cid(li))) : say(d.msg || '失败'); }));
+    document.querySelectorAll('[data-newsample]').forEach((f) => f.addEventListener('submit', async (e) => { e.preventDefault(); const d = await call({ op: 'sample', company_id: cid(f), ...Object.fromEntries(new FormData(f)) }); d.ok ? (say('已记寄样,反馈截止 ' + d.feedback_due), reload(cid(f))) : say(d.msg || '失败'); }));
+    document.querySelectorAll('[data-fbsave]').forEach((b) => b.addEventListener('click', async () => { const li = b.closest('li'); const v = li.querySelector('[data-fb]').value.trim(); if (!v) return; const d = await call({ op: 'sample', id: +li.dataset.sample, feedback: v }); d.ok ? (say('已记反馈'), reload(cid(li))) : say(d.msg || '失败'); }));
+    document.querySelectorAll('[data-claim]').forEach((b) => b.addEventListener('click', async () => { const d = await call({ op: 'claim', id: cid(b) }); d.ok ? (say('已认领'), reload(cid(b))) : say(d.msg || '失败'); }));
+    document.querySelectorAll('[data-release]').forEach((b) => b.addEventListener('click', async () => { const d = await call({ op: 'claim', id: cid(b), to: 0, release: 1 }); d.ok ? (say('已放回公海'), reload(cid(b))) : say(d.msg || '失败'); }));
+  </script>
+</AdminShell>

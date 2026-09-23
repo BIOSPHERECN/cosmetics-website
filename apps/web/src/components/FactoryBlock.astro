@@ -1,0 +1,355 @@
+---
+/**
+ * 工厂版首页的七种版块(2026-09-21 22:3x)—— 创始人:「首页每一行都是一个模块可以添加删除,可以自行替换图片」。
+ * 之前 HomeFactory.astro 把六屏写死成一个整体;现在每屏是一种 blocks.type(fx_*),文字 / 图片 / 顺序 / 显隐全在后台
+ * /bohui/pages/<id> 里改,注册表在 packages/core/src/blocks.ts(family='factory')。
+ * 数字不让运营手填:文案里写占位符,渲染时从库填 ——
+ *   {products} 全成分产品数 · {summaries} 解读数 · {formulas} 在库基底数 · {classics} 古方数 · {packaging} 现货包材数
+ *   {regs} 法规市场数 · {inci} 原料目录条数 · {lines} 产线数 · {certs} 六证 · {certs3} 前三证 · {markets} OEM 市场数 · {cats} OEM 品类数
+ *   {marketNames} OEM 市场名列表 · {site} 站名 · {date} 机会卡日期 · {n} 该品类基底数(只在 fx_bases 的 countText 里)
+ * 起订 / 价格 / 交期一个字不写(lib/terms.ts 铁令);唯一可写数字「寄样通常 5–14 天」由运营自己写在文案里。
+ */
+import { CAT_LABEL, formulaName } from '../lib/catalog';
+import { decoderPath } from '../lib/decoder';
+import { getCounts } from '../lib/counts';
+import { OEM_MARKETS, OEM_CATEGORIES } from '@cosmetic/core/content/oem.ts';
+import { ORG } from '@cosmetic/core/content/org.ts';
+import { getMember } from '../lib/member';
+import { env as cfEnv } from 'cloudflare:workers';
+
+interface Props { type: string; data: any; lang: string; db: D1Database | undefined; siteName: string; email: string; whatsapp?: string | null; wechat?: string | null }
+const { type, data: d = {}, lang, db, siteName, email, whatsapp, wechat } = Astro.props;
+const zh = lang.startsWith('zh');
+const B = `/${lang}`;
+const fmt = (n: number) => Number(n || 0).toLocaleString('en-US');
+const counts = (await getCounts(db)) ?? {};
+const N = (k: string) => Number((counts as any)[k] ?? 0);
+const lines = ORG.figures.find((f) => f.nameEn === 'Automated production lines')?.value ?? '15';
+const wa = String(whatsapp ?? '').replace(/\D/g, '');
+const waHref = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(zh ? `你好,我在看 ${siteName} 的网站,想了解代工。` : `Hi, I am looking at the ${siteName} site and would like to discuss OEM/ODM.`)}` : `${B}/contact/`;
+const arr = (x: any): any[] => (Array.isArray(x) ? x : []);
+const s = (x: any) => String(x ?? '');
+
+let b2oCards: any[] = []; let member: any = null; let ledger: any[] = [];
+let opps: any = null; let latest: any[] = []; let cats: Array<{ category: string; n: number; samples: any[] }> = [];
+if (db) {
+  try {
+    if (type === 'fx_opps') {
+      const op = await db.prepare(`SELECT json, updated_at FROM pulse WHERE k = 'opps'`).first<any>();
+      if (op?.json) { try { opps = JSON.parse(op.json); opps.updated_at = op.updated_at; } catch { opps = null; } }
+    }
+    if (type === 'fx_latest') {
+      const raw = ((await db.prepare(`SELECT id, brand, title, title_zh, country, img FROM market_products WHERE img <> '' AND inci IS NOT NULL AND length(inci) > 30 ORDER BY id DESC LIMIT 60`).all<any>()).results ?? []) as any[];
+      const seen = new Set<string>();
+      for (const r of raw) { const b = String(r.brand ?? '').toLowerCase(); if (seen.has(b)) continue; seen.add(b); latest.push(r); if (latest.length >= 6) break; }
+    }
+    /* BEAUTY2OEM(09-23 A7):机会卡三级保密 —— 公开层是普通列;member_json 只给登录会员;strategic_json 这里永远不 SELECT */
+    if (type === 'fx_cards') {
+      b2oCards = ((await db.prepare(`SELECT id, slug, country, platform, stage, headline, signals, reasoning, counter, verdict, member_json, updated_at FROM b2o_opp_cards WHERE status = 'published' ORDER BY sort_order, id DESC LIMIT ?`).bind(Math.min(60, Number(d.limit) || 30)).all<any>()).results ?? []) as any[];
+      if (b2oCards.length) member = await getMember(Astro.request, cfEnv, db).catch(() => null);
+    }
+    if (type === 'fx_ledger') {
+      ledger = ((await db.prepare(`SELECT id, made_at, title, fact, pro, con, ruling, uncertainty, invalidation, verdict, r30, r60, r90, outcome, biz_inquiries, biz_samples, biz_quotes, biz_orders FROM b2o_predictions WHERE is_public = 1 ORDER BY made_at DESC, id DESC LIMIT 60`).all<any>()).results ?? []) as any[];
+    }
+    if (type === 'fx_bases') {
+      const fr = ((await db.prepare(`SELECT code, category, format, benefits FROM formulas WHERE status IN ('sample','active') ORDER BY category, updated_at DESC`).all<any>()).results ?? []) as any[];
+      const g = new Map<string, any[]>();
+      for (const r of fr) { if (!g.has(r.category)) g.set(r.category, []); g.get(r.category)!.push(r); }
+      cats = [...g.entries()].map(([category, rows]) => ({ category, n: rows.length, samples: rows.slice(0, 3) })).sort((a, b) => b.n - a.n);
+    }
+  } catch { /* 库抖动:该段按空处理 */ }
+}
+const oppDate = String(opps?.date || opps?.updated_at || '').slice(0, 10);
+const VARS: Record<string, string> = {
+  products: fmt(N('products')), summaries: fmt(N('summaries')), formulas: fmt(N('formulas')), classics: fmt(N('classics')), packaging: fmt(N('packaging')),
+  regs: String(N('regs')), inci: fmt(N('inci')), lines: String(lines), certs: ORG.certs.join(' / '), certs3: ORG.certs.slice(0, 3).join(' / '),
+  markets: String(OEM_MARKETS.length), cats: String(OEM_CATEGORIES.length), marketNames: OEM_MARKETS.map((m) => (zh ? m.zh : m.en.replace(/^the /, ''))).join(' / '),
+  site: siteName, date: oppDate,
+};
+const fill = (t: any, extra: Record<string, string> = {}) => s(t).replace(/\{(\w+)\}/g, (m, k) => (k in extra ? extra[k] : k in VARS ? VARS[k] : m));
+
+const clean = (t: string) => String(t ?? '').split(/\s[|,–—]\s|,|\|/)[0].slice(0, 60);
+const catLabel = (c: string) => (CAT_LABEL[c] ? (zh ? CAT_LABEL[c][0] : CAT_LABEL[c][1]) : c);
+const catPic = (category: string) => arr(d.items).find((x) => s(x?.cat).trim() === category)?.image ?? '';
+/* 机会卡 → 本站落点:市场 × 品类都在意图页集里就进 /oem/<market>/<category>/,否则进配方库按品类 */
+const OEM_CAT_BY_ZH: Array<[RegExp, string]> = [[/护肤|精华|面霜|面膜|乳液|爽肤|眼霜/, 'skincare'], [/彩妆|底妆|口红|唇|眼影|粉底/, 'makeup'], [/防晒/, 'sun-care'], [/洗发|护发|头皮|洗护/, 'hair-care'], [/洁面|清洁|卸妆|沐浴/, 'cleansing'], [/身体|润肤|护手|香水|香氛/, 'body-care']];
+const FORMULA_CAT_BY_ZH: Array<[RegExp, string]> = [[/牙|口腔/, 'oral'], [/香水|香氛/, 'fragrance'], [/儿童|婴/, 'kids']];
+const oppHref = (c: any) => {
+  const cat = String(c.cat ?? '');
+  const oc = OEM_CAT_BY_ZH.find(([re]) => re.test(cat))?.[1];
+  const mk = String(c.market_code ?? '').toLowerCase();
+  if (oc && OEM_MARKETS.some((m) => m.id === mk)) return `${B}/oem/${mk}/${oc}/`;
+  const fc = FORMULA_CAT_BY_ZH.find(([re]) => re.test(cat))?.[1] ?? OEM_CATEGORIES.find((x) => x.id === oc)?.cats[0];
+  return fc ? `${B}/formulas/?c=${fc}` : `${B}/formulas/`;
+};
+const MEMBER_LABEL: Array<[string, string]> = [['product', '产品方向'], ['consumer', '目标消费者'], ['scene', '使用场景'], ['price_band', '价格带'], ['pain', '评论痛点'], ['competition', '竞争程度'], ['diff', '差异化'], ['risk', '风险'], ['next', '下一步']];
+const memberRows = (j: any): Array<[string, string]> => { let o: any = {}; try { o = JSON.parse(String(j || '{}')); } catch { /* 坏 JSON 当空 */ } return MEMBER_LABEL.filter(([k]) => s(o[k]).trim()).map(([k, l]) => [l, s(o[k])]); };
+const OUTCOME: Record<string, string> = { pending: '待验证', right: '判断成立', wrong: '判断错了', partial: '部分成立', void: '已撤销' };
+const bizHit = (x: any) => Number(x.biz_inquiries) + Number(x.biz_samples) + Number(x.biz_quotes) + Number(x.biz_orders) > 0;
+const tally = { all: ledger.length, right: ledger.filter((x) => x.outcome === 'right').length, wrong: ledger.filter((x) => x.outcome === 'wrong').length, pending: ledger.filter((x) => x.outcome === 'pending').length, hits: ledger.filter(bizHit).length };
+const briefState = type === 'fx_brief' ? (Astro.url.searchParams.get('brief') ?? '') : '';
+const OPT = { brand: ['有自有品牌', '没有', '筹备中'], monthly: ['少于 5 款', '5–20 款', '20–50 款', '50 款以上'], mode: ['跟品', '改良', '自研'], scale: ['月销 10 万元以下', '10–100 万元', '100–500 万元', '500 万元以上'], decide: ['这个月', '1–3 个月', '先了解'] };
+const PLATFORMS = ['Shopee', 'TikTok Shop', 'Amazon', '美客多', 'Temu', 'Lazada', '独立站', '其他'];
+const TRAFFIC = ['短视频', '达人', '直播', '广告', '自然流量'];
+const stars = (n: number) => '★'.repeat(Math.max(0, Math.min(5, n))) + '☆'.repeat(5 - Math.max(0, Math.min(5, n)));
+const href = (h: any, fb: string) => { const v = s(h).trim(); if (!v) return fb; if (v === 'whatsapp') return waHref; if (v.startsWith('/') && !v.startsWith(`/${lang}/`) && !/^\/(zh-cn|zh-tw|en|ja|jp|kr|ko)\//.test(v)) return `${B}${v}`; return v; };
+const cards: any[] = Array.isArray(opps?.cards) ? opps.cards.slice(0, 6) : [];
+/* 09-22 体检:EN 页机会卡露出「confidence 低」与「growth_board_items=46, avg_price_usd=15.3」原始键名 —— 按语言翻成人话 */
+const CONF: Record<string, [string, string]> = { '低': ['低', 'low'], '中': ['中', 'medium'], '高': ['高', 'high'], low: ['低', 'low'], medium: ['中', 'medium'], high: ['高', 'high'] };
+const confLabel = (c: any) => { const k = String(c ?? '').trim(); return CONF[k] ? (zh ? CONF[k][0] : CONF[k][1]) : k; };
+const EVK: Record<string, [string, string]> = { growth_board_items: ['增长榜条数', 'growth-board items'], avg_price_usd: ['均价 US$', 'avg price US$'], peer_products_in_library: ['库内同类', 'peers in library'] };
+const evLabel = (ev: any) => String(ev ?? '').split(/,\s*/).map((kv) => { const [k, v] = kv.split('='); if (!v) return kv; const lb = EVK[k.trim()]; return lb ? `${zh ? lb[0] : lb[1]} ${v === 'null' ? '—' : v}` : kv; }).join(' · ');
+---
+{type === 'fx_hero' && (
+  <section class="fx fx-hero">
+    {d.eyebrow && <p class="eyebrow">{fill(d.eyebrow)}</p>}
+    <h1><span class="ln">{fill(d.title)}</span>{d.sub && <span class="ln">{fill(d.sub)}</span>}</h1>
+    {d.lead && <p class="lead">{fill(d.lead)}</p>}
+    {d.placeholder && (
+      <form class="search" method="get" action={`${B}/decoder/`}>
+        <div class="row"><input type="search" name="q" placeholder={fill(d.placeholder)} maxlength="60" required aria-label={fill(d.placeholder)} autocomplete="off" /><button type="submit" class="btn">{fill(d.submit) || (zh ? '找同款' : 'Find lookalikes')} →</button></div>
+      </form>
+    )}
+    {arr(d.items).length > 0 && (
+      <ul class="paths">{arr(d.items).map((x, i) => <li><a href={href(x.href, `${B}/formulas/`)} class:list={[`p${i + 1}`]}><b>{fill(x.label)}</b><small>{fill(x.note)}</small></a></li>)}</ul>
+    )}
+    {d.hint && <p class="hint">{fill(d.hint)}</p>}
+    {d.image && <p class="banner"><img src={d.image} alt={s(d.imageAlt)} loading="eager" decoding="async" /></p>}
+  </section>
+)}
+
+{type === 'fx_six' && (
+  <section class="fx fx-six">
+    <header class="sh"><h2>{fill(d.title)}</h2>{d.intro && <p>{fill(d.intro)}</p>}</header>
+    <ul class="six">{arr(d.items).map((x) => (
+      <li><a href={href(x.href, `${B}/about/`)}>
+        {x.image && <img src={x.image} alt="" loading="lazy" decoding="async" />}
+        <b>{fill(x.label)}</b><span class="e">{fill(x.evidence)}</span><span class="d">{fill(x.note)}</span>
+      </a></li>
+    ))}</ul>
+  </section>
+)}
+
+{type === 'fx_opps' && (
+  <section class="fx fx-opps" id="opps">
+    <header class="sh"><h2>{fill(d.title)}</h2><p>{cards.length ? fill(d.intro) : fill(d.empty)}</p></header>
+    {cards.length > 0 && (
+      <ul class="opps">{cards.map((c) => {
+        const sc: number[] = Array.isArray(c.scores) ? c.scores : [3, 3, 3, 3];
+        const s100 = Number(c.score100 ?? c.s100 ?? 0) || Math.round(((sc[0] + (6 - sc[1]) + sc[2] + sc[3]) / 20) * 100);
+        return (
+          <li class="opp">
+            <p class="mk">{zh ? c.label : (c.label_en || c.label)}<b class="score">{s100}<small>/100</small></b></p>
+            <h3>{zh ? c.cat : (c.cat_en || c.cat)}</h3>
+            <dl>{arr(d.axes).slice(0, 4).map((l, i) => (<><dt>{fill(l)}</dt><dd>{stars(Number(sc[i] ?? 3))}</dd></>))}</dl>
+            <p class="why">{zh ? c.why : (c.why_en || c.why)}</p>
+            {c.evidence && <p class="ev">{zh ? '依据' : 'Evidence'}: {evLabel(c.evidence)}{c.confidence && <> · {zh ? '置信度' : 'confidence'} {confLabel(c.confidence)}</>}</p>}
+            <a class="btn" href={oppHref(c)}>{fill(d.submit)} →</a>
+          </li>
+        );
+      })}</ul>
+    )}
+    {d.moreText && <p class="more"><a href={href(d.moreHref, waHref)}>{fill(d.moreText)} →</a></p>}
+  </section>
+)}
+
+{type === 'fx_latest' && (
+  <section class="fx fx-latest">
+    <header class="sh"><h2>{fill(d.title)}</h2>{d.intro && <p>{fill(d.intro)}</p>}</header>
+    {arr(d.steps).length > 0 && <ol class="flow3">{arr(d.steps).map((x, i) => <li><i>{i + 1}</i>{fill(typeof x === 'string' ? x : x?.label)}</li>)}</ol>}
+    {latest.length > 0 && (<>
+      {d.sub && <p class="sub">{fill(d.sub)}</p>}
+      <ul class="prods">{latest.map((r) => (
+        <li><a href={decoderPath(lang, r.id, r.brand, r.title)}>
+          <img src={r.img} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+          <span class="br">{String(r.brand || '').length > 2 ? r.brand : String(r.title || '').split(/\s+/).slice(0, 2).join(' ')}{r.country ? ` · ${String(r.country).toUpperCase()}` : ''}</span>
+          <span class="ti">{clean((zh && r.title_zh) ? r.title_zh : r.title)}</span>
+        </a></li>
+      ))}</ul>
+    </>)}
+  </section>
+)}
+
+{type === 'fx_bases' && (
+  <section class="fx fx-bases">
+    <header class="sh"><h2>{fill(d.title)}</h2>{d.intro && <p>{fill(d.intro)}</p>}</header>
+    <ul class="cats">{cats.map((c) => (
+      <li>
+        {catPic(c.category) && <img class="cp" src={catPic(c.category)} alt="" loading="lazy" decoding="async" />}
+        <p class="ch"><b>{catLabel(c.category)}</b><span>{fill(d.countText || (zh ? '{n} 条基底' : '{n} bases'), { n: String(c.n) })}</span></p>
+        <ul class="fx-list">{c.samples.map((r: any) => <li><a href={`${B}/formula/${encodeURIComponent(r.code)}/`}>{formulaName(r, zh)}</a></li>)}</ul>
+        <a class="all" href={`${B}/formulas/?c=${encodeURIComponent(c.category)}`}>{fill(d.moreText) || (zh ? '看全部' : 'See all')} →</a>
+      </li>
+    ))}</ul>
+  </section>
+)}
+
+{type === 'fx_steps' && (
+  <section class="fx fx-steps">
+    <header class="sh"><h2>{fill(d.title)}</h2>{d.intro && <p>{fill(d.intro)}</p>}</header>
+    <ol class="steps">{arr(d.steps).map((x, i) => <li><i>{i + 1}</i><b>{fill(x?.label)}</b><span>{fill(x?.note)}</span></li>)}</ol>
+  </section>
+)}
+
+{type === 'fx_contact' && (
+  <section class="fx fx-contact">
+    <header class="sh"><h2>{fill(d.title)}</h2>{d.intro && <p>{fill(d.intro)}</p>}</header>
+    <p class="more">
+      {d.formText && <a class="btn" href={href(d.formHref, `${B}/brief/`)}>{fill(d.formText)} →</a>}
+      {wechat && <span class="btn ghost">微信:{wechat}</span>}
+      {wa && <a class="btn" href={waHref} target="_blank" rel="noopener">{fill(d.submit) || 'WhatsApp'} →</a>}
+      {email && <a class="btn ghost" href={`mailto:${email}`}>{fill(d.mailText) || (zh ? '发邮件' : 'Email')}: {email}</a>}
+    </p>
+  </section>
+)}
+
+{type === 'fx_cards' && (
+  <section class="fx fx-cards" id="opps">
+    <header class="sh"><h2>{fill(d.title)}</h2><p>{b2oCards.length ? fill(d.intro) : fill(d.empty)}</p></header>
+    {b2oCards.length > 0 && (
+      <ul class="opps">{b2oCards.map((c) => {
+        const rows = member ? memberRows(c.member_json) : [];
+        return (
+          <li class="opp" id={c.slug || undefined}>
+            <p class="mk">{[c.country, c.platform].filter(Boolean).join(' · ')}{c.stage && <b class="stage">{c.stage}</b>}</p>
+            <h3>{c.headline}</h3>
+            {c.signals && <p class="why"><em>信号</em>{c.signals}</p>}
+            {c.reasoning && <p class="why"><em>判断</em>{c.reasoning}</p>}
+            {c.counter && <p class="why"><em>反证条件</em>{c.counter}</p>}
+            {c.verdict && <p class="ev">裁决:{c.verdict} · 更新 {s(c.updated_at).slice(0, 10)}</p>}
+            {rows.length > 0
+              ? <dl class="mem">{rows.map(([l, v]) => (<><dt>{l}</dt><dd>{v}</dd></>))}</dl>
+              : <p class="lock"><a href={href(d.lockHref, `${B}/brief/`)}>{fill(d.lockText) || '具体产品方向:提交店铺后按你的店铺给'} →</a></p>}
+          </li>
+        );
+      })}</ul>
+    )}
+    {d.moreText && <p class="more"><a class="btn" href={href(d.moreHref, `${B}/brief/`)}>{fill(d.moreText)} →</a></p>}
+  </section>
+)}
+
+{type === 'fx_ledger' && (
+  <section class="fx fx-ledger">
+    <header class="sh"><h2>{fill(d.title)}</h2>{d.intro && <p>{fill(d.intro)}</p>}</header>
+    <p class="tally">已记录 <b>{tally.all}</b> 条 · 成立 <b>{tally.right}</b> · 错了 <b>{tally.wrong}</b> · 待验证 <b>{tally.pending}</b> · 带来询问 / 拿样 / 报价 / 订单 <b>{tally.hits}</b></p>
+    {ledger.length === 0 ? <p class="empty">{fill(d.empty)}</p> : (
+      <ol class="ledger">{ledger.map((x) => (
+        <li class:list={['pred', x.outcome]}>
+          <p class="mk"><span>{s(x.made_at).slice(0, 10)}{x.verdict && <> · 裁决:{x.verdict}</>}</span><b class="oc">{OUTCOME[x.outcome] ?? x.outcome}</b></p>
+          <h3>{x.title}</h3>
+          <dl>
+            {x.fact && <><dt>事实</dt><dd>{x.fact}</dd></>}
+            {x.pro && <><dt>正方</dt><dd>{x.pro}</dd></>}
+            {x.con && <><dt>反方</dt><dd>{x.con}</dd></>}
+            {x.ruling && <><dt>裁决理由</dt><dd>{x.ruling}</dd></>}
+            {x.uncertainty && <><dt>最大不确定性</dt><dd>{x.uncertainty}</dd></>}
+            {x.invalidation && <><dt>失效条件</dt><dd>{x.invalidation}</dd></>}
+            {x.r30 && <><dt>30 天</dt><dd>{x.r30}</dd></>}
+            {x.r60 && <><dt>60 天</dt><dd>{x.r60}</dd></>}
+            {x.r90 && <><dt>90 天</dt><dd>{x.r90}</dd></>}
+          </dl>
+        </li>
+      ))}</ol>
+    )}
+  </section>
+)}
+
+{type === 'fx_brief' && (
+  <section class="fx fx-brief" id="brief">
+    <header class="sh"><h2>{fill(d.title)}</h2>{d.intro && <p>{fill(d.intro)}</p>}</header>
+    {briefState === 'ok' && <p class="note ok" role="status">{fill(d.okText) || '收到。24 小时内把《客户产品机会简报》发到你留的联系方式。'}</p>}
+    {briefState === 'bad' && <p class="note bad" role="alert">联系人、一种联系方式(微信 / 手机 / 邮箱)、店铺或商品链接,这三项必填。</p>}
+    {briefState === 'down' && <p class="note bad" role="alert">刚才没存上,请稍后再提交一次。</p>}
+    <form class="bf" method="post" action="/api/b2o/brief">
+      <fieldset><legend>你是谁</legend>
+        <label>联系人 *<input name="contact" required maxlength="60" autocomplete="name" /></label>
+        <label>公司 / 团队<input name="company" maxlength="120" autocomplete="organization" /></label>
+        <label>微信<input name="wechat" maxlength="60" /></label>
+        <label>手机<input name="phone" type="tel" maxlength="40" autocomplete="tel" /></label>
+        <label>邮箱<input name="email" type="email" maxlength="200" autocomplete="email" /></label>
+        <label>自有品牌<select name="own_brand"><option value="">请选择</option>{OPT.brand.map((x) => <option value={x}>{x}</option>)}</select></label>
+      </fieldset>
+      <fieldset><legend>你在哪里卖</legend>
+        <p class="ck"><span>平台</span>{PLATFORMS.map((x) => <label><input type="checkbox" name="platforms" value={x} />{x}</label>)}</p>
+        <label>现在卖的国家<input name="markets_now" maxlength="200" placeholder="例:印尼、马来、菲律宾" /></label>
+        <label>准备进入的国家<input name="markets_next" maxlength="200" /></label>
+        <label class="wide">店铺链接<input name="store_url" type="url" maxlength="500" placeholder="https://" /></label>
+        <label class="wide">核心商品链接(3–5 个,一行一个)<textarea name="hero_urls" rows="3" maxlength="1500"></textarea></label>
+      </fieldset>
+      <fieldset><legend>你怎么卖</legend>
+        <label>主营品类<input name="cats_now" maxlength="200" placeholder="例:防晒、身体护理" /></label>
+        <label>想扩展的品类<input name="cats_next" maxlength="200" /></label>
+        <label>主销价格带<input name="price_band" maxlength="60" placeholder="例:5–12 美元" /></label>
+        <label>月均上新<select name="monthly_new"><option value="">请选择</option>{OPT.monthly.map((x) => <option value={x}>{x}</option>)}</select></label>
+        <label>开发模式<select name="mode"><option value="">请选择</option>{OPT.mode.map((x) => <option value={x}>{x}</option>)}</select></label>
+        <label>规模区间<select name="scale"><option value="">请选择</option>{OPT.scale.map((x) => <option value={x}>{x}</option>)}</select></label>
+        <p class="ck"><span>流量来源</span>{TRAFFIC.map((x) => <label><input type="checkbox" name="traffic" value={x} />{x}</label>)}</p>
+        <label class="wide">卖得最好的 3–5 个商品<textarea name="best_sellers" rows="2" maxlength="800"></textarea></label>
+      </fieldset>
+      <fieldset><legend>你要什么</legend>
+        <label class="wide">现在的工厂 / 供货有什么痛点<textarea name="factory_pain" rows="2" maxlength="1000"></textarea></label>
+        <label class="wide">最想解决的一件事<textarea name="core_need" rows="2" maxlength="1000"></textarea></label>
+        <label>多久要定下一款<select name="decision_time"><option value="">请选择</option>{OPT.decide.map((x) => <option value={x}>{x}</option>)}</select></label>
+      </fieldset>
+      <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+      <p class="more"><button class="btn" type="submit">{fill(d.submit) || '提交,24 小时内拿简报'}</button>{d.hint && <span class="hint">{fill(d.hint)}</span>}</p>
+    </form>
+  </section>
+)}
+
+<style>
+  .fx { max-width: 112.5rem; margin: 0 auto; padding: 2.75rem 1rem; border-bottom: 1px solid var(--ck-line, rgba(0,0,0,.08)); }
+  .sh { max-width: 62rem; margin-bottom: 1.25rem; } .sh h2 { font-size: clamp(1.5rem, 2.6vw, 2.125rem); margin: 0 0 .5rem; line-height: 1.22; } .sh p { margin: 0; opacity: .78; line-height: 1.7; }
+  .btn { min-height: 46px; display: inline-flex; align-items: center; padding: 0 1.25rem; border-radius: 999px; background: var(--ck-accent, #7C4DA8); color: #fff; text-decoration: none; font-weight: 600; border: 0; cursor: pointer; font: inherit; font-weight: 600; }
+  .btn.ghost { background: #fff; color: inherit; border: 1px solid var(--ck-line, rgba(0,0,0,.18)); }
+  .more { margin: 1.25rem 0 0; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; } .more a:not(.btn) { color: inherit; font-weight: 600; }
+  .fx-hero { padding-top: 3.75rem; } .fx-hero .eyebrow { font-size: .8125rem; letter-spacing: .1em; text-transform: uppercase; opacity: .65; margin: 0 0 .875rem; }
+  .fx-hero h1 { font-size: clamp(2rem, 5vw, 4.25rem); line-height: 1.12; margin: 0 0 1rem; letter-spacing: -.015em; } .fx-hero h1 .ln { display: block; }
+  .fx-hero .lead { font-size: clamp(1rem, 1.5vw, 1.3125rem); line-height: 1.7; opacity: .85; max-width: 56rem; margin: 0 0 1.5rem; }
+  .search { max-width: 56rem; margin: 0 0 .875rem; } .search .row { display: flex; gap: .5rem; } .search input { flex: 1; min-width: 0; min-height: 52px; padding: 0 1rem; border-radius: 14px; border: 1px solid var(--ck-line, rgba(0,0,0,.18)); font: inherit; font-size: 1rem; background: #fff; }
+  .paths { list-style: none; padding: 0; margin: 0 0 .75rem; display: grid; gap: .625rem; max-width: 56rem; }
+  .paths a { display: grid; gap: .125rem; min-height: 64px; padding: .625rem 1rem; border-radius: 14px; border: 1px solid var(--ck-line, rgba(0,0,0,.14)); background: #fff; text-decoration: none; color: inherit; } .paths a b { font-size: 1rem; } .paths a small { opacity: .65; }
+  .paths .p1 { border-color: var(--ck-accent, #7C4DA8); box-shadow: 0 0 0 1px var(--ck-accent, #7C4DA8) inset; }
+  @media (min-width: 700px) { .paths { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .hint { margin: 0; font-size: .875rem; opacity: .6; max-width: 56rem; }
+  .banner { margin: 1.75rem 0 0; } .banner img { width: 100%; aspect-ratio: 5 / 2; object-fit: cover; border-radius: 16px; background: rgba(0,0,0,.05); display: block; }
+  .six { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; } .six a { display: grid; gap: .375rem; padding: 1.125rem 1.25rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 16px; background: #fff; text-decoration: none; color: inherit; height: 100%; box-shadow: 0 2px 10px rgba(0,0,0,.04); }
+  .six img { width: 100%; aspect-ratio: 16 / 7; object-fit: cover; border-radius: 10px; background: rgba(0,0,0,.05); margin-bottom: .25rem; }
+  .six b { font-size: 1.0625rem; } .six .e { font-size: .875rem; color: var(--ck-accent, #7C4DA8); font-weight: 600; line-height: 1.5; } .six .d { font-size: .875rem; opacity: .72; line-height: 1.6; }
+  .opps { list-style: none; padding: 0; margin: 0; display: grid; gap: .875rem; } .opp { padding: 1.25rem 1.375rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 18px; background: #fff; display: grid; gap: .5rem; align-content: start; box-shadow: 0 2px 10px rgba(0,0,0,.04); }
+  .opp .mk { margin: 0; font-size: .875rem; opacity: .7; display: flex; justify-content: space-between; align-items: baseline; } .opp .score { font-size: 1.375rem; color: var(--ck-accent, #7C4DA8); font-variant-numeric: tabular-nums; opacity: 1; } .opp .score small { font-size: .75rem; opacity: .6; }
+  .opp h3 { margin: 0; font-size: 1.25rem; } .opp dl { margin: .25rem 0; display: grid; grid-template-columns: auto 1fr; gap: .25rem .75rem; font-size: .875rem; } .opp dt { opacity: .65; } .opp dd { margin: 0; letter-spacing: .08em; color: #b8860b; }
+  .opp .why { margin: 0 0 .5rem; font-size: .9rem; line-height: 1.6; opacity: .85; } .opp .ev { margin: 0 0 .5rem; font-size: .75rem; opacity: .55; line-height: 1.5; }
+  .flow3 { list-style: none; padding: 0; margin: 0 0 1.5rem; display: flex; flex-wrap: wrap; gap: .5rem; } .flow3 li { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .875rem; border-radius: 999px; background: #fff; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); font-size: .9375rem; }
+  .flow3 i, .steps i { font-style: normal; font-variant-numeric: tabular-nums; width: 1.5rem; height: 1.5rem; display: inline-grid; place-items: center; border-radius: 999px; background: var(--ck-accent, #7C4DA8); color: #fff; font-size: .7rem; flex: none; }
+  .sub { margin: 0 0 .75rem; font-size: .875rem; opacity: .65; }
+  .prods { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .prods a { display: grid; gap: .25rem; text-decoration: none; color: inherit; } .prods img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; background: rgba(0,0,0,.05); }
+  .prods .br { font-size: .75rem; opacity: .6; letter-spacing: .04em; text-transform: uppercase; } .prods .ti { font-size: .9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cats { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; } .cats > li { padding: 1rem 1.125rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 16px; background: #fff; display: grid; gap: .5rem; align-content: start; }
+  .cats .cp { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; background: rgba(0,0,0,.05); margin-bottom: .25rem; }
+  .cats .ch { margin: 0; display: flex; justify-content: space-between; align-items: baseline; } .cats .ch b { font-size: 1.0625rem; } .cats .ch span { font-size: .8125rem; color: var(--ck-accent, #7C4DA8); font-weight: 600; }
+  .fx-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .25rem; } .fx-list a { font-size: .875rem; color: inherit; text-decoration: none; opacity: .85; } .fx-list a:hover { text-decoration: underline; }
+  .cats .all { font-size: .875rem; font-weight: 600; color: var(--ck-accent, #7C4DA8); text-decoration: none; }
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: .625rem; } .steps li { display: grid; grid-template-columns: auto 1fr; gap: .25rem .75rem; padding: .875rem 1rem; border: 1px solid var(--ck-line, rgba(0,0,0,.1)); border-radius: 14px; background: #fff; } .steps b { font-size: 1rem; } .steps span { grid-column: 2; font-size: .875rem; opacity: .72; line-height: 1.55; }
+  .stage { font-size: .8125rem; padding: .125rem .625rem; border-radius: 999px; background: var(--ck-accent, #7C4DA8); color: #fff; }
+  .opp .why em, .pred dt { font-style: normal; font-weight: 600; opacity: .7; margin-right: .5rem; }
+  .opp .mem { display: grid; grid-template-columns: auto 1fr; gap: .25rem .75rem; font-size: .875rem; margin: .25rem 0 0; padding-top: .5rem; border-top: 1px dashed var(--ck-line, rgba(0,0,0,.14)); } .opp .mem dd { margin: 0; }
+  .opp .lock { margin: .25rem 0 0; font-size: .875rem; } .opp .lock a { color: var(--ck-accent, #7C4DA8); font-weight: 600; text-decoration: none; }
+  .tally { font-size: .9375rem; margin: 0 0 1rem; } .tally b { color: var(--ck-accent, #7C4DA8); font-variant-numeric: tabular-nums; }
+  .empty { opacity: .72; line-height: 1.7; max-width: 56rem; }
+  .ledger { list-style: none; padding: 0; margin: 0; display: grid; gap: .875rem; } .pred { padding: 1.125rem 1.25rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 16px; background: #fff; }
+  .pred .mk { margin: 0; font-size: .8125rem; opacity: .75; display: flex; gap: .5rem; justify-content: space-between; } .pred h3 { margin: .25rem 0 .5rem; font-size: 1.125rem; }
+  .pred dl { display: grid; grid-template-columns: auto 1fr; gap: .25rem .75rem; margin: 0; font-size: .875rem; line-height: 1.6; } .pred dd { margin: 0; }
+  .pred.right .oc { color: #1a7f37; } .pred.wrong .oc { color: #c62828; }
+  .note { padding: .75rem 1rem; border-radius: 12px; margin: 0 0 1rem; max-width: 56rem; } .note.ok { background: #e8f5e9; } .note.bad { background: #fdecea; }
+  .bf { display: grid; gap: 1rem; max-width: 62rem; } .bf fieldset { border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 16px; padding: 1rem 1.125rem; margin: 0; display: grid; gap: .75rem; background: #fff; min-width: 0; }
+  .bf legend { font-weight: 700; padding: 0 .375rem; } .bf label { display: grid; gap: .25rem; font-size: .875rem; }
+  .bf input:not([type=checkbox]), .bf select, .bf textarea { min-height: 44px; padding: .5rem .75rem; border-radius: 10px; border: 1px solid var(--ck-line, rgba(0,0,0,.2)); font: inherit; font-size: 1rem; background: #fff; width: 100%; box-sizing: border-box; }
+  .bf .ck { margin: 0; display: flex; flex-wrap: wrap; gap: .25rem 1rem; align-items: center; font-size: .875rem; } .bf .ck > span { font-weight: 600; } .bf .ck label { display: inline-flex; gap: .375rem; align-items: center; min-height: 44px; }
+  .bf .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+  .bf .hint { font-size: .8125rem; opacity: .65; }
+  @media (min-width: 760px) { .bf fieldset { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bf legend, .bf .ck, .bf .wide { grid-column: 1 / -1; } }
+  @media (min-width: 900px) { .fx { padding: 2.75rem 1.5rem; } .six, .opps, .cats { grid-template-columns: repeat(3, minmax(0, 1fr)); } .prods { grid-template-columns: repeat(6, minmax(0, 1fr)); } .steps { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (min-width: 1400px) { .steps { grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); } .steps li { grid-template-columns: 1fr; } .steps span { grid-column: 1; } }
+</style>

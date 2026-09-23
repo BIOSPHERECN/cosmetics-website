@@ -1,0 +1,502 @@
+---
+/**
+ * AI 外包装设计 —— 上传一支裸瓶,拿到外包装方案 + 外观参考图。
+ *
+ * 创始人 2026-09-02:「之前我们可以按照裸瓶图片设计外包装,现在看不到入口了」。
+ * 旧站有,新站从没建过,这次补齐。
+ *
+ * 三条 AI 线里,这条最接近成交:
+ *   肌肤检测从一张脸出发(不知道要什么)、共创从一句话出发(说不清),
+ *   而能把样品照片发过来的客户,手里已经有实物、通常已经在比价了。
+ *
+ * 版式沿用测肤页:一次输入、一版结构化输出,不做聊天框 ——
+ * B2B 客户要的是能带回去开会的一页,不是会滚走的对话。
+ */
+import { t as uiT, type Locale } from '@cosmetic/core/i18n';
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../lib/shell';
+import { PACK_SHELF } from '@cosmetic/core/generated/pack-shelf.ts';
+
+export const prerender = false;
+
+/* 收成 Locale 类型:astro check 才不会在 locale={lang} 三处报 string 不可赋值(同族页都有这个旧错) */
+const lang = (Astro.params.lang ?? 'zh-cn') as Locale;
+const tSkip = uiT(lang)('a11y.skip');
+const zh = lang.startsWith('zh');
+const db = (env as any).DB as D1Database | undefined;
+
+/* 包材详情页/货架卡片的「一键生成包装设计」带着选好的瓶子过来 ——
+   从 Astro.url.searchParams 直接读,SSR 阶段就把默认值写进表单,
+   不需要额外一段客户端脚本。 */
+const qp = Astro.url.searchParams;
+const packCode = String(qp.get('pack') ?? '').toUpperCase().slice(0, 24);
+const packType = String(qp.get('type') ?? '').slice(0, 60);
+const packMaterial = String(qp.get('material') ?? '').slice(0, 60);
+const packCapacity = String(qp.get('capacity') ?? '').slice(0, 60);
+/* 创始人 2026-09-11 19:5x:「还是必须上传图片才可以」—— 从包材库带着编码过来,
+   库里有这支瓶子的白底实拍就直接装进投放区,不用客户再传一遍;想换自己的样品照,点一下投放区照旧可传。 */
+const packShot = packCode && PACK_SHELF.find((x) => x.code === packCode)?.hasImg ? `/pack/${packCode}` : '';
+
+/* 与其让客户点了才发现没配模型,不如提前说。
+   这一页要两种能力:读图看懂瓶子、出图给外观参考。缺读图就没法用,
+   缺出图还能用(只出文字方案),所以分开判。 */
+const caps = db
+  ? await db.prepare(
+      `SELECT SUM(can_vision) v, SUM(can_image) i FROM providers WHERE enabled=1 AND api_keys<>''`
+    ).first<{ v: number; i: number }>().catch(() => null)
+  : null;
+const canSee = (caps?.v ?? 0) > 0;
+const canDraw = (caps?.i ?? 0) > 0;
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/pack/`;
+
+const T = zh ? {
+  eyebrow: 'AI 包装设计',
+  title: '上传一支裸瓶,看看它该穿什么外衣',
+  lead: '把手里的样品拍一张传上来 —— AI 先读懂瓶型、材质与配色,再给出外盒结构、视觉方向与落地要点,附两版外观参考图。方案可直接转成询盘带走。',
+  briefLabel: '你想要的外包装(写得越具体,图越准)',
+  briefPh: '例:黑金奢华风,深色磨砂硬盒,盒面留烫金 logo 位,面向中东高端市场;或:牛皮纸环保风,手绘草本插画,清新自然',
+  consent: '同意用这张照片做一次分析(照片不保存)',
+  go: '生成包装方案',
+  running: '正在读图与出图,约 20–40 秒…',
+  noSee: 'AI 读图能力暂未就绪,请稍后再试或直接发询盘。',
+  noDraw: '当前只能出文字方案,外观参考图暂不可用。',
+  factsTitle: '读到的瓶子信息',
+  planTitle: '外包装方案',
+  renderTitle: '外观参考图',
+  renderFine: '以上为风格方向参考,用于对齐沟通,不作为打样稿。实际打样以确认的结构图与色卡为准。',
+  fine: '照片在你的浏览器里压缩后只用于这一次分析,不保存、不用于训练。方案为设计建议,最终以打样确认为准。',
+  customTitle: '为你这支瓶子定制的外观图',
+  customWait: '已排队出图,云端工人每 30 分钟领一次单;出好会自动显示在这里,超时可稍后回来刷新查看。',
+  customFail: '定制图这次没出成,上面的风格方向仍然可用;需要定制稿可直接发询盘找我们。',
+  cta: '带着这份方案发询盘',
+  picked: '已选包材', packPrefix: '包材:', swap: '换一款', reshoot: '点击可换成你自己的样品照', loading: '正在装入这支瓶子的实拍…',
+  /* 创始人 2026-09-17:「不可以拖图片进去!而且不会自动缩放到合适的显示」—— 三种进图方式都写在投放区上 */
+  dropHint: '拖图到这里、Ctrl+V 粘贴,或点这里选图(可多张)',
+  dropOver: '松开即可放入',
+  viewFull: '看原图',
+  thumbsHint: '点缩略图切换要分析的那一张',
+  badFile: '这张图读不出来,请换一张',
+  elapsed: '用时', sec: '秒',
+  timeout: '等了 150 秒还没回音,服务可能正忙,请稍后再试',
+  netErr: '网络异常,请检查连接后重试',
+  httpErr: '服务暂时不可用(HTTP {s}),请稍后再试',
+  emptyTitle: '方案会显示在这里',
+  emptyLead: '左侧放入裸瓶照片、写一句需求,生成后这里依次出现:读到的瓶子信息、外包装方案、定制外观图、风格参考图。',
+} : {
+  eyebrow: 'AI Packaging Design',
+  title: 'Upload a bare bottle, see what it should wear',
+  lead: 'Photograph the sample in your hand. The AI reads the bottle shape, material and colours first, then proposes carton structure, visual direction and production notes, with two reference renders. Take the result straight into an inquiry.',
+  briefLabel: 'The packaging you want (the more specific, the closer the render)',
+  briefPh: 'e.g. black & gold luxury, matte dark rigid box with a foil logo area, for Middle East premium retail; or kraft eco look with hand-drawn botanicals',
+  consent: 'Use this photo for one analysis (not stored)',
+  go: 'Generate packaging plan',
+  running: 'Reading the bottle and rendering, 20–40s…',
+  noSee: 'Image understanding is not ready. Please try later or send an inquiry.',
+  noDraw: 'Text plan only for now — reference renders are unavailable.',
+  factsTitle: 'What the AI saw',
+  planTitle: 'Packaging plan',
+  renderTitle: 'Reference renders',
+  renderFine: 'Renders are AI-generated to align on direction, not production artwork.',
+  fine: 'Your photo is compressed in the browser, used once for this analysis, never stored or used for training. The plan is design advice; sampling confirms the final spec.',
+  customTitle: 'A render made for your bottle',
+  customWait: 'Queued for rendering; our cloud worker picks up jobs every 30 minutes. It appears here automatically, or come back later and refresh.',
+  customFail: 'The custom render did not come through this time. The style directions above still apply.',
+  cta: 'Send an inquiry with this plan',
+  picked: 'Selected packaging', packPrefix: 'Packaging: ', swap: 'change', reshoot: 'Click to replace with your own sample photo', loading: 'Loading this bottle photo…',
+  dropHint: 'Drop images here, paste (Ctrl+V), or click to choose (multiple OK)',
+  dropOver: 'Release to add',
+  viewFull: 'View full size',
+  thumbsHint: 'Click a thumbnail to pick the one to analyse',
+  badFile: 'Could not read this image, please try another',
+  elapsed: 'took', sec: 's',
+  timeout: 'No reply after 150s — the service may be busy, please try again later',
+  netErr: 'Network error, check your connection and retry',
+  httpErr: 'Service unavailable (HTTP {s}), please try again later',
+  emptyTitle: 'Your plan will appear here',
+  emptyLead: 'Add a bare-bottle photo and a brief on the left. After generating you will see: what the AI saw, the packaging plan, a custom render, and reference renders.',
+};
+
+/* 这一页是自由文本简报,没有单独的瓶型/材质字段 ——
+   选好的包材拼成一行,塞进 brief 的默认值里,客户不用再打字复述一遍。 */
+const packLine = packCode
+  ? T.packPrefix + [packCode, packType, packMaterial, packCapacity].filter(Boolean).join(' · ') + '\n'
+  : '';
+---
+
+<BaseLayout
+  locale={lang}
+  school={shell.variant?.school ?? 'atelier'}
+  variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? 'biosphere-ai'}
+  title={T.title}
+  description={T.lead}
+  siteName={shell.site?.name ?? '帛卉'}
+  siteUrl={`https://${shell.site?.domain ?? 'biosphere-ai.com'}`}
+  path={path}
+  indexable={shell.site?.is_live === 1}
+  brandColor={shell.site?.brand_color}
+  theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+
+  <!-- 创始人 2026-09-17:「页面宽度最大 1800,不要去拉满屏」「好像参考站那样在左侧去排列」——
+       版心 .dtc-wrap-wide(112.5rem)居中,标题左对齐;输入区在左、结果区在右填满整幅,不再堆成一条窄柱 -->
+  <main id="main" class="pk dtc-wrap-wide">
+    <header class="head">
+      <p class="dtc-eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lead">{T.lead}</p>
+      {!canSee && <p class="warn">{T.noSee}</p>}
+      {canSee && !canDraw && <p class="warn soft">{T.noDraw}</p>}
+    </header>
+
+    <div class="body">
+    <section class="panel" id="panel" aria-label={T.eyebrow}>
+      {packCode && (
+        <p class="picked"><a href={`/${lang}/packaging/${packCode}/`}>{T.picked} {packCode}</a> · <a href={`/${lang}/packaging/`}>{T.swap}</a></p>
+      )}
+
+      <div class="drop" id="drop" data-shot={packShot}>
+        <span class="ph" id="ph">{packShot ? T.loading : T.dropHint}</span>
+        <img id="preview" alt="" hidden />
+        <span class="hint" id="hint" hidden>{T.reshoot}</span>
+        <button type="button" class="zoom" id="zoom" hidden>{T.viewFull}</button>
+        <input id="pick" type="file" accept="image/*" multiple hidden />
+      </div>
+      <!-- 多张时的缩略条:接口一次只读一张,点缩略图切换要分析的那张 -->
+      <div class="thumbs" id="thumbs" hidden title={T.thumbsHint}></div>
+
+      <label class="fld">
+        <span>{T.briefLabel}</span>
+        <textarea id="brief" rows="4" maxlength="600" placeholder={T.briefPh}>{packLine}</textarea>
+      </label>
+
+      <label class="consent">
+        <input type="checkbox" id="consent" />
+        <span>{T.consent}</span>
+      </label>
+
+      <button id="go" class="dtc-btn primary" disabled>{T.go}</button>
+      <!-- 创始人 2026-09-17:生成中要看得见进度与耗时 —— 不定长进度条 + 秒表 -->
+      <div class="bar" id="bar" hidden><i></i></div>
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+      <p class="fine">{T.fine}</p>
+    </section>
+
+    <section class="out" id="out" aria-live="polite">
+      <div class="empty" id="empty">
+        <h2>{T.emptyTitle}</h2>
+        <p>{T.emptyLead}</p>
+      </div>
+      <div class="block" id="factsBox" hidden>
+        <h2>{T.factsTitle}</h2>
+        <p class="facts" id="facts"></p>
+      </div>
+      <div class="block" id="planBox" hidden>
+        <h2>{T.planTitle}</h2>
+        <div class="plan" id="plan"></div>
+      </div>
+      <div class="block" id="customBox" hidden>
+        <h2>{T.customTitle}</h2>
+        <p class="why" id="customMsg"></p>
+        <div class="renders one" id="customWrap"></div>
+      </div>
+      <div class="block" id="renderBox" hidden>
+        <h2>{T.renderTitle}</h2>
+        <p class="why" id="why" hidden></p>
+        <div class="renders" id="renders"></div>
+        <p class="fine">{T.renderFine}</p>
+      </div>
+      <a class="dtc-btn primary" id="cta" href={`/${lang}/contact/`} hidden>{T.cta}</a>
+    </section>
+    </div>
+
+    <!-- 点任意预览/结果图放大看原图:原生 dialog,点哪都关 -->
+    <dialog class="lb" id="lb"><img id="lbImg" alt="" /></dialog>
+  </main>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+
+  <script is:inline>
+    /* 选品链路把「方向 + 配方号 + 包材号」带过来:?brief=… 直接填进输入框,
+       客户不用把刚做的选择再复述一遍(闭环的最后一米,少一次复制粘贴就少一次流失)。 */
+    (function prefillFromQuery() {
+      try {
+        const q = new URLSearchParams(location.search);
+        const b = q.get('brief');
+        if (!b) return;
+        const el = document.querySelector('#brief');
+        if (!el) return;
+        el.value = b.slice(0, 600);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.focus();
+      } catch { /* 预填失败不影响正常使用 */ }
+    })();
+  </script>
+</BaseLayout>
+
+<style>
+  /* 创始人 2026-09-17:「排版乱七八糟的!能不能规范整齐」「很多都太多空余了」——
+     统一 1rem/1.5rem 两档间距,标题左对齐,不再居中一条窄柱 */
+  .pk { padding-block: var(--dtc-py, 48px) calc(var(--dtc-py, 48px) * 1.5); }
+  /* .thumbs/.empty/.dtc-btn 自带 display,hidden 属性会被盖掉,这里兜底 */
+  .pk [hidden] { display: none !important; }
+  .head { text-align: left; max-width: 64ch; }
+  .head h1 { margin: .5rem 0 0; font-size: var(--ck-h1); line-height: 1.15; text-wrap: balance; }
+  .lead { margin: .75rem 0 0; color: var(--ck-ink-soft); line-height: 1.7; }
+  .warn { margin: 1rem 0 0; max-width: 46ch; padding: .625rem .875rem; border-radius: 10px;
+          background: color-mix(in srgb, #a02b20 8%, transparent); color: #a02b20; font-size: .875rem; }
+  .warn.soft { background: color-mix(in srgb, #8a5a00 10%, transparent); color: #8a5a00; }
+
+  /* 左输入 / 右结果 两栏填满 1800 版心;窄屏上下叠 */
+  .body { margin-top: 1.5rem; display: grid; grid-template-columns: minmax(0, 30rem) minmax(0, 1fr); gap: 2rem; align-items: start; }
+  @media (max-width: 64rem) { .body { grid-template-columns: minmax(0, 1fr); } }
+
+  .panel { display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid var(--ck-line); border-radius: 16px;
+           background: var(--ck-surface); position: sticky; top: 5rem; }
+  @media (max-width: 64rem) { .panel { position: static; } }
+  .picked { margin: 0; font-size: .8125rem; color: var(--ck-ink-soft); }
+  .picked a { color: inherit; text-decoration: underline; text-underline-offset: .2em; }
+  .picked a:hover { color: var(--ck-accent); }
+
+  /* 投放区:整块可点、可拖、可粘贴;高度跟视口走,任何比例的图都整张 contain 进来 */
+  .drop {
+    position: relative; width: 100%; aspect-ratio: 4 / 3; max-height: min(24rem, 55vh);
+    display: grid; place-items: center; cursor: pointer;
+    border: 1px dashed var(--ck-line); border-radius: 14px;
+    background: var(--ck-surface-alt); color: var(--ck-ink-faint);
+    font-size: .875rem; overflow: hidden; text-align: center; padding: 1rem;
+    transition: border-color .2s ease, background .2s ease;
+  }
+  .drop:hover { border-color: var(--ck-accent); }
+  /* 拖进来时整个设计区高亮,让人知道松手就行 */
+  .panel.over .drop { border-color: var(--ck-accent); border-style: solid;
+                      background: color-mix(in srgb, var(--ck-accent) 8%, var(--ck-surface-alt)); }
+  .drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--ck-surface-alt); }
+  .drop .hint { position: absolute; left: 50%; bottom: .5rem; transform: translateX(-50%); font-size: .75rem;
+                color: var(--ck-ink); background: rgb(255 255 255/.85); border-radius: 980px; padding: .25rem .75rem; pointer-events: none; white-space: nowrap; }
+  .drop .zoom { position: absolute; top: .5rem; right: .5rem; font: inherit; font-size: .75rem; cursor: zoom-in;
+                color: var(--ck-ink); background: rgb(255 255 255/.85); border: 0; border-radius: 980px; padding: .25rem .75rem; }
+  .thumbs { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .thumbs button { width: 3.5rem; height: 3.5rem; padding: 0; border: 2px solid transparent; border-radius: 8px;
+                   background: var(--ck-surface-alt); cursor: pointer; overflow: hidden; }
+  .thumbs button.on { border-color: var(--ck-accent); }
+  .thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .fld { display: grid; gap: .375rem; }
+  .fld span { font-size: .8125rem; color: var(--ck-ink-soft); }
+  .fld textarea {
+    font: inherit; padding: .6875rem .8125rem; border-radius: 10px; resize: vertical;
+    border: 1px solid var(--ck-line); background: var(--ck-surface); color: var(--ck-ink);
+  }
+  .consent { display: flex; gap: .5rem; align-items: center; font-size: .8125rem; color: var(--ck-ink-soft); }
+  .consent input { margin: 0; accent-color: var(--ck-accent); flex: none; width: 1rem; height: 1rem; }
+  #go:disabled { opacity: .45; cursor: not-allowed; }
+  .bar { height: 3px; border-radius: 980px; background: var(--ck-surface-alt); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 40%; background: var(--ck-accent); border-radius: inherit;
+           animation: slide 1.2s ease-in-out infinite; }
+  @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+  @media (prefers-reduced-motion: reduce) { .bar i { animation: none; width: 100%; opacity: .5; } }
+  .msg { min-height: 1.4em; margin: 0; font-size: .8125rem; color: var(--ck-ink-faint); }
+  .msg.err { color: #a02b20; }
+  .fine { margin: 0; font-size: .75rem; line-height: 1.7; color: var(--ck-ink-faint); }
+
+  /* 创始人 2026-09-17:「很多都太多空余了」—— 右栏拉到与左栏同高,空态占位撑满,不留半截白 */
+  .out { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; align-self: stretch; }
+  .empty { flex: 1; }
+  .empty { display: grid; place-content: center; text-align: center; min-height: 20rem; padding: 2rem;
+           border: 1px dashed var(--ck-line); border-radius: 16px; color: var(--ck-ink-faint); }
+  .empty h2 { margin: 0 0 .5rem; font-size: var(--ck-h3); color: var(--ck-ink-soft); }
+  .empty p { margin: 0 auto; max-width: 48ch; font-size: .875rem; line-height: 1.7; }
+  .block h2 { margin: 0 0 .625rem; font-size: var(--ck-h3); }
+  .facts { margin: 0; font-size: .875rem; line-height: 1.8; color: var(--ck-ink-soft); }
+  .plan { font-size: .9375rem; line-height: 1.8; white-space: pre-wrap; max-width: 72ch; }
+  /* 创始人 2026-09-17:「不会自动缩放到合适的显示」—— 结果图固定 4:3 框、contain、最高 55vh,点开看原图 */
+  .renders { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: 1rem; }
+  .renders.one { grid-template-columns: minmax(0, 40rem); }
+  .renders figure { margin: 0; min-width: 0; }
+  .renders img { width: 100%; aspect-ratio: 4 / 3; max-height: 55vh; object-fit: contain; border-radius: 12px; display: block;
+                 background: var(--ck-surface-alt); cursor: zoom-in; }
+  .renders figcaption { margin-top: .5rem; font-size: .8125rem; color: var(--ck-ink-soft); }
+  .why { margin: 0 0 .75rem; font-size: .875rem; line-height: 1.7; color: var(--ck-ink-soft); }
+  #cta { justify-self: start; }
+
+  .lb { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 96vh; cursor: zoom-out; }
+  .lb::backdrop { background: rgb(0 0 0 / .8); }
+  .lb img { max-width: 96vw; max-height: 96vh; object-fit: contain; border-radius: 8px; display: block; }
+</style>
+
+<script is:inline define:vars={{ lang, T, canSee }}>
+  (() => {
+    const $ = (id) => document.getElementById(id);
+    const panel = $('panel'), drop = $('drop'), pick = $('pick'), ph = $('ph'), preview = $('preview');
+    const hint = $('hint'), zoom = $('zoom'), thumbs = $('thumbs');
+    const brief = $('brief'), consent = $('consent'), go = $('go'), msg = $('msg'), bar = $('bar');
+    const out = $('out'), lb = $('lb'), lbImg = $('lbImg');
+
+    /* 图列表:接口一次只读一张,多张进来时选中的那张(active)才发 */
+    const imgs = []; // { dataUrl, full }
+    let active = -1;
+    const cur = () => imgs[active];
+
+    const sync = () => { go.disabled = !(cur() && consent.checked && canSee); };
+    consent.addEventListener('change', sync);
+    const say = (text, err) => { msg.textContent = text || ''; msg.classList.toggle('err', !!err); };
+
+    /* 放大看原图:传预览图/结果图 URL 进来 */
+    const openLb = (src) => { lbImg.src = src; lb.showModal(); };
+    lb.addEventListener('click', () => { lb.close(); lbImg.src = ''; });
+
+    /* 创始人 2026-09-17:「不会自动缩放到合适的显示」—— 浏览器端压到长边 1600、WebP 再发;
+       压缩同时也是隐私措施:传上去的像素越少,万一出事泄露的也越少 */
+    const compress = async (src) => {
+      const bmp = await createImageBitmap(src);
+      const s = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      const w = Math.round(bmp.width * s), h = Math.round(bmp.height * s);
+      const cv = new OffscreenCanvas(w, h);
+      cv.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      bmp.close();
+      let q = 0.8, blob = await cv.convertToBlob({ type: 'image/webp', quality: q });
+      while (blob.size > 1400000 && q > 0.4) { q -= 0.12; blob = await cv.convertToBlob({ type: 'image/webp', quality: q }); }
+      return new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
+    };
+
+    const show = (i) => {
+      active = i;
+      const it = cur();
+      ph.hidden = !!it; preview.hidden = hint.hidden = zoom.hidden = !it;
+      if (it) preview.src = it.dataUrl;
+      thumbs.hidden = imgs.length < 2;
+      thumbs.querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === i));
+      sync();
+    };
+
+    /* 三种来源(拖 / 粘 / 选)都走这一条;最多留 6 张 */
+    const addFiles = async (list) => {
+      const files = [...list].filter((f) => !f.type || f.type.startsWith('image/')).slice(0, 6 - imgs.length);
+      if (!files.length) return;
+      say('');
+      for (const f of files) {
+        try {
+          const dataUrl = await compress(f);
+          imgs.push({ dataUrl, full: URL.createObjectURL(f) });
+          const b = document.createElement('button'); b.type = 'button';
+          const im = document.createElement('img'); im.src = dataUrl; im.alt = '';
+          b.appendChild(im);
+          const idx = imgs.length - 1;
+          b.addEventListener('click', () => show(idx));
+          thumbs.appendChild(b);
+        } catch { say(T.badFile, true); }
+      }
+      if (imgs.length) show(imgs.length - 1);
+    };
+
+    // ① 点选
+    drop.addEventListener('click', () => pick.click());
+    pick.addEventListener('change', async () => { await addFiles(pick.files || []); pick.value = ''; });
+    zoom.addEventListener('click', (e) => { e.stopPropagation(); if (cur()) openLb(cur().full); });
+    // ② 拖拽:整个设计区都是靶子;页面其它地方拦掉默认行为,免得浏览器直接打开图片
+    ['dragover', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault()));
+    panel.addEventListener('dragenter', () => { panel.classList.add('over'); ph.textContent = T.dropOver; });
+    panel.addEventListener('dragover', () => panel.classList.add('over'));
+    panel.addEventListener('dragleave', (e) => {
+      if (!panel.contains(e.relatedTarget)) { panel.classList.remove('over'); ph.textContent = T.dropHint; }
+    });
+    panel.addEventListener('drop', (e) => {
+      panel.classList.remove('over'); ph.textContent = T.dropHint;
+      addFiles(e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : []);
+    });
+    // ③ 粘贴剪贴板图片(粘文字进简报框照旧)
+    document.addEventListener('paste', (e) => {
+      const fs = [...((e.clipboardData && e.clipboardData.files) || [])].filter((f) => f.type.startsWith('image/'));
+      if (fs.length) { e.preventDefault(); addFiles(fs); }
+    });
+
+    /* 从包材库带编码过来:自动装入这支瓶子的实拍,客户勾一下同意就能生成 */
+    const shot = drop.getAttribute('data-shot');
+    if (shot) {
+      fetch(shot).then((r) => r.ok ? r.blob() : Promise.reject(r.status)).then((b) => addFiles([b]))
+        .catch(() => { ph.textContent = T.dropHint; });
+    }
+
+    /* 结果图统一走这里:contain 进 4:3 框,点开看原图 */
+    const figure = (src, label) => {
+      const fig = document.createElement('figure');
+      const im = document.createElement('img');
+      im.src = src; im.alt = label || ''; im.loading = 'lazy';
+      im.addEventListener('click', () => openLb(src));
+      fig.appendChild(im);
+      if (label) { const cap = document.createElement('figcaption'); cap.textContent = label; fig.appendChild(cap); }
+      return fig;
+    };
+
+    go.addEventListener('click', async () => {
+      go.disabled = true; go.textContent = T.running; say('');
+      /* 创始人 2026-09-17:生成中显示进度与耗时 */
+      const t0 = Date.now();
+      bar.hidden = false;
+      const secs = () => Math.round((Date.now() - t0) / 1000);
+      const timer = setInterval(() => say(`${T.running} ${secs()}${T.sec}`), 1000);
+      const ac = new AbortController();
+      const kill = setTimeout(() => ac.abort(), 150000);
+      try {
+        const res = await fetch('/api/ai/pack', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ac.signal,
+          body: JSON.stringify({ image: cur().dataUrl, brief: brief.value.trim(), lang, consent: true }),
+        });
+        const r = await res.json().catch(() => ({ ok: false, msg: T.httpErr.replace('{s}', String(res.status)) }));
+        clearInterval(timer);
+        /* 失败提示要可懂:接口的 msg 已是人话;没有 msg 才报 HTTP 状态 */
+        if (!r.ok) { say(r.msg || T.httpErr.replace('{s}', String(res.status)), true); return; }
+
+        $('empty').hidden = true;
+        $('facts').textContent = r.factLine || ''; $('factsBox').hidden = !r.factLine;
+        $('plan').textContent = r.plan || ''; $('planBox').hidden = !r.plan;
+        const rs = $('renders'); rs.innerHTML = '';
+        if (r.renders && r.renders.length) {
+          /* 图配名字 —— 光有图客户不知道该怎么跟我们讲,有了名字才好说"就第二个那种牛皮纸的" */
+          r.renders.forEach((u, i) => rs.appendChild(figure(u, (r.renderLabels && r.renderLabels[i]) || '')));
+          const w = $('why'); w.textContent = r.why || ''; w.hidden = !r.why;
+          $('renderBox').hidden = false;
+        } else { $('renderBox').hidden = true; }
+        $('cta').hidden = false;
+        const notes = [r.visionNote, r.planNote, r.renderNote].filter(Boolean).join(' · ');
+        say(`${T.elapsed} ${secs()}${T.sec}` + (notes ? ' · ' + notes : ''), !!notes);
+        if (matchMedia('(max-width: 64rem)').matches) out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        /* 定制图是异步出的(本机定时任务领单)——
+           这里轮询到有图为止,最多等 4 分钟。等不到不报错,风格方向已经够用。 */
+        if (r.jobId) {
+          const box = $('customBox'), cmsg = $('customMsg'), cwrap = $('customWrap');
+          box.hidden = false; cmsg.textContent = T.customWait; cwrap.innerHTML = '';
+          let tries = 0;
+          const tick = async () => {
+            tries += 1;
+            try {
+              const s = await (await fetch('/api/ai/pack-status?id=' + r.jobId)).json();
+              if (s.url) { cmsg.textContent = ''; cwrap.appendChild(figure(s.url, '')); return; }
+              if (s.status === 'failed') { cmsg.textContent = T.customFail; return; }
+            } catch { /* 网络抖动不算失败,下一轮再问 */ }
+            if (tries < 48) setTimeout(tick, 5000);
+            else cmsg.textContent = T.customFail;
+          };
+          setTimeout(tick, 5000);
+        } else { $('customBox').hidden = true; }
+      } catch (e) {
+        say(e && e.name === 'AbortError' ? T.timeout : T.netErr, true);
+      } finally {
+        clearInterval(timer); clearTimeout(kill); bar.hidden = true;
+        go.disabled = false; go.textContent = T.go; sync();
+      }
+    });
+  })();
+</script>

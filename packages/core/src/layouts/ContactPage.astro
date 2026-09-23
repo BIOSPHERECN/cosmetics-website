@@ -36,6 +36,7 @@ const mailBody = [
   '—',
   `${site.name} · ${site.domain}`,
 ].join('\n');
+const zhPage = String(locale).startsWith('zh');
 const mailto = `mailto:${email}?subject=${encodeURIComponent(`[${site.name}] ${c.mailSubject}`)}&body=${encodeURIComponent(mailBody)}`;
 ---
 
@@ -76,10 +77,69 @@ const mailto = `mailto:${email}?subject=${encodeURIComponent(`[${site.name}] ${c
               </li>
             ))}
           </ol>
-          <p class="act">
-            <a class="cta" href={mailto}>{c.mailButton}</a>
-          </p>
-          <p class="hint">{c.note}</p>
+          {/* 2026-09-04:这一页原来只有一个 mailto 按钮 —— 手机上点了多半什么都不发生,
+              而选品链路的「发送这套方案」正是落到这一页。所以这里必须有一张真表单,
+              并且把链路带过来的配方号/包材号自动填进去。mailto 降级为备用入口。 */}
+          <form class="inq" id="cform" action="/api/inquiry" method="post">
+            <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
+                   style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+            <input type="hidden" name="source" value="contact" />
+            <div class="grid2">
+              <label><span>{zhPage ? '称呼' : 'Name'}</span>
+                <input type="text" name="name" required autocomplete="name" /></label>
+              <label><span>{zhPage ? '公司' : 'Company'}</span>
+                <input type="text" name="company" required autocomplete="organization" /></label>
+              <label><span>{zhPage ? '邮箱' : 'Email'}</span>
+                <input type="email" name="email" required autocomplete="email" /></label>
+              <label><span>{zhPage ? '国家/地区' : 'Country'}</span>
+                <input type="text" name="country" required autocomplete="country-name" /></label>
+            </div>
+            <label class="full"><span>{zhPage ? '需求' : 'What you need'}</span>
+              <textarea name="message" rows="5" required id="cmsg"></textarea></label>
+            <p class="act">
+              <button class="cta" type="submit">{zhPage ? '发送询盘' : 'Send inquiry'}</button>
+              <span class="fb" id="cfb" role="status" aria-live="polite"></span>
+            </p>
+          </form>
+          <p class="hint">{c.note} · <a href={mailto}>{c.mailButton}</a></p>
+          <script is:inline>
+            (function () {
+              const f = document.getElementById('cform');
+              if (!f) return;
+              const fb = document.getElementById('cfb');
+              const ta = document.getElementById('cmsg');
+              const zh = document.documentElement.lang.indexOf('zh') === 0;
+              try {
+                const q = new URLSearchParams(location.search);
+                const bits = [];
+                if (q.get('formula')) bits.push((zh ? '配方 ' : 'Formula ') + q.get('formula'));
+                if (q.get('pack')) bits.push((zh ? '包材 ' : 'Packaging ') + q.get('pack'));
+                if (q.get('market')) bits.push((zh ? '目标市场 ' : 'Market ') + q.get('market'));
+                if (q.get('claim')) bits.push((zh ? '诉求 ' : 'Claim ') + q.get('claim'));
+                if (ta && bits.length && !ta.value) ta.value = bits.join(' · ') + String.fromCharCode(10, 10);
+                const h = sessionStorage.getItem('bh-chat-handoff');
+                if (ta && h && !ta.value) { ta.value = h; sessionStorage.removeItem('bh-chat-handoff'); }
+              } catch {}
+              f.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = f.querySelector('button');
+                btn.disabled = true;
+                if (fb) { fb.className = 'fb'; fb.textContent = zh ? '提交中…' : 'Sending…'; }
+                try {
+                  const r = await fetch('/api/inquiry', { method: 'POST', body: new FormData(f) });
+                  if (fb) {
+                    fb.className = 'fb ' + (r.ok ? 'ok' : 'err');
+                    fb.textContent = r.ok
+                      ? (zh ? '已收到,我们会尽快回复。' : 'Received. We will get back to you shortly.')
+                      : (zh ? '提交失败,请改用邮件联系我们。' : 'Could not send — please email us instead.');
+                  }
+                  if (r.ok) f.reset();
+                } catch {
+                  if (fb) { fb.className = 'fb err'; fb.textContent = zh ? '网络异常,请稍后重试。' : 'Network error, please retry.'; }
+                } finally { btn.disabled = false; }
+              });
+            })();
+          </script>
         </div>
 
         <aside class="col-side">
@@ -88,6 +148,17 @@ const mailto = `mailto:${email}?subject=${encodeURIComponent(`[${site.name}] ${c
             <div>
               <dt>{c.emailLabel}</dt>
               <dd><a class="mail" href={`mailto:${email}`}>{email}</a></dd>
+            </div>
+            {/* 即时联络放在邮箱下面 —— 海外采购普遍先加 WhatsApp / WeChat 再谈,
+                邮件是留痕用的。两个号都不翻译:标识符翻译了就搜不到人
+                (创始人 2026-09-10:「统一 WeChat,这样翻译也不会乱」)。 */}
+            <div>
+              <dt>WhatsApp</dt>
+              <dd>填表后我们主动联系</dd>
+            </div>
+            <div>
+              <dt>WeChat</dt>
+              <dd>填表后我们主动加你</dd>
             </div>
             <div>
               <dt>{c.responseLabel}</dt>
@@ -107,10 +178,22 @@ const mailto = `mailto:${email}?subject=${encodeURIComponent(`[${site.name}] ${c
 </BaseLayout>
 
 <style>
+  .inq { display: grid; gap: .875rem; margin: 1.25rem 0 .5rem; }
+  .inq .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .875rem; }
+  .inq label { display: grid; gap: .3125rem; font-size: var(--ck-small); }
+  .inq label > span { color: var(--ck-ink-soft); }
+  .inq input, .inq textarea { font: inherit; font-size: .9375rem; padding: .625rem .75rem;
+    border: 1px solid var(--ck-line); border-radius: var(--ck-radius, 10px);
+    background: var(--ck-surface, #fff); color: var(--ck-ink); width: 100%; }
+  .inq input:focus, .inq textarea:focus { outline: none; border-color: var(--ck-accent); }
+  .fb { margin-left: .75rem; font-size: var(--ck-small); color: var(--ck-ink-soft); }
+  .fb.ok { color: #1D7A46; }
+  .fb.err { color: #A02B20; }
+  @media (max-width: 40rem) { .inq .grid2 { grid-template-columns: 1fr; } }
   .head {
     background: var(--ck-hero-bg);
     color: var(--ck-hero-ink);
-    padding-block: clamp(3rem, 8vh, 5rem);
+    padding-block: clamp(2rem, 4vw, 4rem)   /* 09-17 「太多空余」 */;
   }
   h1 { margin-top: 0.75rem; }
   .intro {
@@ -143,7 +226,7 @@ const mailto = `mailto:${email}?subject=${encodeURIComponent(`[${site.name}] ${c
   .n {
     flex: none;
     font-family: var(--ck-font-mono);
-    font-size: 0.75rem;
+    font-size: max(0.75rem, 14px);
     color: var(--ck-accent);
     padding-top: 0.25rem;
   }
@@ -185,7 +268,7 @@ const mailto = `mailto:${email}?subject=${encodeURIComponent(`[${site.name}] ${c
     gap: 1.125rem;
   }
   .facts dt {
-    font-size: 0.6875rem;
+    font-size: max(0.6875rem, 14px);
     letter-spacing: var(--ck-tracking-eyebrow);
     text-transform: var(--ck-eyebrow-transform);
     color: var(--ck-ink-faint);

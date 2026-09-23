@@ -20,17 +20,53 @@ const status = url.searchParams.get('status') ?? '';
 const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
 const PER = 25;
 
+const lang = url.searchParams.get('lang') ?? '';
+const country = url.searchParams.get('country') ?? '';
+
 const where: string[] = [], bind: unknown[] = [];
 where.push('i.site_id=?'); bind.push(c.tenant.siteId);
 if (status) { where.push('i.status=?'); bind.push(status); }
+if (lang) { where.push('i.lang=?'); bind.push(lang); }
+if (country) { where.push('i.country=?'); bind.push(country); }
 if (q) { where.push('(i.name LIKE ? OR i.email LIKE ? OR i.company LIKE ? OR i.message LIKE ?)'); bind.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
 const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+/* 筛选下拉的选项从**实际有的数据**里来,不写死一张 17 语 × 200 国的表。
+   写死的下拉里 90% 的选项点下去是空结果 —— 那种下拉没人会用第二次。 */
+const { results: langOpts } = await c.db.prepare(
+  `SELECT lang, COUNT(*) n FROM inquiries WHERE site_id=? GROUP BY lang ORDER BY n DESC`,
+).bind(c.tenant.siteId).all<{ lang: string; n: number }>();
+const { results: countryOpts } = await c.db.prepare(
+  `SELECT country, COUNT(*) n FROM inquiries WHERE site_id=? AND country IS NOT NULL
+    GROUP BY country ORDER BY n DESC LIMIT 40`,
+).bind(c.tenant.siteId).all<{ country: string; n: number }>();
+
+/* 来源页排行 —— 这个页面上最有决策价值的一块。
+   它回答的不是「来了多少条」,而是「哪些内容真的带单」。 */
+const { results: srcTop } = await c.db.prepare(
+  `SELECT COALESCE(source_path,'(未记录)') p, COUNT(*) n FROM inquiries
+    WHERE site_id=? GROUP BY p ORDER BY n DESC LIMIT 8`,
+).bind(c.tenant.siteId).all<{ p: string; n: number }>();
+
+const LNAME: Record<string, string> = {
+  'zh-cn': '中文', en: 'English', jp: '日本語', kr: '한국어', fr: 'Français', de: 'Deutsch',
+  ru: 'Русский', id: 'Indonesia', my: 'Malaysia', th: 'ไทย', vn: 'Tiếng Việt',
+  ph: 'Filipino', es: 'Español', pt: 'Português', ar: 'العربية', tr: 'Türkçe', in: 'हिन्दी',
+};
+
+const exportQS = (() => {
+  const u = new URLSearchParams();
+  if (q) u.set('q', q); if (status) u.set('status', status);
+  if (lang) u.set('lang', lang); if (country) u.set('country', country);
+  const s = u.toString();
+  return s ? `?${s}` : '';
+})();
 
 const total = (await c.db.prepare(`SELECT COUNT(*) n FROM inquiries i ${W}`).bind(...bind).first<{ n: number }>())?.n ?? 0;
 const { results: rows } = await c.db.prepare(
   `SELECT i.*, (SELECT COUNT(*) FROM inquiry_items t WHERE t.inquiry_id=i.id) AS items
      FROM inquiries i ${W}
-    ORDER BY CASE i.status WHEN 'new' THEN 0 WHEN 'replied' THEN 1 ELSE 2 END, i.created_at DESC
+    ORDER BY CASE i.status WHEN 'new' THEN 0 WHEN 'following' THEN 1 WHEN 'replied' THEN 2 WHEN 'won' THEN 3 ELSE 4 END, i.created_at DESC
     LIMIT ? OFFSET ?`
 ).bind(...bind, PER, (page - 1) * PER).all<any>();
 
@@ -51,30 +87,78 @@ if (rows.length) {
 const siteName = new Map(SITES.map((s) => [s.id, s.name]));
 const pages = Math.max(1, Math.ceil(total / PER));
 const ST: Record<string, [string, string]> = {
-  new: ['待处理', 'p-bad'], replied: ['已回复', 'p-ok'], archived: ['已归档', 'p-wait'],
+  new: ['待处理', 'p-bad'], following: ['跟进中', 'p-warn'], replied: ['已回复', 'p-ok'],
+  won: ['已成交', 'p-ok'], archived: ['已归档', 'p-wait'],
 };
+
+/* 对话流时间线:本页询盘的全部跟进与状态变更,一次取回按 id 分桶 */
+let notes: any[] = [];
+if (rows.length) {
+  const { results } = await c.db.prepare(
+    `SELECT n.inquiry_id, n.kind, n.text, n.created_at, u.email AS who
+       FROM inquiry_notes n LEFT JOIN users u ON u.id = n.user_id
+      WHERE n.inquiry_id IN (${rows.map(() => '?').join(',')}) ORDER BY n.id`
+  ).bind(...rows.map((r: any) => r.id)).all<any>().catch(() => ({ results: [] as any[] }));
+  notes = results ?? [];
+}
+const stLabel = (code: string) => ST[code]?.[0] ?? code;
 const link = (p: number) => {
+  // 翻页必须把**全部**筛选条件带上。漏一项的表现很误导:
+  // 筛出巴西的 30 条,翻到第 2 页突然变成全表 —— 人会以为筛选坏了。
   const u = new URLSearchParams();
   if (q) u.set('q', q); if (site) u.set('site', site); if (status) u.set('status', status);
+  if (lang) u.set('lang', lang); if (country) u.set('country', country);
   u.set('p', String(p)); return `?${u}`;
 };
+/* Jev 影子判断一行化:真买家 / 阶段 / 品类 / 紧迫 / 置信 */
+const jevLine = (j: string) => { try { const a = JSON.parse(j).answers ?? {}; const n = (k: string) => typeof a[k]?.noul === 'number' ? a[k].noul.toFixed(2) : ''; const confs = Object.values(a).map((x: any) => x?.confidence).filter((x: any) => typeof x === 'number') as number[]; return [n('is_real_buyer') && `真买家 ${n('is_real_buyer')}`, a.stage?.choice, a.category?.choice, typeof a.urgency?.score === 'number' ? `急 ${a.urgency.score}` : '', confs.length ? `置信 ${(confs.reduce((p, q) => p + q, 0) / confs.length).toFixed(2)}` : ''].filter(Boolean).join(' · '); } catch { return ''; } };
 ---
 
 <AdminShell title="询盘线索" active="inquiries" email={c.sess.email} tenant={c.tenant} badges={{ inquiries: cnt.new ?? 0 }}>
   <h1>询盘线索</h1>
-  <p class="lead">共 {total} 条 · 待处理 {cnt.new ?? 0} · 已回复 {cnt.replied ?? 0} · 已归档 {cnt.archived ?? 0}。未处理的排在最前。</p>
+  <p class="lead">共 {total} 条 · 待处理 {cnt.new ?? 0} · 跟进中 {cnt.following ?? 0} · 已回复 {cnt.replied ?? 0} · 成交 {cnt.won ?? 0} · 已归档 {cnt.archived ?? 0}。未处理的排在最前。</p>
 
   <form class="bar" method="get">
-    <input name="q" value={q} placeholder="搜姓名 / 邮箱 / 公司 / 正文…" style="max-width:20rem" />
+    <input name="q" value={q} placeholder="搜姓名 / 邮箱 / 公司 / 正文…" style="max-width:18rem" />
     <select name="site"><option value="">全部站点</option>
       {SITES.map((s) => <option value={s.id} selected={s.id === site}>{s.name}</option>)}</select>
     <select name="status"><option value="">全部状态</option>
       <option value="new" selected={status === 'new'}>待处理</option>
+      <option value="following" selected={status === 'following'}>跟进中</option>
       <option value="replied" selected={status === 'replied'}>已回复</option>
+      <option value="won" selected={status === 'won'}>已成交</option>
       <option value="archived" selected={status === 'archived'}>已归档</option></select>
+    {/* 语种与国家筛选:B2B 询盘通常按语区分给不同的业务跟,
+        没有这两项,业务只能自己从整表里翻自己那份。 */}
+    <select name="lang"><option value="">全部语种</option>
+      {langOpts.map((l: any) => (
+        <option value={l.lang} selected={l.lang === lang}>{LNAME[l.lang] ?? l.lang}({l.n})</option>
+      ))}</select>
+    <select name="country"><option value="">全部国家</option>
+      {countryOpts.map((x: any) => (
+        <option value={x.country} selected={x.country === country}>{x.country}({x.n})</option>
+      ))}</select>
     <button class="btn pri" type="submit">筛选</button>
-    {(q || site || status) && <a class="btn" href="/bohui/inquiries/">清空</a>}
+    {(q || site || status || lang || country) && <a class="btn" href="/bohui/inquiries/">清空</a>}
+    {/* 导出带上当前筛选条件 —— 「筛出巴西的再导出」是业务真实的做法,
+        导出永远给全表等于让人回 Excel 里再筛一遍。 */}
+    <a class="btn" href={`/api/admin/inquiry-export${exportQS}`}>⤓ 导出 CSV</a>
   </form>
+
+  {srcTop.length > 0 && srcTop.some((s: any) => s.p !== '(未记录)') && (
+    <section class="srcbox">
+      <b>询盘来自哪些页面</b>
+      <ul>
+        {srcTop.map((s: any) => (
+          <li>
+            <span class="n">{s.n}</span>
+            {s.p === '(未记录)' ? <span class="none">{s.p}</span> : <code>{s.p}</code>}
+          </li>
+        ))}
+      </ul>
+      <span class="hint">带单最多的页面值得多投内容;一条都没有的页面要么没人看,要么看了不想问。</span>
+    </section>
+  )}
 
   {rows.length === 0 ? (
     <div class="empty">还没有询盘。前台表单提交后会实时出现在这里。</div>
@@ -96,9 +180,34 @@ const link = (p: number) => {
             </summary>
             <div class="dt-body">
               <dl>
-                <dt>来源</dt><dd>{siteName.get(r.site_id) ?? r.site_id} · {r.lang}{r.country ? ` · ${r.country}` : ''}</dd>
+                <dt>来源</dt><dd>{siteName.get(r.site_id) ?? r.site_id} · {LNAME[r.lang] ?? r.lang}{r.country ? ` · ${r.country}` : ''}</dd>
+                {/* 从哪一页发出来的 —— 判断哪些内容真的带单,靠的就是这一行 */}
+                <dt>来源页</dt>
+                <dd>
+                  {r.source_path
+                    ? <a href={r.source_path} target="_blank" rel="noreferrer">{r.source_path}</a>
+                    : <span class="none">(这条早于来源记录上线,没有)</span>}
+                  {r.referrer && <span class="ref">← {r.referrer}</span>}
+                </dd>
                 <dt>邮箱</dt><dd><a href={`mailto:${r.email}`}>{r.email}</a></dd>
+                {r.whatsapp && <><dt>WhatsApp</dt><dd><a href={`https://wa.me/${String(r.whatsapp).replace(/\D/g, '')}`} target="_blank" rel="noreferrer">{r.whatsapp}</a> <span class="none">点开直接聊</span></dd></>}
                 <dt>留言</dt><dd class="msg">{r.message}</dd>
+                {r.ai_summary && <><dt>AI 判断</dt><dd class="ai">{r.ai_grade ? `[${r.ai_grade}] ` : ''}{r.ai_summary}</dd></>}
+                {r.jev_json && <><dt>Jev 判断</dt><dd class="ai">{jevLine(r.jev_json)}</dd></>}
+                {/* 秒级首回:模型按对方语言写好的第一封回信。配了 Resend 会自动发(auto_replied_at 有值);没配就在这里复制或点「用邮件发」 */}
+                {r.ai_reply && (() => { const [subj, ...rest] = String(r.ai_reply).split('\n\n'); const body = rest.join('\n\n'); return (
+                  <>
+                    <dt>首回草稿</dt>
+                    <dd>
+                      <div class="reply" data-reply>
+                        <div class="rh"><b>{subj}</b>{r.auto_replied_at ? <span class="pill p-ok">已自动发出 {String(r.auto_replied_at).slice(5, 16)}</span> : <span class="pill p-warn">未发送</span>}
+                          <button class="btn" data-copy>复制正文</button>
+                          <a class="btn" href={`mailto:${r.email}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`}>用邮件发</a></div>
+                        <pre class="rb" data-body>{body}</pre>
+                      </div>
+                    </dd>
+                  </>
+                ); })()}
                 {mine.length > 0 && (
                   <>
                     <dt>询价清单</dt>
@@ -110,11 +219,38 @@ const link = (p: number) => {
                   </>
                 )}
               </dl>
+              {/* 对话流:时间线 + 追加跟进。B2B 成单是多轮往来,换人接手全靠这段记录 */}
+              {(() => { const tl = notes.filter((n) => n.inquiry_id === r.id); return (
+                <div class="flow">
+                  <b class="fh">跟进记录{tl.length ? `(${tl.length})` : ''}</b>
+                  {tl.length > 0 && (
+                    <ol class="tl">
+                      {tl.map((n) => (
+                        <li class:list={['tli', n.kind]}>
+                          {n.kind === 'status'
+                            ? <span class="tst">状态:{n.text.split('→').map(stLabel).join(' → ')}</span>
+                            : <span class="ttx">{n.text}</span>}
+                          <span class="tmeta">{(n.who ?? '系统').replace(/@.*$/, '')} · {(n.created_at ?? '').slice(5, 16)}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                  <div class="noteform">
+                    <textarea rows="2" maxlength="2000" placeholder="记一条跟进:打了电话、发了报价、客户说了什么…"></textarea>
+                    <button class="btn" data-sum title="把 WhatsApp/邮件往来贴进框里,模型压成一条结构化记录">AI 总结</button>
+                    <button class="btn pri" data-note>记录跟进</button>
+                  </div>
+                </div>
+              ); })()}
               <div class="ops">
-                <button class="btn" data-st="new" disabled={r.status === 'new'}>标为待处理</button>
-                <button class="btn pri" data-st="replied" disabled={r.status === 'replied'}>标为已回复</button>
+                <button class="btn pri" data-st="following" disabled={r.status === 'following'}>开始跟进</button>
+                <button class="btn" data-st="replied" disabled={r.status === 'replied'}>标为已回复</button>
+                <button class="btn" data-st="won" disabled={r.status === 'won'}>标为成交</button>
+                <button class="btn" data-st="new" disabled={r.status === 'new'}>退回待处理</button>
                 <button class="btn" data-st="archived" disabled={r.status === 'archived'}>归档</button>
                 <a class="btn" href={`mailto:${r.email}?subject=Re: your inquiry to BOHUI`}>写邮件</a>
+                <button class="btn" data-convert title="建客户 + 联系人 + 机会,进 CRM">转客户</button>
+                <button class="btn" data-matter title="进业务协同工作台:一条事项从待确认跟到已回款">转为事项</button>
               </div>
             </div>
           </details>
@@ -149,11 +285,38 @@ const link = (p: number) => {
     .msg{white-space:pre-wrap;line-height:1.65;background:#fafbfc;border:1px solid var(--ad-line);
          border-radius:6px;padding:.625rem .75rem}
     .pl{margin:0;padding-left:1.125rem} .pl li{margin-bottom:.1875rem}
+    .ai{color:var(--ad-soft)}
+    .reply{border:1px solid var(--ad-line);border-radius:6px;padding:.625rem .75rem;background:#fafbfc}
+    .rh{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.375rem} .rh b{margin-right:auto;font-size:.8125rem}
+    .rb{white-space:pre-wrap;font:inherit;font-size:.8125rem;line-height:1.6;margin:0}
     .ops{display:flex;gap:.5rem;flex-wrap:wrap}
     .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--ad-soft)}
     .toast{position:fixed;right:1.25rem;bottom:1.25rem;background:#10131a;color:#fff;padding:.625rem 1rem;
            border-radius:7px;font-size:.8125rem;z-index:9}
     [hidden]{display:none !important}
+    /* 来源页排行 */
+    .srcbox { border: 1px solid var(--ad-line, #e5e5e5); border-radius: 8px;
+              padding: .875rem 1rem; margin-bottom: 1rem; background: var(--ad-panel); }
+    .srcbox > b { font-size: .875rem; }
+    .srcbox ul { list-style: none; margin: .625rem 0 .5rem; padding: 0;
+                 display: flex; flex-wrap: wrap; gap: .375rem .875rem; }
+    .srcbox li { display: flex; gap: .375rem; align-items: baseline; font-size: .8125rem; }
+    .srcbox .n { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 1.5rem; text-align: right; }
+    .srcbox code { background: rgb(0 0 0 / .06); padding: .0625rem .375rem; border-radius: 3px; }
+    .srcbox .hint, .none { color: var(--ad-faint); font-size: .75rem; }
+    .ref { color: var(--ad-faint); font-size: .75rem; margin-left: .5rem; }
+    /* 对话流 */
+    .flow{border-top:1px dashed var(--ad-line);padding-top:.875rem;margin-bottom:1rem}
+    .fh{font-size:.8125rem}
+    .tl{list-style:none;margin:.625rem 0;padding:0;display:grid;gap:.4375rem}
+    .tli{display:flex;gap:.75rem;align-items:baseline;font-size:.8125rem;
+         border-inline-start:2px solid var(--ad-line);padding-inline-start:.75rem}
+    .tli.status{border-inline-start-color:var(--ad-accent)}
+    .tst{color:var(--ad-soft)} .ttx{white-space:pre-wrap;line-height:1.6}
+    .tmeta{margin-left:auto;color:var(--ad-faint);font-size:.75rem;white-space:nowrap}
+    .noteform{display:flex;gap:.5rem;align-items:flex-start;margin-top:.5rem}
+    .noteform textarea{flex:1;font:inherit;font-size:.8125rem;padding:.5rem .625rem;
+                       border:1px solid var(--ad-line);border-radius:6px;resize:vertical}
   </style>
   <script is:inline>
     const t = document.getElementById('toast');
@@ -164,6 +327,46 @@ const link = (p: number) => {
         body: JSON.stringify({ id, status: b.dataset.st }) });
       if ((await r.json()).ok) { t.textContent = '已更新'; t.hidden = false; setTimeout(() => location.reload(), 500); }
       else { b.disabled = false; t.textContent = '更新失败'; t.hidden = false; }
+    }));
+    document.querySelectorAll('button[data-copy]').forEach((b) => b.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(b.closest('[data-reply]').querySelector('[data-body]').textContent); t.textContent = '已复制'; t.hidden = false; setTimeout(() => { t.hidden = true; }, 1500); } catch { t.textContent = '复制失败'; t.hidden = false; }
+    }));
+    // AI 总结:贴进来的往来记录 → 结构化摘要填回框里,人看过再点「记录跟进」
+    document.querySelectorAll('button[data-sum]').forEach((b) => b.addEventListener('click', async () => {
+      const box = b.closest('.noteform').querySelector('textarea'); const text = box.value.trim();
+      if (text.length < 20) { box.placeholder = '先把 WhatsApp / 邮件往来整段贴进来,再点 AI 总结'; box.focus(); return; }
+      b.disabled = true; b.textContent = '总结中…';
+      const r = await fetch('/api/admin/inquiry-summarize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+      const d = await r.json().catch(() => ({}));
+      b.disabled = false; b.textContent = 'AI 总结';
+      if (d.ok) { box.value = d.summary; box.rows = 6; } else { t.textContent = d.msg || '总结失败'; t.hidden = false; }
+    }));
+    // 转客户:询盘 → companies/contacts/deals(按公司名去重,已有就挂上去),然后跳到客户页
+    document.querySelectorAll('button[data-convert]').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true; const id = +b.closest('.inq').dataset.id;
+      const r = await fetch('/api/admin/crm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'convert', from: 'inquiry', id }) });
+      const d = await r.json().catch(() => ({}));
+      if (d.ok) { t.textContent = d.created ? '已建客户' : '已挂到已有客户'; t.hidden = false; setTimeout(() => location.assign('/bohui/companies/?open=' + d.company_id), 500); } else { b.disabled = false; t.textContent = d.msg || '失败'; t.hidden = false; }
+    }));
+    // 转为事项:询盘 → 业务协同工作台的一条事项(同一询盘只建一条未终止的),跳过去直接打开
+    document.querySelectorAll('button[data-matter]').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true; const id = +b.closest('.inq').dataset.id;
+      const r = await fetch('/api/admin/matters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'from_inquiry', inquiry_id: id }) });
+      const d = await r.json().catch(() => ({}));
+      if (d.ok) { t.textContent = d.created ? '已建事项 ' + d.code : '已有事项,打开'; t.hidden = false; setTimeout(() => location.assign('/bohui/workbench/?open=' + d.id + '#detail'), 400); } else { b.disabled = false; t.textContent = d.msg || '失败'; t.hidden = false; }
+    }));
+    // 记录跟进 —— 提交后原地刷新,时间线立即可见
+    document.querySelectorAll('button[data-note]').forEach((b) => b.addEventListener('click', async () => {
+      const box = b.closest('.noteform').querySelector('textarea');
+      const text = box.value.trim();
+      if (!text) { box.focus(); return; }
+      b.disabled = true;
+      const id = +b.closest('.inq').dataset.id;
+      const r = await fetch('/api/admin/inquiry', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, text }) });
+      const d = await r.json().catch(() => ({}));
+      if (d.ok) { t.textContent = '已记录'; t.hidden = false; setTimeout(() => location.reload(), 400); }
+      else { b.disabled = false; t.textContent = d.msg || '记录失败'; t.hidden = false; }
     }));
   </script>
 </AdminShell>

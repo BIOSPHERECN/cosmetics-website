@@ -1,0 +1,74 @@
+---
+/**
+ * 币种切换器(2026-09-16 创始人看到 1688 的「主营国家 / 语言 / 货币」面板:「我们也要有自动换货币的」)。
+ *
+ * 做法:页面照常只写 USD(参考价是「$0.20-0.32」这种区间串),边缘缓存不受影响;
+ * 浏览器里按 /api/fx/ 的汇率把页面上所有「$a-b」「$a」文本换成访客币种,
+ * 默认币种 = 访客手选(localStorage)> Cloudflare 国家码建议 > USD。
+ * 换算只用于「参考价」—— 页脚与详情页早就写明价格只表示数量级,以书面报价为准。
+ *
+ * **`<script is:inline>` 里不写中文注释**(同 LocaleSwitch:内联脚本原样发到浏览器)。
+ */
+const CODES = ['USD', 'EUR', 'GBP', 'CNY', 'IDR', 'MYR', 'SGD', 'THB', 'VND', 'PHP', 'SAR', 'AED', 'EGP', 'TRY', 'INR', 'JPY', 'KRW', 'AUD', 'CAD', 'BRL', 'MXN', 'HKD', 'TWD'];
+export interface Props { label?: string }
+const { label = 'Currency' } = Astro.props;
+---
+<label class="cur" title={label}>
+  <span class="cur-sym" aria-hidden="true">$</span>
+  <select class="cur-sel" aria-label={label} data-cur>
+    {CODES.map((c) => <option value={c}>{c}</option>)}
+  </select>
+</label>
+
+<script is:inline>
+(function () {
+  var KEY = 'bohui_cur', FX = 'bohui_fx', ZERO = { IDR: 1, VND: 1, KRW: 1, JPY: 1 };
+  var sels = document.querySelectorAll('[data-cur]');
+  if (!sels.length) return;
+  var lang = document.documentElement.lang || 'en';
+  function get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+  function set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function fmt(v, code) {
+    var dec = ZERO[code] ? 0 : (v < 1 ? 3 : 2);
+    try { return new Intl.NumberFormat(lang, { style: 'currency', currency: code, minimumFractionDigits: 0, maximumFractionDigits: dec }).format(v); }
+    catch (e) { return code + ' ' + v.toFixed(dec); }
+  }
+  var RX = /\$(\d+(?:\.\d+)?)(?:\s*[-–]\s*\$?(\d+(?:\.\d+)?))?/g;
+  function wrap(root) {
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: function (n) {
+      if (!n.nodeValue || n.nodeValue.indexOf('$') < 0) return NodeFilter.FILTER_REJECT;
+      var p = n.parentNode; if (!p || /^(SCRIPT|STYLE|TEXTAREA|INPUT|SELECT|CODE|PRE)$/.test(p.nodeName) || p.hasAttribute('data-usd') || p.closest('[data-no-cur]')) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT; } });
+    var nodes = [], n; while ((n = w.nextNode())) nodes.push(n);
+    nodes.forEach(function (t) {
+      var s = t.nodeValue, last = 0, m, frag = document.createDocumentFragment(); RX.lastIndex = 0; var hit = false;
+      while ((m = RX.exec(s))) { hit = true; frag.appendChild(document.createTextNode(s.slice(last, m.index)));
+        var sp = document.createElement('span'); sp.setAttribute('data-usd', m[2] ? m[1] + '-' + m[2] : m[1]); sp.textContent = m[0]; frag.appendChild(sp); last = m.index + m[0].length; }
+      if (hit) { frag.appendChild(document.createTextNode(s.slice(last))); t.parentNode.replaceChild(frag, t); }
+    });
+  }
+  function apply(code, rates) {
+    var r = rates[code]; if (!r) { code = 'USD'; r = 1; }
+    document.querySelectorAll('[data-usd]').forEach(function (el) {
+      var p = el.getAttribute('data-usd').split('-'), a = parseFloat(p[0]) * r, b = p[1] ? parseFloat(p[1]) * r : null;
+      el.textContent = b === null ? fmt(a, code) : fmt(a, code) + '–' + fmt(b, code);
+    });
+    sels.forEach(function (s) { s.value = code; var sym = s.parentNode.querySelector('.cur-sym'); if (sym) { var f = fmt(0, code).replace(/[\d.,\s]/g, ''); sym.textContent = f || code; } });
+  }
+  function run(fx) {
+    var saved = get(KEY); var code = (saved && fx.rates[saved]) ? saved : (fx.suggest || 'USD');
+    wrap(document.body); apply(code, fx.rates);
+    sels.forEach(function (s) { s.addEventListener('change', function () { set(KEY, s.value); apply(s.value, fx.rates); }); });
+  }
+  var c = get(FX);
+  if (c && c.at && Date.now() - c.at < 43200000 && c.rates) run(c);
+  else fetch('/api/fx/', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (fx) { fx.at = Date.now(); set(FX, fx); run(fx); }).catch(function () {});
+})();
+</script>
+
+<style>
+  .cur { display: inline-flex; align-items: center; gap: .25rem; margin-inline-start: .75rem; font-size: .8125rem; color: var(--ck-ink-soft, #555); }
+  .cur-sym { font-weight: 600; min-width: 1ch; }
+  .cur-sel { appearance: none; -webkit-appearance: none; border: 1px solid var(--ck-line, #ddd); border-radius: 999px; padding: .2rem 1.5rem .2rem .625rem; font: inherit; font-size: .8125rem; color: inherit; background: transparent url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23777' stroke-width='1.5'/></svg>") no-repeat right .5rem center / 10px 6px; cursor: pointer; }
+  .cur-sel:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+</style>

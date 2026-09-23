@@ -1,0 +1,349 @@
+---
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 链位工作台 —— 一张有四个洞的物料清单,取代六步向导。
+ *
+ * 创始人 2026-09-07:「选品链路需要优化,目前的太死板了」。
+ * 五套方案评审后胜出(7.8/10),核心判断是:
+ * **「死板」的根因不是步骤多,是状态锁在 JS 闭包里。**
+ *
+ * 旧版 selector.astro 的三个症状同源:
+ *   ① 顺序写死 —— 换一次方向就 `state.f = null; state.p = null`,
+ *      已经挑好的配方和包材全部作废,五处代码都这么写;
+ *   ② 中途进不去 —— 站内 10 处在发 `/selector/?formula=` 与 `?pack=`,
+ *      而 selector.astro 全文 searchParams 出现 0 次,链接铺好了、落地被吞回第一步;
+ *   ③ 选项平铺 —— 服务端不知道你选了什么,只能把 100 支配方 + 4,518 款包材
+ *      整包塞进 DOM 让 JS 筛,于是 2,861,182 字节、3,856 个 button。
+ *
+ * 状态一进 URL,三个症状同时消失:
+ *   /zh-cn/chain/ST-A1160+SR-1101/
+ *   · 刷新不丢、能转发给同事、能当补单单号
+ *   · 「✕ 换一个」= 当前 URL 减掉一个编码,一个链接搞定,零 JS
+ *   · 服务端知道你选了什么,只渲染当前工位的 24 张卡
+ *
+ * 数据全走内存快照(pack-shelf.ts)+ 配方那一条小查询,
+ * D1 读从旧版的 4,000–15,000 行降到约 100 行。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { PACK_SHELF } from '@cosmetic/core/generated/pack-shelf.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { PACK_TYPE_LABEL, FMT_LABEL, label, packName, dualCapacity, materialFamily }
+  from '../../../lib/catalog';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const B = `/${lang}`;
+
+/* URL 里的编码串。用 + 分隔:它在路径里合法、肉眼可读、复制粘贴不会被转义成别的东西。
+   编码本身只允许字母数字与连字符 —— 库里那些带中文的编码(ST-A2396纸巾盖)
+   不进工作台的地址,它们是配件,不该占链上一格。 */
+const raw = String(Astro.params.codes ?? '').replace(/\/+$/, '');
+const codes = raw.split('+').map((c) => c.trim().toUpperCase())
+  .filter((c) => /^[A-Z]{2,4}-[A-Z0-9-]{1,20}$/.test(c)).slice(0, 4);
+
+/* 配方:100 行的小表,一次取回。比起旧版那四条无 LIMIT 的查询,这是唯一一条。 */
+const formulas = db
+  ? (((await db.prepare(
+      `SELECT code, category, format, benefits, moq, lead_days, markets, ai_summary
+         FROM formulas WHERE status IN ('sample','active') ORDER BY code`)
+      .all<any>().catch(() => ({ results: [] }))).results ?? []) as any[])
+  : [];
+
+const packById = new Map(PACK_SHELF.map((p) => [p.code, p]));
+const fxById = new Map(formulas.map((f) => [f.code, f]));
+
+const isCarton = (t: string) => t === 'use-gift' || t === 'outer-carton' || t === 'carton';
+
+/* 把 URL 里的编码分派到四个格子。一个编码属于哪一格由它自己决定,
+   不靠顺序 —— 所以 /chain/SR-1101+ST-A1160/ 和 /chain/ST-A1160+SR-1101/ 是同一份清单。 */
+const slot: Record<string, string | null> = { pack: null, formula: null, carton: null, product: null };
+for (const c of codes) {
+  if (fxById.has(c)) { slot.formula ??= c; continue; }
+  const p = packById.get(c);
+  if (p) { (isCarton(p.type) ? (slot.carton ??= c) : (slot.pack ??= c)); }
+}
+const filled = Object.values(slot).filter(Boolean) as string[];
+
+const hrefFor = (list: string[]) =>
+  list.length ? `${B}/chain/${list.join('+')}/` : `${B}/chain/`;
+/* 「✕ 换一个」= 当前清单减掉这一个。旧版是把后面几步一起清空,
+   那五行 `state.x = null` 正是「死板」最直接的来源。 */
+const dropHref = (code: string) => hrefFor(filled.filter((c) => c !== code));
+const addHref = (code: string) => hrefFor([...filled, code]);
+
+/* 收敛:填了配方就按剂型筛包材,填了包材就按它适配的剂型筛配方。
+   这一步是链路真正产生作用的地方 —— 链上的邻居替采购做减法,
+   而不是把四千款倒在他面前让他自己扒。 */
+const fx = slot.formula ? fxById.get(slot.formula) : null;
+const pk = slot.pack ? packById.get(slot.pack) : null;
+
+const packPool = (() => {
+  let pool = PACK_SHELF.filter((p) => !isCarton(p.type) && p.hasImg);
+  if (fx?.format) pool = pool.filter((p) => p.compatFormats.includes(fx.format)) .length
+    ? pool.filter((p) => p.compatFormats.includes(fx.format)) : pool;
+  return pool;
+})();
+const cartonPool = PACK_SHELF.filter((p) => isCarton(p.type) && p.hasImg);
+const fxPool = (() => {
+  if (!pk) return formulas;
+  const fits = formulas.filter((f) => f.format && pk.compatFormats.includes(f.format));
+  return fits.length ? fits : formulas;
+})();
+
+const T = zh ? {
+  eyebrow: '链位工作台',
+  title: '一张清单,四个洞',
+  lede: `包材、配方、包装盒、成品 —— 填哪一格都行,顺序不限。
+         地址栏就是这张清单本身:刷新不丢、能转发给同事、下次补单直接发这个链接。`,
+  slots: { pack: '包材', formula: '配方', carton: '包装盒', product: '成品' },
+  empty: '还没选', pick: '挑一个', drop: '换一个', more: '去库里慢慢挑',
+  narrow: (n: number, why: string) => `按${why}筛过,${n.toLocaleString()} 款可选`,
+  all: (n: number) => `${n.toLocaleString()} 款可选`,
+  send: '把这张清单发给我们', wa: 'WhatsApp',
+  ready: '这张清单已经能报价了 —— 把它发过来,我们按编码回复,不用再描述一遍。',
+  hint: '每填一格,后面的可选范围就窄一截。填了配方,包材按剂型筛;填了包材,配方按它能装的剂型筛。',
+} : {
+  eyebrow: 'Chain workbench',
+  title: 'One sheet, four slots',
+  lede: `Containers, formula, carton, finished product — fill any slot, in any order.
+         The address bar is the sheet: refresh-safe, shareable, and it doubles as a re-order reference.`,
+  slots: { pack: 'Container', formula: 'Formula', carton: 'Carton', product: 'Product' },
+  empty: 'Empty', pick: 'Pick one', drop: 'Change', more: 'Browse the library',
+  narrow: (n: number, why: string) => `${n.toLocaleString()} left after filtering by ${why}`,
+  all: (n: number) => `${n.toLocaleString()} available`,
+  send: 'Send us this sheet', wa: 'WhatsApp',
+  ready: 'This sheet is quotable — send it over and we reply by code, no re-describing.',
+  hint: 'Each slot you fill narrows the next. Pick a formula and containers filter by its format; pick a container and formulas filter by what it can hold.',
+};
+
+const path = `/${lang}/chain/${filled.length ? filled.join('+') + '/' : ''}`;
+const ld = {
+  '@context': 'https://schema.org', '@type': 'ItemList',
+  name: `${T.eyebrow} ${filled.join(' + ')}`.trim(),
+  numberOfItems: filled.length,
+  itemListElement: filled.map((c, i) => ({
+    '@type': 'ListItem', position: i + 1,
+    item: { '@type': 'Product', sku: c,
+            url: `${origin}${packById.has(c) ? `${B}/packaging/${c}/` : `${B}/formula/${c}/`}` },
+  })),
+};
+
+/* 只有空清单那一页进索引。每一种编码组合都是一个 URL,
+   放开收录就是让爬虫走一个组合爆炸的空间 —— 今天刚被这类事教育过。 */
+const indexable = shell.site?.is_live === 1 && filled.length === 0;
+
+/* 当前该让人挑哪一格:第一个空的。四格都满就进结算态。 */
+const nextSlot = (['pack', 'formula', 'carton', 'product'] as const)
+  .find((k) => !slot[k]) ?? null;
+const PER = 24;
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={filled.length ? `${filled.join(' + ')} · ${T.eyebrow}` : `${T.title} · ${T.eyebrow}`}
+  description={T.lede} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={indexable} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main" class="cw">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+    </header>
+
+    {/* 四格清单。填了的显示内容 + 换一个;空的可点去挑。 */}
+    <ol class="sheet">
+      {(['pack', 'formula', 'carton', 'product'] as const).map((k, i) => {
+        const code = slot[k];
+        const p = code ? packById.get(code) : null;
+        const f = code ? fxById.get(code) : null;
+        return (
+          <li class={`cell ${code ? 'on' : ''} ${nextSlot === k ? 'next' : ''}`}>
+            <span class="step" aria-hidden="true">{i + 1}</span>
+            <span class="lab">{T.slots[k]}</span>
+            {code ? (
+              <>
+                {p && <img class="thumb" src={`/pack/${p.code}`} alt={p.code} loading="lazy" decoding="async" />}
+                <a class="code" href={p ? `${B}/packaging/${code}/` : `${B}/formula/${code}/`}>{code}</a>
+                <span class="sub">
+                  {p ? [label(PACK_TYPE_LABEL, p.type, zh), dualCapacity(p.capacity)].filter(Boolean).join(' · ')
+                     : f ? [f.category, f.format && label(FMT_LABEL, f.format, zh)].filter(Boolean).join(' · ') : ''}
+                </span>
+                <a class="drop" href={dropHref(code)}>✕ {T.drop}</a>
+              </>
+            ) : (
+              <span class="none">{T.empty}</span>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+
+    <p class="hint">{T.hint}</p>
+
+    {/* 结算态:四格填满(或至少配方+包材都有) */}
+    {slot.pack && slot.formula ? (
+      <section class="done">
+        <p>{T.ready}</p>
+        <p class="acts">
+          <a class="btn pri" href={`${B}/contact/?source=${encodeURIComponent(path)}`}>{T.send}</a>
+          <a class="btn" href="/zh-cn/contact/" rel="noopener">💬 {T.wa}</a>
+          {/* WeChat 号不翻译,18 语种统一写「WeChat」 */}
+          <span class="btn wx">💬 WeChat</span>
+        </p>
+      </section>
+    ) : null}
+
+    {/* 当前工位:只渲染这一格的候选,不是把四千款倒出来 */}
+    {nextSlot === 'pack' && (
+      <section class="work">
+        <h2>{T.slots.pack}
+          <span class="n">{fx?.format ? T.narrow(packPool.length, zh ? `「${label(FMT_LABEL, fx.format, zh)}」剂型` : `format ${fx.format}`) : T.all(packPool.length)}</span>
+          <a class="more" href={`${B}/packaging/`}>{T.more} →</a>
+        </h2>
+        <ul class="grid">
+          {packPool.slice(0, PER).map((p) => (
+            <li><a class="card" href={addHref(p.code)}>
+              <span class="shot"><img src={`/pack/${p.code}`} alt={p.code} loading="lazy" decoding="async" /></span>
+              <span class="cat">{label(PACK_TYPE_LABEL, p.type, zh)}</span>
+              <span class="nm">{packName(p as any, zh)}</span>
+              <span class="meta">{[dualCapacity(p.capacity), materialFamily(p.material, zh)].filter(Boolean).join(' · ')}</span>
+            </a></li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {nextSlot === 'formula' && (
+      <section class="work">
+        <h2>{T.slots.formula}
+          <span class="n">{pk ? T.narrow(fxPool.length, zh ? '这只瓶子能装的剂型' : 'what this container holds') : T.all(fxPool.length)}</span>
+          <a class="more" href={`${B}/formulas/`}>{T.more} →</a>
+        </h2>
+        <ul class="grid txt">
+          {fxPool.slice(0, PER).map((f) => (
+            <li><a class="card" href={addHref(f.code)}>
+              <span class="cat">{f.category}{f.format ? ` · ${label(FMT_LABEL, f.format, zh)}` : ''}</span>
+              <span class="nm">{f.code}</span>
+              <span class="meta">{String(f.benefits ?? '').split(',').slice(0, 3).join(' · ')}</span>
+            </a></li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {nextSlot === 'carton' && (
+      <section class="work">
+        <h2>{T.slots.carton}<span class="n">{T.all(cartonPool.length)}</span>
+          <a class="more" href={`${B}/packaging/?t=use-gift,outer-carton`}>{T.more} →</a>
+        </h2>
+        <ul class="grid">
+          {cartonPool.slice(0, PER).map((p) => (
+            <li><a class="card" href={addHref(p.code)}>
+              <span class="shot"><img src={`/pack/${p.code}`} alt={p.code} loading="lazy" decoding="async" /></span>
+              <span class="nm">{p.code}</span>
+              <span class="meta">{dualCapacity(p.capacity)}</span>
+            </a></li>
+          ))}
+        </ul>
+      </section>
+    )}
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+
+  <style>
+    .cw { max-width: min(112.5rem, 100%); margin: 0 auto;
+          padding: clamp(2rem, 5vw, 3.25rem) var(--ck-gutter, 1.25rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }
+    .hd { max-width: 46rem; margin-bottom: clamp(1.75rem, 4vw, 2.5rem); }
+    .eyebrow { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase;
+               color: var(--ck-accent); margin: 0 0 .625rem; }
+    h1 { font-size: clamp(1.75rem, 1.25rem + 2vw, 2.75rem); line-height: 1.13;
+         letter-spacing: -.025em; margin: 0 0 .875rem; text-wrap: balance; }
+    .lede { color: var(--ck-ink-soft); font-size: 1rem; line-height: 1.75; margin: 0; }
+
+    .sheet { list-style: none; margin: 0 0 .75rem; padding: 0;
+             display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .875rem; }
+    .cell { position: relative; display: flex; flex-direction: column; gap: .3125rem;
+            border: 1px solid var(--dtc-line, rgb(0 0 0/.12));
+            border-radius: var(--dtc-radius-card, 14px); padding: 1rem 1rem .875rem;
+            background: var(--dtc-paper, #fff); min-height: 8.5rem; }
+    .cell.next { border-color: var(--ck-accent); box-shadow: 0 0 0 3px rgb(31 78 121 / .07); }
+    .cell.on { background: var(--dtc-paper, #fff); }
+    .cell .step { position: absolute; top: .625rem; right: .75rem; font-size: .6875rem;
+                  width: 1.25rem; height: 1.25rem; border-radius: 50%;
+                  display: inline-flex; align-items: center; justify-content: center;
+                  background: var(--dtc-wash, rgb(0 0 0/.055)); color: var(--ck-ink-soft);
+                  font-variant-numeric: tabular-nums; }
+    .cell .lab { font-size: .75rem; color: var(--ck-ink-soft); }
+    .cell .none { color: var(--ck-ink-soft); opacity: .55; font-size: .9375rem; margin-top: auto; }
+    .cell .thumb { width: 3rem; height: 3rem; object-fit: contain; }
+    .cell .code { font-size: 1rem; font-weight: 600; text-decoration: none; color: var(--ck-ink); }
+    .cell .code:hover { color: var(--ck-accent); }
+    .cell .sub { font-size: .75rem; color: var(--ck-ink-soft); line-height: 1.5; }
+    .cell .drop { margin-top: auto; font-size: .75rem; color: var(--ck-ink-soft);
+                  text-decoration: none; align-self: flex-start; }
+    .cell .drop:hover { color: var(--ck-accent); }
+
+    .hint { font-size: .8125rem; color: var(--ck-ink-soft); line-height: 1.7;
+            margin: 0 0 1.75rem; max-width: 46rem; }
+
+    .done { border: 1px solid var(--ck-accent); border-radius: var(--dtc-radius-card, 14px);
+            padding: 1.25rem 1.375rem; margin-bottom: 1.75rem; }
+    .done p { margin: 0; color: var(--ck-ink-soft); font-size: .9375rem; line-height: 1.7; }
+    .acts { display: flex; flex-wrap: wrap; gap: .625rem; margin-top: .875rem !important; }
+    .btn { text-decoration: none; border-radius: 980px; padding: .625rem 1.25rem; min-height: 42px;
+           display: inline-flex; align-items: center; gap: .375rem; font-size: .9375rem;
+           font-weight: 550; border: 1px solid var(--dtc-line, rgb(0 0 0/.16));
+           color: var(--ck-ink); background: transparent; }
+    .btn.pri { background: var(--ck-accent); border-color: var(--ck-accent); color: var(--ck-on-accent); }
+
+    .work h2 { font-size: 1rem; margin: 0 0 1rem; display: flex; align-items: baseline;
+               gap: .75rem; flex-wrap: wrap; }
+    .work h2 .n { font-size: .8125rem; color: var(--ck-ink-soft); font-weight: 400; }
+    .work h2 .more { margin-left: auto; font-size: .8125rem; text-decoration: none;
+                     color: var(--ck-accent); }
+
+    .grid { list-style: none; margin: 0; padding: 0;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+            gap: 1.25rem .875rem; }
+    .card { display: flex; flex-direction: column; gap: .25rem; text-decoration: none;
+            color: var(--ck-ink); }
+    .shot { display: block; aspect-ratio: 1; background: var(--dtc-wash, rgb(0 0 0/.03));
+            border-radius: var(--dtc-radius-card, 12px); overflow: hidden;
+            display: grid; place-items: center; margin-bottom: .375rem; }
+    .shot img { width: 100%; height: 100%; object-fit: contain; }
+    .card:hover .shot { outline: 1px solid var(--ck-accent); outline-offset: 2px; }
+    .cat { font-size: .6875rem; color: var(--ck-ink-soft); }
+    .nm { font-size: .875rem; font-weight: 550; line-height: 1.4; }
+    .meta { font-size: .75rem; color: var(--ck-ink-soft); }
+    .grid.txt .card { border: 1px solid var(--dtc-line, rgb(0 0 0/.1));
+                      border-radius: var(--dtc-radius-card, 12px); padding: .875rem; }
+    .grid.txt .card:hover { border-color: var(--ck-accent); }
+
+    @media (max-width: 60rem) {
+      h1 { font-size: clamp(1.5rem, 1.2rem + 2vw, 1.875rem); }
+      .lede { font-size: .9375rem; }
+      .sheet { grid-template-columns: repeat(2, 1fr); gap: .625rem; }
+      .cell { min-height: 7rem; padding: .75rem; }
+      /* 用 px 不用 rem:本站根字号 18px 而媒体查询按 16px 算 */
+      .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1.25rem .75rem; }
+    }
+  </style>
+</BaseLayout>

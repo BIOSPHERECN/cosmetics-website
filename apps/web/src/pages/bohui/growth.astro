@@ -1,0 +1,279 @@
+---
+/**
+ * 获客进展 —— 老板看的一页(2026-09-18 创始人:「SEO、GEO 要真的给我们带入客户 … 一定要实现!看到进展」;
+ * 09-16 定调:一切按「30 天内怎么带来询盘」排序,周报只报触达 / 回复 / 报价三个数)。
+ *
+ * 数字大、字少。顶部三个数按老板口径;下面四行按周(近 8 周)看趋势,每行带环比箭头。
+ * 数据来源(全部 try/catch,任何一处取不到都显示「—」并注明,不编数):
+ *   · 曝光 ← pulse 表 geo:<周> 快照(tools/pulse-collect.py 每 4 小时写;cite_real = 去噪后的 AI 引用取回,
+ *            ref:google = 从 Google 点进来的真人,ref:chatgpt/perplexity/claude/gemini = AI 答案页带来的真人);
+ *            打点 2026-09-11 晚才区分这三类,更早的周没有快照,显示「—」而不是 0。
+ *   · 收录 ← pulse 表 indexnow 行(tools/geo/indexnow.py 每日写:sitemap 页数、IndexNow 提交数与各端点返回码);
+ *            GSC 未接入 → 「待登记」+ 一步步怎么登记。
+ *   · 询盘 ← inquiries(按周、来源归因、A 级数)。
+ *   · 动作 ← geo_answers.updated_at(问答页)、意图页常量、pulse 表 social:<周>(tools/social/content-weekly.py 写)。
+ * 周按 ISO 周(与 pulse-collect 的 %G-W%V 同口径),周一 00:00 UTC 起。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { LANGS } from '../../lib/db';
+import { OEM_MARKETS, OEM_CATEGORIES } from '@cosmetic/core/content/oem.ts';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+/* ── 取数:每条查询各自兜底,一条挂了不拖累整页 ── */
+const rows = async <T = any>(sql: string, ...b: any[]): Promise<T[] | null> => {
+  try { return ((await c.db.prepare(sql).bind(...b).all<T>()).results ?? []) as T[]; } catch { return null; }
+};
+const one = async (sql: string, ...b: any[]): Promise<number | null> => {
+  try { const r = await c.db.prepare(sql).bind(...b).first<any>(); return r ? Number(Object.values(r)[0] ?? 0) : 0; } catch { return null; }
+};
+const parse = (s?: string | null) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
+
+/* ISO 周(周一起),与 pulse-collect.py 的 %G-W%V 同口径 */
+const isoWeek = (d: Date) => {
+  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y = t.getUTCFullYear();
+  const w = Math.ceil(((t.getTime() - Date.UTC(y, 0, 1)) / 864e5 + 1) / 7);
+  return `${y}-W${String(w).padStart(2, '0')}`;
+};
+const now = new Date();
+const monday = new Date(now); monday.setUTCDate(now.getUTCDate() - ((now.getUTCDay() || 7) - 1)); monday.setUTCHours(0, 0, 0, 0);
+const weekStart = monday.toISOString().slice(0, 19).replace('T', ' ');
+const WEEKS = Array.from({ length: 8 }, (_, i) => isoWeek(new Date(monday.getTime() - (7 - i) * 7 * 864e5)));
+const THIS = WEEKS[7];
+const toDate = (s: string) => new Date(String(s).replace(' ', 'T') + (String(s).includes('Z') ? '' : 'Z'));
+const wk = (s: string) => isoWeek(toDate(s));
+
+/* pulse 快照:geo:<周> / social:<周> / indexnow / latest 一次取 */
+const pulse = (await rows<{ k: string; json: string; updated_at: string }>(
+  `SELECT k, json, updated_at FROM pulse WHERE k LIKE 'geo:%' OR k LIKE 'social:%' OR k IN ('indexnow','latest','gsc')`)) ?? [];
+const P: Record<string, any> = Object.fromEntries(pulse.map((r) => [r.k, parse(r.json)]));
+const pulseAt: Record<string, string> = Object.fromEntries(pulse.map((r) => [r.k, r.updated_at]));
+const sumBy = (arr: any[] | undefined, keys: string[]) => (arr ?? []).filter((x) => keys.includes(String(x.k))).reduce((a, x) => a + Number(x.n || 0), 0);
+
+type Cell = number | null;            // null = 没数据(不是 0)
+const geo = (w: string) => P[`geo:${w}`];
+const exposure = {
+  google: WEEKS.map((w): Cell => geo(w) ? sumBy(geo(w).ref_by, ['ref:google']) : null),
+  cite:   WEEKS.map((w): Cell => geo(w)?.cite_real != null ? Number(geo(w).cite_real) : null),   /* W37 之前的快照没有去噪字段,显示「—」不显示 0 */
+  aiRef:  WEEKS.map((w): Cell => geo(w) ? sumBy(geo(w).ref_by, ['ref:chatgpt', 'ref:perplexity', 'ref:claude', 'ref:gemini']) : null),
+};
+
+/* 询盘:近 9 周原始行(表很小),在这里按周分桶与归因 */
+const inq = (await rows<{ created_at: string; referrer: string | null; source_path: string | null; ai_grade: string | null }>(
+  `SELECT created_at, referrer, source_path, ai_grade FROM inquiries WHERE created_at >= datetime('now','-63 days') AND COALESCE(spam_score,0) <= 50`)) ?? null;
+const SRC = ['Google', 'AI', '社媒', '邮件', '直接'] as const;
+const srcOf = (r: { referrer: string | null; source_path: string | null }) => {
+  const ref = String(r.referrer ?? '').toLowerCase(), sp = String(r.source_path ?? '').toLowerCase();
+  const utm = /utm_source=([a-z0-9_-]+)/.exec(sp + ' ' + ref)?.[1] ?? '';
+  if (utm && /linkedin|instagram|tiktok|xiaohongshu|xhs|douyin|facebook|youtube|x\b|twitter/.test(utm)) return '社媒';
+  if (/chatgpt|openai|perplexity|claude|gemini|copilot|you\.com|poe\.com/.test(ref)) return 'AI';
+  if (/google\./.test(ref)) return 'Google';
+  if (/linkedin|instagram|tiktok|xiaohongshu|douyin|facebook|youtube|t\.co|twitter/.test(ref)) return '社媒';
+  if (/mail\.|outlook|gmail|utm_medium=email/.test(ref + sp) || utm === 'email') return '邮件';
+  return '直接';
+};
+const inqW = (w: string) => (inq ?? []).filter((r) => wk(r.created_at) === w);
+const inquiries = {
+  n:  WEEKS.map((w): Cell => inq ? inqW(w).length : null),
+  a:  WEEKS.map((w): Cell => inq ? inqW(w).filter((r) => String(r.ai_grade ?? '').toUpperCase() === 'A').length : null),
+  by: Object.fromEntries(SRC.map((s) => [s, WEEKS.map((w): Cell => inq ? inqW(w).filter((r) => srcOf(r) === s).length : null)])) as Record<string, Cell[]>,
+};
+
+/* 动作:问答页(按 updated_at 分周 —— 新增或重写都算这周的产出)、意图页(常量集,存量)、社媒(pulse social:<周>) */
+const qa = await rows<{ updated_at: string }>(`SELECT updated_at FROM geo_answers`);
+const qaTotal = qa ? qa.length : null;
+const actions = {
+  qa:     WEEKS.map((w): Cell => qa ? qa.filter((r) => r.updated_at && wk(r.updated_at) === w).length : null),
+  social: WEEKS.map((w): Cell => P[`social:${w}`] ? Number(P[`social:${w}`].generated ?? P[`social:${w}`].n ?? 0) : null),
+  socialPub: WEEKS.map((w): Cell => P[`social:${w}`] ? Number(P[`social:${w}`].published ?? 0) : null),
+};
+const oemPages = OEM_MARKETS.length * OEM_CATEGORIES.length * LANGS.length;
+
+/* ── 顶部三个数(老板口径:触达 / 回复 / 报价),本周 ──
+   触达 = 开发信本周真发出的封数(outreach_log.sent_at,2026-09-18 起邮箱通了、系统发,不再数手工标的状态)+ 社媒已发布数(发布清单里标「已发」的);
+   回复 = 开发信本周收到回信(outreach_log.replied_at,mail-worker 按 In-Reply-To / 发件人自动挂)+ 本周询盘;
+   报价 = quotes 本周 sent/accepted + deals 本周进入 quote/negotiate + matters 本周「报价」类;表缺就记 null 并注明。 */
+const sent = await one(`SELECT COUNT(*) n FROM outreach_log WHERE sent_at >= ?`, weekStart);
+const replied = await one(`SELECT COUNT(*) n FROM outreach_log WHERE status='replied' AND replied_at >= ?`, weekStart);
+const quotesN = await one(`SELECT COUNT(*) n FROM quotes WHERE status IN ('sent','accepted') AND COALESCE(updated_at, created_at) >= ?`, weekStart);
+const dealsN = await one(`SELECT COUNT(*) n FROM deals WHERE stage IN ('quote','negotiate') AND COALESCE(updated_at, created_at) >= ?`, weekStart);
+const mattersN = await one(`SELECT COUNT(*) n FROM matters WHERE (kind LIKE '%报价%' OR status LIKE '%报价%') AND COALESCE(updated_at, created_at) >= ?`, weekStart);
+const socialPubThis = actions.socialPub[7];
+const inqThis = inquiries.n[7];
+const add = (...xs: Cell[]) => xs.every((x) => x === null) ? null : xs.reduce((a: number, x) => a + (x ?? 0), 0);
+const TOP = [
+  { k: '触达', v: add(sent, socialPubThis), s: `开发信已发 ${sent ?? '—'} · 社媒已发布 ${socialPubThis ?? '—'}` },
+  { k: '回复', v: add(replied, inqThis), s: `开发信回复 ${replied ?? '—'} · 询盘 ${inqThis ?? '—'}` },
+  { k: '报价', v: add(quotesN, dealsN, mattersN), s: `报价单 ${quotesN ?? '—'} · 机会进报价 ${dealsN ?? '—'} · 事项报价 ${mattersN ?? '—'}` },
+];
+
+/* 收录:sitemap 页数与 IndexNow 状态来自 tools/geo/indexnow.py 写的 pulse 行;GSC 未接入 */
+const IX = P.indexnow ?? null;
+const GSC = P.gsc ?? null;
+const codeOk = (code: any) => [200, 202].includes(Number(code));
+
+/* ── 展示 ── */
+const fmt = (v: Cell) => v === null ? '—' : Number(v).toLocaleString();
+const arrow = (cur: Cell, prev: Cell) => {
+  if (cur === null || prev === null) return { t: '—', c: 'flat' };
+  const d = cur - prev;
+  return d > 0 ? { t: `▲ ${d.toLocaleString()}`, c: 'up' } : d < 0 ? { t: `▼ ${Math.abs(d).toLocaleString()}`, c: 'down' } : { t: '─', c: 'flat' };
+};
+type Line = { label: string; cells: Cell[]; sub?: boolean; note?: string };
+const GROUPS: { title: string; note: string; lines: Line[] }[] = [
+  { title: '① 曝光', note: '来自 pulse 快照;2026-W37 前没有分类打点,显示「—」', lines: [
+    { label: 'Google 带来的真人', cells: exposure.google },
+    { label: 'AI 引用取回(去噪)', cells: exposure.cite },
+    { label: 'AI 带来的真人', cells: exposure.aiRef, note: 'ChatGPT / Perplexity / Claude / Gemini 答案页点进来' },
+  ]},
+  { title: '③ 询盘', note: '过滤 spam_score > 50', lines: [
+    { label: '询盘数', cells: inquiries.n },
+    { label: 'A 级', cells: inquiries.a, sub: true },
+    ...SRC.map((s): Line => ({ label: `来源 · ${s}`, cells: inquiries.by[s], sub: true })),
+  ]},
+  { title: '④ 动作', note: '我们这周做了什么', lines: [
+    { label: '问答页新增 / 重写', cells: actions.qa, note: `现有 ${qaTotal ?? '—'} 题` },
+    { label: '社媒内容产出', cells: actions.social, note: 'tools/social/content-weekly.py 每周一生成' },
+    { label: '社媒已发布', cells: actions.socialPub, sub: true, note: '发布清单里标「已发」的条数' },
+  ]},
+];
+const latestAt = pulseAt['latest'] ?? null;
+---
+
+<AdminShell title="获客进展" active="growth" email={c.sess.email} tenant={c.tenant}>
+  <header class="hd">
+    <div>
+      <h1>获客进展</h1>
+      <p class="lead">本周 {THIS} · 一切按「30 天内怎么带来询盘」排;三个数按老板口径,四行按周看趋势。{latestAt ? `快照 ${latestAt} UTC` : '尚无 pulse 快照'}</p>
+    </div>
+  </header>
+
+  {/* 本周三个数 */}
+  <section class="top">
+    {TOP.map((t) => (
+      <div class="big">
+        <div class="k">{t.k}</div>
+        <div class="v">{fmt(t.v)}</div>
+        <div class="s">{t.s}</div>
+      </div>
+    ))}
+  </section>
+
+  {/* 按周 */}
+  <section class="wk">
+    <table>
+      <thead>
+        <tr>
+          <th class="lab"></th>
+          {WEEKS.map((w) => <th class={w === THIS ? 'cur' : ''}>{w.slice(5)}</th>)}
+          <th class="delta">环比</th>
+        </tr>
+      </thead>
+      {GROUPS.map((g) => (
+        <tbody>
+          <tr class="grp"><td colspan={10}><b>{g.title}</b><span>{g.note}</span></td></tr>
+          {g.lines.map((l) => { const a = arrow(l.cells[7], l.cells[6]); return (
+            <tr class={l.sub ? 'sub' : ''}>
+              <td class="lab">{l.label}{l.note && <i>{l.note}</i>}</td>
+              {l.cells.map((v, i) => <td class={`num ${i === 7 ? 'cur' : ''} ${v === null ? 'none' : ''}`}>{fmt(v)}</td>)}
+              <td class={`delta ${a.c}`}>{a.t}</td>
+            </tr>
+          ); })}
+        </tbody>
+      ))}
+    </table>
+  </section>
+
+  {/* ② 收录 —— 不按周,是状态 */}
+  <section class="idx">
+    <h2>② 收录</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="k">sitemap 页数</div>
+        <div class="v">{fmt(IX?.sitemap_total ?? null)}</div>
+        <div class="s">{IX ? `${Object.entries(IX.parts ?? {}).map(([k, n]) => `${k} ${Number(n).toLocaleString()}`).join(' · ')} · ${pulseAt['indexnow']} UTC` : '还没跑 python tools/geo/indexnow.py'}</div>
+      </div>
+      <div class={`card ${GSC ? '' : 'warn'}`}>
+        <div class="k">Google 收录(GSC)</div>
+        <div class="v">{GSC ? fmt(GSC.indexed ?? null) : '待登记'}</div>
+        <div class="s">{GSC ? `${GSC.at ?? ''}` : 'Search Console 还没验证这个域名'}</div>
+      </div>
+      <div class={`card ${IX ? (Object.values(IX.codes ?? {}).some(codeOk) ? 'ok' : 'bad') : ''}`}>
+        <div class="k">Bing / IndexNow</div>
+        <div class="v">{IX ? fmt(IX.submitted ?? 0) : '—'}</div>
+        <div class="s">{IX ? `本次提交 · 累计 ${Number(IX.ledger ?? 0).toLocaleString()} 条 · ${Object.entries(IX.codes ?? {}).map(([k, v]) => `${k} ${v}`).join(' · ')}` : 'Bing 站长已验证(BingSiteAuth.xml);IndexNow 每日 05:40 推'}</div>
+      </div>
+      <div class="card">
+        <div class="k">意图页(存量)</div>
+        <div class="v">{oemPages.toLocaleString()}</div>
+        <div class="s">{OEM_MARKETS.length} 市场 × {OEM_CATEGORIES.length} 品类 × {LANGS.length} 语 · /oem/</div>
+      </div>
+    </div>
+
+    {!GSC && (
+      <details class="how" open>
+        <summary>把 Google Search Console 登记上(最快 5 分钟,做一次就行)</summary>
+        <ol>
+          <li><b>最快的一种:DNS 验证(不用改代码、不用发布)。</b>打开 <a href="https://search.google.com/search-console/welcome" target="_blank" rel="noopener">search.google.com/search-console</a>,左边「网域」栏填 <code>biosphere-ai.com</code>,点「继续」。</li>
+          <li>Google 给一串 <code>google-site-verification=…</code>,复制它。</li>
+          <li>到 Cloudflare → 这个域名 → <b>DNS</b> → 添加记录:类型 <code>TXT</code>,名称 <code>@</code>,内容粘贴那一串,TTL 自动,保存。</li>
+          <li>回到 Search Console 点「验证」。一般几分钟内通过;没通过等 10 分钟再点一次(DNS 传播)。</li>
+          <li>验证通过后:左侧「站点地图」里提交 <code>https://biosphere-ai.com/sitemap.xml</code>(一个索引文件,6 个分片自动带上)。</li>
+          <li>网域方式一次覆盖 http/https 与所有子域,以后不用再验。备选:HTML meta 标签(要改站点 head 并重新发布,比 DNS 慢一次发布周期),只有拿不到 Cloudflare DNS 权限时才用。</li>
+        </ol>
+        <p class="note">登记好之后把「已收录页数」抄到这里的办法:跑 <code>python tools/pulse-collect.py</code> 之前先在 .env 里加 GSC 的服务账号,这一步等登记完再做。</p>
+      </details>
+    )}
+  </section>
+
+  <style>
+    .hd { margin-bottom: 1.25rem; }
+    h1 { font-size: 1.5rem; margin: 0 0 .25rem; letter-spacing: -.015em; }
+    .lead { margin: 0; font-size: .875rem; color: var(--ad-soft); }
+
+    .top { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1.75rem; }
+    .big { background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: var(--ad-r); padding: 1.25rem 1.5rem; box-shadow: var(--ad-shadow); }
+    .big .k { font-size: .875rem; color: var(--ad-soft); letter-spacing: .04em; }
+    .big .v { font-size: 3.5rem; font-weight: 700; line-height: 1.05; letter-spacing: -.03em; margin: .25rem 0; font-variant-numeric: tabular-nums; color: var(--ad-ink); }
+    .big .s { font-size: .8125rem; color: var(--ad-faint); }
+
+    .wk table { font-size: .9375rem; margin-bottom: 1.75rem; }
+    .wk th, .wk td { padding: .5rem .625rem; border-bottom: 1px solid var(--ad-line-soft); }
+    .wk th { font-weight: 500; color: var(--ad-faint); text-align: right; font-size: .8125rem; }
+    .wk th.lab { text-align: left; }
+    .wk th.cur, .wk td.cur { background: var(--ad-accent-soft); color: var(--ad-ink); font-weight: 700; }
+    .wk .grp td { background: var(--ad-sunk); padding-top: .875rem; }
+    .wk .grp b { font-size: .9375rem; margin-right: .75rem; }
+    .wk .grp span { font-size: .75rem; color: var(--ad-faint); }
+    .wk .lab { text-align: left; color: var(--ad-ink); white-space: nowrap; }
+    .wk .lab i { display: block; font-style: normal; font-size: .75rem; color: var(--ad-faint); white-space: normal; }
+    .wk tr.sub .lab { padding-left: 1.5rem; color: var(--ad-soft); font-size: .875rem; }
+    .wk .num { text-align: right; font-variant-numeric: tabular-nums; font-size: 1.125rem; }
+    .wk .num.none { color: var(--ad-faint); font-size: .9375rem; }
+    .wk tr.sub .num { font-size: .9375rem; }
+    .wk .delta { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+    .wk .delta.up { color: var(--ad-ok); } .wk .delta.down { color: var(--ad-bad); } .wk .delta.flat { color: var(--ad-faint); font-weight: 400; }
+
+    .idx h2 { font-size: .9375rem; margin: 0 0 .75rem; }
+    .idx .cards { grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); margin-bottom: 1rem; }
+    .idx .card .v { font-size: 2rem; }
+    .how { background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: var(--ad-r); padding: .875rem 1.125rem; }
+    .how summary { font-weight: 600; cursor: pointer; font-size: .9375rem; }
+    .how ol { margin: .75rem 0 .5rem; padding-left: 1.375rem; line-height: 1.75; font-size: .875rem; }
+    .how code { background: var(--ad-sunk); border: 1px solid var(--ad-line-soft); border-radius: 4px; padding: .0625rem .375rem; font-family: var(--ad-mono); font-size: .8125rem; }
+    .how a { color: var(--ad-accent); }
+    .note { font-size: .8125rem; color: var(--ad-faint); margin: 0; }
+
+    @media (max-width: 64rem) {
+      .top { grid-template-columns: 1fr; }
+      .big .v { font-size: 2.5rem; }
+      .wk { overflow-x: auto; }
+    }
+  </style>
+</AdminShell>

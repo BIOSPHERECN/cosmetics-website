@@ -1,4 +1,5 @@
 ---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 /**
  * AI 肌肤检测 —— 拍一张照片,拿到护肤选品建议。
@@ -79,7 +80,7 @@ const T = zh ? {
 };
 /* 外壳来自与全站同一处 —— 这两页的内容是写死的,但它们仍是这个站的页面,
    必须共用页头、导航与页脚,否则点进去像掉到了别人网站上。 */
-const shell = await pageShell(db, Astro.url, lang);
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
 ---
 
@@ -87,7 +88,7 @@ const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
   locale={lang}
   school={shell.variant?.school ?? 'atelier'}
   variant={shell.site?.variant ?? 'v1'}
-  brand={shell.site?.id ?? 'beauty2oem'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
   title={T.title}
   description={T.lead}
   siteName={shell.site?.name ?? '帛卉'}
@@ -150,7 +151,7 @@ const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
        之前这页自带一套颜色变量,换站点风格时它纹丝不动,像贴上去的。 */
 
     .wrap { max-width: var(--ck-maxw, 72rem); margin: 0 auto;
-            padding: clamp(2rem, 5vw, 4rem) var(--ck-gutter, 1.25rem) 5rem; }
+            padding: clamp(2rem, 5vw, 4rem) var(--ck-gutter, 1.25rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }
     .eyebrow { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase;
                color: var(--ck-accent); margin: 0 0 .625rem; }
     .wrap > h1 { max-width: 20ch; line-height: 1.1; letter-spacing: -0.025em;
@@ -206,7 +207,8 @@ const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
     .disc { font-size: .75rem; color: var(--ck-ink-faint); margin-top: 1rem; line-height: 1.7; }
   </style>
 
-  <script is:inline define:vars={{ lang, T }}>
+
+<script is:inline define:vars={{ lang, T, SITE_ID: shell.site?.id ?? "beauty2oem" }}>
   (() => {
     const pick = document.getElementById('pick'), drop = document.getElementById('drop');
     const consent = document.getElementById('consent'), go = document.getElementById('go');
@@ -246,7 +248,7 @@ const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
       try {
         const r = await fetch('/api/ai/skin', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: dataUrl, lang, consent: true, site: new URLSearchParams(location.search).get('site') || 'beauty2oem' }),
+          body: JSON.stringify({ image: dataUrl, lang, consent: true, site: SITE_ID }),
         });
         const d = await r.json();
         if (!d.ok) throw new Error(d.msg || '分析失败');
@@ -268,7 +270,7 @@ const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
           box.className = 'fm';
           const b = document.createElement('b'); b.textContent = f.code;
           const m = document.createElement('div'); m.className = 'meta';
-          m.textContent = [f.category, f.format, f.benefits, f.texture, f.moq ? '起订 ' + f.moq : '', f.lead_days ? '打样 ' + f.lead_days + ' 天' : '']
+          m.textContent = [f.category, f.format, f.benefits, f.texture]   /* 起订 / 打样天:工厂口径未确认前不显示(lib/terms.ts) */
             .filter(Boolean).join(' · ');
           box.appendChild(b); box.appendChild(m); fm.appendChild(box);
         });

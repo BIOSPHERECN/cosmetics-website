@@ -1,0 +1,435 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 草本原料库货架 —— 与配方库、包材库共用 ShelfPage(创始人:「产品库、包材库是一样的结构」)。
+ *
+ * 这一库的价值不在「这个成分是什么」——那种内容百度百科上有,谁写都一样。
+ * 值钱的是三件:配伍禁忌(和什么一起用会失效变色析出)、稳定性(见光遇氧高温怎么样)、
+ * 工厂注意(投料顺序、加热上限、放大生产的坑)。所以卡片上先露功效方向,
+ * 点进去第一屏就是这三件,不铺教科书式的成分介绍。
+ *
+ * 数据来自 botanical-100 工作流,入库前过了一道审稿:
+ * 16 处必须改(编造试验结论、编造浓度区间、部位写错、没依据的功效标签)全部修订过。
+ * 这一点写在页面底部,因为客户里有配方师,他们会验。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import ShelfPage from '@cosmetic/core/components/ShelfPage.astro';
+import { buildChain } from '@cosmetic/core/content/chain.ts';
+import { pageShell } from '../../../lib/shell';
+import { getCounts } from '../../../lib/counts';
+import { SHELF_SNAPSHOT } from '@cosmetic/core/generated/shelf-snapshot.ts';
+import { BEN_LABEL, FMT_LABEL, label } from '../../../lib/catalog';
+import { ingredientSlug } from '../../../lib/decoder';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/ingredients/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const url = new URL(Astro.url);
+
+const pick = (k: string) => (url.searchParams.get(k) ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 6);
+const fFam = pick('k'), fFn = pick('b'), fFmt = pick('f');
+/* 统一检索(创始人 2026-09-10 15:2x:「原料库和原料检索是不是有重复,你需要整合,别搞得客户傻傻分不清」)。
+   两层数据不合并 —— 帛卉档案是我们的观点(配伍/稳定性/投料),官方目录是客观收录,混成一张表客户就分不清
+   哪句是法规、哪句是工厂说法;但**入口只留一个、搜索框只有一个**:一次输入,两组结果并排给,各自标明出处。 */
+const q = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
+
+let rows: any[] = [];
+if (db) {
+  try {
+    rows = ((await db.prepare(
+      `SELECT slug, inci, name_zh, aliases, family, functions, formats, mechanism_zh,
+              use_level, cost_band, confidence
+         FROM ingredients WHERE status='published' ORDER BY family, name_zh`).all<any>()).results ?? []) as any[];
+  } catch { rows = []; }
+}
+
+/* 官方目录侧:各目录条数(做目录条)+ 命中(有 q 时)。LIKE 走 inci_key/name_zh,LIMIT 兜住。 */
+let regs: any[] = [];
+let regHits: any[] = [];
+let regHitCounts: Record<string, number> = {};
+if (db) {
+  try {
+    /* 各目录条数先读缓存行(tools/counts-refresh.py),没有再 GROUP BY 全表扫(55k 行,罗盘实测一天 4,200 万行) */
+    const cached = (await getCounts(db))?.registry;
+    if (cached) {
+      regs = (((await db.prepare(`SELECT id, region, name_zh, name_en FROM inci_registry ORDER BY sort_order`).all<any>()).results ?? []) as any[])
+        .map((r) => ({ ...r, n: cached[String(r.id)] ?? 0 })).filter((r) => r.n > 0);
+    } else {
+      regs = ((await db.prepare(
+        `SELECT r.id, r.region, r.name_zh, r.name_en, c.n
+           FROM inci_registry r JOIN (SELECT registry, COUNT(*) n FROM inci_catalog GROUP BY registry) c ON c.registry = r.id
+          ORDER BY r.sort_order`).all<any>()).results ?? []) as any[];
+    }
+    if (q) {
+      const like = `%${q.toUpperCase()}%`, likeZh = `%${q}%`;
+      regHits = ((await db.prepare(
+        `SELECT registry, no, name_zh, inci, cas FROM inci_catalog
+          WHERE inci_key LIKE ? OR name_zh LIKE ? OR cas = ?
+          ORDER BY registry, LENGTH(inci) LIMIT 30`).bind(like, likeZh, q).all<any>()).results ?? []) as any[];
+      const cs = ((await db.prepare(
+        `SELECT registry, COUNT(*) n FROM inci_catalog WHERE inci_key LIKE ? OR name_zh LIKE ? OR cas = ? GROUP BY registry`)
+        .bind(like, likeZh, q).all<any>()).results ?? []) as any[];
+      for (const r of cs) regHitCounts[String(r.registry)] = Number(r.n);
+    }
+  } catch { regs = []; regHits = []; }
+}
+const regName = (id: string) => { const r = regs.find((x) => x.id === id); return r ? (zh ? `${r.region} · ${r.name_zh}` : `${r.region} · ${r.name_en || r.name_zh}`) : id; };
+
+/* D1 不可用时的兜底(2026-09-07 凌晨的事故:免费档日读额度耗尽,三个库同时空白)。
+   只兜第一屏,并在页面上说明筛选暂不可用 —— 不假装正常,也不给客户一片空白。 */
+const snapI = (SHELF_SNAPSHOT as any).ingredients;
+const degraded = rows.length === 0 && !!snapI?.items?.length;
+if (degraded) rows = snapI.items;
+
+const has = (csv: string, v: string) => String(csv ?? '').split(',').map((s) => s.trim()).includes(v);
+const match = (r: any) =>
+  (fFam.length === 0 || fFam.includes(r.family)) &&
+  (fFn.length === 0 || fFn.some((b) => has(r.functions, b))) &&
+  (fFmt.length === 0 || fFmt.some((v) => has(r.formats, v)));
+const qLower = q.toLowerCase();
+const qHit = (r: any) => !q || [r.name_zh, r.inci, r.aliases].some((v) => String(v ?? '').toLowerCase().includes(qLower));
+const items = rows.filter((r) => match(r) && qHit(r));
+
+const countBy = (g: 'k' | 'b' | 'f', v: string) =>
+  rows.filter((r) =>
+    (g === 'k' || fFam.length === 0 || fFam.includes(r.family)) &&
+    (g === 'b' || fFn.length === 0 || fFn.some((b) => has(r.functions, b))) &&
+    (g === 'f' || fFmt.length === 0 || fFmt.some((x) => has(r.formats, x))) &&
+    (g === 'k' ? r.family === v : g === 'b' ? has(r.functions, v) : has(r.formats, v))).length;
+
+const toggleHref = (key: string, cur: string[], v: string) => {
+  const next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v];
+  const p = new URLSearchParams();
+  for (const [k, arr] of [['k', fFam], ['b', fFn], ['f', fFmt]] as [string, string[]][]) {
+    const use = k === key ? next : arr;
+    if (use.length) p.set(k, use.join(','));
+  }
+  const q = p.toString();
+  return q ? `${path}?${q}` : path;
+};
+
+const uniq = (xs: string[]) => [...new Set(xs.filter(Boolean))];
+const famVals = uniq(rows.map((r) => r.family));
+const topBy = (vals: string[], known: Record<string, unknown>, n: number) => {
+  const f = new Map<string, number>();
+  for (const v of vals) if (v && known[v]) f.set(v, (f.get(v) ?? 0) + 1);
+  return [...f.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([v]) => v);
+};
+const fnVals = topBy(rows.flatMap((r) => String(r.functions ?? '').split(',').map((s) => s.trim())), BEN_LABEL, 12);
+const fmtVals = topBy(rows.flatMap((r) => String(r.formats ?? '').split(',').map((s) => s.trim())), FMT_LABEL, 10);
+
+/* 降级渲染的内容是好的(快照),但不能进边缘缓存 ——
+   否则数据层恢复之后,访客还要再吃一小时的陈旧快照。 */
+if (degraded) {
+  Astro.response.headers.set('x-bh-degraded', '1');
+  Astro.response.headers.set('Cache-Control', 'no-store');
+}
+
+const T = zh ? {
+  eyebrow: '草本原料库', filters: '筛选', clearAll: '清除全部', results: '条',
+  empty: '这些条件下没有原料,放宽一个再试。', shotPending: '配图整理中',
+  fam: '类别', fn: '功效方向', fmt: '适合剂型',
+  inciLink: '各国官方目录版块(10 个目录 · 54,987 条,含官方原文链接)→',
+  sTitle: '一次搜两层:帛卉原料档案 + 各国官方原料目录',
+  sPh: '输入中文名、INCI 名或 CAS 号,如 光果甘草 / GLYCYRRHIZA / 84775-66-6',
+  sBtn: '搜索', sClear: '清除',
+  gOurs: '帛卉原料档案(机理 · 配伍禁忌 · 投料要点)', gReg: '各国官方原料目录(客观收录,不是我们的说法)',
+  sNone: '两层都没有命中。换 INCI 名或 CAS 号再试;官方目录只有中文与英文索引。',
+  sMore: (n: number, name: string) => `在「${name}」里共 ${n.toLocaleString()} 条,查看全部 →`,
+  regStrip: '已入库的官方目录', regEntries: '条',
+  title: '草本原料库 —— 配伍禁忌、稳定性、投料要点,写在明处',
+  lede: `一百条常用草本与配套活性物。每条不只写它是什么,更写和什么一起用会出问题、
+         见光遇氧高温会怎样、投料时该注意什么 —— 这三件才是打样阶段真正会踩的坑。`,
+  note: `本库内容为配方学与工厂经验的公开常识整理,供选型参考,不构成功效承诺,也不是法规限值。
+         添加区间标注的是公开配方学常见范围;各市场的可用性与限制以最新官方文本为准,并由品牌方与其责任人复核。
+         首批一百条在入库前经过一轮独立核验,修订了十六处(含编造的试验结论、错误的药用部位、无依据的功效标签)。`,
+  low: '待复核',
+  degraded: '数据服务正在恢复,当前显示的是最近一次的快照,筛选暂不可用。',
+} : {
+  eyebrow: 'Botanical ingredients', filters: 'Filters', clearAll: 'Clear all', results: 'items',
+  empty: 'Nothing matches these filters. Loosen one and try again.', shotPending: 'Imagery pending',
+  fam: 'Family', fn: 'Direction', fmt: 'Suits formats',
+  inciLink: 'Ingredient inventories by market (incl. pending registries and official sources) →',
+  sTitle: 'One search, two layers: BIOSPHERE dossiers + official inventories by market',
+  sPh: 'Chinese name, INCI name or CAS number, e.g. GLYCYRRHIZA / 84775-66-6',
+  sBtn: 'Search', sClear: 'Clear',
+  gOurs: 'BIOSPHERE ingredient dossiers (mechanism · incompatibilities · plant notes)', gReg: 'Official inventories by market (objective listings, not our opinion)',
+  sNone: 'No match in either layer. Try the INCI name or CAS number; inventories are indexed in Chinese and English only.',
+  sMore: (n: number, name: string) => `${n.toLocaleString()} entries in ${name}, see all →`,
+  regStrip: 'Inventories on file', regEntries: 'entries',
+  title: 'Botanical ingredient library — incompatibilities, stability and processing, stated',
+  lede: `One hundred botanicals and their common partners. Each entry states not only what it is, but what it
+         conflicts with, how it behaves under light, oxygen and heat, and what to watch during addition —
+         the three things that actually go wrong at sampling.`,
+  note: `Compiled from published formulation knowledge and factory experience for selection reference. Not an efficacy
+         claim and not a regulatory limit. Use levels describe common published ranges; market availability and
+         restrictions are governed by the latest official texts and reviewed by the brand and its responsible person.
+         The first hundred entries passed an independent review before loading, which corrected sixteen issues.`,
+  low: 'Under review',
+  degraded: 'The data service is recovering; this is the most recent snapshot and filtering is temporarily unavailable.',
+};
+/* 成分索引文案(zh / en 两套,其它语种回退 en) */
+const TI = zh ? {
+  h: '成分索引', lede: (n: number) => `${n.toLocaleString()} 个常见成分:功能、刺激倾向、内部评级、化学结构图与各国目录状态,点进去看含它的热销产品。`,
+  all: '全部', fn: '功能', rating: '评级', rt: { green: '常规', yellow: '限用 / 留意', red: '禁用 / 高风险' } as Record<string, string>,
+  th: ['成分', '功能', '刺激', '评级'], comHidden: '致痘评级需要公开文献出处,本批暂未标注出处,暂不展示。', n: (n: number) => `${n.toLocaleString()} 个`, empty: '没有符合的成分,放宽一个条件再试。', prev: '上一页', next: '下一页', page: (a: number, b: number) => `第 ${a} / ${b} 页`,
+} : {
+  h: 'Ingredient index', lede: (n: number) => `${n.toLocaleString()} common ingredients: function, irritancy, internal rating, chemical structure and inventory status by market — open one for the popular products that contain it.`,
+  all: 'All', fn: 'Function', rating: 'Rating', rt: { green: 'Routine', yellow: 'Restricted / note', red: 'Prohibited / high-risk' } as Record<string, string>,
+  th: ['Ingredient', 'Function', 'Irritancy', 'Rating'], comHidden: 'Comedogenic ratings need a published source. This batch is not yet sourced, so it is not shown.', n: (n: number) => `${n.toLocaleString()} items`, empty: 'Nothing matches. Loosen one filter and try again.', prev: 'Previous', next: 'Next', page: (a: number, b: number) => `Page ${a} of ${b}`,
+};
+
+const facets = [
+  { title: T.fam, options: famVals.map((v) => ({ label: v, value: v, count: countBy('k', v), href: toggleHref('k', fFam, v), on: fFam.includes(v) })) },
+  { title: T.fn, options: fnVals.map((v) => ({ label: label(BEN_LABEL, v, zh), value: v, count: countBy('b', v), href: toggleHref('b', fFn, v), on: fFn.includes(v) })) },
+  { title: T.fmt, options: fmtVals.map((v) => ({ label: label(FMT_LABEL, v, zh), value: v, count: countBy('f', v), href: toggleHref('f', fFmt, v), on: fFmt.includes(v) })) },
+].map((f) => ({ ...f, options: f.options.filter((o) => (o.count ?? 0) > 0 || o.on) }))
+ .filter((f) => f.options.length > 1);
+
+const active = [
+  ...fFam.map((v) => ({ label: v, href: toggleHref('k', fFam, v) })),
+  ...fFn.map((v) => ({ label: label(BEN_LABEL, v, zh), href: toggleHref('b', fFn, v) })),
+  ...fFmt.map((v) => ({ label: label(FMT_LABEL, v, zh), href: toggleHref('f', fFmt, v) })),
+];
+
+const shelfItems = items.slice(0, 120).map((r) => ({
+  code: r.slug,
+  href: `/${lang}/ingredients/${r.slug}/`,
+  name: zh ? r.name_zh : r.inci,
+  category: zh ? r.family : r.name_zh,
+  chips: String(r.functions ?? '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 3)
+    .map((f) => label(BEN_LABEL, f, zh)),
+  meta: zh ? r.inci : '',
+  /* 自评「低」的条目挂个角标。库里有一百条,总有几条依据不够硬 ——
+     标出来比藏起来强,配方师看到反而更信这一库。 */
+  badge: r.confidence === '低' ? T.low : undefined,
+}));
+
+/* 成分索引(原料页 v2,创始人 2026-09-17:「那么多这种资源库,都要抓回来,图文的方式展示」):
+   只取 ingredient_facts 有行的(现 ~660,后台会长到 2,345),一次读全表在内存里筛 —— 行数小、列短,比四种筛选各写一条 SQL 省。
+   结构图小图:structures 表的键跟 cn-nmpa 那套走(1 2 HEXANEDIOL)也可能跟 facts 走(1,2-HEXANEDIOL),两次 LEFT JOIN 都按主键。
+   含产品数不显(要对 3.6k 产品 GROUP 太重),点进详情页再看「共 N 款」。 */
+const fLetter = (url.searchParams.get('l') ?? '').toUpperCase().slice(0, 1);
+const fFnZh = (url.searchParams.get('fn') ?? '').trim().slice(0, 30);
+const fRating = (url.searchParams.get('r') ?? '').trim().slice(0, 6);
+const page = Math.max(1, parseInt(url.searchParams.get('p') ?? '1', 10) || 1);
+const PER = 48;
+type FactRow = { inci_key: string; name_zh: string | null; functions: string | null; functions_zh: string | null; irritancy: number | null; comedogenic: number | null; rating: string | null; png_key: string | null };
+let facts: FactRow[] = [];
+if (db && !degraded) {
+  try {
+    facts = ((await db.prepare(
+      `SELECT f.inci_key, f.name_zh, f.functions, f.functions_zh, f.irritancy, /* 无出处的致痘分不对外(公司库没有 comedogenic_src 列,3,720 条一条文献依据都没有)。明早加列后换成 CASE WHEN 过滤。 */ NULL AS comedogenic, f.rating, COALESCE(s1.png_key, s2.png_key) png_key
+         FROM ingredient_facts f
+         LEFT JOIN ingredient_structures s1 ON s1.inci_key = f.inci_key
+         LEFT JOIN ingredient_structures s2 ON s2.inci_key = replace(replace(replace(f.inci_key, ',', ' '), '-', ' '), '/', ' ')
+        ORDER BY f.inci_key`).all<FactRow>()).results ?? []) as FactRow[];
+  } catch { facts = []; }
+}
+const fnTokens = (r: FactRow) => String(zh ? (r.functions_zh || r.functions) : (r.functions || r.functions_zh)).split('·')[0].split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+const fnTop = (() => {   // 前 20 个功能(按 functions_zh 标签计数;英文页按 functions)
+  const m = new Map<string, number>();
+  for (const r of facts) for (const t of new Set(fnTokens(r))) m.set(t, (m.get(t) ?? 0) + 1);
+  return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
+})();
+const letterOf = (k: string) => (/^[A-Z]/.test(k) ? k[0] : '0');
+const idxAll = facts.filter((r) =>
+  (!fLetter || letterOf(r.inci_key) === fLetter) &&
+  (!fFnZh || fnTokens(r).includes(fFnZh)) &&
+  (!fRating || r.rating === fRating) &&
+  (!q || r.inci_key.toLowerCase().includes(qLower) || String(r.name_zh ?? '').includes(q)));
+const idxPages = Math.max(1, Math.ceil(idxAll.length / PER));
+const idxRows = idxAll.slice((page - 1) * PER, page * PER);
+const letters = ['0', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+const have = new Set(facts.map((r) => letterOf(r.inci_key)));
+const idxHref = (o: Partial<{ l: string; fn: string; r: string; p: number }>) => {
+  const v = { l: fLetter, fn: fFnZh, r: fRating, p: 1, ...o };
+  const sp = new URLSearchParams();
+  if (v.l) sp.set('l', v.l); if (v.fn) sp.set('fn', v.fn); if (v.r) sp.set('r', v.r); if (v.p > 1) sp.set('p', String(v.p)); if (q) sp.set('q', q);
+  const qs = sp.toString();
+  return (qs ? `${path}?${qs}` : path) + '#index';
+};
+
+const indexable = shell.site?.is_live === 1 && active.length === 0 && !q && !fLetter && !fFnZh && !fRating && page === 1;
+---
+
+<BaseLayout
+  locale={lang as any} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'} title={T.title} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={indexable} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    {degraded && <p class="degraded">{T.degraded}</p>}
+    {/* 这一库是我们的观点(配伍/稳定性/投料);国家目录是客观收录。
+        两者不混在一页,但要能一步走过去 —— 客户问「能加多少」时要的是后者。 */}
+    <section class="unified-search" aria-label={T.sTitle}>
+      <h2>{T.sTitle}</h2>
+      <form method="get" action={path} class="sform">
+        <input type="search" name="q" value={q} placeholder={T.sPh} maxlength="60" autocomplete="off" />
+        <button type="submit">{T.sBtn}</button>
+        {q && <a class="clear" href={path}>{T.sClear}</a>}
+      </form>
+      {q && (
+        <div class="sres">
+          <h3>{T.gOurs} · {items.length}</h3>
+          {items.length > 0 && (
+            <ul class="ours">
+              {items.slice(0, 12).map((r) => (
+                <li><a href={`/${lang}/ingredients/${r.slug}/`}><b>{zh ? r.name_zh : r.inci}</b><span>{zh ? r.inci : r.name_zh}</span></a></li>
+              ))}
+            </ul>
+          )}
+          <h3>{T.gReg} · {Object.values(regHitCounts).reduce((a, b) => a + b, 0).toLocaleString()}</h3>
+          {regHits.length > 0 && (
+            <ul class="regl">
+              {regHits.map((r) => (
+                <li>
+                  <span class="rg">{regName(String(r.registry))}</span>
+                  <a href={`/${lang}/inci/${r.registry}/?q=${encodeURIComponent(q)}`}>{r.inci || r.name_zh}</a>
+                  {r.name_zh && r.inci && <span class="zh">{r.name_zh}</span>}
+                  {r.cas && <span class="cas">CAS {r.cas}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+          {Object.entries(regHitCounts).map(([rid, n]) => (
+            <p class="more"><a href={`/${lang}/inci/${rid}/?q=${encodeURIComponent(q)}`}>{T.sMore(Number(n), regName(rid))}</a></p>
+          ))}
+          {items.length === 0 && regHits.length === 0 && <p class="none">{T.sNone}</p>}
+        </div>
+      )}
+      {regs.length > 0 && (
+        <p class="regstrip"><span class="lb">{T.regStrip}:</span>
+          {regs.map((r) => (
+            <a href={`/${lang}/inci/${r.id}/`}>{zh ? `${r.region} ${r.name_zh}` : `${r.region} ${r.name_en || r.name_zh}`} {Number(r.n).toLocaleString()} {T.regEntries}</a>
+          ))}
+          <a class="all" href={`/${lang}/inci/`}>{T.inciLink}</a>
+        </p>
+      )}
+    </section>
+    <ShelfPage
+      tabs={buildChain(lang, 'ingredient')}
+      eyebrow={T.eyebrow} title={T.title} lede={T.lede}
+      facets={facets} items={shelfItems} total={items.length}
+      active={active} clearHref={path} note={T.note}
+      labels={{ filters: T.filters, clearAll: T.clearAll, empty: T.empty,
+                results: T.results, shotPending: T.shotPending }} />
+    {facts.length > 0 && (
+      <section class="idx" id="index" aria-label={TI.h}>
+        <h2>{TI.h} <small>{TI.n(idxAll.length)}</small></h2>
+        <p class="lede">{TI.lede(facts.length)}</p>
+        <nav class="az" aria-label="A-Z">
+          <a class:list={[{ on: !fLetter }]} href={idxHref({ l: '' })}>{TI.all}</a>
+          {letters.map((L) => have.has(L) ? <a class:list={[{ on: fLetter === L }]} href={idxHref({ l: L })}>{L === '0' ? '0-9' : L}</a> : <span>{L === '0' ? '0-9' : L}</span>)}
+        </nav>
+        <div class="fl">
+          <span class="lb">{TI.fn}:</span>
+          <a class:list={[{ on: !fFnZh }]} href={idxHref({ fn: '' })}>{TI.all}</a>
+          {fnTop.map(([t, n]) => <a class:list={[{ on: fFnZh === t }]} href={idxHref({ fn: t })}>{t} <i>{n}</i></a>)}
+        </div>
+        <div class="fl">
+          <span class="lb">{TI.rating}:</span>
+          <a class:list={[{ on: !fRating }]} href={idxHref({ r: '' })}>{TI.all}</a>
+          {(['green', 'yellow', 'red'] as const).map((r) => <a class:list={['rt', r, { on: fRating === r }]} href={idxHref({ r })}>{TI.rt[r]}</a>)}
+        </div>
+        {idxRows.length === 0 ? <p class="none">{TI.empty}</p> : (
+          <table class="it">
+            <thead><tr><th></th>{TI.th.map((h) => <th>{h}</th>)}</tr></thead>
+            <tbody>{idxRows.map((r) => (
+              <tr>
+                <td class="im">{r.png_key && <img src={`/asset/${r.png_key}`} alt="" width="40" height="40" loading="lazy" decoding="async" />}</td>
+                <td><a href={`/${lang}/ingredients/${ingredientSlug(r.inci_key)}/`}>{r.inci_key}</a>{zh && r.name_zh && <small>{r.name_zh}</small>}</td>
+                <td class="fnc">{fnTokens(r).slice(0, 3).map((t) => <span>{t}</span>)}</td>
+                <td class="num">{r.irritancy != null ? String(r.irritancy) : '—'}</td>
+                <td><span class={`dot ${r.rating ?? 'none'}`}></span>{TI.rt[r.rating ?? ''] ?? '—'}</td>
+              </tr>))}</tbody>
+          </table>
+        )}
+        <p class="sub">{TI.comHidden}</p>
+        {idxPages > 1 && (
+          <nav class="pg" aria-label={TI.page(page, idxPages)}>
+            {page > 1 && <a href={idxHref({ p: page - 1 })}>← {TI.prev}</a>}
+            <span>{TI.page(page, idxPages)}</span>
+            {page < idxPages && <a href={idxHref({ p: page + 1 })}>{TI.next} →</a>}
+          </nav>
+        )}
+      </section>
+    )}
+  </main>
+  <SiteFooter locale={lang as any} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <style>
+    .unified-search { max-width: 112.5rem; margin: 0 auto; padding: 1rem 1rem 0; }
+    .unified-search h2 { font-size: 1.125rem; margin: 0 0 .5rem; }
+    .sform { display: flex; gap: .5rem; flex-wrap: wrap; }
+    .sform input { flex: 1 1 18rem; min-height: 44px; padding: 0 .875rem; font-size: 1rem; border-radius: 10px;
+                   border: 1px solid var(--ck-line, rgba(0,0,0,.18)); background: transparent; color: inherit; }
+    .sform button { min-height: 44px; padding: 0 1.25rem; font-size: .9375rem; font-weight: 600; border-radius: 10px;
+                    cursor: pointer; border: 0; background: var(--ck-ink, #111); color: var(--ck-paper, #fff); }
+    .sform .clear { min-height: 44px; display: inline-flex; align-items: center; padding: 0 .75rem; color: inherit; }
+    .sres { margin: 1rem 0 0; display: grid; gap: .625rem; }
+    .sres h3 { font-size: .9375rem; margin: .5rem 0 0; opacity: .7; }
+    .ours { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); }
+    .ours a { display: grid; gap: .125rem; padding: .625rem .75rem; border: 1px solid var(--ck-line, rgba(0,0,0,.14)); border-radius: 10px;
+              text-decoration: none; color: inherit; }
+    .ours a b { font-size: .9375rem; } .ours a span { font-size: .8125rem; opacity: .65; }
+    .regl { list-style: none; margin: 0; padding: 0; display: grid; gap: .375rem; }
+    .regl li { display: flex; flex-wrap: wrap; gap: .5rem .75rem; align-items: baseline; font-size: .9375rem;
+               padding: .5rem .25rem; border-bottom: 1px solid var(--ck-line, rgba(0,0,0,.08)); }
+    .regl .rg { font-size: .75rem; padding: .125rem .5rem; border-radius: 999px; border: 1px solid var(--ck-line, rgba(0,0,0,.18)); opacity: .8; }
+    .regl .zh, .regl .cas { font-size: .8125rem; opacity: .65; font-variant-numeric: tabular-nums; }
+    .more, .none { margin: 0; font-size: .875rem; }
+    .regstrip { margin: 1rem 0 0; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; font-size: .875rem; }
+    .regstrip .lb { opacity: .6; }
+    .regstrip a { min-height: 40px; display: inline-flex; align-items: center; padding: 0 .75rem; border-radius: 999px;
+                  border: 1px solid var(--ck-line, rgba(0,0,0,.16)); text-decoration: none; color: inherit; }
+    .regstrip a.all { border-style: dashed; }
+    .inci-link { max-width: min(112.5rem, 100%); margin: 0 auto 1rem;
+                 padding: 0 var(--ck-gutter, 1.25rem); font-size: .8125rem; }
+    /* 成分索引(原料页 v2) */
+    .idx { max-width: min(112.5rem, 100%); margin: 0 auto; padding: 2rem var(--ck-gutter, 1.25rem) 3rem; }
+    .idx h2 { font-size: 1.5rem; font-weight: 650; letter-spacing: -.015em; margin: 0 0 .375rem; } .idx h2 small { font-size: .875rem; font-weight: 400; opacity: .65; margin-left: .5rem; }
+    .idx .lede { font-size: .9375rem; line-height: 1.7; opacity: .75; margin: 0 0 1rem; max-width: 60rem; }
+    .az { display: flex; flex-wrap: wrap; gap: .25rem; margin: 0 0 .75rem; }
+    .az a, .az span { min-width: 2.25rem; min-height: 2.25rem; display: inline-flex; align-items: center; justify-content: center; padding: 0 .5rem; border-radius: 8px; font-size: .8125rem; text-decoration: none; color: inherit; font-variant-numeric: tabular-nums; }
+    .az a { border: 1px solid var(--ck-line, rgba(0,0,0,.16)); } .az span { opacity: .3; }
+    .fl { display: flex; flex-wrap: wrap; gap: .375rem; align-items: center; margin: 0 0 .625rem; font-size: .8125rem; } .fl .lb { opacity: .6; margin-right: .25rem; }
+    .fl a { min-height: 2rem; display: inline-flex; align-items: center; gap: .25rem; padding: 0 .75rem; border-radius: 999px; border: 1px solid var(--ck-line, rgba(0,0,0,.16)); text-decoration: none; color: inherit; }
+    .fl a i { font-style: normal; opacity: .55; font-size: .75rem; }
+    .az a.on, .fl a.on { background: var(--ck-ink, #111); color: var(--ck-paper, #fff); border-color: transparent; }
+    .fl a.rt.green { border-color: #2e9e5b; } .fl a.rt.yellow { border-color: #e0a300; } .fl a.rt.red { border-color: #d3382a; }
+    .it { width: 100%; border-collapse: collapse; font-size: .875rem; margin-top: .75rem; }
+    .it th { text-align: left; font-size: .6875rem; letter-spacing: .08em; text-transform: uppercase; opacity: .6; padding: .375rem .5rem; border-bottom: 1px solid var(--ck-line, rgba(0,0,0,.12)); }
+    .it td { padding: .5rem; border-bottom: 1px solid var(--ck-line, rgba(0,0,0,.06)); vertical-align: middle; line-height: 1.45; }
+    .it td a { color: inherit; text-decoration: none; font-weight: 550; } .it td a:hover { color: var(--ck-accent); }
+    .it small { display: block; font-size: .75rem; opacity: .65; }
+    .it .im { width: 2.5rem; padding-right: 0; } .it .im img { display: block; width: 2.5rem; height: 2.5rem; border-radius: 6px; background: #fff; border: 1px solid var(--ck-line, rgba(0,0,0,.08)); }
+    .it .fnc span { display: inline-block; font-size: .75rem; padding: .125rem .5rem; margin: .125rem .25rem .125rem 0; border-radius: 999px; background: rgb(128 128 128 / .16); }
+    .it .num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .dot { display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; margin-right: .375rem; }
+    .dot.green { background: #2e9e5b; } .dot.yellow { background: #e0a300; } .dot.red { background: #d3382a; } .dot.none { background: rgba(0,0,0,.18); }
+    .pg { display: flex; gap: 1rem; align-items: center; justify-content: center; margin: 1rem 0 0; font-size: .875rem; } .pg a { color: inherit; }
+    .none { font-size: .875rem; opacity: .75; }
+    @media (max-width: 40rem) { .it th:nth-child(3), .it td:nth-child(3), .it th:nth-child(4), .it td:nth-child(4) { display: none; } }
+    .degraded { max-width: min(112.5rem, 100%); margin: 0 auto;
+                padding: 0 var(--ck-gutter, 1.25rem); font-size: .8125rem;
+                color: var(--ck-ink-soft); line-height: 1.7; }
+    /* 致痘列隐藏时的说明(2026-09-22):无出处的评级不对外 */
+    .sub { font-size: .8125rem; line-height: 1.6; opacity: .7; margin: .5rem 0 0; }
+  </style>
+</BaseLayout>

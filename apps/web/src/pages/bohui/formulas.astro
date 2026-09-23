@@ -17,12 +17,14 @@ const url = new URL(Astro.request.url);
 const q = (url.searchParams.get('q') ?? '').trim();
 const cat = url.searchParams.get('cat') ?? '';
 const fmt = url.searchParams.get('fmt') ?? '';
+const st = (url.searchParams.get('status') ?? '').slice(0, 20);   // ?status=imported 看拍照导入的老配方
 const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
 const PER = 30;
 
 const where: string[] = [], bind: unknown[] = [];
 if (cat) { where.push('category=?'); bind.push(cat); }
 if (fmt) { where.push('format=?'); bind.push(fmt); }
+if (st) { where.push('status=?'); bind.push(st); }
 if (q) { where.push('(code LIKE ? OR benefits LIKE ? OR actives_json LIKE ? OR texture LIKE ?)'); bind.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
 const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
@@ -31,6 +33,10 @@ const { results: rows } = await c.db.prepare(
   `SELECT * FROM formulas ${W} ORDER BY category, format, code LIMIT ? OFFSET ?`
 ).bind(...bind, PER, (page - 1) * PER).all<any>();
 const { results: cats } = await c.db.prepare(`SELECT category, COUNT(*) n FROM formulas GROUP BY category ORDER BY n DESC`).all<any>();
+// 配方库一体化(创始人 2026-09-17 17:4x:「配方库下面有个海外爆款配方库,他们应该是一体的」):三个页签共用一个入口
+const hotN = (await c.db.prepare(`SELECT COUNT(*) n FROM market_products WHERE inci IS NOT NULL AND length(inci) > 30`).first<{ n: number }>().catch(() => null))?.n ?? 0;
+const impN = (await c.db.prepare(`SELECT COUNT(*) n FROM formulas WHERE status='imported'`).first<{ n: number }>().catch(() => null))?.n ?? 0;
+const allN = (await c.db.prepare(`SELECT COUNT(*) n FROM formulas`).first<{ n: number }>().catch(() => null))?.n ?? 0;
 const { results: fmts } = await c.db.prepare(`SELECT format, COUNT(*) n FROM formulas GROUP BY format ORDER BY n DESC`).all<any>();
 
 const CAT: Record<string, string> = { skincare: '护肤', makeup: '彩妆', cleansing: '清洁', oral: '口腔', body: '身体', hair: '洗护' };
@@ -46,8 +52,9 @@ const acts = (s: string) => { try { return JSON.parse(s) as { name: string; pct:
 
 <AdminShell title="配方库" active="formulas" email={c.sess.email} tenant={c.tenant}>
   <h1>配方库</h1>
+  <nav class="tabs"><a class:list={[!st && 'on']} href="/bohui/formulas/">公司配方 {allN}</a><a href="/bohui/formula-lab/hot/">海外爆款配方 {hotN}</a><a class:list={[st === 'imported' && 'on']} href="/bohui/formulas/?status=imported">拍照导入的老配方 {impN}</a><a href="/bohui/formula-lab/import/">+ 导入老配方</a></nav>
   <p class="lead">
-    共 {total} 条。客户在前台用自然语言描述需求时,AI 先从这张表里检索候选,再解释为什么推荐 ——
+    公司配方 {total} 条(对外货架只放 status 为样例 / 上架的;一万三千条导入后自动变)。海外爆款配方是同一个库的参考分区,只在后台。客户在前台用自然语言描述需求时,AI 先从这张表里检索候选,再解释为什么推荐 ——
     <b style="color:var(--ad-bad)">所以这里必须是真实配方</b>,库里是样例数据的话,AI 的推荐就是编的。
   </p>
 
@@ -131,7 +138,7 @@ const acts = (s: string) => { try { return JSON.parse(s) as { name: string; pct:
     .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
     .bar input,.bar select{width:auto}
     .ac{display:flex;gap:.25rem;flex-wrap:wrap;margin-bottom:.1875rem}
-    .chip{background:#eef4fa;color:var(--ad-accent);border-radius:4px;padding:.0625rem .3125rem;font-size:.6875rem}
+    .chip{background:#eef4fa;color:var(--ad-accent);border-radius:4px;padding:.0625rem .3125rem;font-size:.75rem}
     .bf{font-size:.75rem;color:var(--ad-soft)}
     .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--ad-soft)}
     dialog{border:0;border-radius:12px;padding:1.5rem;width:min(38rem,94vw);box-shadow:0 24px 64px -20px rgb(0 0 0/.4)}
@@ -142,7 +149,8 @@ const acts = (s: string) => { try { return JSON.parse(s) as { name: string; pct:
     .ops{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.5rem}
     .toast{position:fixed;right:1.25rem;bottom:1.25rem;background:#10131a;color:#fff;padding:.625rem 1rem;border-radius:7px;font-size:.8125rem;z-index:9}
     [hidden]{display:none !important}
-  </style>
+    .tabs{display:flex;gap:.5rem;flex-wrap:wrap;margin:0 0 .75rem} .tabs a{border:1px solid var(--ad-side-line);border-radius:999px;padding:.3rem .9rem;font-size:.875rem;text-decoration:none;color:var(--ad-ink);background:var(--ad-sunk)} .tabs a.on{background:var(--ad-ink);color:#fff;border-color:var(--ad-ink)}
+</style>
   <script is:inline define:vars={{ rows }}>
     const dlg = document.getElementById('dlg'), ef = document.getElementById('ef'), toast = document.getElementById('toast');
     let cur = null;

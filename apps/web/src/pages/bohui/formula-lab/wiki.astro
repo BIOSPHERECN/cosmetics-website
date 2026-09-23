@@ -1,0 +1,110 @@
+---
+/**
+ * 配方维基 —— 原料页 / 剂型页,只读 wiki_pages(tools/wiki-build.py 编译写入,页面不写库)。
+ * 所有已登录角色可读:维基页不含配方比例,原料页「用过它的配方」只列 code,不需要 requireLab。
+ * 左列列表按 title / slug 模糊查,右列 mdLite 渲染正文(照 playbook.astro)。
+ */
+import AdminShell from '../../../layouts/AdminShell.astro';
+import { pageGuard } from '../../../lib/guard';
+import { mdLite } from '../../../lib/md-lite';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+const url = new URL(Astro.request.url);
+const KINDS: Record<string, string> = { ingredient: '原料', format: '剂型' };
+const kindRaw = url.searchParams.get('kind') ?? 'ingredient';
+const kind = kindRaw in KINDS ? kindRaw : 'ingredient';
+const q = (url.searchParams.get('q') ?? '').trim();
+const want = (url.searchParams.get('slug') ?? '').trim();
+
+type Row = { slug: string; title: string; version: number; tier: string };
+type Page = Row & { kind: string; body_md: string; links_json: string; sources_json: string; compiled_by: string; updated_at: string };
+/* 表还没建(0080 未灌)或 wiki-build 还在后台跑时不能白屏:查询失败当空表,页面给「稍后刷新」 */
+let list: Row[] = [], cur: Page | null = null, total = 0;
+try {
+  list = (await c.db.prepare(`SELECT slug,title,version,tier FROM wiki_pages WHERE kind=? AND (title LIKE ? OR slug LIKE ?) ORDER BY title LIMIT 200`)
+    .bind(kind, `%${q}%`, `%${q}%`).all<Row>()).results;
+  total = (await c.db.prepare(`SELECT COUNT(*) n FROM wiki_pages`).first<{ n: number }>())?.n ?? 0;
+  if (want) cur = await c.db.prepare(`SELECT * FROM wiki_pages WHERE slug=?`).bind(want).first<Page>();
+} catch { /* 表不存在 → total=0 → 下面走 .empty */ }
+
+const parse = <T,>(s: string | null | undefined, fb: T): T => { try { return JSON.parse(s || '') ?? fb; } catch { return fb; } };
+const links: string[] = cur ? parse<string[]>(cur.links_json, []) : [];
+const sources: Record<string, unknown>[] = cur ? parse<Record<string, unknown>[]>(cur.sources_json, []) : [];
+/* 互链 slug 形如 ingredient/xxx 或 format/yyy,前半段就是 kind */
+const hrefOf = (slug: string) => `?kind=${encodeURIComponent(slug.split('/')[0])}&slug=${encodeURIComponent(slug)}`;
+const link = (p: Record<string, string>) => { const u = new URLSearchParams(); u.set('kind', kind); if (q) u.set('q', q); for (const [k, v] of Object.entries(p)) v ? u.set(k, v) : u.delete(k); return `?${u}`; };
+/* 认知档:① 有出处(脚本编译)绿;② 推断(带模型综述)黄;其余灰 */
+const tierCls = (t: string) => t === '①' ? 'p-ok' : t === '②' ? 'p-warn' : 'p-wait';
+const compiledZh = (s: string) => s === 'script' ? '脚本编译' : s.startsWith('provider:') ? `模型综述 · ${s.slice(9)}` : s;
+/* 来源一行:{table:'ingredients',key:'x'} / {table:'inci_catalog',no:[…]} / {table:'formulas',count:n} */
+const srcLine = (s: Record<string, unknown>) => Object.entries(s).filter(([k]) => k !== 'table').map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(', ') : String(v)}`).join(' · ');
+---
+
+<AdminShell title="配方维基" active="formula-lab-wiki" email={c.sess.email} tenant={c.tenant}>
+  <div class="hd">
+    <div><h1>配方维基</h1><p class="lead">原料页 / 剂型页由库编译,不含配方比例。页头「①」= 有出处(脚本编译),「②」= 带模型推断,以官方文本为准。</p></div>
+  </div>
+
+  {total === 0 ? <div class="empty">维基还在编译,稍后刷新</div> : (
+    <>
+      <form class="search" method="get">
+        <input type="hidden" name="kind" value={kind} />
+        <input name="q" value={q} placeholder={kind === 'ingredient' ? '搜原料:烟酰胺 / niacinamide / 玻尿酸…' : '搜剂型:精华 / cream / 面膜…'} />
+        <button class="btn" type="submit">搜索</button>
+      </form>
+      <div class="tabs">
+        {Object.entries(KINDS).map(([k, zh]) => <a class:list={['chip', kind === k && 'on']} href={`?kind=${k}${q ? `&q=${encodeURIComponent(q)}` : ''}`}>{zh}</a>)}
+        <span class="dim">{list.length} 页{list.length >= 200 ? '(只显示前 200,请缩小搜索)' : ''}</span>
+      </div>
+
+      <div class="layout">
+        <nav class="toc">
+          {list.length === 0 && <p class="dim">没有匹配的页面。</p>}
+          {list.map((p) => <a class:list={['t', p.slug === want && 'on']} href={link({ slug: p.slug })}><b>{p.title}</b><span class="m">v{p.version} · {p.tier}</span></a>)}
+        </nav>
+        <article class="doc">
+          {!cur ? <p class="dim">{want ? `没有「${want}」这一页。` : '左边选一页看。'}</p> : (
+            <>
+              <div class="dh">
+                <span class="pill p-wait">{KINDS[cur.kind] ?? cur.kind}</span>
+                <span class:list={['pill', tierCls(cur.tier)]}>{cur.tier}</span>
+                <span class="meta">v{cur.version} · {compiledZh(cur.compiled_by)} · 更新 {String(cur.updated_at).slice(0, 16)}</span>
+              </div>
+              <div class="md" set:html={mdLite(cur.body_md, { maxRows: 1000 })} />
+              {links.length > 0 && (
+                <div class="links"><b>相关页</b>{links.map((s) => <a class="chip" href={hrefOf(s)}>{s}</a>)}</div>
+              )}
+              <details class="src">
+                <summary>来源({sources.length})</summary>
+                <ul>{sources.map((s) => <li><code>{String(s.table ?? '?')}</code> {srcLine(s)}</li>)}</ul>
+              </details>
+            </>
+          )}
+        </article>
+      </div>
+    </>
+  )}
+
+  <style>
+    .hd{display:flex;align-items:flex-start;gap:1rem} .hd div{flex:1}
+    .search{display:flex;gap:.5rem;margin:.75rem 0 .5rem} .search input{flex:1;font-size:1rem;padding:.625rem .875rem}
+    .tabs{display:flex;gap:.375rem;align-items:center;margin-bottom:1rem}
+    .chip{display:inline-flex;align-items:center;font-size:.8125rem;padding:.2rem .625rem;border:1px solid var(--ad-line);border-radius:999px;text-decoration:none;color:inherit;background:var(--ad-panel)}
+    .chip.on{background:#10131a;color:#fff;border-color:#10131a}
+    .layout{display:grid;grid-template-columns:18rem minmax(0,1fr);gap:1rem} @media (max-width:60rem){.layout{grid-template-columns:1fr}}
+    .toc{display:grid;gap:.375rem;align-content:start;max-height:70vh;overflow:auto;padding-right:.25rem}
+    .t{display:grid;gap:.125rem;padding:.5rem .625rem;border:1px solid var(--ad-line);border-radius:8px;text-decoration:none;color:inherit;background:var(--ad-panel)}
+    .t b{font-size:.875rem} .t .m{font-size:.75rem;color:var(--ad-faint)} .t.on{border-color:#10131a;background:#10131a;color:#fff} .t.on .m{color:#cbd5e1}
+    .pill{font-size:.75rem}
+    .doc{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:1.25rem 1.5rem;min-height:30rem}
+    .dh{display:flex;align-items:center;gap:.625rem;margin-bottom:.75rem;flex-wrap:wrap} .meta{color:var(--ad-faint);font-size:.8125rem}
+    .md{font-size:.9375rem;line-height:1.75;max-width:56rem} .md :global(h2){font-size:1.25rem;margin:.25rem 0 .75rem} .md :global(h3){font-size:1rem;margin:1.25rem 0 .375rem} .md :global(h4){font-size:.9375rem;margin:1rem 0 .25rem}
+    .md :global(ul),.md :global(ol){padding-left:1.375rem} .md :global(li){margin-bottom:.25rem} .md :global(table){border-collapse:collapse;font-size:.875rem;margin:.5rem 0} .md :global(th),.md :global(td){border:1px solid var(--ad-line);padding:.375rem .625rem;vertical-align:top;text-align:left}
+    .md :global(code){background:#f1f5f9;padding:.0625rem .375rem;border-radius:4px;font-size:.8125rem} .md :global(.tw){overflow-x:auto}
+    .links{display:flex;flex-wrap:wrap;gap:.375rem;align-items:center;margin-top:1.25rem;padding-top:.75rem;border-top:1px solid var(--ad-line)} .links b{font-size:.8125rem;color:var(--ad-soft);margin-right:.25rem}
+    .src{margin-top:1rem;font-size:.8125rem;color:var(--ad-soft)} .src summary{cursor:pointer} .src ul{padding-left:1.375rem;margin:.375rem 0 0} .src code{background:#f1f5f9;padding:.0625rem .375rem;border-radius:4px}
+    .dim{color:var(--ad-faint);font-size:.875rem}
+  </style>
+</AdminShell>

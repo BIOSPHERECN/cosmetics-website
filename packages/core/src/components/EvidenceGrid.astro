@@ -72,7 +72,7 @@ const { title, intro, items, pendingLabel = '出处待补充' } = Astro.props;
   }
   .src {
     font-family: var(--ck-font-mono);
-    font-size: 0.75rem;
+    font-size: max(0.75rem, 14px);
     color: var(--ck-ink-faint);
   }
   /* 出处缺失时显眼提示,逼内容侧补齐,不让无出处宣称静默上线 */

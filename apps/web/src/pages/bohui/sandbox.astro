@@ -1,0 +1,225 @@
+---
+/**
+ * 推演沙盘(任务 S,2026-09-18 创始人:「1 省算力,2 推演,是不是很像我们 SueAI 的多专家探讨」「把这些机制用于帛卉的规划上」)。
+ * 左栏:新建议题 + 历史;右栏:当前 run 的 实体关系 → 8 个 Agent → 逐轮发言 → 报告。
+ * 页面 SSR 渲染库里现状;JS 每 3 秒 POST op=step 推一格,step 变了就 reload —— 不做前端状态机,v0 够用(ponytail:要不刷新再改成局部渲染)。
+ * 结论口径:频率≠销量、不预测销量、每条结论带发言引用 —— 都在 lib/sandbox.ts 的提示词与代码兜底里,这页只展示。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { MARKET } from '../../lib/decoder';
+import { stepZh, type RunRow, type Entities, type Agent, type Turn, type Report } from '../../lib/sandbox';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const id = Number(url.searchParams.get('id') ?? 0);
+type ListRow = Pick<RunRow, 'id' | 'title' | 'market' | 'category' | 'rounds' | 'step' | 'status' | 'tokens_in' | 'tokens_out' | 'created_at'>;
+let runs: ListRow[] = [], run: RunRow | null = null, ready = true;
+try {
+  runs = (await c.db.prepare(`SELECT id,title,market,category,rounds,step,status,tokens_in,tokens_out,created_at FROM sandbox_runs ORDER BY id DESC LIMIT 30`).all<ListRow>()).results ?? [];
+  if (id) run = await c.db.prepare(`SELECT * FROM sandbox_runs WHERE id=?`).bind(id).first<RunRow>();
+} catch { ready = false; }   // 0092 未灌:显示「数据准备中」,不 500
+
+const J = <T,>(s: string | null | undefined, d: T): T => { try { return s ? (JSON.parse(s) as T) : d; } catch { return d; } };
+const ents = J<Partial<Entities>>(run?.entities_json, {});
+const agents = J<Agent[]>(run?.agents_json, []);
+const transcript = J<Turn[][]>(run?.transcript_json, []);
+const rep = J<Report | null>(run?.report_json, null);
+const ENT_ZH: [keyof Entities, string][] = [['brands', '品牌'], ['ingredients', '成分'], ['channels', '渠道'], ['consumer_segments', '消费人群'], ['regulators', '监管方'], ['competitors', '竞品'], ['events', '事件']];
+const mk = (m: string | null) => (m && MARKET[m]?.[0]) ?? (m ?? '').toUpperCase();
+const MARKETS = ['kr', 'jp', 'us', 'eu', 'gl', 'cn', 'id', 'my', 'th', 'vn'];
+/* 进度:done 满格;roundN 在 agents 之后按轮数分;entities/agents 各占一小格 */
+const roundOf = (s: string) => Number((/^round(\d+)$/.exec(s) ?? [])[1] ?? 0);
+const pct = (r: RunRow) => r.step === 'done' ? 100 : r.step === 'new' ? 2 : r.step === 'entities' ? 10 : r.step === 'agents' ? 18 : 18 + Math.round((roundOf(r.step) / r.rounds) * 70);
+const stanceCls: Record<string, string> = { '支持': 'p-ok', '观望': 'p-wait', '反对': 'p-bad' };
+const shiftMark = (t: Turn, r: number) => {   // 与上一轮比:支持↑ / 反对↓ / 不变
+  const p = transcript[r - 1]?.find((x) => x.agent === t.agent); if (!p || p.stance === t.stance) return '';
+  const rank: Record<string, number> = { '反对': 0, '观望': 1, '支持': 2 };
+  return rank[t.stance] > rank[p.stance] ? '↑' : '↓';
+};
+const STATUS_ZH: Record<string, string> = { running: '推演中', done: '完成', failed: '失败' };
+---
+
+<AdminShell title="推演沙盘" active="sandbox" email={c.sess.email} tenant={c.tenant}>
+  <div class="sb">
+    <h1>推演沙盘</h1>
+    <p class="lead">一句议题 → 从库里真数抽实体关系 → 8 个差异化 Agent(监管审评员、竞争对手配方总工按角色专家口径)→ 多轮互动 → 带发言引用的报告。<b>频率不是销量;报告不预测销量、不说必然爆品。</b></p>
+
+    {!ready ? <div class="empty">数据准备中 —— sandbox_runs 表还没建(迁移 0092)。</div> : (
+    <div class="cols">
+      <aside class="left">
+        <section class="panel">
+          <h2>新建推演</h2>
+          <form id="f-new" class="frm">
+            <label>议题 <textarea name="brief" rows="4" required placeholder="例:在韩国市场推一款主打积雪草的敏感肌精华,15ml 定价 18 美元"></textarea></label>
+            <label>标题(可空) <input name="title" maxlength="120" /></label>
+            <div class="row2">
+              <label>市场 <select name="market">{MARKETS.map((m) => <option value={m}>{mk(m)}</option>)}</select></label>
+              <label>品类(cat_zh 口径) <input name="category" placeholder="精华 / 面霜 / 洁面" maxlength="40" /></label>
+            </div>
+            <label>轮数 <select name="rounds"><option>2</option><option selected>3</option><option>4</option></select></label>
+            <button class="btn pri" type="submit">开始推演</button>
+            <span class="hint" id="new-msg"></span>
+          </form>
+        </section>
+        <section class="panel">
+          <h2>历史(最近 30)</h2>
+          {runs.length === 0 ? <div class="empty">还没有推演。</div> : (
+            <ul class="hist">{runs.map((r) => (
+              <li class:list={[r.id === id && 'cur']}><a href={`/bohui/sandbox/?id=${r.id}`}>
+                <b>{r.title}</b>
+                <span class="dim">{mk(r.market)}{r.category ? ' · ' + r.category : ''} · {stepZh(r.step, r.rounds)} · <i class:list={['pill', r.status === 'done' ? 'p-ok' : r.status === 'failed' ? 'p-bad' : 'p-wait']}>{STATUS_ZH[r.status] ?? r.status}</i></span>
+                <span class="dim">{r.created_at.slice(0, 16)} · tokens {r.tokens_in + r.tokens_out}</span>
+              </a></li>
+            ))}</ul>
+          )}
+        </section>
+      </aside>
+
+      <section class="right">
+        {!run ? <div class="empty">左边新建一条,或点历史里的一条查看。</div> : (
+          <>
+            <header class="head">
+              <div>
+                <h2>{run.title}</h2>
+                <p class="dim">{run.brief}</p>
+                <p class="dim">{mk(run.market)}{run.category ? ' · ' + run.category : ''} · {run.rounds} 轮 · {run.created_by ?? '—'} · {run.created_at.slice(0, 16)} · tokens 入 {run.tokens_in} / 出 {run.tokens_out}</p>
+              </div>
+              <div class="acts no-print">
+                <button class="btn" type="button" onclick="window.print()" disabled={!rep}>打印报告</button>
+              </div>
+            </header>
+            <div class="prog no-print" data-id={run.id} data-status={run.status} data-step={run.step}>
+              <div class="bar-bg"><div class="bar-fg" style={`width:${pct(run)}%`}></div></div>
+              <span id="prog-txt">{run.status === 'failed' ? `失败:${run.error ?? ''}` : run.status === 'done' ? '完成' : `${stepZh(run.step, run.rounds)},正在推进…`}</span>
+            </div>
+
+            {rep && (
+              <section class="panel report">
+                <h2>报告</h2>
+                <p class="sum">{rep.summary}</p>
+                <h3>结论</h3>
+                {rep.outcomes.length === 0 ? <div class="empty">没有带引用的结论(模型未引用发言的结论已被丢弃)。</div> : (
+                  <table>
+                    <thead><tr><th>主张</th><th style="width:4rem">概率</th><th>支持者</th><th>反对者</th><th>证据引用</th></tr></thead>
+                    <tbody>{rep.outcomes.map((o) => (
+                      <tr>
+                        <td>{o.claim}</td>
+                        <td><i class:list={['pill', o.probability === '高' ? 'p-ok' : o.probability === '低' ? 'p-bad' : 'p-wait']}>{o.probability}</i></td>
+                        <td class="dim">{o.supporters.join('、') || '—'}</td>
+                        <td class="dim">{o.opponents.join('、') || '—'}</td>
+                        <td class="ev">{o.evidence.map((e) => <div>第 {e.round} 轮 · {e.agent}:「{e.quote}」</div>)}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                )}
+                <div class="g3">
+                  <div><h3>风险</h3><ul>{rep.risks.map((r) => <li>{r.risk} <span class="dim">— {r.source_agent} · 第 {r.round} 轮</span></li>)}</ul></div>
+                  <div><h3>机会</h3><ul>{rep.opportunities.map((r) => <li>{r.opportunity} <span class="dim">— {r.source_agent} · 第 {r.round} 轮</span></li>)}</ul></div>
+                  <div><h3>要改什么</h3><ol>{rep.what_to_change.map((x) => <li>{x}</li>)}</ol></div>
+                </div>
+                <p class="dim">置信度 <b class="num">{Math.round(rep.confidence * 100)}%</b> · {rep.confidence_reason}</p>
+              </section>
+            )}
+
+            {agents.length > 0 && (
+              <section class="panel">
+                <h2>8 个 Agent</h2>
+                <div class="agents">{agents.map((a) => (
+                  <div class="ag">
+                    <b>{a.name}</b>{a.persona && <i class="pill p-ok" title="persona 取 expert_skills 角色专家口径">专家口径</i>}
+                    <div class="dim">{a.role}</div>
+                    <div>立场种子 <i class:list={['pill', stanceCls[a.stance_seed]]}>{a.stance_seed}</i></div>
+                    <div class="dim">关心:{a.cares.join('、')}</div>
+                    <div class="dim">记忆:{a.memory.join('、') || '—'}</div>
+                  </div>
+                ))}</div>
+              </section>
+            )}
+
+            {transcript.length > 0 && (
+              <section class="panel">
+                <h2>逐轮发言</h2>
+                {transcript.map((turns, i) => (
+                  <details open={i === transcript.length - 1}>
+                    <summary>第 {i + 1} 轮 · 支持 {turns.filter((t) => t.stance === '支持').length} / 观望 {turns.filter((t) => t.stance === '观望').length} / 反对 {turns.filter((t) => t.stance === '反对').length}</summary>
+                    <ul class="turns">{turns.map((t) => (
+                      <li>
+                        <b>{t.agent}</b> <i class:list={['pill', stanceCls[t.stance]]}>{t.stance}{shiftMark(t, i)}</i>
+                        <div>{t.statement}</div>
+                        {t.ask && <div class="dim">问:{t.ask}</div>}
+                        {t.shift && t.shift !== '不变' && <div class="dim">变化:{t.shift}</div>}
+                      </li>
+                    ))}</ul>
+                  </details>
+                ))}
+              </section>
+            )}
+
+            {run.entities_json && (
+              <section class="panel">
+                <h2>实体与关系</h2>
+                <div class="ents">{ENT_ZH.map(([k, zh]) => (ents[k] as string[] | undefined)?.length ? <div><b>{zh}</b> {(ents[k] as string[]).map((x) => <span class="tag">{x}</span>)}</div> : null)}</div>
+                {ents.relations?.length ? <ul class="rels">{ents.relations.map((r) => <li>{r.a} <span class="dim">{r.rel}</span> {r.b}</li>)}</ul> : null}
+              </section>
+            )}
+          </>
+        )}
+      </section>
+    </div>
+    )}
+  </div>
+
+  <script>
+    /* 新建:POST create → 跳到 ?id=;推进:每 3 秒 POST step,step 变了就 reload(SSR 重画),done / failed 停 */
+    const api = (body: Record<string, unknown>) => fetch('/api/admin/sandbox/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json() as Promise<{ ok: boolean; id?: number; msg?: string; step?: string; status?: string }>);
+    const f = document.getElementById('f-new') as HTMLFormElement | null;
+    f?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('new-msg')!; msg.textContent = '建立中…';
+      const d = Object.fromEntries(new FormData(f).entries());
+      const r = await api({ op: 'create', ...d });
+      if (r.ok) location.href = `/bohui/sandbox/?id=${r.id}`; else msg.textContent = r.msg ?? '失败';
+    });
+    const p = document.querySelector<HTMLElement>('.prog');
+    if (p && p.dataset.status === 'running') {
+      let busy = false;
+      const tick = async () => {
+        if (busy) return; busy = true;
+        try {
+          const r = await api({ op: 'step', id: Number(p.dataset.id) });
+          if (r.status === 'failed' || r.step !== p.dataset.step) { location.reload(); return; }
+        } catch { /* 网络抖动:下一拍再试 */ }
+        busy = false;
+      };
+      tick(); setInterval(tick, 3000);
+    }
+  </script>
+
+  <style>
+    .sb{max-width:112.5rem;margin:0 auto}   /* 版心 1800 铁令 */
+    .cols{display:grid;grid-template-columns:20rem minmax(0,1fr);gap:1rem;align-items:start}
+    .panel{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:1rem 1.125rem;margin-bottom:1rem}
+    h2{font-size:.9375rem;margin:0 0 .5rem} h3{font-size:.875rem;margin:.75rem 0 .375rem}
+    .dim{color:var(--ad-faint);font-size:.75rem}
+    .frm{display:grid;gap:.625rem} .frm label{display:grid;gap:.25rem;font-size:.8125rem} .row2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+    .frm textarea,.frm input,.frm select{width:100%;font:inherit;font-size:.875rem}
+    .hist{list-style:none;margin:0;padding:0} .hist li a{display:grid;gap:.125rem;padding:.5rem .375rem;border-radius:6px;color:inherit;text-decoration:none} .hist li a:hover,.hist li.cur a{background:var(--ad-sunk)}
+    .head{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;margin-bottom:.75rem} .head p{margin:.125rem 0}
+    .prog{display:grid;gap:.375rem;margin-bottom:1rem;font-size:.8125rem} .bar-bg{height:.5rem;background:var(--ad-sunk);border-radius:99px;overflow:hidden} .bar-fg{height:100%;background:var(--ad-ok);transition:width .4s}
+    .agents{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.625rem} .ag{border:1px solid var(--ad-line);border-radius:8px;padding:.625rem .75rem;display:grid;gap:.25rem;font-size:.8125rem}
+    .turns{list-style:none;margin:.5rem 0 0;padding:0;display:grid;gap:.5rem} .turns li{border-left:3px solid var(--ad-line);padding:.25rem .75rem;font-size:.875rem}
+    details summary{cursor:pointer;font-weight:600;font-size:.875rem;padding:.375rem 0}
+    .ents{display:grid;gap:.375rem;font-size:.8125rem} .tag{display:inline-block;background:var(--ad-sunk);border-radius:99px;padding:.0625rem .5rem;margin:.125rem .125rem 0 0}
+    .rels{margin:.5rem 0 0;padding-left:1.25rem;font-size:.8125rem}
+    .report .sum{font-size:.9375rem;line-height:1.6} .ev{font-size:.75rem;color:var(--ad-soft)} .ev div{margin-bottom:.125rem}
+    .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem} .g3 ul,.g3 ol{margin:0;padding-left:1.125rem;font-size:.875rem}
+    @media (max-width:70rem){.cols{grid-template-columns:1fr}.agents{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr}}
+    @media print{
+      .no-print,.left,aside{display:none!important} body{display:block} .cols{grid-template-columns:1fr} .panel{break-inside:avoid;border:0;padding:0} html{font-size:12px}
+    }
+  </style>
+</AdminShell>

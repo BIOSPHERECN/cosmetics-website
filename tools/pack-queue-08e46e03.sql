@@ -1,0 +1,63 @@
+-- 队列批次 08e46e03:58 张已上传 R2,这里只补数据库索引。
+-- 上传与入库分开:图先上去,SQL 人看过再灌 —— 两边都能单独重来。
+-- book/page 是 NOT NULL(2026-09-07 踩过:漏了这两列,
+-- INSERT OR IGNORE 把三千五百行静默丢光,还不报错)。
+
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',1,'item','media/pack/mz/MZ-029-2.webp','MZ-029-2','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',2,'item','media/pack/mz/MZ-029-3.webp','MZ-029-3','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',3,'item','media/pack/mz/MZ-029-4.webp','MZ-029-4','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',4,'item','media/pack/mz/MZ-029-5.webp','MZ-029-5','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',5,'item','media/pack/mz/MZ-029-6.webp','MZ-029-6','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',6,'item','media/pack/mz/MZ-029-7.webp','MZ-029-7','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',7,'item','media/pack/mz/MZ-029-8.webp','MZ-029-8','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',8,'item','media/pack/mz/MZ-029-9.webp','MZ-029-9','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',9,'item','media/pack/mz/MZ-029-10.webp','MZ-029-10','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',10,'item','media/pack/mz/MZ-030-1.webp','MZ-030-1','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',11,'item','media/pack/mz/MZ-030-2.webp','MZ-030-2','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',12,'item','media/pack/mz/MZ-030-3.webp','MZ-030-3','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',13,'item','media/pack/mz/MZ-030-4.webp','MZ-030-4','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',14,'item','media/pack/mz/MZ-030-5.webp','MZ-030-5','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',15,'item','media/pack/mz/MZ-030-6.webp','MZ-030-6','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',16,'item','media/pack/mz/MZ-030-7.webp','MZ-030-7','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',17,'item','media/pack/mz/MZ-031-1.webp','MZ-031-1','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',18,'item','media/pack/mz/MZ-031-2.webp','MZ-031-2','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',19,'item','media/pack/mz/MZ-031-3.webp','MZ-031-3','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',20,'item','media/pack/mz/MZ-031-4.webp','MZ-031-4','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',21,'item','media/pack/mz/MZ-031-5.webp','MZ-031-5','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',22,'item','media/pack/mz/MZ-031-6.webp','MZ-031-6','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',23,'item','media/pack/mz/MZ-032-1.webp','MZ-032-1','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',24,'item','media/pack/mz/MZ-032-2.webp','MZ-032-2','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',25,'item','media/pack/mz/MZ-032-3.webp','MZ-032-3','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',26,'item','media/pack/mz/MZ-032-4.webp','MZ-032-4','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',27,'item','media/pack/mz/MZ-032-5.webp','MZ-032-5','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',28,'item','media/pack/mz/MZ-032-6.webp','MZ-032-6','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',29,'item','media/pack/mz/MZ-033-1.webp','MZ-033-1','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',30,'item','media/pack/mz/MZ-033-2.webp','MZ-033-2','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',31,'item','media/pack/mz/MZ-033-3.webp','MZ-033-3','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',32,'item','media/pack/mz/MZ-033-4.webp','MZ-033-4','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',33,'item','media/pack/mz/MZ-033-5.webp','MZ-033-5','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',34,'item','media/pack/mz/MZ-033-6.webp','MZ-033-6','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',35,'item','media/pack/mz/MZ-034-1.webp','MZ-034-1','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',36,'item','media/pack/mz/MZ-034-2.webp','MZ-034-2','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',37,'item','media/pack/mz/MZ-034-3.webp','MZ-034-3','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',38,'item','media/pack/mz/MZ-034-4.webp','MZ-034-4','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',39,'item','media/pack/mz/MZ-034-5.webp','MZ-034-5','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',40,'item','media/pack/mz/MZ-034-6.webp','MZ-034-6','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',41,'item','media/pack/mz/MZ-035-1.webp','MZ-035-1','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',42,'item','media/pack/mz/MZ-035-2.webp','MZ-035-2','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',43,'item','media/pack/mz/MZ-035-3.webp','MZ-035-3','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',44,'item','media/pack/mz/MZ-035-4.webp','MZ-035-4','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',45,'item','media/pack/mz/MZ-035-5.webp','MZ-035-5','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',46,'item','media/pack/mz/MZ-035-6.webp','MZ-035-6','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',47,'item','media/pack/mz/MZ-036-1.webp','MZ-036-1','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',48,'item','media/pack/mz/MZ-036-2.webp','MZ-036-2','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',49,'item','media/pack/mz/MZ-036-3.webp','MZ-036-3','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',50,'item','media/pack/mz/MZ-036-4.webp','MZ-036-4','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',51,'item','media/pack/mz/MZ-036-5.webp','MZ-036-5','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',52,'item','media/pack/mz/MZ-036-6.webp','MZ-036-6','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',53,'item','media/pack/mz/MZ-036-7.webp','MZ-036-7','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',54,'item','media/pack/mz/MZ-037-1.webp','MZ-037-1','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',55,'item','media/pack/mz/MZ-037-2.webp','MZ-037-2','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',56,'item','media/pack/mz/MZ-037-3.webp','MZ-037-3','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',57,'item','media/pack/mz/MZ-037-4.webp','MZ-037-4','queue',NULL,1);
+INSERT OR IGNORE INTO pack_assets (supplier,supplier_s,book,page,kind,r2_key,our_code,source,source_url,reviewed) VALUES ('名作','mz','队列批次08e46e03',58,'item','media/pack/mz/MZ-037-5.webp','MZ-037-5','queue',NULL,1);

@@ -6,6 +6,7 @@
  */
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import { r2Get, type StorageEnv } from '../../lib/storage';
 
 export const prerender = false;
 
@@ -14,16 +15,33 @@ export const GET: APIRoute = async ({ params, request }) => {
   const id = Number(params.id);
   if (!db || !Number.isFinite(id)) return new Response('Not found', { status: 404 });
 
-  const row = await db.prepare(`SELECT mime, data, url, driver FROM media WHERE id=?`).bind(id)
-    .first<{ mime: string; data: unknown; url: string | null; driver: string }>();
+  const row = await db.prepare(`SELECT mime, data, url, driver, r2_key FROM media WHERE id=?`).bind(id)
+    .first<{ mime: string; data: unknown; url: string | null; driver: string; r2_key: string | null }>();
   if (!row) return new Response('Not found', { status: 404 });
 
   // 外链驱动(R2 / 站内静态)只做 302,不代理流量。
-  // 注意 Response.redirect 只吃绝对地址,给它 '/media/shots/x.jpg' 会直接抛 —— 
+  // 注意 Response.redirect 只吃绝对地址,给它 '/media/shots/x.jpg' 会直接抛 ——
   // 而抛在这里的表现是整张图 500,页面上只剩一个破图标,不容易联想到是这一行。
   if (row.driver !== 'd1' && row.url) {
     const to = new URL(row.url, request.url).toString();
     return new Response(null, { status: 302, headers: { Location: to, 'Cache-Control': 'public, max-age=3600' } });
+  }
+
+  /* R2 驱动且没配公开域名:私有桶签名代理回源。
+     媒体不可变(换图=换 id),所以同样给 immutable 长缓存 ——
+     边缘缓存扛流量,签名回源只发生在冷缓存那一次。 */
+  if (row.driver === 'r2' && row.r2_key) {
+    const res = await r2Get(env as unknown as StorageEnv, row.r2_key).catch(() => null);
+    if (!res || !res.ok) return new Response('Not found', { status: 404 });
+    const headers: Record<string, string> = {
+      'Content-Type': row.mime,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff',
+    };
+    if (row.mime === 'image/svg+xml') {
+      headers['Content-Security-Policy'] = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+    }
+    return new Response(res.body, { headers });
   }
 
   // D1 取回 BLOB 时给的是**数字数组**,不是 ArrayBuffer。

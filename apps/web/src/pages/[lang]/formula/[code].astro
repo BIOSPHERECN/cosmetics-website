@@ -1,0 +1,490 @@
+---
+import { TERMS_CONFIRMED } from '../../../lib/terms';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 配方详情页 —— 电商式的单品页,但按钮不是"加入购物车",是"索取样品 / 定制这一款"。
+ *
+ * 为什么值得单独做这一页(2026-09-05 拆了同行的站之后):
+ *   同行把每支产品做成独立链接,采购可以直接把某一款发给同事、发进群里 ——
+ *   这是"能不能做"最短的证明方式。但他们的详情页是纯客户端渲染:
+ *   实测 HTML 5,658 字节、可读正文 51 个字、零结构化数据,机器完全读不到。
+ *   所以我们照搬形态、补上他们缺的:整页服务端渲染 + Product/FAQ/面包屑结构化数据。
+ *
+ * 版式按同行那份帮助中心的节奏走:留白大、只用细线不用卡片框、一行一条、正文列收窄。
+ * 我们之前的毛病是把信息全塞进带边框的卡片,一屏十几个框,眼睛没有落点。
+ *
+ * 数据纪律:配方目前是**示例规格**(status='sample'),页面每一屏都标明,
+ * 且不写具体报价 —— 价格与交期以书面确认为准。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { FMT_LABEL, BEN_LABEL, formulaName } from '../../../lib/catalog';   // 09-21:标题与首页 / 配方库同一套词表(此前本页自带 15 个剂型 + 13 个功效,漏的直接露 slug:「scalp-careshampoo」)
+import { PACK_SHELF } from '@cosmetic/core/generated/pack-shelf.ts';
+import MemberGate from '../../../components/MemberGate.astro';
+import { pageGate, paywallLd } from '../../../lib/member';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const code = String(Astro.params.code ?? '').toUpperCase().slice(0, 24);
+const tSkip = uiT(lang as any)('a11y.skip');
+const zh = lang.startsWith('zh');
+const db = (env as any).DB as D1Database | undefined;
+
+const one = async <T,>(sql: string, ...b: unknown[]): Promise<T | null> => {
+  if (!db) return null;
+  try { return (await db.prepare(sql).bind(...b).first<T>()) ?? null; } catch { return null; }
+};
+const many = async <T,>(sql: string, ...b: unknown[]): Promise<T[]> => {
+  if (!db) return [];
+  try { return ((await db.prepare(sql).bind(...b).all<T>()).results ?? []) as T[]; } catch { return []; }
+};
+
+const f = await one<any>(
+  `SELECT code, category, format, benefits, actives_json, texture, moq, cost_band, lead_days,
+          markets, cert_notes, ai_summary, trend_tags, status,
+          reg_class, reg_note, ph, viscosity, sample_days, bulk_days, shelf_life_m,
+          fill_temp, preservative
+     FROM formulas WHERE code = ? AND status IN ('sample','active')`, code);
+if (!f) return new Response(null, { status: 404 });
+/* 会员限额(2026-09-23):与成分解读、原料详情共用一个每日配额。未登录只出标题 / 功效标签 / 首段直答 + 索样按钮(询盘入口一直在) */
+const gt = await pageGate(Astro, env, db, `fml:${f.code}`);
+const full = gt.state === 'bot' || gt.state === 'full';
+
+const actives = ((() => { try { return JSON.parse(f.actives_json ?? '[]'); } catch { return []; } })() as any[])
+  .slice(0, 4) as { name: string; inci?: string; pct?: string }[];
+/* 活性物 × 各市场目录对账(2026-09-10)。买手看配方页问的第二句就是「出欧盟/东盟有没有限用」——
+   工艺参数上锁、活性物只给名字,但**法规状态是公开事实**,给出来不泄露配方,反而省一轮邮件。
+   同一套 inci_key 精确匹配,只列命中,负面清单没命中的不逐条写(那句「未列出 ≠ 无限制」在原料页有)。 */
+const actKeys: string[] = actives
+  .map((a: any) => String(a.inci ?? '').toUpperCase().replace(/[（(][^）)]*[）)]/g, ' ').replace(/[^A-Z0-9]+/g, ' ').trim())
+  .filter(Boolean).slice(0, 8);
+let actHits: any[] = [];
+let regNames: Record<string, string> = {};
+if (db && actKeys.length) {
+  try {
+    const ph = actKeys.map(() => '?').join(',');
+    actHits = ((await db.prepare(
+      `SELECT inci_key, registry, no, note FROM inci_catalog WHERE inci_key IN (${ph}) ORDER BY registry`)
+      .bind(...actKeys).all<any>()).results ?? []) as any[];
+    const rs = ((await db.prepare('SELECT id, region, name_zh, name_en FROM inci_registry').all<any>()).results ?? []) as any[];
+    for (const r of rs) regNames[String(r.id)] = zh ? `${r.region} · ${r.name_zh}` : `${r.region} · ${r.name_en || r.name_zh}`;
+  } catch { actHits = []; }
+}
+const actMkt = actives.slice(0, 8).map((a: any) => {
+  const k = String(a.inci ?? '').toUpperCase().replace(/[（(][^）)]*[）)]/g, ' ').replace(/[^A-Z0-9]+/g, ' ').trim();
+  const hits = actHits.filter((h) => String(h.inci_key) === k);
+  return { name: a.name, inci: a.inci, hits };
+}).filter((x: any) => x.hits.length);
+
+/* 可配包材:按剂型匹配。匹配不到就给常用款,不留空页 —— 空着等于让客户自己去想。
+   走内存快照,零 D1 读。上一版是 `WHERE compat_formats LIKE '%x%'` ——
+   前缀通配符走不了索引,每渲染一次就全扫 3,716 行,乘以 100 支配方 × 17 语种。 */
+const fits = PACK_SHELF.filter((x) => x.compatFormats.includes(f.format));
+const packsFallback = (fits.length ? fits : PACK_SHELF).slice(0, 4).map((x) => ({
+  code: x.code, type: x.type, material: x.material, capacity: x.capacity,
+  moq: x.moq, lead_days: x.leadDays, sustainability: null, decoration: null,
+}));
+
+/* 市场证据:同诉求标签的,带出处与日期。这是我们比同行多出来的东西 */
+const tag = String(f.trend_tags ?? '').split(',')[0]?.trim() ?? '';
+const trends = tag ? await many<any>(
+  `SELECT title_zh, title_en, figure, source_name, source_url, source_date, market
+     FROM trends WHERE status='active' AND claim_tag = ? ORDER BY source_date DESC LIMIT 3`, tag) : [];
+
+/* 题图:同剂型的实物包材图,给客户一个"这东西长什么样"的落点。
+   上一版是 `ORDER BY RANDOM() LIMIT 1` —— 全站单次读量最高的一条查询:
+   RANDOM() 要对 pack_assets 每一行求值再全量排序,LIMIT 1 完全不能提前中断,
+   而三个 WHERE 条件一条都走不了索引。实测这一条日读约 1,500 万行。
+   换成:按剂型在快照里筛出有实拍的,再用配方编码做确定性散列挑一张。
+   确定性比随机好三件事 —— 零 D1 读、同一个 URL 每次出同一张图(能进边缘缓存,
+   对 SEO 也不再是每次抓到不同的 HTML)、快照重建时图也不会乱跳。 */
+const withImg = (fits.length ? fits : PACK_SHELF).filter((x) => x.hasImg);
+const pick = withImg.length
+  ? withImg[[...f.code].reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % withImg.length]
+  : null;
+const shot = pick ? { our_code: pick.code } : null;
+
+const FMT: Record<string, [string, string]> = {
+  serum: ['精华', 'Serum'], essence: ['精华水', 'Essence'], ampoule: ['安瓶', 'Ampoule'],
+  cream: ['面霜', 'Cream'], lotion: ['乳液', 'Lotion'], mask: ['面膜', 'Sheet mask'],
+  gel: ['凝胶', 'Gel'], oil: ['面油', 'Face oil'], balm: ['膏霜', 'Balm'], stick: ['棒状', 'Stick'],
+  foam: ['洁面', 'Cleanser'], powder: ['粉状', 'Powder'], cushion: ['气垫', 'Cushion'],
+  lipstick: ['唇膏', 'Lipstick'], patch: ['贴片', 'Patch'],
+};
+const BEN: Record<string, [string, string]> = {
+  hydrating: ['保湿', 'Hydrating'], barrier: ['屏障修护', 'Barrier repair'],
+  brightening: ['提亮', 'Brightening'], 'anti-aging': ['抗老', 'Anti-ageing'],
+  soothing: ['舒缓', 'Soothing'], sensitive: ['敏感肌', 'Sensitive skin'],
+  'oil-control': ['控油', 'Oil control'], acne: ['祛痘方向', 'Blemish-prone'],
+  firming: ['紧致', 'Firming'], repair: ['修护', 'Repair'], plumping: ['丰盈', 'Plumping'],
+  daily: ['日常', 'Everyday'], cleansing: ['清洁', 'Cleansing'],
+};
+const bl = String(f.benefits ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+const LB = (m: Record<string, [string, string]>, k: string, fb: Record<string, [string, string]>) => (m[k] ? (zh ? m[k][0] : m[k][1]) : fb[k] ? (zh ? fb[k][0] : fb[k][1]) : k.replace(/-/g, ' '));
+const benLabels = bl.map((b) => LB(BEN_LABEL, b, BEN));
+const fmtLabel = LB(FMT_LABEL, f.format, FMT);
+/* 09-22 体检(创始人转 Claude 审计):EN 页正文是整段中文摘要,且摘要里带「打样 14 天,大货 30 天,起订 3000」与页面「按项目报价」自相矛盾。
+   两刀:① 摘要里的条款句一律剪掉(lib/terms.ts 铁令,打样天数只允许「5–14 天」口径);② 非中文页若摘要含中文就不显示,退回字段直答。 */
+const HAS_CJK = /[一-鿿]/;
+const stripTerms = (t: string) => String(t ?? '')
+  .replace(/[,，。;；]?\s*(打样|出样)\s*\d+\s*天[^。;；]*/g, '')
+  .replace(/[,，。;；]?\s*大货\s*\d+\s*天[^。;；]*/g, '')
+  .replace(/[,，。;；]?\s*起订(量)?\s*\d[\d,]*[^。;；]*/g, '')
+  .replace(/[,，。;；]?\s*(MOQ|lead time|sampling)\s*[:：]?\s*\d[^.;]*/gi, '')
+  .replace(/[,，;；]\s*([。.])/g, '$1').trim();
+const summary = (() => { const t = stripTerms(f.ai_summary); return (!zh && HAS_CJK.test(t)) ? '' : t; })();
+const texture = (!zh && HAS_CJK.test(String(f.texture ?? ''))) ? '' : f.texture;
+const activeName = (a: any) => (zh ? (a.name || a.inci) : (a.inci || a.name));
+const title = zh
+  ? `${formulaName(f, true)} · 代工配方`
+  : `${formulaName(f, false)} — private label formula`;
+
+const T = zh ? {
+  home: '首页', lib: '选品链路', spec: '这条配方是什么规格?',
+  actives: '关键活性物', texture: '肤感', moq: '起订量', lead: '打样周期', mkt: '可售市场',
+  actMktH: '活性物在各市场目录里的状态', actMktNote: '按 INCI 精确对账,只列命中的目录;禁限用表未命中不等于无限制,以目的市场全文为准。',
+  band: '成本档', cert: '合规提示', days: '天', units: '支/罐',
+  ph: 'pH 区间', visc: '黏度', fill: '灌装温度', shelf: '保质期', pres: '防腐体系',
+  locked: '需询盘获取', unlockCta: '发起询盘取完整规格',
+  unlockBody: '完整工艺规格(pH、黏度、灌装温度、防腐体系、活性物加量区间)随打样资料一并提供。'
+           + '这一段不公开 —— 它是配方师的工作成果,不是宣传素材。'
+           + '发询盘,或留言约 WhatsApp / WeChat,我们按你的目标市场与剂型给完整规格与报价。',
+  sampleD: '打样周期', bulkD: '大货周期', months: '个月',
+  reg: '各市场上市路径',
+  regGeneral: '中国:普通化妆品 · 备案', regSpecial: '中国:特殊化妆品 · 注册',
+  process: '生产工艺怎么定?', processSub: '按剂型给区间,不给单值 —— 单值是假精确。实际以打样报告为准。',
+  bands: { low: '经济', mid: '中档', high: '高端' } as Record<string, string>,
+  sample: '索取样品', custom: '定制这一款',
+  sampleNote: '样品与打样费按品类与数量核算,首单可抵扣;点开后留个邮箱,我们一个工作日内回。',
+  packs: '配什么包材?', packsSub: '同剂型常配的几款。包材编码可直接报给我们。',
+  ev: '市场为什么支持这个方向?', evSub: '每条带来源与日期,可点开核对。',
+  faq: '常见问题',
+  note: '本页规格为示例参数,用于说明我们能做的方向;实际配方、包材与交期以打样与书面确认为准。不含报价。',
+  qa: [
+    ['可以改配方吗?', '可以。活性物种类与浓度、肤感、香型都能按你的定位调整;调整后需重新做稳定性与相容性验证,周期以打样确认为准。'],
+    ['起订量能商量吗?', '能谈。起订量由设备最小可控量、包材起订量与换线分摊三条线里最高的那条决定,不同剂型差别很大 —— 把你的首批规划告诉我们,我们给可行的下限。'],
+    ['可以加我自己的成分吗?', '可以。你指定的原料需要提供正式技术资料(溶解度、pH 区间、添加温度、微生物状态)与安全信息;我们会先评估相容性再排样。'],
+    ['包材颜色和工艺能改吗?', '能。丝印、烫金、喷涂、贴标都可以做,金银珠光类不承诺色差数值,以同基材实物封样为准。'],
+    ['可以贴自己的品牌吗?', '可以,这本来就是代工的常规做法。标签内容需按目标市场法规审校,我们提供工厂侧资料配合,合规结论由品牌方与其责任人出具。'],
+  ],
+} : {
+  home: 'Home', lib: 'Selector', spec: 'What is this formulation?',
+  actives: 'Key actives', texture: 'Texture', moq: 'MOQ', lead: 'Sampling', mkt: 'Markets',
+  actMktH: 'Key actives in market inventories', actMktNote: 'Exact INCI match; only listed registries are shown. Absence from a restricted list is not the same as unrestricted.',
+  band: 'Cost band', cert: 'Regulatory note', days: 'days', units: 'units',
+  ph: 'pH range', visc: 'Viscosity', fill: 'Filling temperature', shelf: 'Shelf life',
+  locked: 'On enquiry', unlockCta: 'Request the full specification',
+  unlockBody: 'The full process window — pH, viscosity, filling temperature, preservative system '
+           + 'and active dosage ranges — comes with the sampling pack. It is the formulator’s work, '
+           + 'not marketing copy, so it is not published. Send an enquiry, or ask for a WhatsApp / WeChat callback '
+           + 'and we will send the full specification and a quote for your market and format.',
+  pres: 'Preservative system',
+  sampleD: 'Sampling', bulkD: 'Bulk production', months: 'months',
+  reg: 'Route to market by destination',
+  regGeneral: 'China: general cosmetic \u00b7 filing', regSpecial: 'China: special cosmetic \u00b7 registration',
+  process: 'How is it processed?', processSub: 'Ranges are given per format, not per SKU \u2014 a single number would be false precision. The sampling report governs.',
+  bands: { low: 'Value', mid: 'Mid', high: 'Premium' } as Record<string, string>,
+  sample: 'Request a sample', custom: 'Customise this one',
+  sampleNote: 'Sampling fees depend on category and quantity and are credited against the first order. Leave an email and we reply within one business day.',
+  packs: 'Which packaging fits?', packsSub: 'Commonly paired with this format. Quote the packaging code back to us.',
+  ev: 'Why does the market support this direction?', evSub: 'Every signal carries a source and a date.',
+  faq: 'Frequently asked',
+  note: 'Specifications on this page are sample parameters that describe what we can build. Final formula, packaging and lead times are confirmed at sampling and in writing. No pricing is implied.',
+  qa: [
+    ['Can the formula be changed?', 'Yes. Actives, concentrations, texture and fragrance can be adjusted to your positioning; changes require fresh stability and compatibility testing, and the timeline is confirmed at sampling.'],
+    ['Is the MOQ negotiable?', 'It can be discussed. MOQ is set by the highest of three limits: the minimum controllable batch on the line, the packaging supplier MOQ, and changeover amortisation. Tell us your first-run plan and we will give a workable floor.'],
+    ['Can I add my own ingredient?', 'Yes. We need the supplier technical file (solubility, pH window, addition temperature, microbial status) and safety information; we assess compatibility before scheduling a sample.'],
+    ['Can packaging colour and finish change?', 'Yes — silkscreen, hot stamping, spraying and labelling are all available. We do not commit to numeric colour tolerance on metallics and pearlescents; an approved physical sample governs.'],
+    ['Can I put my own brand on it?', 'Yes, that is the normal contract-manufacturing arrangement. Label content must be reviewed against your target market rules; we provide the factory-side documents, and the compliance conclusion is issued by the brand and its responsible person.'],
+  ],
+};
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/formula/${f.code}/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+
+/* 结构化数据:同行这一页是零 —— 我们把 Product / FAQ / 面包屑都补上,
+   这正是 AI 检索会整段引用的形态。不写价格(offers 里不放 price),因为我们本来就不在页面上报价。 */
+const ld = [
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: T.home, item: `${origin}/${lang}/` },
+      { '@type': 'ListItem', position: 2, name: T.lib, item: `${origin}/${lang}/selector/` },
+      { '@type': 'ListItem', position: 3, name: f.code, item: origin + path },
+    ],
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'Product',
+    name: title,
+    sku: f.code,
+    category: f.category,
+    description: (summary || benLabels.join(' / ')).slice(0, 300),
+    brand: { '@type': 'Brand', name: 'BIOSPHERE' },
+    additionalProperty: [
+      { '@type': 'PropertyValue', name: T.spec, value: fmtLabel },
+      ...(TERMS_CONFIRMED && f.moq ? [{ '@type': 'PropertyValue', name: T.moq, value: String(f.moq) }] : []),   // 工厂口径未确认前,页面和 schema 都不出起订量 / 交期(lib/terms.ts)
+      ...(TERMS_CONFIRMED && f.lead_days ? [{ '@type': 'PropertyValue', name: T.lead, value: `${f.lead_days} ${T.days}` }] : []),
+      ...(f.markets ? [{ '@type': 'PropertyValue', name: T.mkt, value: f.markets }] : []),
+      /* 结构化数据里同样不出工艺参数 —— 页面上遮了、schema 里漏出去,
+         等于只挡住了人,没挡住爬虫和 AI 摘要。 */
+      ...(f.shelf_life_m ? [{ '@type': 'PropertyValue', name: T.shelf, value: `${f.shelf_life_m} ${T.months}` }] : []),
+      ...(f.bulk_days ? [{ '@type': 'PropertyValue', name: T.bulkD, value: `${f.bulk_days} ${T.days}` }] : []),
+      { '@type': 'PropertyValue', name: T.reg,
+        value: f.reg_class === 'special' ? T.regSpecial : T.regGeneral },
+    ],
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: T.qa.map(([q, a]) => ({
+      '@type': 'Question', name: q,
+      acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  },
+];
+const ldOut = [...(full ? ld : ld.slice(0, 1)), paywallLd(origin + path, title)];
+---
+
+<BaseLayout
+  locale={lang as any}
+  school={shell.variant?.school ?? 'atelier'}
+  variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={title}
+  description={(summary || benLabels.join(' / ')).slice(0, 160)}
+  siteName={shell.site?.name ?? '帛卉'}
+  siteUrl={origin}
+  path={path}
+  indexable={shell.site?.is_live === 1}
+  brandColor={shell.site?.brand_color}
+  theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+
+  <main id="main">
+    <nav class="bc"><a href={`/${lang}/`}>{T.home}</a> · <a href={`/${lang}/selector/`}>{T.lib}</a> · <span>{f.code}</span></nav>
+
+    <header class="hd">
+      <p class="tags">{benLabels.map((b) => <span>{b}</span>)}</p>
+      <h1>{title}</h1>
+      {/* GEO 首段直答(2026-09-16):没有模型摘要时也要有一段 60 字内的直答,全部来自字段 */}
+      <p class="lede">{summary || (zh
+        ? `${f.code} 是一条${fmtLabel}代工配方,功效方向 ${benLabels.join(' / ') || '—'}${f.markets ? `,可售市场 ${f.markets}` : ''}。出样通常 5–14 天;起订量与价格按项目书面报价。`
+        : `${f.code} is a ${fmtLabel} private-label formulation for ${benLabels.join(' / ') || 'general use'}${f.markets ? `, cleared for ${f.markets}` : ''}. Samples usually in 5–14 days; MOQ and price are quoted per project in writing.`)}</p>
+      <div class="cta2">
+        <a class="btn pri" href={`/${lang}/contact/?formula=${f.code}&intent=sample`}>{T.sample}</a>
+        <a class="btn" href={`/${lang}/selector/?formula=${f.code}`}>{T.custom}</a>
+      </div>
+      <p class="fine">{T.sampleNote}</p>
+      <MemberGate lang={lang} g={gt} next={path} what={['完整规格', 'the full specification']} />
+    </header>
+
+    {shot?.our_code && (
+      <figure class="hero-img">
+        <img src={`/pack/${shot.our_code}`} alt={`${f.code} ${fmtLabel}`} loading="eager" decoding="async" />
+      </figure>
+    )}
+
+    {full && <div class="paywalled">
+    <section class="sec">
+      <h2>{T.spec}</h2>
+      <dl class="spec">
+        {/* 活性物只露名字,**不露百分比**(创始人 2026-09-10 03:5x:
+             「配方是不可以全部公开的!他们只是可以看到一部分,
+             其他的是不可以看到的!更多需要 +WhatsApp,或者询盘才可以」)。
+             加量区间是配方师定出来的东西,摆在页面上等于把 know-how 白送 ——
+             同行照着抄一版就走,而客户看不看得到这个数,对他决定要不要询盘毫无影响。 */}
+        {actives.length > 0 && (<><dt>{T.actives}</dt><dd>{actives.map((a) => activeName(a)).join(' · ')}</dd></>)}
+        {texture && (<><dt>{T.texture}</dt><dd>{texture}</dd></>)}
+        {TERMS_CONFIRMED && (<><dt>{T.moq}</dt><dd>{f.moq ? `${Number(f.moq).toLocaleString()} ${T.units}` : '—'}</dd>
+        <dt>{T.sampleD}</dt><dd>{f.sample_days ? `${f.sample_days} ${T.days}` : (f.lead_days ? `${f.lead_days} ${T.days}` : '—')}</dd>
+        {f.bulk_days && (<><dt>{T.bulkD}</dt><dd>{f.bulk_days} {T.days}</dd></>)}</>)}
+        <dt>{T.mkt}</dt><dd>{f.markets || '—'}</dd>
+        <dt>{T.band}</dt><dd>{T.bands[f.cost_band] ?? f.cost_band ?? '—'}</dd>
+        <dt>{T.reg}</dt><dd><b>{f.reg_class === 'special' ? T.regSpecial : T.regGeneral}</b>{(f.reg_note && (zh || !HAS_CJK.test(String(f.reg_note)))) ? <><br />{f.reg_note}</> : null}</dd>
+        {f.cert_notes && (zh || !HAS_CJK.test(String(f.cert_notes))) && (<><dt>{T.cert}</dt><dd>{f.cert_notes}</dd></>)}
+      </dl>
+
+      {/* 工艺窗口整块设防。
+           pH、黏度、灌装温度、防腐体系放在一起,基本等于把这支配方的工艺交底 ——
+           同行拿去少走三个月弯路,而买家在决定要不要问价这一步根本用不到它。
+           所以:**保质期照给**(客户排货架期要用),其余四项打码,给一条获取路径。 */}
+      <h2>{T.process}</h2>
+      <p class="sub">{T.processSub}</p>
+      <dl class="spec">
+        {f.shelf_life_m ? (<><dt>{T.shelf}</dt><dd>{f.shelf_life_m} {T.months}</dd></>) : null}
+        {actMkt.length > 0 && (<>
+          <dt class="span2">{T.actMktH}</dt>
+          <dd class="span2 actmkt">
+            <ul>
+              {actMkt.map((x: any) => (
+                <li>
+                  <b>{zh ? x.name : x.inci}</b> {zh && <span class="inci">{x.inci}</span>}
+                  <ul>
+                    {x.hits.map((h: any) => (
+                      <li><span class="rg">{regNames[String(h.registry)] ?? h.registry}</span> {String(h.no)}{(h.note && (zh || !HAS_CJK.test(String(h.note)))) ? ' · ' + String(h.note).slice(0, 180) : ''}</li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+            <p class="actnote">{T.actMktNote}</p>
+          </dd>
+        </>)}
+        <dt>{T.ph}</dt><dd class="gated">{T.locked}</dd>
+        <dt>{T.visc}</dt><dd class="gated">{T.locked}</dd>
+        <dt>{T.fill}</dt><dd class="gated">{T.locked}</dd>
+        <dt>{T.pres}</dt><dd class="gated">{T.locked}</dd>
+      </dl>
+      <p class="unlock">
+        {T.unlockBody}
+        <a class="unlock-cta" href={`/${lang}/contact/?f=${encodeURIComponent(f.code)}`}>{T.unlockCta}</a>
+      </p>
+    </section>
+
+    {packsFallback.length > 0 && (
+      <section class="sec">
+        <h2>{T.packs}</h2>
+        <p class="sub">{T.packsSub}</p>
+        <ul class="rows">
+          {packsFallback.map((p: any) => (
+            <li>
+              <span class="k">{p.code}</span>
+              <span class="v">{p.type}{p.capacity ? ` · ${p.capacity}` : ''}{p.material ? ` · ${p.material}` : ''}</span>
+              <span class="x">{TERMS_CONFIRMED && p.moq ? `${T.moq} ${Number(p.moq).toLocaleString()}` : ''}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {trends.length > 0 && (
+      <section class="sec">
+        <h2>{T.ev}</h2>
+        <p class="sub">{T.evSub}</p>
+        <ul class="rows">
+          {trends.map((t: any) => (
+            <li class="ev">
+              <span class="v">{zh ? t.title_zh : (t.title_en || t.title_zh)}{t.figure ? <strong> {t.figure}</strong> : null}</span>
+              <span class="x"><a href={t.source_url} target="_blank" rel="noopener nofollow">{t.source_name}</a> · {t.source_date}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <section class="sec">
+      <h2>{T.faq}</h2>
+      <ul class="qa">
+        {T.qa.map(([q, a]) => (
+          <li><details><summary>{q}</summary><p>{a}</p></details></li>
+        ))}
+      </ul>
+    </section>
+    </div>}
+
+    <section class="sec end">
+      <div class="cta2">
+        <a class="btn pri" href={`/${lang}/contact/?formula=${f.code}&intent=sample`}>{T.sample}</a>
+        <a class="btn" href={`/${lang}/selector/?formula=${f.code}`}>{T.custom}</a>
+      </div>
+      <p class="fine">{T.note}</p>
+    </section>
+  </main>
+
+  <SiteFooter locale={lang as any} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+
+  <script type="application/ld+json" set:html={JSON.stringify(ldOut)} is:inline />
+
+  <style>
+    /* 版式按"留白 + 细线 + 一行一条"来:同行那份帮助中心之所以舒服,
+       是因为一屏只放六行、行高舒展、除了细线什么框都没有。 */
+    main { max-width: 52rem; margin: 0 auto; padding: 2rem clamp(1rem, 4vw, 2.5rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }
+    .bc { font-size: .75rem; color: var(--ck-ink-soft); margin-bottom: 2.5rem; }
+    .bc a { color: inherit; text-decoration: none; }
+    .bc a:hover { text-decoration: underline; }
+
+    .hd { margin-bottom: 3rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: .375rem; margin: 0 0 .875rem; }
+    .tags span { font-size: .6875rem; letter-spacing: .08em; text-transform: uppercase;
+                 color: var(--ck-accent); }
+    h1 { font-size: clamp(1.75rem, 1.3rem + 1.8vw, 2.75rem); font-weight: 700; letter-spacing: -.025em;
+         line-height: 1.15; margin: 0 0 1rem; text-wrap: balance; }
+    .lede { font-size: 1.0625rem; line-height: 1.75; color: var(--ck-ink-soft); margin: 0 0 1.75rem; }
+
+    .cta2 { display: flex; flex-wrap: wrap; gap: .625rem; }
+    .btn { display: inline-flex; align-items: center; min-height: 48px; padding: 0 1.625rem;
+           border-radius: 980px; text-decoration: none; font-size: .9375rem; font-weight: 600;
+           border: 1px solid var(--dtc-line, rgb(0 0 0/.14)); color: var(--ck-ink); }
+    .btn.pri { background: var(--ck-accent); color: var(--ck-on-accent); border-color: transparent; }
+    .btn:hover { border-color: var(--ck-accent); }
+    .fine { font-size: .75rem; color: var(--ck-ink-soft); line-height: 1.7; margin: 1rem 0 0; }
+
+    .hero-img { margin: 0 0 3rem; }
+    .hero-img img { display: block; width: 100%; height: auto; border-radius: 16px;
+                    background: var(--dtc-sand, #f5f5f7); }
+
+    .sec { padding: 2.75rem 0; border-top: 1px solid var(--dtc-line, rgb(0 0 0/.08)); }
+    .sec.end { border-top: 1px solid var(--dtc-line, rgb(0 0 0/.08)); }
+    h2 { font-size: 1.375rem; font-weight: 700; letter-spacing: -.015em; margin: 0 0 .5rem; }
+    .sub { font-size: var(--ck-small); color: var(--ck-ink-soft); margin: 0 0 1.5rem; }
+
+    .spec { display: grid; grid-template-columns: 9rem 1fr; gap: 0; margin: 0; font-size: .9375rem; }
+    .spec dt { color: var(--ck-ink-soft); padding: .875rem 0; border-top: 1px solid var(--dtc-line, rgb(0 0 0/.06)); }
+    .spec dd { margin: 0; padding: .875rem 0; border-top: 1px solid var(--dtc-line, rgb(0 0 0/.06)); line-height: 1.65; }
+    .spec dt:first-of-type, .spec dd:first-of-type { border-top: 0; }
+
+    /* 设防样式:不做花哨的模糊,直接写「需询盘获取」——
+       模糊图层一截图就穿帮,而且真正想要的人会以为是加载失败。 */
+    .span2 { grid-column: 1 / -1; }
+    .actmkt > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+    .actmkt > ul > li > ul { list-style: none; margin: .25rem 0 0; padding: 0; display: grid; gap: .25rem; font-size: .875rem; }
+    .actmkt .inci { opacity: .6; font-size: .8125rem; margin-left: .375rem; }
+    .actmkt .rg { font-size: .75rem; padding: .0625rem .5rem; border-radius: 999px; border: 1px solid var(--ck-line, rgba(0,0,0,.18)); margin-right: .25rem; }
+    .actnote { margin: .5rem 0 0; font-size: .8125rem; opacity: .65; }
+    .gated { color: var(--ck-ink-soft); font-style: normal; }
+    .gated::before { content: '🔒 '; }
+    .unlock { max-width: 44rem; margin: 1rem 0 0; padding: 1rem 1.125rem;
+              border: var(--ck-border-w, 1px) solid var(--ck-line);
+              border-radius: var(--ck-radius, 4px);
+              color: var(--ck-ink-soft); line-height: 1.8; font-size: max(0.875rem, 14px); }
+    .unlock-cta { display: inline-flex; align-items: center; min-height: 2.75rem;
+                  margin-top: .75rem; padding: 0 1.25rem; border-radius: 999px;
+                  background: var(--ck-ink, #111); color: var(--ck-paper, #fff);
+                  text-decoration: none; }
+    .rows { list-style: none; margin: 0; padding: 0; }
+    .rows li { display: grid; grid-template-columns: 7rem 1fr auto; gap: .75rem; align-items: baseline;
+               padding: 1rem 0; border-top: 1px solid var(--dtc-line, rgb(0 0 0/.06)); font-size: .9375rem; }
+    .rows li:first-child { border-top: 0; }
+    .rows .k { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .rows .x { font-size: .75rem; color: var(--ck-ink-soft); white-space: nowrap; }
+    .rows li.ev { grid-template-columns: 1fr; gap: .25rem; }
+    .rows .x a { color: inherit; }
+
+    .qa { list-style: none; margin: 0; padding: 0; }
+    .qa li { border-top: 1px solid var(--dtc-line, rgb(0 0 0/.08)); }
+    .qa li:first-child { border-top: 0; }
+    .qa summary { cursor: pointer; padding: 1.25rem 0; font-size: 1rem; font-weight: 500;
+                  list-style: none; display: flex; justify-content: space-between; align-items: center; }
+    .qa summary::-webkit-details-marker { display: none; }
+    .qa summary::after { content: '+'; font-size: 1.25rem; color: var(--ck-ink-soft); font-weight: 400; }
+    .qa details[open] summary::after { content: '−'; }
+    .qa p { margin: 0 0 1.25rem; color: var(--ck-ink-soft); line-height: 1.75; font-size: .9375rem; max-width: 44rem; }
+
+    @media (max-width: 40rem) {
+      .spec { grid-template-columns: 1fr; }
+      .spec dt { padding-bottom: 0; border-top: 1px solid var(--dtc-line, rgb(0 0 0/.06)); }
+      .spec dd { padding-top: .25rem; border-top: 0; }
+      .rows li { grid-template-columns: 1fr; gap: .25rem; }
+    }
+  </style>
+</BaseLayout>

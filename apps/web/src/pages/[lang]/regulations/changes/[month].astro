@@ -1,0 +1,132 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 法规变化速览 · 每月一期(2026-09-23 GEO 第 4 条)。
+ * 内容全部来自 pulse 'regdigest:YYYY-MM' 一行(tools/reg-digest.py 每月 1 号由计划任务 Bohui-RegDigest 生成):
+ *   近 120 天的法规动态(regulation_updates + regulations 的最近修订)、15 个市场禁限用目录计数(ingredient_market_status)及与上期的增减。
+ * 证据等级 C:咨询机构摘要与官方目录转录;每条挂来源,页面写明以目标市场官方最新公告为准。摘要是我们自己写的,不放原文。
+ * 读一行 JSON,不在渲染时扫 29,061 行(记忆 d1-count-cache-row)。中 / 英模板,其它语种回落英文。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../../lib/shell';
+
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const month = String(Astro.params.month ?? '');
+if (!/^\d{4}-\d{2}$/.test(month)) return new Response(null, { status: 404 });
+const db = (env as any).DB as D1Database | undefined;
+const row = db ? await db.prepare(`SELECT json, updated_at FROM pulse WHERE k = ?`).bind(`regdigest:${month}`).first<{ json: string; updated_at: string }>().catch(() => null) : null;
+if (!row) return new Response(null, { status: 404 });
+const dg = JSON.parse(row.json);
+const months = db ? (((await db.prepare(`SELECT k FROM pulse WHERE k LIKE 'regdigest:%' ORDER BY k DESC LIMIT 36`).all<{ k: string }>().catch(() => ({ results: [] as any[] }))).results ?? []) as any[]).map((r) => String(r.k).slice(10)) : [month];
+const tSkip = uiT(lang as any)('a11y.skip');
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const B = `/${lang}`; const path = `${B}/regulations/changes/${month}/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const siteName = shell.site?.name ?? '帛卉';
+
+/* 15 个目录的市场码(ingredient_market_status.market)→ 名称 */
+const MK: Record<string, [string, string]> = {
+  EU: ['European Union', '欧盟'], UK: ['United Kingdom', '英国'], ASEAN: ['ASEAN', '东盟'], ID: ['Indonesia', '印尼'], KR: ['South Korea', '韩国'],
+  AU: ['Australia', '澳大利亚'], CA: ['Canada', '加拿大'], 'US-CA': ['California (US)', '美国加州'], MX: ['Mexico', '墨西哥'], BR: ['Brazil', '巴西'],
+  MERCOSUR: ['Mercosur', '南方共同市场'], CAN: ['Andean Community', '安第斯共同体'], GSO: ['Gulf states (GSO)', '海湾国家(GSO)'],
+  EAEU: ['Eurasian Economic Union', '欧亚经济联盟'], IN: ['India', '印度'],
+};
+const mk = (c: string) => (MK[c] ? MK[c][zh ? 1 : 0] : c);
+const [y, m] = month.split('-').map(Number);
+const label = zh ? `${y} 年 ${m} 月` : new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(Date.UTC(y, m - 1, 1));
+const fmt = (n: number) => Number(n || 0).toLocaleString('en-US');
+const recent: any[] = dg.recent ?? []; const upcoming: any[] = dg.upcoming ?? [];
+const L = dg.lists ?? { rows: 0, markets: 0, by_market: {}, delta: null };
+const top = recent[0];
+const mName = (it: any) => (zh ? it.market_zh || it.market_en : it.market_en || it.market_zh);
+const title = (it: any) => (zh ? it.title_zh || it.title_en : it.title_en) || '';
+const summ = (it: any) => (zh ? it.summary_zh || it.summary_en : it.summary_en || it.summary_zh) || '';
+const byRows = Object.entries(L.by_market ?? {}).sort((a: any, b: any) => b[1].total - a[1].total) as [string, any][];
+
+const T = zh ? {
+  h1: `化妆品法规变化速览 · ${label}`,
+  capQ: `截至 ${dg.asof},近 ${120} 天各国化妆品法规有哪些变化?`,
+  capA: `${dg.window_from} 至 ${dg.asof} 共记录 ${recent.length} 条法规变化,涉及 ${dg.n_markets_recent} 个市场${top ? `,最近一条是 ${top.date} ${mName(top)}` : ''}。我们跟踪的 ${L.markets} 个市场禁限用目录合计 ${fmt(L.rows)} 条。证据等级 C(咨询机构摘要与官方目录转录),一切以目标市场官方最新公告为准。`,
+  recentH: `近 120 天的变化`, upH: '已公布、尚未到来的日期', listsH: `${L.markets} 个市场的禁限用目录`,
+  th: ['市场', '禁用', '限用', '准用 / 列名', '合计', dg.prev ? `较 ${dg.prev}` : '较上期'],
+  base: '首期,作为之后各期比较的基线。', src: '来源', none: '本期窗口内没有新记录。',
+  howH: '这份速览怎么做的',
+  how: `每月 1 号自动生成:法规动态取自本站 42 个市场的法规跟踪(每条挂来源),目录计数取自 ${L.markets} 个市场的禁限用 / 准用清单转录。摘要由我们自己撰写,不转载原文;证据等级 C,不是法律意见。任何一条在用于备案、标签或配方决策前,请以目标市场官方最新公告为准。`,
+  archive: '往期', back: '← 各国化妆品法规总览', upd: '生成于',
+} : {
+  h1: `Cosmetics regulatory changes digest · ${label}`,
+  capQ: `What changed in cosmetics regulations in the 120 days to ${dg.asof}?`,
+  capA: `${recent.length} regulatory changes across ${dg.n_markets_recent} markets were recorded between ${dg.window_from} and ${dg.asof}${top ? `, the most recent in ${mName(top)} on ${top.date}` : ''}. The ingredient lists we track hold ${fmt(L.rows)} entries in ${L.markets} markets. Evidence level C (consultancy digests and transcribed official lists): the target market's latest official notice prevails.`,
+  recentH: 'Changes in the last 120 days', upH: 'Announced dates still ahead', listsH: `Ingredient lists in ${L.markets} markets`,
+  th: ['Market', 'Prohibited', 'Restricted', 'Permitted / listed', 'Total', dg.prev ? `vs ${dg.prev}` : 'vs previous'],
+  base: 'First edition: this is the baseline later editions are compared against.', src: 'Source', none: 'Nothing new in this window.',
+  howH: 'How this digest is made',
+  how: `Generated automatically on the 1st of each month. Regulatory changes come from this site's tracker of 42 markets, each with a source link; list counts come from transcribed prohibited, restricted and permitted lists for ${L.markets} markets. Summaries are written by us, not copied. Evidence level C, not legal advice: before using any item for a filing, label or formulation decision, check the target market's latest official notice.`,
+  archive: 'Other editions', back: '← Cosmetic regulations by market', upd: 'Generated',
+};
+const desc = T.capA.slice(0, 300);
+const ld = [
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}${B}/` },
+    { '@type': 'ListItem', position: 2, name: zh ? '各国化妆品法规' : 'Cosmetic regulations', item: `${origin}${B}/regulations/` },
+    { '@type': 'ListItem', position: 3, name: T.h1, item: origin + path } ] },
+  { '@context': 'https://schema.org', '@type': 'Article', headline: T.h1, description: desc, inLanguage: lang, datePublished: dg.asof, dateModified: String(row.updated_at).slice(0, 10),
+    author: { '@type': 'Organization', name: siteName, url: origin }, publisher: { '@type': 'Organization', name: siteName, url: origin }, mainEntityOfPage: origin + path },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: [{ '@type': 'Question', name: T.capQ, acceptedAnswer: { '@type': 'Answer', text: T.capA } }] },
+];
+---
+<BaseLayout locale={lang as any} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={`${T.h1} | ${siteName}`} description={desc} siteName={siteName} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <SiteHeader locale={lang as any} path={path} siteName={siteName} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <p class="back"><a href={`${B}/regulations/`}>{T.back}</a></p>
+    <header><h1>{T.h1}</h1><p class="meta">{T.upd} {String(row.updated_at).slice(0, 10)} · C</p></header>
+    <section class="capsule" aria-labelledby="cap-h"><h2 id="cap-h">{T.capQ}</h2><p>{T.capA}</p></section>
+
+    <section class="blk"><h2>{T.recentH}</h2>
+      {recent.length === 0 ? <p>{T.none}</p> : (
+        <ol class="tl">{recent.map((it) => (
+          <li><time datetime={it.date}>{it.date}</time><div>
+            <p class="tlt"><b>{mName(it)}</b>{title(it) && <> · {title(it)}</>}</p>
+            {summ(it) && <p class="tls">{summ(it)}</p>}
+            {it.source && <a class="srcl" href={it.source} rel="noopener nofollow" target="_blank">{T.src}</a>}
+          </div></li>))}</ol>)}
+    </section>
+
+    {upcoming.length > 0 && (<section class="blk"><h2>{T.upH}</h2>
+      <ol class="tl">{upcoming.map((it) => (<li><time datetime={it.date}>{it.date}</time><div><p class="tlt"><b>{mName(it)}</b>{title(it) && <> · {title(it)}</>}</p>{summ(it) && <p class="tls">{summ(it)}</p>}</div></li>))}</ol>
+    </section>)}
+
+    <section class="blk"><h2>{T.listsH}</h2>
+      <div class="tw"><table><thead><tr>{T.th.map((h) => <th>{h}</th>)}</tr></thead>
+        <tbody>{byRows.map(([c, v]) => (<tr><th>{mk(c)}</th><td>{fmt(v.prohibited)}</td><td>{fmt(v.restricted)}</td><td>{fmt((v.permitted || 0) + (v.listed || 0))}</td><td>{fmt(v.total)}</td>
+          <td>{L.delta && c in L.delta ? (L.delta[c] > 0 ? `+${fmt(L.delta[c])}` : L.delta[c] < 0 ? `−${fmt(-L.delta[c])}` : '0') : '—'}</td></tr>))}</tbody></table></div>
+      {!L.delta && <p class="note">{T.base}</p>}
+    </section>
+
+    <section class="blk"><h2>{T.howH}</h2><p>{T.how}</p></section>
+    {months.length > 1 && (<p class="arc">{T.archive}: {months.filter((x) => x !== month).map((x, i) => (<>{i > 0 && ' · '}<a href={`${B}/regulations/changes/${x}/`}>{x}</a></>))}</p>)}
+  </main>
+  <SiteFooter locale={lang as any} path={path} site={{ ...(shell.staticSite ?? {}), name: siteName } as any} siblings={[]} email={shell.email} />
+</BaseLayout>
+
+<style>
+  main{max-width:56rem;margin:0 auto;padding:2rem 1rem 4rem}
+  .back{font-size:.875rem;margin:0 0 1rem} h1{font-size:clamp(1.5rem,3vw,2.25rem);line-height:1.2;margin:0 0 .25rem} .meta{font-size:.8125rem;opacity:.7;margin:0}
+  .capsule{margin:1.5rem 0;padding:1rem 1.25rem;border:1px solid var(--ck-line, rgba(0,0,0,.12));border-radius:12px} .capsule h2{font-size:1.125rem;margin:0 0 .5rem} .capsule p{line-height:1.7;margin:0}
+  .blk{margin:2rem 0} .blk h2{font-size:1.25rem;margin:0 0 .75rem} .blk p{line-height:1.7}
+  .tl{list-style:none;padding:0;margin:0;display:grid;gap:1rem} .tl li{display:grid;grid-template-columns:6.5rem 1fr;gap:.75rem} .tl time{font-variant-numeric:tabular-nums;opacity:.7;font-size:.875rem;padding-top:.1rem}
+  .tlt{margin:0 0 .25rem;line-height:1.5} .tls{margin:0 0 .25rem;line-height:1.65;font-size:.9375rem;opacity:.9} .srcl{font-size:.8125rem}
+  .tw{overflow-x:auto} table{width:100%;border-collapse:collapse;font-size:.9375rem;font-variant-numeric:tabular-nums} th,td{border-bottom:1px solid rgba(127,127,127,.25);padding:.5rem .625rem;text-align:right} th:first-child,thead th:first-child{text-align:left} thead th{font-weight:600}
+  .note{font-size:.8125rem;opacity:.7} .arc{margin-top:2rem}
+  @media (max-width:640px){.tl li{grid-template-columns:1fr;gap:.25rem}}
+</style>

@@ -1,0 +1,437 @@
+{
+ "ingredients-01-01.md": {
+  "ok": true,
+  "secs": 116,
+  "nodes": 161,
+  "edges": 38,
+  "gain": "+161节点/+38边",
+  "note": ""
+ },
+ "formulas-01-03.md": {
+  "ok": true,
+  "secs": 51,
+  "nodes": 161,
+  "edges": 0,
+  "note": ""
+ },
+ "compliance-01.md": {
+  "ok": true,
+  "secs": 55,
+  "nodes": 83,
+  "edges": 29,
+  "note": ""
+ },
+ "formulas-01-01.md": {
+  "ok": true,
+  "secs": 55,
+  "nodes": 107,
+  "edges": 0,
+  "note": ""
+ },
+ "formulas-01-02.md": {
+  "ok": true,
+  "secs": 58,
+  "nodes": 126,
+  "edges": 0,
+  "note": ""
+ },
+ "formulas-02-01.md": {
+  "ok": true,
+  "secs": 200,
+  "nodes": 140,
+  "edges": 12,
+  "note": ""
+ },
+ "formulas-02-02.md": {
+  "ok": true,
+  "secs": 168,
+  "nodes": 77,
+  "edges": 27,
+  "note": ""
+ },
+ "formulas-03-02.md": {
+  "ok": true,
+  "secs": 337,
+  "nodes": 97,
+  "edges": 25,
+  "note": ""
+ },
+ "formulas-03-03.md": {
+  "ok": true,
+  "secs": 214,
+  "nodes": 92,
+  "edges": 49,
+  "note": ""
+ },
+ "formulas-03-04.md": {
+  "ok": true,
+  "secs": 31,
+  "nodes": 35,
+  "edges": 5,
+  "note": ""
+ },
+ "formulas-04-01.md": {
+  "ok": true,
+  "secs": 266,
+  "nodes": 90,
+  "edges": 28,
+  "note": ""
+ },
+ "formulas-04-03.md": {
+  "ok": true,
+  "secs": 199,
+  "nodes": 84,
+  "edges": 22,
+  "note": ""
+ },
+ "formulas-05-02.md": {
+  "ok": true,
+  "secs": 303,
+  "nodes": 136,
+  "edges": 44,
+  "note": ""
+ },
+ "formulas-05-03.md": {
+  "ok": true,
+  "secs": 72,
+  "nodes": 103,
+  "edges": 38,
+  "note": ""
+ },
+ "formulas-06-02.md": {
+  "ok": true,
+  "secs": 103,
+  "nodes": 117,
+  "edges": 0,
+  "note": ""
+ },
+ "formulas-06-03.md": {
+  "ok": true,
+  "secs": 55,
+  "nodes": 81,
+  "edges": 24,
+  "note": ""
+ },
+ "formulas-07-01.md": {
+  "ok": true,
+  "secs": 188,
+  "nodes": 132,
+  "edges": 43,
+  "note": ""
+ },
+ "formulas-07-03.md": {
+  "ok": true,
+  "secs": 273,
+  "nodes": 124,
+  "edges": 42,
+  "note": ""
+ },
+ "formulas-08-02.md": {
+  "ok": true,
+  "secs": 202,
+  "nodes": 128,
+  "edges": 46,
+  "note": ""
+ },
+ "formulas-08-03.md": {
+  "ok": true,
+  "secs": 141,
+  "nodes": 96,
+  "edges": 27,
+  "note": ""
+ },
+ "ingredients-01-02.md": {
+  "ok": true,
+  "secs": 114,
+  "nodes": 116,
+  "edges": 72,
+  "note": ""
+ },
+ "ingredients-01-03.md": {
+  "ok": true,
+  "secs": 193,
+  "nodes": 176,
+  "edges": 43,
+  "note": ""
+ },
+ "ingredients-01-04.md": {
+  "ok": true,
+  "secs": 167,
+  "nodes": 116,
+  "edges": 45,
+  "note": ""
+ },
+ "ingredients-01-05.md": {
+  "ok": true,
+  "secs": 34,
+  "nodes": 29,
+  "edges": 15,
+  "note": ""
+ },
+ "ingredients-02-01.md": {
+  "ok": true,
+  "secs": 139,
+  "nodes": 130,
+  "edges": 46,
+  "note": ""
+ },
+ "ingredients-02-02.md": {
+  "ok": true,
+  "secs": 174,
+  "nodes": 152,
+  "edges": 62,
+  "note": ""
+ },
+ "ingredients-02-03.md": {
+  "ok": true,
+  "secs": 73,
+  "nodes": 100,
+  "edges": 38,
+  "note": ""
+ },
+ "ingredients-02-04.md": {
+  "ok": true,
+  "secs": 153,
+  "nodes": 142,
+  "edges": 59,
+  "note": ""
+ },
+ "ingredients-03-04.md": {
+  "ok": true,
+  "secs": 113,
+  "nodes": 97,
+  "edges": 27,
+  "note": ""
+ },
+ "ingredients-04-01.md": {
+  "ok": true,
+  "secs": 164,
+  "nodes": 161,
+  "edges": 52,
+  "note": ""
+ },
+ "ingredients-04-02.md": {
+  "ok": true,
+  "secs": 122,
+  "nodes": 197,
+  "edges": 72,
+  "note": ""
+ },
+ "ingredients-04-03.md": {
+  "ok": true,
+  "secs": 267,
+  "nodes": 100,
+  "edges": 31,
+  "note": ""
+ },
+ "ingredients-04-04.md": {
+  "ok": true,
+  "secs": 31,
+  "nodes": 27,
+  "edges": 6,
+  "note": ""
+ },
+ "ingredients-05-01.md": {
+  "ok": true,
+  "secs": 249,
+  "nodes": 220,
+  "edges": 48,
+  "note": ""
+ },
+ "ingredients-05-02.md": {
+  "ok": true,
+  "secs": 527,
+  "nodes": 177,
+  "edges": 39,
+  "note": ""
+ },
+ "ingredients-05-03.md": {
+  "ok": true,
+  "secs": 134,
+  "nodes": 182,
+  "edges": 48,
+  "note": ""
+ },
+ "ingredients-05-04.md": {
+  "ok": true,
+  "secs": 52,
+  "nodes": 71,
+  "edges": 31,
+  "note": ""
+ },
+ "ingredients-06-01.md": {
+  "ok": true,
+  "secs": 94,
+  "nodes": 166,
+  "edges": 57,
+  "note": ""
+ },
+ "ingredients-06-02.md": {
+  "ok": true,
+  "secs": 115,
+  "nodes": 162,
+  "edges": 58,
+  "note": ""
+ },
+ "ingredients-06-03.md": {
+  "ok": true,
+  "secs": 70,
+  "nodes": 134,
+  "edges": 40,
+  "note": ""
+ },
+ "ingredients-06-04.md": {
+  "ok": true,
+  "secs": 93,
+  "nodes": 93,
+  "edges": 25,
+  "note": ""
+ },
+ "ingredients-07-01.md": {
+  "ok": true,
+  "secs": 118,
+  "nodes": 195,
+  "edges": 61,
+  "note": ""
+ },
+ "ingredients-07-02.md": {
+  "ok": true,
+  "secs": 143,
+  "nodes": 126,
+  "edges": 42,
+  "note": ""
+ },
+ "ingredients-07-03.md": {
+  "ok": true,
+  "secs": 57,
+  "nodes": 123,
+  "edges": 43,
+  "note": ""
+ },
+ "ingredients-07-04.md": {
+  "ok": true,
+  "secs": 91,
+  "nodes": 92,
+  "edges": 41,
+  "note": ""
+ },
+ "ingredients-08-01.md": {
+  "ok": true,
+  "secs": 52,
+  "nodes": 105,
+  "edges": 0,
+  "note": ""
+ },
+ "origins-02.md": {
+  "ok": true,
+  "secs": 74,
+  "nodes": 196,
+  "edges": 0,
+  "note": ""
+ },
+ "origins-03.md": {
+  "ok": true,
+  "secs": 60,
+  "nodes": 128,
+  "edges": 11,
+  "note": ""
+ },
+ "products-01.md": {
+  "ok": true,
+  "secs": 104,
+  "nodes": 134,
+  "edges": 30,
+  "note": ""
+ },
+ "products-02.md": {
+  "ok": true,
+  "secs": 110,
+  "nodes": 179,
+  "edges": 60,
+  "note": ""
+ },
+ "products-03.md": {
+  "ok": true,
+  "secs": 17,
+  "nodes": 14,
+  "edges": 0,
+  "note": ""
+ },
+ "formulas-02-03.md": {
+  "ok": true,
+  "secs": 88,
+  "nodes": 95,
+  "edges": 0,
+  "note": ""
+ },
+ "formulas-03-01.md": {
+  "ok": false,
+  "secs": 11,
+  "nodes": 0,
+  "edges": 0,
+  "note": "e talk F:\\0cosmetic\\cosmetic-sites\\tools\\.kg-parts\\formulas-03-01 -i         # Interactive chat   he talk F:\\0cosmetic\\cosmetic-sites\\tools\\.kg-parts\\formulas-03-01 -q \"your  question\" # Single query "
+ },
+ "formulas-04-02.md": {
+  "ok": false,
+  "secs": 11,
+  "nodes": 0,
+  "edges": 0,
+  "note": "e talk F:\\0cosmetic\\cosmetic-sites\\tools\\.kg-parts\\formulas-04-02 -i         # Interactive chat   he talk F:\\0cosmetic\\cosmetic-sites\\tools\\.kg-parts\\formulas-04-02 -q \"your  question\" # Single query "
+ },
+ "formulas-05-01.md": {
+  "ok": false,
+  "secs": 11,
+  "nodes": 0,
+  "edges": 0,
+  "note": "e talk F:\\0cosmetic\\cosmetic-sites\\tools\\.kg-parts\\formulas-05-01 -i         # Interactive chat   he talk F:\\0cosmetic\\cosmetic-sites\\tools\\.kg-parts\\formulas-05-01 -q \"your  question\" # Single query "
+ },
+ "formulas-06-01.md": {
+  "ok": true,
+  "secs": 270,
+  "nodes": 131,
+  "edges": 28,
+  "note": ""
+ },
+ "formulas-07-02.md": {
+  "ok": true,
+  "secs": 184,
+  "nodes": 129,
+  "edges": 0,
+  "note": ""
+ },
+ "formulas-08-01.md": {
+  "ok": false,
+  "secs": 338,
+  "nodes": 91,
+  "edges": 37,
+  "note": "cosmetic\\cosmetic-sites\\tools\\.kg-parts\\formulas-08-01 Template: general/hypergraph Language: zh Build Index: Yes  Template resolved: hypergraph Input text: 5688 characters ⠋ Building search index... "
+ },
+ "ingredients-03-01.md": {
+  "ok": false,
+  "secs": 27,
+  "nodes": 0,
+  "edges": 0,
+  "note": "alk F:\\0cosmetic\\cosmetic-sites\\tools\\.kg-parts\\ingredients-03-01 -i      # Interactive chat   he talk F:\\0cosmetic\\cosmetic-sites\\tools\\.kg-parts\\ingredients-03-01 -q  \"your question\" # Single query "
+ },
+ "ingredients-03-02.md": {
+  "ok": true,
+  "secs": 153,
+  "nodes": 91,
+  "edges": 0,
+  "note": ""
+ },
+ "ingredients-03-03.md": {
+  "ok": true,
+  "secs": 252,
+  "nodes": 124,
+  "edges": 0,
+  "note": ""
+ },
+ "origins-01.md": {
+  "ok": true,
+  "secs": 203,
+  "nodes": 199,
+  "edges": 34,
+  "note": ""
+ }
+}

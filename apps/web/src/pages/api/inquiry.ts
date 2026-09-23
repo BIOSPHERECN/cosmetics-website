@@ -23,6 +23,8 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { overQuota, recordUse, tooMany, clientId, sweep } from '../../lib/ratelimit';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { gradeAndNotify } from '../../lib/inquiry-ai';
 
 export const prerender = false;
 
@@ -41,10 +43,14 @@ async function resolveSite(db: D1Database, host: string, hint: string): Promise<
     const ok = await db.prepare(`SELECT id FROM sites WHERE id = ?`).bind(hint).first<{ id: string }>().catch(() => null);
     if (ok) return ok.id;
   }
-  return 'beauty2oem';
+  /* 兜底按域名。2026-09-07:这里原来硬编码 'beauty2oem' ——
+     一条询盘归到错误的站,等于这条线索直接丢进另一家公司的后台,
+     而且没有任何报警。域名认不出来就返回空字符串,让调用方拒收并留痕,
+     宁可让一条询盘报错,不可让它悄悄进错门。 */
+  return siteIdForHost(host) ?? '';
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   const db = (env as any).DB as D1Database | undefined;
   if (!db) return json({ ok: false, msg: '数据源未就绪' }, 503);
 
@@ -68,6 +74,8 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const email = (f.email ?? '').trim();
+  /* WhatsApp 可选:只留号码字符;少于 6 位当没填。存原样(带国家码),业务员点 wa.me 时再去符号 */
+  const whatsapp = (() => { const v = String(f.whatsapp ?? '').replace(/[^+\d\s()-]/g, '').trim().slice(0, 40); return v.replace(/\D/g, '').length >= 6 ? v : null; })();
   if (!looksEmail(email)) {
     return isForm ? backTo(request, 'bad') : json({ ok: false, msg: '请填写有效的邮箱地址' }, 400);
   }
@@ -83,10 +91,50 @@ export const POST: APIRoute = async ({ request }) => {
   const site = await resolveSite(db, new URL(request.url).hostname, (f.site ?? '').trim());
   const source = (f.source ?? 'form').slice(0, 32);
 
+  /* 来源页与站外来源。
+     没有这两列,后台只能回答「这个月来了 20 条」;有了才能回答
+     「20 条里 12 条来自生产线页,种植基地页一条没有」——
+     前者是记账,后者才是能据以改内容的信息。
+     referrer 只留 host:完整 URL 常带搜索词和会话 id,那属于访客隐私,
+     我们既不需要也不该留。 */
+  const refHost = (() => {
+    const r = request.headers.get('referer') ?? '';
+    try { return r ? new URL(r).host.slice(0, 120) : null; } catch { return null; }
+  })();
+  const srcPath = (() => {
+    // 优先用表单自己带的(询盘车会带上下单那一页),否则从 referer 推
+    const p = String(f.sourcePath ?? '').trim();
+    if (p) return p.slice(0, 200);
+    const r = request.headers.get('referer') ?? '';
+    try { return r ? new URL(r).pathname.slice(0, 200) : null; } catch { return null; }
+  })();
+
+  /* Turnstile:蜜罐字段只挡最笨的脚本,挡不住真机器人。
+     密钥没配时**放行而不是拒绝** —— 一个校验组件的配置问题
+     不该让所有真实询盘都进不来(今天已经吃过三次「失败伪装成成功」的亏,
+     这里反过来:宁可漏挡,不可误杀线索)。 */
+  const tsSecret = (env as any).TURNSTILE_SECRET as string | undefined;
+  const tsToken = String((f as any)['cf-turnstile-response'] ?? '');
+  if (tsSecret && tsToken) {
+    try {
+      const v = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ secret: tsSecret, response: tsToken,
+          remoteip: request.headers.get('CF-Connecting-IP') ?? '' }),
+      });
+      const vr = await v.json<{ success?: boolean }>();
+      if (!vr?.success) return json({ ok: false, msg: '人机校验未通过,请重试' }, 400);
+    } catch { /* 校验服务本身不可用时放行,理由同上 */ }
+  }
+
+  let newId = 0;
   try {
-    await db.prepare(
-      `INSERT INTO inquiries (site_id, lang, name, company, email, country, message, spam_score)
-       VALUES (?,?,?,?,?,?,?,?)`,
+    /* 09-21 01:2x 线上每一单都 500「参数绑定数量错误」:0068 加了 whatsapp 值却没加进列名,12 个 ? 绑 13 个值。创始人在 beauty2ai 上提交时发现,帛卉站同样中招。 */
+    const ins = await db.prepare(
+      `INSERT INTO inquiries (site_id, lang, name, company, email, country, message,
+                              spam_score, source_path, referrer, category, volume, whatsapp)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     ).bind(
       site,
       (f.lang ?? 'zh-cn').slice(0, 12),
@@ -98,13 +146,29 @@ export const POST: APIRoute = async ({ request }) => {
          后台列表里一眼能分清「订阅」和「真询盘」,不用点进去猜。 */
       message.slice(0, 4000) || `（来自${source === 'newsletter' ? '订阅表单' : '表单'},未填写正文）`,
       spam,
+      srcPath,
+      refHost,
+      /* 品类与数量级:报价前必问的两件,做成结构化字段而不是留在正文里 ——
+         留在正文就得逐条人读,后台没法筛,也答不了「哪类询盘最多」。 */
+      (f.category ?? '').slice(0, 40) || null,
+      (f.volume ?? '').slice(0, 40) || null,
+      whatsapp,
     ).run();
+    newId = Number((ins as any).meta?.last_row_id ?? 0);
   } catch (e) {
     return json({ ok: false, msg: `提交失败:${e instanceof Error ? e.message.slice(0, 120) : ''}` }, 500);
   }
 
   await recordUse(db, 'inquiry', who);
   if (Math.random() < 0.05) await sweep(db);
+
+  /* 入库之后:AI 分级 + 群通知,放到响应之后跑(waitUntil),访客秒得回执。
+     订阅框(newsletter)不通知 —— 那不是询盘。 */
+  if (newId && source !== 'newsletter') {
+    const job = gradeAndNotify(db, env as any, newId, { name: (f.name ?? '').slice(0, 120) || '(未填姓名)', company: (f.company ?? '').slice(0, 160) || null, email: email.slice(0, 200), country: request.headers.get('CF-IPCountry') || null, message: message.slice(0, 4000), lang: (f.lang ?? 'zh-cn').slice(0, 12), source_path: srcPath, category: (f.category ?? '').slice(0, 40) || null, volume: (f.volume ?? '').slice(0, 40) || null, whatsapp });
+    const ctx = (locals as any)?.cfContext;   // Astro 6:runtime.ctx 已移除,用 cfContext
+    if (ctx?.waitUntil) ctx.waitUntil(job); else await job.catch(() => {});
+  }
 
   return isForm ? backTo(request, 'ok') : json({ ok: true, msg: '已收到,我们会在两个工作日内书面回复。' });
 };

@@ -8,6 +8,7 @@
  * 所以「换风格」= 换一个属性值,不动任何页面代码。这是 5 域名 × 4 风格能在一套模板里跑的原因。
  */
 import { HREFLANG, OG_LOCALE, LOCALES, isRtl, switchLocalePath, type Locale } from '../i18n/index.ts';
+import ChatWidget from '../components/ChatWidget.astro';
 import '../styles/tokens.css';
 // 字体层放在中性令牌之后、流派之前:它改写字体族与字号阶梯,
 // 但仍允许各流派/风格在其上继续覆盖(如奢华系改用衬线)。
@@ -35,6 +36,7 @@ import '../styles/marvis.css';
    与另外四个代工站是两种语言:工厂站讲产能与合规,品牌站讲仪式感与成分故事。 */
 import '../styles/dtc.css';
 import '../styles/base.css';
+import { orgJsonLd } from '../content/org.ts';
 
 export interface Props {
   locale: Locale;
@@ -57,6 +59,17 @@ export interface Props {
   /** 品牌主色,用于生成站内绘制的 favicon(不外链、不占用一次网络请求) */
   brandColor?: string;
   /**
+   * 社交分享缩略图(绝对地址)。
+   * 缺这一张的代价很具体:链接发到 WhatsApp / LinkedIn / 微信,
+   * 对方看到的是一条没有图的纯文字 —— 而采购群里刷过去,没图的那条不会有人点。
+   */
+  ogImage?: string;
+  /**
+   * 结构化数据(JSON-LD)。给搜索引擎和 AI 答案引擎读的机器可读事实。
+   * 传对象或对象数组,这里负责序列化。
+   */
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  /**
    * 视觉主题。此前写死成 summer(白底),5 个站没有一个能切到深金 ——
    * 而创始人认可的正是深金那版。写死主题等于把风格决定权焊在代码里,
    * 那本该是后台一个下拉框的事。
@@ -68,6 +81,9 @@ const {
   locale, school, variant, brand, title, description,
   siteName, siteUrl, path, indexable = true, brandColor = '#1f4e79',
   theme = 'marvis',
+  ogImage,
+  jsonLd,
+
 } = Astro.props;
 
 /**
@@ -80,6 +96,9 @@ const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 const favicon = `data:image/svg+xml,${encodeURIComponent(faviconSvg)}`;
 
 const base = siteUrl.replace(/\/$/, '');
+/* 把这一页实际用的站点 ID 写进响应头,供中间件的跨站防回归闸比对。
+   只是一个诊断头,不含任何敏感信息。 */
+try { Astro.response.headers.set('x-bh-site', String(brand ?? '')); } catch { /* 静态渲染时没有 response */ }
 const canonical = `${base}${path}`;
 const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`;
 
@@ -93,6 +112,12 @@ const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`;
  */
 const liveIndexing = import.meta.env.PUBLIC_LIVE === '1';
 const allowIndex = indexable && liveIndexing;
+
+/* 社交缩略图:传了就用,没传退回站点厂区图 —— 绝对地址,相对路径在多数平台不解析 */
+const ogImg = ogImage
+  ? (ogImage.startsWith('http') ? ogImage : `${base}${ogImage}`)
+  : `${base}/media/57`;
+const ld = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 ---
 
 <!doctype html>
@@ -136,10 +161,98 @@ const allowIndex = indexable && liveIndexing;
     <meta property="og:url" content={canonical} />
     <meta property="og:site_name" content={siteName} />
     <meta property="og:locale" content={OG_LOCALE[locale]} />
+    <meta property="og:image" content={ogImg} />
+    <meta property="og:image:alt" content={title} />
 
+    {/* Twitter/X 用自己一套标签,不读 og:*。少这四行,链接在 X 和部分 IM 里没有大图卡片 */}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImg} />
+
+    {/* 结构化数据 —— 搜索引擎靠它出富摘要,AI 答案引擎靠它取事实。
+        普通 HTML 里的「20,000 ㎡」机器要靠猜;放进 JSON-LD 就是明确的一条数据。 */}
+    {ld.map((obj) => (
+      <script type="application/ld+json" set:html={JSON.stringify(obj)} />
+    ))}
+
+    {/* dtc 主题的标题字。口味迭代记录:系统雅黑(黑压压)→ 思源宋体(创始人:
+        「宋体不好看了,还是换思源或者阿里字体」)→ 现为**思源黑体**(Noto Sans SC),
+        字栈里备了阿里普惠体(本机装有就优先普惠体的圆润,没装落思源黑)。
+        display=swap:字体到达前先用系统字渲染,大陆直连拿不到 Google Fonts 也只是回落。 */}
+    {theme === 'dtc' && (
+      <>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        {/* 09-23 B3 国内可访问:外链样式表放 head 会挡渲染(display=swap 管不到这张 CSS),
+            国内连不上 Google 就白屏到超时。改成 media=print 预载、到了再切 all —— 不挡首屏,
+            海外照样用上思源黑体;国内拿不到就一直是字栈里的苹方/雅黑。 */}
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@500;700;900&display=swap" media="print" onload="this.media='all'" />
+        <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@500;700;900&display=swap" /></noscript>
+      </>
+    )}
     <slot name="head" />
-  </head>
+    {/* Organization —— 每一页都带。2026-09-07 之前它只在 CMS 页与资讯页出现,
+      而 AI 答案引擎最常落到的恰恰是单品详情页与服务页,那些页一点公司信息都没有。
+      @id 全站一致,同一页重复出现也会被消费方合并,所以不必去删各页里已有的那份。 */}
+  <script type="application/ld+json" set:html={JSON.stringify(orgJsonLd(base, siteName, locale, description, (Astro.locals as any)?.contact))} is:inline />
+</head>
   <body>
     <slot />
+
+    {/* 回到顶部。右下角从下到上是 AI 客服 → 询盘车(创始人钦定客服住最右下),
+        第三个再叠上去就是一根按钮柱 —— 回顶最低频,搬去左下。
+        滚过约一屏才出现:页面还在首屏时给"回到顶部"是噪音。 */}
+    {/* AI 客服(先机器人后人工)。左下角 —— 右下已有询盘车与回顶两个浮层 */}
+    <ChatWidget locale={locale} site={brand ?? 'biosphere-ai'} />
+
+    <button class="ck-top" id="ck-top" aria-label="回到顶部" hidden>
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none"
+           stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 19V5" /><path d="m5 12 7-7 7 7" />
+      </svg>
+    </button>
+    <style>
+      .ck-top {
+        position: fixed;
+        inset-inline-start: 1.5rem;   /* 左下(右下让给 AI 客服+询盘车);RTL 自动换边 */
+        bottom: 1.5rem;
+        width: 2.75rem; height: 2.75rem;
+        border-radius: 50%;
+        border: 1px solid var(--ck-line, rgb(0 0 0 / 0.12));
+        background: var(--ck-surface, #fff);
+        color: var(--ck-ink, #111);
+        display: grid; place-items: center;
+        cursor: pointer;
+        box-shadow: 0 6px 18px -6px rgb(0 0 0 / 0.28);
+        opacity: 0.92;
+        z-index: 40;                /* 低于吸顶导航(50),不盖住下拉菜单 */
+        transition: opacity 0.2s ease, transform 0.2s ease;
+      }
+      .ck-top:hover { opacity: 1; transform: translateY(-2px); }
+      .ck-top[hidden] { display: none; }
+      @media (prefers-reduced-motion: reduce) { .ck-top { transition: none; } }
+    </style>
+    <script is:inline>
+      (() => {
+        const btn = document.getElementById('ck-top');
+        if (!btn) return;
+        const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        btn.addEventListener('click', () =>
+          scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }));
+
+        let tick = false;
+        const sync = () => { btn.hidden = scrollY < innerHeight * 0.9; tick = false; };
+        addEventListener('scroll', () => {
+          if (!tick) { tick = true; requestAnimationFrame(sync); }
+        }, { passive: true });
+        sync();
+      })();
+    </script>
+    {/* 真人信标:只有能执行 JS 的浏览器才会打到 /api/pulse,爬虫不会 —— 看真人流量只认这一条(2026-09-15)。
+        不带任何个人信息;后台路径不打。 */}
+    <script is:inline>
+      try { if (!location.pathname.startsWith('/bohui')) { const u = '/api/pulse?p=' + encodeURIComponent(location.pathname.slice(0, 96)); (navigator.sendBeacon && navigator.sendBeacon(u)) || fetch(u, { method: 'POST', keepalive: true }); } } catch (e) {}
+    </script>
   </body>
 </html>

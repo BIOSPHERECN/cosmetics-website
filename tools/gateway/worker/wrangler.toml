@@ -1,0 +1,23 @@
+# 帛卉网关 · 云版(Cloudflare Worker)。逻辑与本机版共用 ../core.mjs;本文件只有绑定。
+# 部署:python tools/gateway/worker/deploy.py(建 KV、写 secrets GW_CONFIG / GW_TOKEN、deploy;用 .env 的账号)
+# 渠道与 key 在 secret GW_CONFIG(整份 ~/.bohui-gateway/config.json),令牌在 secret GW_TOKEN —— 都不进仓库。
+name = "bohui-gateway"
+main = "src/index.mjs"
+compatibility_date = "2026-08-01"
+# 域名 gateway.biosphere-ai.com 由 deploy.py 走账号级 API(/workers/domains)挂上 —— wrangler 的 custom_domain 会先查 zone 级路由,
+# .env 的令牌没有 Zone.Workers Routes 权限,直接报 10000;不在这里写 routes。
+workers_dev = false
+
+# 冷却 / 计数 / 压缩累计 放这一个命名空间的 state 键(deploy.py 首次创建后回填 id)
+[[kv_namespaces]]
+binding = "BOHUI_GW"
+id = "524921d5ff2a48a6824e04c185608d31"
+
+[observability]
+enabled = true
+
+# 控制面(0.3.1):gw_keys / gw_roles / gw_events 与后台同一个库
+[[d1_databases]]
+binding = "DB"
+database_name = "bohui-cms-v2"
+database_id = "ea5b0da4-7f96-48bf-8fca-dc7193a9596d"

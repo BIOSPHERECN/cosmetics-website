@@ -1,3 +1,9 @@
+/* Open Props(github.com/argyleink/open-props):开源设计令牌库。
+   只引阴影与缓动两个子集 —— 都是纯 CSS 变量,与 --ck-* 令牌同构;
+   我们不直接在组件里用 --shadow-*,而是映射进 --ck-*(见下),单源不破。 */
+@import 'open-props/shadows.min.css';
+@import 'open-props/easings.min.css';
+
 /**
  * 设计令牌 · 唯一契约(Single Source of Truth)
  * ───────────────────────────────────────────────────────────────
@@ -54,6 +60,9 @@
   --ck-h3: clamp(1.125rem, 1rem + 0.5vw, 1.375rem);
   --ck-body: 1rem;
   --ck-small: 0.875rem;
+  /* 最小号(眉标/角注)。三个组件早在引用它,定义却一直缺失,
+     全靠 var() 的回退值撑着 —— check-css-vars 抓出来后补正式定义 */
+  --ck-tiny: 0.6875rem;
   --ck-weight-head: 650;
   --ck-weight-body: 400;
   --ck-lh-head: 1.15;
@@ -66,7 +75,7 @@
   --ck-maxw: 75rem;            /* 内容最大宽 */
   --ck-maxw-prose: 40rem;      /* 正文可读宽 */
   --ck-gap: 1.5rem;            /* 网格间距 */
-  --ck-section-py: 4.5rem;     /* 分区上下留白 */
+  --ck-section-py: clamp(2rem, 4vw, 3.5rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
   --ck-radius: 4px;
   --ck-radius-lg: 8px;
   --ck-shadow: none;           /* 多数流派克制,不用阴影 */
@@ -78,5 +87,11 @@
 
   /* ── 动效(仅 CSS,尊重 prefers-reduced-motion)── */
   --ck-dur: 0.5s;
-  --ck-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ck-ease: var(--ease-out-3, cubic-bezier(0.22, 0.61, 0.36, 1));
+
+  /* ── 阴影两档(来自 Open Props,经过感知校准的多层阴影)──
+     card = 静置卡片的存在感;lift = 悬停抬起。
+     回退值兜底:即使 open-props 未加载也不至于无阴影。 */
+  --ck-shadow-card: var(--shadow-1, 0 1px 2px rgb(2 8 20 / 0.06));
+  --ck-shadow-lift: var(--shadow-3, 0 10px 24px rgb(2 8 20 / 0.12));
 }

@@ -1,0 +1,42 @@
+---
+/**
+ * 会员门控卡:lib/quota.ts 的判定结果 → 「注册/登录后查看」入口 / 「今天满了」/ 会员的一行用量。
+ * 「升级」只链到联系页,不写价格 —— 付费价格是商务条款,工厂站没定过。
+ */
+import { DAILY, secsToReset, type Gate } from '../lib/quota';
+
+interface Props { lang: string; g: Gate; next: string; what?: [string, string] }
+const { lang, g, next, what = ['完整解读', 'the full breakdown'] } = Astro.props;
+const zh = lang.startsWith('zh');
+const login = `/${lang}/login/?next=${encodeURIComponent(next)}`;
+const paid = g.limit >= DAILY.pro;
+const hours = Math.max(1, Math.ceil(secsToReset() / 3600));
+---
+{g.state === 'login' && (
+  <aside class="mgate">
+    <h2>{zh ? `注册 / 登录后查看${what[0]}` : `Sign in to see ${what[1]}`}</h2>
+    <p>{zh
+      ? `免费会员每天可看 ${DAILY.free} 条,付费会员每天 ${DAILY.pro} 条。只要邮箱,不用密码;第一次登录即完成注册。`
+      : `Free members can open ${DAILY.free} items a day, paid members ${DAILY.pro}. Email only, no password — your first sign-in creates the account.`}</p>
+    <a class="mbtn" href={login}>{zh ? '用邮箱注册 / 登录' : 'Sign up / sign in with email'}</a>
+  </aside>
+)}
+{g.state === 'over' && (
+  <aside class="mgate">
+    <h2>{zh ? `今天的 ${g.limit} 条已看完` : `You have used today's ${g.limit} items`}</h2>
+    <p>{zh
+      ? `北京时间明天 0 点自动恢复(约 ${hours} 小时后);今天看过的条目仍可重复打开。${paid ? '' : `需要更多,可升级付费会员(每天 ${DAILY.pro} 条),联系我们开通。`}`
+      : `Resets at midnight Beijing time (in about ${hours} h); items you opened today stay open.${paid ? '' : ` Need more? A paid membership gives ${DAILY.pro} a day — contact us to switch it on.`}`}</p>
+    <a class="mbtn" href={`/${lang}/contact/?ref=${paid ? 'quota' : 'upgrade'}`}>{zh ? (paid ? '联系我们' : '联系我们升级') : (paid ? 'Contact us' : 'Contact us to upgrade')}</a>
+  </aside>
+)}
+{g.state === 'full' && <p class="mused">{zh ? `今日已看 ${g.used} / ${g.limit}` : `Today: ${g.used} / ${g.limit}`}</p>}
+
+<style>
+  .mgate { margin: 1.5rem 0; padding: 1.5rem; border: 1px solid var(--dtc-line, rgb(0 0 0/.12)); border-radius: 12px; background: var(--dtc-sand, #f5f4f2); max-width: 40rem; }
+  .mgate h2 { font-size: 1.125rem; font-weight: 650; margin: 0 0 .5rem; }
+  .mgate p { font-size: .875rem; line-height: 1.7; color: var(--ck-ink-soft); margin: 0 0 1rem; }
+  .mbtn { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 1.375rem; border-radius: 980px; text-decoration: none;
+          font-size: .875rem; font-weight: 600; background: var(--ck-accent); color: var(--ck-on-accent); }
+  .mused { font-size: .75rem; color: var(--ck-ink-soft); margin: .5rem 0 0; }
+</style>

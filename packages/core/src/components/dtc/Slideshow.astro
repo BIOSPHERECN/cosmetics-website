@@ -39,15 +39,17 @@ const lines = title.split('\n');
     ))}
   </div>
 
-  {/* 底部渐变 —— 文字的承重墙。pointer-events:none 让它不挡住图上的任何交互 */}
+  {/* 底部渐变 —— 文字的承重墙。title 为空 = 纯图轮播(创始人 2026-09-11「去 logo 去文字,纯瓶子图片」),整块不出、也不压暗图 */}
+  {(title || eyebrow || lead || ctaText) && (
   <div class="veil">
     <div class="dtc-wrap veil-in">
       {eyebrow && <p class="eyebrow">{eyebrow}</p>}
-      <h1 class="title">{lines.map((l, i) => <>{i > 0 && <br />}{l}</>)}</h1>
+      {title && <h1 class="title">{lines.map((l, i) => <>{i > 0 && <br />}{l}</>)}</h1>}
       {lead && <p class="lead">{lead}</p>}
       {ctaText && ctaHref && <a class="dtc-btn on-dark" href={ctaHref}>{ctaText}</a>}
     </div>
   </div>
+  )}
 
   {slides.length > 1 && (
     <div class="nav">
@@ -64,13 +66,15 @@ const lines = title.split('\n');
 
 <style>
   .hero { position: relative; overflow: hidden; }
-  .stage { position: relative; width: 100%; height: 78vh; min-height: 30rem; background: var(--dtc-sand); }
+  /* 2026-09-11 创始人:「图片只有半截,无限放大!」—— 原来 78vh + cover 把 16:7 的横幅裁掉一半再放大。
+     改成高度跟图片比例走(16:7),contain 不裁,超宽屏两侧留同色底。 */
+  .stage { position: relative; width: 100%; aspect-ratio: 16 / 5; background: #f4f2ee; }
   .slide {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     opacity: 0;
     transition: opacity 1s ease;
   }
@@ -88,7 +92,7 @@ const lines = title.split('\n');
   .veil-in > * { pointer-events: auto; }
   .eyebrow {
     margin: 0 0 0.875rem;
-    font-size: 0.6875rem;
+    font-size: max(0.6875rem, 14px);
     text-transform: uppercase;
     letter-spacing: 0.3em;
     color: rgb(255 255 255 / 0.75);
@@ -104,7 +108,7 @@ const lines = title.split('\n');
   .lead {
     margin: 1rem 0 0;
     max-width: 28rem;
-    font-size: 0.8125rem;
+    font-size: max(0.8125rem, 14px);
     line-height: 1.75;
     color: rgb(255 255 255 / 0.8);
   }
@@ -148,7 +152,7 @@ const lines = title.split('\n');
   .dot.on { background: #fff; }
 
   @media (max-width: 48rem) {
-    .stage { height: 62vh; min-height: 24rem; }
+    .stage { aspect-ratio: 16 / 5; }
     .veil { padding-block: 7rem 2.5rem; }
     .nav { bottom: 0.875rem; }
   }
@@ -167,8 +171,7 @@ const lines = title.split('\n');
         dots.forEach((d, k) => d.classList.toggle('on', k === i));
       };
       const ms = Number(hero.dataset.interval) || 0;
-      /* 尊重"减少动态"偏好:前庭功能敏感的人被自动轮播晃得难受,
-         这类偏好在系统设置里,不该由页面替他决定。 */
+      
       const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
       const start = () => { if (ms && !calm) timer = setInterval(() => show(i + 1), ms); };
       const stop = () => { clearInterval(timer); timer = null; };
@@ -176,7 +179,7 @@ const lines = title.split('\n');
         b.addEventListener('click', () => { stop(); show(i + Number(b.dataset.dir)); start(); }));
       dots.forEach((d) =>
         d.addEventListener('click', () => { stop(); show(Number(d.dataset.go)); start(); }));
-      /* 鼠标停在图上时暂停 —— 人正在看,不该被翻走 */
+      
       hero.addEventListener('mouseenter', stop);
       hero.addEventListener('mouseleave', start);
       start();

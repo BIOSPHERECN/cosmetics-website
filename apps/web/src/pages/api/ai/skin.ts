@@ -19,8 +19,10 @@
  */
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { loadFleet, vision, chat } from '../../../lib/fleet';
+import { loadFleet, vision, chat, paidFirst } from '../../../lib/fleet';
+import { replyLanguageRule, chatInLanguage } from '../../../lib/translate.ts';
 import { overQuota, recordUse, tooMany, clientId, sweep } from '../../../lib/ratelimit';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 
 export const prerender = false;
 
@@ -57,7 +59,8 @@ export const POST: APIRoute = async ({ request }) => {
     const body = (await request.json()) as {
       image?: string; lang?: string; site?: string; consent?: boolean;
     };
-    const { image, lang = 'zh-cn', site = 'beauty2oem', consent } = body;
+    const { image, lang = 'zh-cn', site: siteHint, consent } = body;
+    const site = siteHint || siteIdForHost(new URL(request.url).hostname) || 'biosphere-ai';
 
     // 敏感个人信息必须单独同意,而且同意要能证明是这一次给的
     if (!consent) return json({ ok: false, msg: '需要先勾选同意,才能分析这张照片' }, 400);
@@ -69,7 +72,7 @@ export const POST: APIRoute = async ({ request }) => {
       return json({ ok: false, msg: '图片过大,请重新拍摄(前端会自动压缩,若仍失败请换一张)' }, 413);
     }
 
-    const fleet = await loadFleet(db, env as any);
+    const fleet = paidFirst(await loadFleet(db, env as any));
     if (!fleet.some((p) => p.vision)) {
       return json({
         ok: false,
@@ -134,11 +137,14 @@ export const POST: APIRoute = async ({ request }) => {
     // ── 第三步:只在候选里解释 ────────────────────────────
     const catalog = candidates.map((f) => {
       const a = safeJson(f.actives_json) ?? [];
-      const acts = Array.isArray(a) ? a.map((x: any) => `${x.name}${x.pct ? ' ' + x.pct : ''}`).join('、') : '';
+      const acts = Array.isArray(a) ? a.map((x: any) => String(x.name))   /* 2026-09-03:浓度 pct 不再拼进云端模型提示词 */.join('、') : '';
       return `- ${f.code}(${f.category}/${f.format});功效:${f.benefits};活性物:${acts};肤感:${f.texture ?? '未标注'};起订 ${f.moq ?? '面议'}`;
     }).join('\n');
 
-    const cr = await chat(env as any, [
+    // 走 chatInLanguage 而不是裸 chat:它会校验模型是不是真的用了访客的语言,
+    // 不合格就换下一家。实测同一句需求,弱模型会给韩语访客回「청凉爽한肤感」——
+    // 韩文里夹中文,页面翻得再好也白搭。
+    const adviceText = await chatInLanguage(env as any, fleet, lang, [
       {
         role: 'system',
         content:
@@ -157,9 +163,10 @@ export const POST: APIRoute = async ({ request }) => {
           `1)一段不超过 120 字的肤况描述(描述外观,不下判断);\n` +
           `2)推荐 2-3 个配方,每个写明配方号、为什么适配这些外观特征、预期肤感;\n` +
           `3)一句选品提示(如需要避开的成分方向)。\n` +
-          `用${lang === 'en' ? '英文' : '中文'}输出,不要用 Markdown 标题符号。`,
+          replyLanguageRule(lang) + '不要用 Markdown 标题符号。',
       },
-    ], { fleet, maxTokens: 900, temperature: 0.4 });
+    ], { maxTokens: 900, temperature: 0.4 });
+    const cr = { text: adviceText };
 
     // 兜底过滤:模型不总是听话,越界了宁可不给建议
     const hit = BANNED.find((w) => cr.text.includes(w));

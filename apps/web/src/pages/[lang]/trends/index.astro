@@ -1,0 +1,411 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 海外电商爆款监控 —— 按《跨境美妆爆款监控日报》的单品数据渲染。
+ *
+ * 由来(创始人 2026-09-10 11:1x,发来 `爆款化妆品监控日报-2026-09-05.md`:
+ * 「这才是爆款监控日报啊,你现在收集的好像不对吧」)。
+ *
+ * 上一版是拿搜索索引层(Exa)找了一批公开链接,每条只有标题 + 链接 ——
+ * 客户看完仍然不知道**卖了多少、什么价、涨了多少、谁家的店**,那不叫调研。
+ * 这一版直接渲染日报的单品行:8 平台 × 4 大类 × 21 细分类目,
+ * 每个细分「销量最高」与「增长最快」双榜,2,236 行。
+ *
+ * **出处必须挂住。** 这份日报是帛卉自己的采集口径(平台官方畅销榜 + 第三方数据服务交叉核对),
+ * **不是平台官方授权数据**;销量是公开口径的区间值,用来判趋势,不能当结算依据。
+ * 页面上把这句写死 —— 少了它,客户会当成平台官方数字。
+ *
+ * 查询一律走索引列 + LIMIT,不写相关子查询 —— 这个库上相关子查询曾把 3,716 行读成 392 万行。
+ *
+ * 2026-09-11 两处改动(创始人原话):
+ * 1)「一行4个/6个,看看展现效果!你这样空余太大了!」—— items 网格从 2 列加密到
+ *    ≥900px 4 列 / ≥1400px 6 列,卡片相应收紧(见下方 .item / .fig 样式)。
+ * 2)「也有图形趋势曲线图的展示」—— 加了「趋势图」一节,三张纯 SVG 图(见 svgLine/svgBars),
+ *    不引图表库;数据按 report_date 动态分组,以后 loader 灌新日期不用改这段代码。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const url = new URL(Astro.url);
+const pick = (k: string, max = 40) => (url.searchParams.get(k) ?? '').trim().slice(0, max);
+const fRegion = pick('r');
+const fCat = pick('c');
+const fBoard = pick('b');
+const fPlat = pick('pf', 60);
+const page = Math.max(1, Math.min(400, Number(url.searchParams.get('p') ?? 1) || 1));
+const PER = 60;
+
+let rows: any[] = [];
+let total = 0;
+let regions: any[] = [];
+let cats: any[] = [];
+let plats: any[] = [];
+let reportDate = '';
+let dateRegion: any[] = [];
+let topBrands: any[] = [];
+let platShare: any[] = [];
+
+if (db) {
+  try {
+    const where: string[] = [];
+    const bind: any[] = [];
+    if (fRegion) { where.push('region = ?'); bind.push(fRegion); }
+    if (fCat) { where.push('category = ?'); bind.push(fCat); }
+    if (fBoard) { where.push('board = ?'); bind.push(fBoard); }
+    if (fPlat) { where.push('platform = ?'); bind.push(fPlat); }
+    const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
+    const c = await db.prepare(`SELECT COUNT(*) n FROM ecom_items ${w}`).bind(...bind).first<any>();
+    total = Number(c?.n ?? 0);
+    rows = ((await db.prepare(
+      `SELECT report_date, region, platform, category, subcategory, board, rank_no, title, brand,
+              price, price_note, sales, delta, rating, reviews, rank_change, shop, url
+         FROM ecom_items ${w}
+        ORDER BY region, platform, category, subcategory, board, rank_no
+        LIMIT ? OFFSET ?`).bind(...bind, PER, (page - 1) * PER).all<any>()).results ?? []) as any[];
+    regions = ((await db.prepare(
+      'SELECT region, COUNT(*) n FROM ecom_items GROUP BY region ORDER BY n DESC').all<any>()).results ?? []) as any[];
+    cats = ((await db.prepare(
+      'SELECT category, COUNT(*) n FROM ecom_items GROUP BY category ORDER BY n DESC').all<any>()).results ?? []) as any[];
+    plats = ((await db.prepare(
+      'SELECT platform, COUNT(*) n FROM ecom_items GROUP BY platform ORDER BY n DESC').all<any>()).results ?? []) as any[];
+    // 趋势图专用的 3 条聚合查询 —— 都套用上面同一份 where/bind,筛选器怎么选图就怎么变。
+    // 全是 GROUP BY + 索引列,不是相关子查询,行数上限就是 report_date × region/brand/platform 的组合数,量级很小。
+    dateRegion = ((await db.prepare(
+      `SELECT report_date, region, COUNT(*) n FROM ecom_items ${w}
+        GROUP BY report_date, region ORDER BY report_date, region`).bind(...bind).all<any>()).results ?? []) as any[];
+    topBrands = ((await db.prepare(
+      `SELECT brand, COUNT(*) n FROM ecom_items WHERE ${where.concat(["brand <> ''"]).join(' AND ')}
+        GROUP BY brand ORDER BY n DESC LIMIT 10`).bind(...bind).all<any>()).results ?? []) as any[];
+    platShare = ((await db.prepare(
+      `SELECT platform, COUNT(*) n FROM ecom_items ${w} GROUP BY platform ORDER BY n DESC`).bind(...bind).all<any>()).results ?? []) as any[];
+    const d = await db.prepare('SELECT MAX(report_date) d FROM ecom_items').first<any>();
+    reportDate = String(d?.d ?? '');
+  } catch { rows = []; total = 0; }
+}
+
+// —— 趋势图:纯 SVG 字符串拼接,不引图表库(创始人只要「看看展现效果」)——
+// 用 set:html 输出,跳过了 Astro 模板的自动转义,所以拼进去的字段(品牌/平台/区域名)必须手动转义防注入。
+const escMap: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const esc = (s: any) => String(s ?? '').replace(/[&<>"']/g, (c) => escMap[c]);
+const CK = ['var(--ck-chart-1,#4f8fff)', 'var(--ck-chart-2,#ff6b6b)', 'var(--ck-chart-3,#35c48f)', 'var(--ck-chart-4,#f5a524)'];
+function svgLine(dates: string[], series: { name: string; vals: number[] }[], w = 640, h = 200) {
+  const pad = { l: 34, r: 10, t: 10, b: 24 };
+  const iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const max = Math.max(1, ...series.flatMap((s) => s.vals));
+  const x = (i: number) => pad.l + (dates.length > 1 ? (i * iw) / (dates.length - 1) : iw / 2);
+  const y = (v: number) => pad.t + ih - (v / max) * ih;
+  const grid = [0, 0.5, 1].map((f) => `<line x1="${pad.l}" y1="${y(max * f)}" x2="${w - pad.r}" y2="${y(max * f)}" stroke="var(--ck-line,#0002)"/>` +
+    `<text x="${pad.l - 6}" y="${y(max * f) + 3}" text-anchor="end" font-size="10" fill="var(--ck-ink,#111)" opacity=".6">${Math.round(max * f)}</text>`).join('');
+  const step = Math.max(1, Math.ceil(dates.length / 12)); // 日期一多就抽稀标签,别让 x 轴文字叠在一起
+  const xl = dates.map((d, i) => (i % step && i !== dates.length - 1) ? '' :
+    `<text x="${x(i)}" y="${h - 6}" text-anchor="middle" font-size="10" fill="var(--ck-ink,#111)" opacity=".6">${esc(d.slice(5))}</text>`).join('');
+  const ln = series.map((s, i) => dates.length > 1
+    ? `<polyline points="${s.vals.map((v, j) => `${x(j)},${y(v)}`).join(' ')}" fill="none" stroke="${CK[i % CK.length]}" stroke-width="2"/>`
+    : `<circle cx="${x(0)}" cy="${y(s.vals[0] ?? 0)}" r="4" fill="${CK[i % CK.length]}"/>`).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" style="font-variant-numeric:tabular-nums">${grid}${xl}${ln}</svg>`;
+}
+function svgBars(items: { label: string; n: number; pct?: number }[], w = 640, horiz = true) {
+  const max = Math.max(1, ...items.map((d) => d.n));
+  if (horiz) {
+    const rh = 24, h = items.length * rh + 6;
+    const bars = items.map((d, i) => `<text x="0" y="${i * rh + 15}" font-size="11" fill="var(--ck-ink,#111)">${esc(d.label)}</text>` +
+      `<rect x="92" y="${i * rh + 4}" width="${(d.n / max) * (w - 148)}" height="15" fill="${CK[0]}" rx="2"/>` +
+      `<text x="${w - 2}" y="${i * rh + 15}" text-anchor="end" font-size="11" fill="var(--ck-ink,#111)">${d.n}</text>`).join('');
+    return `<svg viewBox="0 0 ${w} ${h}" role="img" style="font-variant-numeric:tabular-nums">${bars}</svg>`;
+  }
+  const h = 180, bw = w / Math.max(1, items.length);
+  const bars = items.map((d, i) => {
+    const bh = (d.n / max) * (h - 46), val = d.pct != null ? `${d.pct}%` : String(d.n);
+    return `<rect x="${i * bw + bw * 0.15}" y="${h - 26 - bh}" width="${bw * 0.7}" height="${bh}" fill="${CK[i % CK.length]}" rx="2"/>` +
+      `<text x="${i * bw + bw / 2}" y="${h - 8}" text-anchor="middle" font-size="10" fill="var(--ck-ink,#111)">${esc(d.label)}</text>` +
+      `<text x="${i * bw + bw / 2}" y="${h - 32 - bh}" text-anchor="middle" font-size="10" fill="var(--ck-ink,#111)">${val}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" style="font-variant-numeric:tabular-nums">${bars}</svg>`;
+}
+
+// 行 → 图表坐标的整形。日期列表来自数据本身(不写死),以后 loader 灌新 report_date 这里自动跟着长。
+const chartDates = [...new Set(dateRegion.map((r) => String(r.report_date)))].sort();
+const regionTotal = new Map<string, number>();
+for (const r of dateRegion) regionTotal.set(r.region, (regionTotal.get(r.region) ?? 0) + Number(r.n));
+const topRegions = [...regionTotal.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([name]) => name); // 最多画 4 条线
+const chartSeries = topRegions.map((name) => ({
+  name, vals: chartDates.map((d) => Number(dateRegion.find((r) => r.report_date === d && r.region === name)?.n ?? 0)),
+}));
+const brandBars = topBrands.map((r) => ({ label: String(r.brand), n: Number(r.n) }));
+const platTotal = platShare.reduce((a, r) => a + Number(r.n), 0) || 1;
+const platBars = platShare.map((r) => ({ label: String(r.platform), n: Number(r.n), pct: Math.round((Number(r.n) / platTotal) * 100) }));
+
+const pages = Math.max(1, Math.ceil(total / PER));
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/trends/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const qs = (over: Record<string, string>) => {
+  const p = new URLSearchParams();
+  const cur: Record<string, string> = { r: fRegion, c: fCat, b: fBoard, pf: fPlat, p: String(page) };
+  for (const [k, v] of Object.entries({ ...cur, ...over })) if (v && !(k === 'p' && v === '1')) p.set(k, v);
+  const s = p.toString();
+  return path + (s ? `?${s}` : '');
+};
+const win: number[] = [];
+for (let i = Math.max(1, page - 3); i <= Math.min(pages, page + 3); i++) win.push(i);
+
+const T = zh ? {
+  eyebrow: '市场调研',
+  title: '海外电商爆款监控',
+  lede: `8 个平台 × 4 大类 × 21 细分类目,每个细分出「销量最高」与「增长最快」双榜,共 ${total.toLocaleString()} 条单品记录。`
+      + '每条带品牌、价格(本币与美元)、销量、环比、评分、评论数、店铺与原始链接 —— 拿去做选品能直接用。',
+  src: (d: string) => `数据来源:帛卉《跨境美妆爆款监控日报》${d || ''}。采集口径为平台官方畅销榜与热搜榜,`
+      + '并结合 FastMoss、FindNiche、EchoTik、蓝鲸BI、大数跨境、Amazon ABA 等第三方数据服务交叉核对。'
+      + '不是平台官方授权数据;销量为公开口径的区间值,用于判断趋势,不作结算依据。',
+  all: '全部', board: '榜别', region: '区域', cat: '大类', plat: '平台',
+  sales: '销量', delta: '环比', price: '价格', rating: '评分', shop: '店铺',
+  found: (n: number) => `命中 ${n.toLocaleString()} 条`,
+  empty: '这个组合下暂时没有数据,换个筛选试试。',
+  first: '首页', prev: '上一页', next: '下一页', last: '末页', jump: '跳到', go: '跳转',
+  ask: '看中某个方向想打样?把品类与目标市场发给我们,配方与包材一起给方案。', inquiry: '发起询盘',
+  trendsTitle: '趋势图', trendByDate: '按日期 × 区域的单品数', trendBrand: '品牌 Top 10(按单品数)',
+  trendPlat: '平台占比', oneDateNote: '采集从 2026-08-12 起,更多日期陆续入库',
+} : {
+  eyebrow: 'Market research',
+  title: 'Overseas marketplace bestseller monitor',
+  lede: `8 platforms x 4 categories x 21 sub-categories, each with a top-selling and a fastest-growing board — ${total.toLocaleString()} product rows.`
+      + ' Every row carries brand, price (local and USD), sales, change, rating, reviews, shop and the original link.',
+  src: (d: string) => `Source: BIOSPHERE cross-border beauty bestseller monitor${d ? ', ' + d : ''}. Collected from platform bestseller `
+      + 'and trending boards, cross-checked against FastMoss, FindNiche, EchoTik and other third-party services. '
+      + 'Not official platform data; sales figures are public-range values meant for trend reading, not settlement.',
+  all: 'All', board: 'Board', region: 'Region', cat: 'Category', plat: 'Platform',
+  sales: 'Sales', delta: 'Change', price: 'Price', rating: 'Rating', shop: 'Shop',
+  found: (n: number) => `${n.toLocaleString()} rows`,
+  empty: 'Nothing under this combination — try another filter.',
+  first: 'First', prev: 'Prev', next: 'Next', last: 'Last', jump: 'Go to', go: 'Go',
+  ask: 'Seen a direction worth sampling? Send us the category and target market.', inquiry: 'Send an inquiry',
+  trendsTitle: 'Trend charts', trendByDate: 'Item count by date x region', trendBrand: 'Top 10 brands by item count',
+  trendPlat: 'Platform share', oneDateNote: 'More dates load as reports are ingested',
+};
+
+const ld = [{
+  '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}/${lang}/` },
+    { '@type': 'ListItem', position: 2, name: T.title, item: origin + path },
+  ],
+}];
+const indexable = shell.site?.is_live === 1 && !fRegion && !fCat && !fBoard && !fPlat && page === 1;
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={indexable} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}{reportDate ? ` · ${reportDate}` : ''}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+      <p class="note">{T.src(reportDate)}</p>
+    </header>
+
+    <nav class="filters" aria-label={T.region}>
+      <div class="grp">
+        <span class="lb">{T.board}</span>
+        <a class:list={['chip', { on: !fBoard }]} href={qs({ b: '', p: '1' })}>{T.all}</a>
+        {['销量最高', '增长最快'].map((b) => (
+          <a class:list={['chip', { on: fBoard === b }]} href={qs({ b, p: '1' })}>{b}</a>
+        ))}
+      </div>
+      <div class="grp">
+        <span class="lb">{T.region}</span>
+        <a class:list={['chip', { on: !fRegion }]} href={qs({ r: '', p: '1' })}>{T.all}</a>
+        {regions.map((r) => (
+          <a class:list={['chip', { on: fRegion === r.region }]} href={qs({ r: r.region, p: '1' })}>{r.region}（{r.n}）</a>
+        ))}
+      </div>
+      <div class="grp">
+        <span class="lb">{T.cat}</span>
+        <a class:list={['chip', { on: !fCat }]} href={qs({ c: '', p: '1' })}>{T.all}</a>
+        {cats.map((r) => (
+          <a class:list={['chip', { on: fCat === r.category }]} href={qs({ c: r.category, p: '1' })}>{r.category}（{r.n}）</a>
+        ))}
+      </div>
+      <div class="grp">
+        <span class="lb">{T.plat}</span>
+        <a class:list={['chip', { on: !fPlat }]} href={qs({ pf: '', p: '1' })}>{T.all}</a>
+        {plats.map((r) => (
+          <a class:list={['chip', { on: fPlat === r.platform }]} href={qs({ pf: r.platform, p: '1' })}>{r.platform}</a>
+        ))}
+      </div>
+    </nav>
+
+    <p class="count">{T.found(total)}</p>
+
+    {/* 创始人 2026-09-11:「也有图形趋势曲线图的展示」—— 三张零依赖 SVG 图,跟着当前筛选走,总数为 0 就不画 */}
+    {total > 0 && (
+      <section class="trends" aria-label={T.trendsTitle}>
+        <h2 class="tt">{T.trendsTitle}</h2>
+        <div class="charts">
+          <figure class="chart">
+            <figcaption>{T.trendByDate}</figcaption>
+            <div class="svg-box" set:html={svgLine(chartDates, chartSeries)} />
+            {chartDates.length <= 1 && <p class="note sm">{T.oneDateNote}</p>}
+            <ul class="legend">
+              {chartSeries.map((s, i) => (
+                <li><i style={`background:${CK[i % CK.length]}`}></i>{s.name}</li>
+              ))}
+            </ul>
+          </figure>
+          <figure class="chart">
+            <figcaption>{T.trendBrand}</figcaption>
+            <div class="svg-box" set:html={svgBars(brandBars, 640, true)} />
+          </figure>
+          <figure class="chart">
+            <figcaption>{T.trendPlat}</figcaption>
+            <div class="svg-box" set:html={svgBars(platBars, 640, false)} />
+          </figure>
+        </div>
+      </section>
+    )}
+
+    {rows.length === 0 ? <p class="empty">{T.empty}</p> : (
+      <ul class="items">
+        {rows.map((r) => (
+          <li class="item">
+            <p class="meta">
+              <span class="rk">#{r.rank_no}</span>
+              <span class="bd">{r.board}</span>
+              <span class="sc">{r.platform} · {r.subcategory}</span>
+            </p>
+            <h2>{r.url ? <a href={r.url} target="_blank" rel="noopener nofollow">{r.title}</a> : r.title}</h2>
+            {r.brand && <p class="brand">{r.brand}</p>}
+            <dl class="fig">
+              {r.sales && (<><dt>{T.sales}</dt><dd>{r.sales}</dd></>)}
+              {r.delta && (<><dt>{T.delta}</dt><dd class="delta">{r.delta}</dd></>)}
+              {r.price && (<><dt>{T.price}</dt><dd>{r.price}{r.price_note ? ` · ${r.price_note}` : ''}</dd></>)}
+              {r.rating && (<><dt>{T.rating}</dt><dd>{r.rating}{r.reviews ? ` · ${r.reviews}` : ''}</dd></>)}
+              {r.shop && (<><dt>{T.shop}</dt><dd>{r.shop}</dd></>)}
+            </dl>
+          </li>
+        ))}
+      </ul>
+    )}
+
+    {pages > 1 && (
+      <nav class="pager" aria-label="pagination">
+        {page > 1 ? <a href={qs({ p: '1' })}>{T.first}</a> : <span class="off">{T.first}</span>}
+        {page > 1 ? <a href={qs({ p: String(page - 1) })}>{T.prev}</a> : <span class="off">{T.prev}</span>}
+        <span class="nums">
+          {win.map((n) => (n === page ? <b class="cur">{n}</b> : <a href={qs({ p: String(n) })}>{n}</a>))}
+        </span>
+        {page < pages ? <a href={qs({ p: String(page + 1) })}>{T.next}</a> : <span class="off">{T.next}</span>}
+        {page < pages ? <a href={qs({ p: String(pages) })}>{T.last}</a> : <span class="off">{T.last}</span>}
+        <form class="jump" method="get" action={path}>
+          {fRegion && <input type="hidden" name="r" value={fRegion} />}
+          {fCat && <input type="hidden" name="c" value={fCat} />}
+          {fBoard && <input type="hidden" name="b" value={fBoard} />}
+          {fPlat && <input type="hidden" name="pf" value={fPlat} />}
+          <label for="jp">{T.jump}</label>
+          <input id="jp" name="p" type="number" min="1" max={pages} value={page} inputmode="numeric" />
+          <span class="tot">/ {pages}</span>
+          <button type="submit">{T.go}</button>
+        </form>
+      </nav>
+    )}
+
+    <p class="ask">{T.ask} <a href={`/${lang}/contact/`}>{T.inquiry}</a></p>
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .hd { display: grid; gap: .75rem; margin-bottom: 1.5rem; max-width: 62rem; }
+  .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: clamp(1.625rem, 3vw, 2.25rem); line-height: 1.24; margin: 0; text-wrap: balance; }
+  .lede { font-size: 1rem; line-height: 1.75; opacity: .85; margin: 0; }
+  .note { font-size: .875rem; line-height: 1.7; opacity: .62; margin: 0;
+          border-left: 2px solid currentColor; padding-left: .75rem; }
+  .filters { display: grid; gap: .625rem; margin: 0 0 1rem; }
+  .grp { display: flex; flex-wrap: wrap; gap: .375rem; align-items: center; }
+  .lb { font-size: .8125rem; opacity: .55; min-width: 3rem; }
+  .chip { min-height: 44px; display: inline-flex; align-items: center; padding: 0 .75rem;
+          font-size: .875rem; border-radius: 999px; text-decoration: none; color: inherit;
+          border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
+  .chip.on { background: var(--ck-ink, #111); color: var(--ck-paper, #fff); }
+  .count { font-size: .9375rem; opacity: .62; margin: 0 0 .875rem; }
+
+  /* 趋势图一节 —— 创始人 2026-09-11:「也有图形趋势曲线图的展示」。三张卡片式图表,深浅色都走
+     var(--ck-ink)/var(--ck-line) 这两个全站主题变量,跟着站点主题(noir/marvis/dtc)自动换色。 */
+  .trends { margin: 0 0 1.25rem; }
+  .trends .tt { font-size: 1.0625rem; margin: 0 0 .625rem; }
+  .charts { display: grid; gap: .875rem; }
+  .chart { margin: 0; padding: .875rem 1rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 12px; }
+  .chart figcaption { font-size: .8125rem; opacity: .62; margin: 0 0 .5rem; }
+  .svg-box svg { width: 100%; height: auto; display: block; }
+  .chart .note.sm { border: none; padding: .375rem 0 0; margin: 0; font-size: .75rem; opacity: .55; }
+  .legend { list-style: none; display: flex; flex-wrap: wrap; gap: .375rem .75rem; padding: 0; margin: .5rem 0 0;
+            font-size: .75rem; opacity: .75; }
+  .legend li { display: flex; align-items: center; gap: .3rem; }
+  .legend i { width: .625rem; height: .625rem; border-radius: 2px; display: inline-block; }
+
+  /* 卡片网格 —— 创始人 2026-09-11:「一行4个/6个,看看展现效果!你这样空余太大了!」。
+     列数在下面的媒体查询里加密到 4/6 列,这里把卡片相应收紧(padding、字号、标题限 2 行、figures 一行排)。 */
+  .items { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; }
+  .item { padding: .75rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 12px; font-size: .875rem; }
+  .meta { margin: 0 0 .375rem; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center;
+          font-size: .8125rem; opacity: .68; }
+  .rk { font-weight: 700; font-variant-numeric: tabular-nums; opacity: 1; }
+  .bd { padding: .125rem .5rem; border-radius: 999px; border: 1px solid var(--ck-line, rgba(0,0,0,.18)); }
+  .item h2 { font-size: .875rem; line-height: 1.4; margin: 0 0 .25rem;
+             display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .item h2 a { color: inherit; }
+  .brand { margin: 0 0 .5rem; font-size: .875rem; opacity: .7; }
+  .fig { display: flex; flex-wrap: wrap; gap: .125rem .625rem; margin: 0; font-size: .8125rem; }
+  .fig dt { opacity: .55; white-space: nowrap; }
+  .fig dd { margin: 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .delta { font-weight: 600; }
+  .empty { font-size: .9375rem; opacity: .7; }
+  .pager { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin: 1.5rem 0 0; font-size: .9375rem; }
+  .pager a, .pager .off, .pager .cur { min-height: 44px; min-width: 44px; display: inline-flex;
+          align-items: center; justify-content: center; padding: 0 .625rem; border-radius: 10px;
+          border: 1px solid var(--ck-line, rgba(0,0,0,.14)); text-decoration: none; color: inherit; }
+  .pager .cur { background: var(--ck-ink, #111); color: var(--ck-paper, #fff); font-weight: 600; }
+  .pager .off { opacity: .4; }
+  .pager .nums { display: flex; gap: .375rem; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+  .jump { display: flex; gap: .375rem; align-items: center; margin-left: auto; }
+  .jump input { width: 5rem; min-height: 44px; padding: 0 .5rem; font-size: 1rem; text-align: center;
+          border-radius: 10px; border: 1px solid var(--ck-line, rgba(0,0,0,.18));
+          background: transparent; color: inherit; }
+  .jump button { min-height: 44px; padding: 0 1rem; font-size: .9375rem; border-radius: 10px; cursor: pointer;
+          border: 1px solid var(--ck-line, rgba(0,0,0,.18)); background: transparent; color: inherit; }
+  .ask { margin: 1.75rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
+  @media (min-width: 600px) {
+    .items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (min-width: 900px) {
+    main { padding: 2rem 1.5rem 4rem; }
+    .items { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .charts { grid-template-columns: 1fr 1fr; }
+    .charts .chart:first-child { grid-column: 1 / -1; }
+  }
+  @media (min-width: 1400px) {
+    .items { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  }
+</style>

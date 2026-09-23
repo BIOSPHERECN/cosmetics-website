@@ -12,6 +12,7 @@
  */
 import { getSiteByHost, getSiteById, DEFAULT_LANG } from './db';
 import type { Session } from './auth';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 
 export type Tenant = {
   /** 当前管理的站点 id */
@@ -48,8 +49,11 @@ export async function resolveTenant(
   const override = url.searchParams.get('site');
   const picked = (override && options.some((o) => o.id === override)) ? override
     : byHost?.id
+    /* 后台的兜底也不许猜成别的站:先按域名,再退到列表首项(那是排序最靠前的自有站),
+       最后宁可给空字符串让调用方报错,也不写死某个具体品牌。 */
+    ?? siteIdForHost(url.hostname)
     ?? options[0]?.id
-    ?? 'beauty2oem';
+    ?? '';
 
   return { siteId: picked, siteName: nameOf(picked), isGroup: true, options };
 }

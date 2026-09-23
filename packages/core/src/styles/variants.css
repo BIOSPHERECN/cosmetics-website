@@ -57,7 +57,7 @@
   --ck-lh-head: 1.12;
   --ck-tracking-head: 0.004em;
   --ck-tracking-eyebrow: 0.24em;
-  --ck-section-py: 7.5rem;
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
   --ck-gap: 2.25rem;
   --ck-radius: 0;
   --ck-radius-lg: 0;
@@ -159,7 +159,7 @@
   --ck-radius: 14px;
   --ck-radius-lg: 22px;
   --ck-cta-radius: 999px;
-  --ck-section-py: 6rem;
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
   --ck-gap: 1.75rem;
 }
 
@@ -311,7 +311,7 @@
   --ck-radius: 2px;          /* BOJ 实测:近乎零圆角是其高级感骨架之一 */
   --ck-radius-lg: 2px;
   --ck-cta-radius: 2px;
-  --ck-section-py: 6.5rem;
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
 }
 
 /* v2 墨玉东方 —— 底子 luxe 换墨绿 + 金线。对标雪花秀 Sulwhasoo / 花西子。
@@ -340,7 +340,7 @@
   --ck-h1: clamp(3.125rem, 1.2rem + 5vw, 8.787rem);
   --ck-weight-head: 400;
   --ck-tracking-eyebrow: 0.26em;
-  --ck-section-py: 8rem;
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
   --ck-radius: 0;
   --ck-radius-lg: 0;
   --ck-cta-radius: 0;
@@ -374,7 +374,7 @@
   --ck-weight-head: 400;
   --ck-lh-body: 1.9;
   --ck-tracking-eyebrow: 0.3em;
-  --ck-section-py: 7rem;
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
   --ck-radius: 0;
   --ck-radius-lg: 0;
   --ck-cta-radius: 0;
@@ -436,7 +436,7 @@
   --ck-radius: 16px;
   --ck-radius-lg: 24px;
   --ck-cta-radius: 999px;
-  --ck-section-py: 6rem;
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
 }
 
 /* v3 紫夜科技 —— 底子 tech-spec 换紫。呼应品牌图的行星轨道符号;

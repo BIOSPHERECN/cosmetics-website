@@ -1,0 +1,389 @@
+---
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 个性化 OEM/ODM 服务 —— 一页说完。
+ *
+ * 创始人 2026-09-07:
+ *   「解决方案不要和别人的网站布局一样,可改成服务,把所有的变成一个网页,
+ *     或者多个,而不是这样散开,很多内容都是一样的」
+ *   「服务 2 个字太简单,还是要做的稍微专业一点」
+ *
+ * 先量后改(实测,不是感觉):十篇正文两两重合平均 0.3%,十篇全都出现的
+ * 八字片段 0 个 —— **文案不重复**。重复的是版式:十页共一个骨架
+ * (导语 / 痛点 / 怎么接 / 凭据 / FAQ),而那个骨架是照同行搭的。
+ * 所以这次动的是结构不是内容:字全留下,壳换成我们自己的。
+ *
+ * 我们自己的壳是什么:创始人 2026-09-07 定的那条链 ——
+ * 「先包材,再配方,再包装盒,才有产品」。这一页于是按
+ *   链路四段 → 三种接法 → 你从哪一种情形进来
+ * 排,而不是按同行的「六个身份 + 四个品类」平铺十张一样的卡。
+ *
+ * 措辞由创始人拍板:「个性化 OEM/ODM 服务」。「服务」两个字在 B 端页面上等于没说;
+ * 「个性化」交代的是我们和大货代工的区别,OEM/ODM 是采购真正会打进搜索框的词。
+ * 导航条上用短形「OEM/ODM 服务」—— 全称在窄屏会把导航撑破,页内与 SEO 标题用全称。
+ *
+ * 十个场景的旧地址仍在,301 到这一页的对应锚点 —— 页是昨天才建的,
+ * 收录成本几乎为零,现在合并是最便宜的时机。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { SOLUTIONS } from '@cosmetic/core/content/solutions.ts';
+import { CHAIN_COUNTS } from '@cosmetic/core/content/chain.ts';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/services/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const B = `/${lang}`;
+
+const T = zh ? {
+  eyebrow: '个性化 OEM / ODM 服务',
+  title: '一条链,你要哪一段,我们接哪一段',
+  lede: `从包材到配方,再到包装盒,才有一件成品。整条我们能做,只做其中一段也接。
+         下面先摆链路和接法,再按你的情形说各自怎么走 —— 一页看完,不用在几个页面之间来回跳。`,
+  hMode: '三种接法',
+  modeNote: '三种都从同一批产能出货,差别只在你把哪几段交给我们。',
+  hChain: '链路上的四段',
+  chainNote: '每一段背后都有可查的库,不是一句「我们能做」—— 点进去是编码、材质、容量与实拍。',
+  hIndex: '你是哪一种',
+  indexNote: '点一个跳到对应那段。十种情形写的是各自不同的卡点,不是同一段话换个标题。',
+  pains: '你现在大概卡在这几件事上', steps: '我们怎么接', proof: '先能给你什么',
+  cta: '不确定属于哪一种?走一遍选品链路,六步之后会给你一份可以直接转发的方案。',
+  ctaBtn: '开始选品', ctaAlt: '直接联系我们',
+  back: '回到上面', seeFx: '看配方库', seePk: '看包材库',
+  chain: [
+    ['包材', `${CHAIN_COUNTS.packaging.toLocaleString()} 款`, `${B}/packaging/`],
+    ['配方', `${CHAIN_COUNTS.formula} 支`, `${B}/formulas/`],
+    ['包装盒', `${CHAIN_COUNTS.carton} 款`, `${B}/packaging/?g=carton`],
+    ['产品', `${CHAIN_COUNTS.product} 例`, `${B}/products/`],
+  ] as [string, string, string][],
+  modes: [
+    ['整线代工 OEM', '你有品牌和销售,配方与包材从我们的库里选定。四段全接,你只对接一个人。',
+      ['从现有配方起步,打样最快', '包材现货款不用开模', '一套编码贯穿打样到补货']],
+    ['配方定制 ODM', '你有明确的诉求或对标品,配方按你的方向调,不是从货架上拿一支改个香。',
+      ['先讲清能做到哪、做不到哪', '草本方向是主线', '浓度与工艺不进对外流转文件']],
+    ['只接一段', '已经有配方,只要灌装;或已经有产线,只要包材与外盒。单段也接。',
+      ['来料灌装', '只供包材与包装盒', '只做外盒结构与印刷']],
+  ] as [string, string, string[]][],
+} : {
+  eyebrow: 'Custom OEM / ODM services',
+  title: 'One chain — take all of it, or just the part you need',
+  lede: `A finished product needs containers, then a formula, then a carton. We can run the whole chain,
+         or step in at one point. Below: the chain, the three ways we take work, then how each situation
+         actually runs — all on one page, no jumping between tabs.`,
+  hMode: 'Three ways to work with us',
+  modeNote: 'All three ship from the same capacity. What differs is how much of the chain you hand over.',
+  hChain: 'Four stages',
+  chainNote: 'Each stage has a library you can open — codes, materials, capacities and real photographs, not a claim.',
+  hIndex: 'Which one are you',
+  indexNote: 'Jump to your case. Ten situations, ten different sticking points — not one paragraph retitled.',
+  pains: 'What is probably holding you up', steps: 'How we take it on', proof: 'What you get first',
+  cta: 'Not sure which fits? Run the selector — six steps and you have a proposal you can forward.',
+  ctaBtn: 'Open the selector', ctaAlt: 'Talk to us',
+  back: 'Back to top', seeFx: 'Formulas', seePk: 'Packaging',
+  chain: [
+    ['Containers', `${CHAIN_COUNTS.packaging.toLocaleString()} items`, `${B}/packaging/`],
+    ['Formulas', `${CHAIN_COUNTS.formula}`, `${B}/formulas/`],
+    ['Cartons', `${CHAIN_COUNTS.carton}`, `${B}/packaging/?g=carton`],
+    ['Products', `${CHAIN_COUNTS.product}`, `${B}/products/`],
+  ] as [string, string, string][],
+  modes: [
+    ['Full OEM', 'You hold the brand and the selling. Formula and packaging come from our libraries. One contact across all four stages.',
+      ['Fastest route to samples', 'Stock packaging, no tooling', 'One code set from sample to restock']],
+    ['ODM formulation', 'You have a brief or a benchmark. The formula is developed toward it — not a shelf product with a new fragrance.',
+      ['We state what we can and cannot do', 'Botanical work is the main line', 'Concentrations stay out of circulated documents']],
+    ['A single stage', 'You already have a formula and need filling; or you have a line and need containers and cartons. We take single stages.',
+      ['Contract filling', 'Containers and cartons only', 'Carton structure and print only']],
+  ] as [string, string, string[]][],
+};
+
+const items = SOLUTIONS.map((s) => ({ slug: s.slug, axis: s.axis, c: zh ? s.zh : s.en, packCat: s.packCat }));
+
+/* FAQ 结构化数据把十段的问题合起来出一份,按问题去重 ——
+   同一个问题在一页上出现两次,搜索引擎会当成两条互相稀释的答案。 */
+const faqSeen = new Set<string>();
+const faqAll = items.flatMap((it) => it.c.faq)
+  .filter(([q]) => (faqSeen.has(q) ? false : (faqSeen.add(q), true)));
+
+const ld = [
+  {
+    '@context': 'https://schema.org', '@type': 'Service',
+    name: zh ? '个性化 OEM / ODM 服务' : 'Custom OEM / ODM services',
+    url: origin + path, description: T.lede,
+    provider: { '@type': 'Organization', name: shell.site?.name ?? '帛卉' },
+    hasOfferCatalog: {
+      '@type': 'OfferCatalog', name: T.hMode,
+      itemListElement: T.modes.map(([n, d]) => ({
+        '@type': 'Offer', itemOffered: { '@type': 'Service', name: n, description: d },
+      })),
+    },
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: faqAll.map(([q, a]) => ({
+      '@type': 'Question', name: q,
+      acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  },
+];
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? 'biosphere-ai'} title={`${T.title} · ${T.eyebrow}`} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main" class="sv">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+    </header>
+
+    {/* 链路 —— 和三个货架页顶上的那条是同一条,同一个顺序 */}
+    <section class="sec" aria-labelledby="h-chain">
+      <h2 id="h-chain">{T.hChain}</h2>
+      <p class="sub">{T.chainNote}</p>
+      <ol class="chain">
+        {T.chain.map(([label, n, href], i) => (
+          <li>
+            {i > 0 && <span class="arrow" aria-hidden="true">→</span>}
+            <a href={href}>
+              <span class="step" aria-hidden="true">{i + 1}</span>
+              <span>{label}</span>
+              <span class="tn">{n}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <section class="sec" aria-labelledby="h-mode">
+      <h2 id="h-mode">{T.hMode}</h2>
+      <p class="sub">{T.modeNote}</p>
+      <div class="modes">
+        {T.modes.map(([name, body, bullets], i) => (
+          <article class="mode">
+            <p class="mk" aria-hidden="true">{String(i + 1).padStart(2, '0')}</p>
+            <h3>{name}</h3>
+            <p>{body}</p>
+            <ul>{bullets.map((b) => <li>{b}</li>)}</ul>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="sec" aria-labelledby="h-index">
+      <h2 id="h-index">{T.hIndex}</h2>
+      <p class="sub">{T.indexNote}</p>
+      <nav class="jump" aria-labelledby="h-index">
+        {items.map((it) => (
+          <a href={`#${it.slug}`} class={it.axis === 'category' ? 'cat' : ''}>{it.c.title}</a>
+        ))}
+      </nav>
+    </section>
+
+    {/* 十个场景:左右交替,不做十张一样的卡 */}
+    <div class="cases">
+      {items.map((it, i) => (
+        <section class={`case ${i % 2 ? 'alt' : ''}`} id={it.slug} aria-labelledby={`h-${it.slug}`}>
+          <div class="cl">
+            <h2 id={`h-${it.slug}`}>{it.c.title}</h2>
+            <p class="tag">{it.c.tagline}</p>
+            <p class="clede">{it.c.lede}</p>
+            <div class="proof">
+              <h3>{T.proof}</h3>
+              <ul>{it.c.proof.map(([k, v]) => (<li><b>{k}</b><span>{v}</span></li>))}</ul>
+            </div>
+          </div>
+          <div class="cr">
+            <h3 class="rh">{T.pains}</h3>
+            <dl class="pains">
+              {it.c.pains.map(([k, v]) => (<><dt>{k}</dt><dd>{v}</dd></>))}
+            </dl>
+            <h3 class="rh">{T.steps}</h3>
+            <ol class="steps">
+              {it.c.steps.map(([k, v]) => (<li><b>{k}</b><span>{v}</span></li>))}
+            </ol>
+            {it.c.faq.length > 0 && (
+              <div class="faq">
+                {it.c.faq.map(([q, a]) => (<details><summary>{q}</summary><p>{a}</p></details>))}
+              </div>
+            )}
+            <p class="acts">
+              <a href={`${B}/formulas/`}>{T.seeFx}</a>
+              <a href={it.packCat ? `${B}/packaging/?${it.packCat}` : `${B}/packaging/`}>{T.seePk}</a>
+              <a href="#main" class="top">{T.back}</a>
+            </p>
+          </div>
+        </section>
+      ))}
+    </div>
+
+    <section class="cta">
+      <p>{T.cta}</p>
+      <p class="btns">
+        <a class="btn pri" href={`${B}/selector/`}>{T.ctaBtn}</a>
+        <a class="btn" href={`${B}/contact/`}>{T.ctaAlt}</a>
+        {/* WhatsApp 放在决策位置。海外采购读完十种情形之后,
+            最不想做的事就是填表等回复 —— 给一个能立刻说上话的入口。 */}
+        <a class="btn wa" href="/zh-cn/contact/" rel="noopener">
+          <span aria-hidden="true">💬</span> WhatsApp
+        </a>
+      </p>
+    </section>
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+
+  <style>
+    .sv { max-width: min(112.5rem, 100%); margin: 0 auto;
+          padding: clamp(2rem, 5vw, 3.25rem) var(--ck-gutter, 1.25rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }
+    .hd { max-width: 46rem; margin-bottom: clamp(2.25rem, 5vw, 3.5rem); }
+    .eyebrow { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase;
+               color: var(--ck-accent); margin: 0 0 .625rem; }
+    h1 { font-size: clamp(1.75rem, 1.25rem + 2vw, 2.75rem); line-height: 1.13;
+         letter-spacing: -.025em; margin: 0 0 .875rem; text-wrap: balance; }
+    .lede { color: var(--ck-ink-soft); font-size: 1rem; line-height: 1.75; margin: 0; }
+
+    .sec { margin-bottom: clamp(2.5rem, 5vw, 3.75rem); }
+    .sec h2 { font-size: clamp(1.125rem, 1rem + .6vw, 1.375rem); margin: 0 0 .5rem;
+              letter-spacing: -.015em; }
+    .sub { color: var(--ck-ink-soft); font-size: .875rem; line-height: 1.7;
+           margin: 0 0 1.25rem; max-width: 44rem; }
+
+    /* 链路条 —— 与货架页同一形态。序号是真工序,不是装饰编号 */
+    .chain { list-style: none; margin: 0; padding: 0;
+             display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .25rem; }
+    .chain li { display: flex; align-items: center; gap: .25rem; }
+    .chain .arrow { color: var(--ck-ink-soft); opacity: .5; padding: 0 .375rem; }
+    .chain a { display: inline-flex; align-items: center; gap: .5rem; text-decoration: none;
+               color: var(--ck-ink); border: 1px solid var(--dtc-line, rgb(0 0 0/.14));
+               border-radius: 980px; padding: .5rem .9375rem; font-size: .875rem;
+               font-weight: 550; background: var(--dtc-paper, #fff); min-height: 40px; }
+    .chain a:hover { border-color: var(--ck-accent); color: var(--ck-accent); }
+    .chain .step { font-size: .6875rem; width: 1.125rem; height: 1.125rem; border-radius: 50%;
+                   display: inline-flex; align-items: center; justify-content: center;
+                   background: var(--dtc-wash, rgb(0 0 0/.055)); color: var(--ck-ink-soft);
+                   font-variant-numeric: tabular-nums; }
+    .chain .tn { font-size: .75rem; color: var(--ck-ink-soft); font-variant-numeric: tabular-nums; }
+
+    .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+             gap: 1.25rem; }
+    .mode { border: 1px solid var(--dtc-line, rgb(0 0 0/.1));
+            border-radius: var(--dtc-radius-card, 14px); padding: 1.5rem 1.375rem;
+            background: var(--dtc-paper, #fff); }
+    .mk { font-size: .75rem; color: var(--ck-accent); margin: 0 0 .625rem;
+          font-variant-numeric: tabular-nums; letter-spacing: .08em; }
+    .mode h3 { font-size: 1rem; margin: 0 0 .5rem; }
+    .mode p { color: var(--ck-ink-soft); font-size: .875rem; line-height: 1.7; margin: 0 0 .875rem; }
+    .mode ul { margin: 0; padding: 0; list-style: none; display: grid; gap: .375rem; }
+    .mode li { font-size: .8125rem; color: var(--ck-ink-soft); padding-left: .875rem;
+               position: relative; line-height: 1.6; }
+    .mode li::before { content: '·'; position: absolute; left: .25rem; color: var(--ck-accent); }
+
+    .jump { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .jump a { text-decoration: none; color: var(--ck-ink); font-size: .8125rem;
+              border: 1px solid var(--dtc-line, rgb(0 0 0/.14)); border-radius: 980px;
+              padding: .4375rem .875rem; min-height: 36px; display: inline-flex;
+              align-items: center; background: var(--dtc-paper, #fff); }
+    .jump a:hover { border-color: var(--ck-accent); color: var(--ck-accent); }
+    /* 品类那四个用虚线框区分 —— 身份和品类是两条轴,不该看起来一样 */
+    .jump a.cat { border-style: dashed; color: var(--ck-ink-soft); }
+
+    .cases { display: grid; }
+    .case { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+            gap: clamp(1.5rem, 3vw, 3rem); align-items: start;
+            padding: clamp(2rem, 4vw, 3rem) 0;
+            border-top: 1px solid var(--dtc-line, rgb(0 0 0/.09));
+            scroll-margin-top: 3.5rem;  /* 09-17 「太多空余」 */ }
+    .case.alt { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+    .case.alt .cl { order: 2; }
+    .case h2 { font-size: clamp(1.25rem, 1.05rem + .8vw, 1.625rem); margin: 0 0 .5rem;
+               letter-spacing: -.02em; }
+    .tag { color: var(--ck-accent); font-size: .8125rem; margin: 0 0 .875rem; line-height: 1.6; }
+    .clede { color: var(--ck-ink-soft); font-size: .9375rem; line-height: 1.8; margin: 0 0 1.5rem; }
+
+    .proof h3, .rh { font-size: .6875rem; letter-spacing: .14em; text-transform: uppercase;
+                     color: var(--ck-ink-soft); margin: 0 0 .75rem; font-weight: 600; }
+    .proof ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .625rem; }
+    .proof li { display: grid; gap: .1875rem; font-size: .8125rem; line-height: 1.65; }
+    .proof b { color: var(--ck-ink); font-weight: 600; }
+    .proof span { color: var(--ck-ink-soft); }
+
+    .pains { margin: 0 0 1.75rem; display: grid; gap: .875rem; }
+    .pains dt { font-weight: 600; font-size: .9375rem; line-height: 1.5; }
+    .pains dd { margin: .1875rem 0 0; color: var(--ck-ink-soft); font-size: .8125rem;
+                line-height: 1.7; padding-left: .875rem;
+                border-left: 2px solid var(--dtc-line, rgb(0 0 0/.12)); }
+
+    .steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: .75rem; }
+    .steps li { counter-increment: s; display: grid; gap: .1875rem; padding-left: 1.75rem;
+                position: relative; }
+    .steps li::before { content: counter(s); position: absolute; left: 0; top: .0625rem;
+                        width: 1.25rem; height: 1.25rem; border-radius: 50%;
+                        background: var(--dtc-wash, rgb(0 0 0/.055)); color: var(--ck-ink-soft);
+                        font-size: .6875rem; display: flex; align-items: center;
+                        justify-content: center; font-variant-numeric: tabular-nums; }
+    .steps b { font-size: .875rem; font-weight: 600; }
+    .steps span { color: var(--ck-ink-soft); font-size: .8125rem; line-height: 1.7; }
+
+    .faq { margin: 1.5rem 0 0; border-top: 1px solid var(--dtc-line, rgb(0 0 0/.09)); }
+    .faq details { border-bottom: 1px solid var(--dtc-line, rgb(0 0 0/.09)); }
+    .faq summary { cursor: pointer; padding: .8125rem 0; font-size: .875rem;
+                   font-weight: 550; list-style: none; display: flex; gap: .5rem; }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after { content: '＋'; margin-left: auto; color: var(--ck-ink-soft);
+                          font-weight: 400; }
+    .faq details[open] summary::after { content: '－'; }
+    .faq p { margin: 0 0 .9375rem; color: var(--ck-ink-soft); font-size: .8125rem; line-height: 1.75; }
+
+    .acts { display: flex; flex-wrap: wrap; gap: .625rem; margin: 1.5rem 0 0; }
+    .acts a { text-decoration: none; font-size: .8125rem; color: var(--ck-ink);
+              border: 1px solid var(--dtc-line, rgb(0 0 0/.14)); border-radius: 980px;
+              padding: .4375rem .875rem; min-height: 36px; display: inline-flex;
+              align-items: center; background: transparent; }
+    .acts a:hover { border-color: var(--ck-accent); color: var(--ck-accent); }
+    .acts .top { border: 0; color: var(--ck-ink-soft); padding-left: .25rem; }
+
+    .cta { margin-top: clamp(2.5rem, 5vw, 4rem); padding: clamp(2rem, 4vw, 2.75rem);
+           border: 1px solid var(--dtc-line, rgb(0 0 0/.1));
+           border-radius: var(--dtc-radius-card, 14px); text-align: center; }
+    .cta p { margin: 0; color: var(--ck-ink-soft); font-size: .9375rem; line-height: 1.75; }
+    .btns { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: center;
+            margin-top: 1.25rem !important; }
+    .btn { text-decoration: none; border-radius: 980px; padding: .75rem 1.5rem; min-height: 44px;
+           display: inline-flex; align-items: center; font-size: .9375rem; font-weight: 550;
+           border: 1px solid var(--dtc-line, rgb(0 0 0/.16)); color: var(--ck-ink);
+           background: transparent; }
+    .btn.pri { background: var(--ck-accent); border-color: var(--ck-accent);
+               color: var(--ck-on-accent); }
+    .btn.wa { gap: .4375rem; }
+    .btn.wa:hover { border-color: var(--ck-accent); color: var(--ck-accent); }
+
+    @media (max-width: 60rem) {
+      h1 { font-size: clamp(1.5rem, 1.2rem + 2vw, 1.875rem); }
+      .lede { font-size: .9375rem; }
+      .case, .case.alt { grid-template-columns: 1fr; gap: 1.5rem; }
+      .case.alt .cl { order: 0; }
+      .chain { flex-wrap: nowrap; overflow-x: auto; padding-bottom: .5rem;
+               scrollbar-width: none; }
+      .chain::-webkit-scrollbar { display: none; }
+      .chain li { flex: 0 0 auto; }
+    }
+  </style>
+</BaseLayout>

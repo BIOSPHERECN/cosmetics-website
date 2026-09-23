@@ -15,7 +15,7 @@
 import { readFileSync, writeFileSync, mkdirSync, writeSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { buildFleet } from '../apps/web/src/lib/fleet.ts';
-import { translateJson, translateBatch, TARGETS } from '../apps/web/src/lib/translate.ts';
+import { translateJson, translateBatch, translationFleet, TARGETS } from '../apps/web/src/lib/translate.ts';
 
 const DB = 'bohui-cms-v2';
 /* 输出改成同步写 fd 1：node 的 stdout 一旦被管道接走就变成块缓冲，
@@ -42,8 +42,23 @@ for (const line of readFileSync('.env', 'utf8').split(/\r?\n/)) {
    Node 25 起禁止在 shell:false 下 spawn .cmd（EINVAL），而开 shell 又要为 SQL 里的
    引号和空格做一层转义 —— 转义写错是最难查的一类 bug。绕开两边，直接喂脚本路径。 */
 const WRANGLER = new URL('../node_modules/wrangler/bin/wrangler.js', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
-const wrangler = (args) => execFileSync(process.execPath, [WRANGLER, 'd1', 'execute', DB, '--remote', '--json', ...args],
-  { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] });
+/* 网络抽一下就整轮崩太亏(实测两轮都死在尾部一个 fetch failed)——
+   wrangler 调用失败重试 3 次,间隔递增;3 次都失败才真抛 */
+const wrangler = (args) => {
+  let lastErr;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const out = execFileSync(process.execPath, [WRANGLER, 'd1', 'execute', DB, '--remote', '--json', ...args],
+        { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] });
+      if (out.includes('"fetch failed"')) throw new Error('wrangler fetch failed');
+      return out;
+    } catch (e) {
+      lastErr = e;
+      execFileSync(process.execPath, ['-e', `setTimeout(()=>{}, ${(i + 1) * 4000})`]);
+    }
+  }
+  throw lastErr;
+};
 
 function q(sql) {
   const out = wrangler(['--command', sql.replace(/[\s　]+/g, ' ').trim()]);
@@ -64,7 +79,7 @@ function exec(statements) {
   flush();
 }
 
-const fleet = (() => {
+let fleet = (() => {
   const rows = q(`SELECT id,label,base_url,model,api_keys,tier,can_image,can_video,can_vision,vision_model,is_free
                     FROM providers WHERE enabled=1 ORDER BY tier,id`);
   const list = rows.map((r) => ({
@@ -75,8 +90,11 @@ const fleet = (() => {
   })).filter((p) => p.keys.length > 0);
   return list.length ? list : buildFleet(process.env);
 })();
+const full = fleet.length;
+// 翻译只用实测最好的三家,不把九家全排上 —— 见 translationFleet 的注释
+fleet = translationFleet(fleet);
 if (!fleet.length) { console.error('没有可用的模型 key(库里和 .env 都没有)'); process.exit(1); }
-log(`舰队 ${fleet.length} 家:${fleet.map((p) => p.id).join(' → ')}`);
+log(`翻译用 ${fleet.length} 家(从 ${full} 家里挑实测最好的):${fleet.map((p) => p.id).join(' → ')}`);
 
 /* ── 并发池:模型调用是网络等待,串行跑完要几个小时 ───────────── */
 async function pool(items, n, fn) {
@@ -93,11 +111,38 @@ async function pool(items, n, fn) {
   return out.filter(Boolean);
 }
 
+/* 源语言优先级。默认英文优先 —— 它是这个站的定稿语种。
+   但**繁体必须从简体译**:我们的中文是逐句写的,绕道英文会把语气和术语都磨掉一层,
+   而简→繁本来就是同一语言内部的转换,信息损失最小。
+   2026-09-08 加繁体时发现这里写死了 en 优先,顺手改成按目标语种选源。 */
+const priFor = (lang) => lang.startsWith('zh')
+  ? `CASE i.lang WHEN 'zh-cn' THEN 0 WHEN 'en' THEN 1 ELSE 2 END`
+  : `CASE i.lang WHEN 'en' THEN 0 WHEN 'zh-cn' THEN 1 ELSE 2 END`;
 const PRI = `CASE i.lang WHEN 'en' THEN 0 WHEN 'zh-cn' THEN 1 ELSE 2 END`;
-const argLangs = process.argv.slice(2).filter((a) => TARGETS[a]);
-const LANGS = argLangs.length ? argLangs : ['ja', 'id', 'ms', 'fr'];
+const rawArgs = process.argv.slice(2);
+/* --site=xxx 只跑一个站。首翻是几千条,全量一跑就是小时级 ——
+   先拿一个站验质量再放全量,比跑完发现译得不能用要省得多。 */
+const onlySite = (rawArgs.find((a) => a.startsWith('--site=')) ?? '').split('=')[1] || null;
+const argLangs = rawArgs.filter((a) => TARGETS[a]);
+/* 不传参数就补齐**全部已上线语种**。
+   以前这里硬写着 ['ja','id','ms','fr'] —— 那是当时刚上的四门;
+   后来语种表长到 46 又收到 17,这行一直没跟着改,于是"跑一遍全量回填"
+   实际只跑了四门,剩下的语言页面永远缺译文,而日志显示一切正常。
+   默认值跟着 locales.json 走,就不会再出现这种"以为跑全了"。 */
+const ALL = JSON.parse(readFileSync('tools/locales.json', 'utf8'))
+  .map((l) => l.code)
+  .filter((c) => c !== 'en' && c !== 'zh-cn');   // 这两门是源语言,不用翻
+const LANGS = argLangs.length ? argLangs : ALL;
 
-for (const site of q(`SELECT id FROM sites ORDER BY sort_order`).map((r) => r.id)) {
+/* biosphere-ai 永远排第一 —— 创始人「先做透第一站」;
+   实测 20 分钟轮全耗在 beauty2oem 的小语种上,旗舰站的缺口反而排队 */
+const SITES = q(`SELECT id FROM sites ORDER BY CASE id WHEN 'biosphere-ai' THEN 0 ELSE 1 END, sort_order`).map((r) => r.id)
+  .filter((id) => !onlySite || id === onlySite);
+if (onlySite && !SITES.length) { console.error(`没有站点 ${onlySite}`); process.exit(1); }
+log(`站点 ${SITES.length} 个:${SITES.join(' ')}`);
+log(`语种 ${LANGS.length} 门:${LANGS.join(' ')}`);
+
+for (const site of SITES) {
   for (const lang of LANGS) {
     const name = TARGETS[lang].name;
 
@@ -117,8 +162,11 @@ for (const site of q(`SELECT id FROM sites ORDER BY sort_order`).map((r) => r.id
                     JOIN pages p ON p.id=b.page_id
                     JOIN block_i18n i ON i.block_id=b.id AND i.lang IN ('en','zh-cn')
                    WHERE p.site_id=${lit(site)}
+                     AND b.type <> 'legal'
                      AND NOT EXISTS (SELECT 1 FROM block_i18n x WHERE x.block_id=b.id AND x.lang=${lit(lang)})
                    GROUP BY b.id`);
+    /* legal(隐私政策/法律声明)只发中英两个权威文本,小语种走 en 回退 ——
+       机翻法律文本是法律风险,不是本地化服务;文档里也写明了「以中文文本为准」。 */
     /* ④ 产品 */
     const s4 = q(`SELECT p.id, i.name, i.summary, i.description, i.specs_json, i.highlights_json, MIN(${PRI}) AS _p
                     FROM products p JOIN product_i18n i ON i.product_id=p.id AND i.lang IN ('en','zh-cn')
@@ -134,7 +182,14 @@ for (const site of q(`SELECT id FROM sites ORDER BY sort_order`).map((r) => r.id
     const MT = `1, datetime('now')`;
 
     for (const r of s1) {
-      const g = await translateBatch(process.env, fleet, [r.name ?? '', r.tagline ?? '', r.description ?? ''], lang, '站点品牌名与一句话定位');
+      /* 这一段之前没包 try:站点介绍只有一条,翻不动就直接抛,
+         整个进程当场退出 —— 前面几十分钟翻好的全部作废(库里写了的还在,
+         但后面十几门语言一条没跑)。首翻是小时级的活,
+         **单点失败必须降级成跳过,不能升级成中止**。 */
+      let g;
+      try {
+        g = await translateBatch(process.env, fleet, [r.name ?? '', r.tagline ?? '', r.description ?? ''], lang, '站点品牌名与一句话定位');
+      } catch (e) { log(`   × 站点介绍(${lang}):${String(e.message).slice(0, 90)}`); continue; }
       sql.push(`INSERT INTO site_i18n (site_id,lang,name,tagline,description,mt,mt_at) VALUES (${lit(site)},${lit(lang)},${lit(g['0'] || r.name)},${lit(g['1'] ?? r.tagline)},${lit(g['2'] ?? r.description)},${MT}) ON CONFLICT(site_id,lang) DO UPDATE SET name=excluded.name,tagline=excluded.tagline,description=excluded.description,mt=1,mt_at=excluded.mt_at;`);
     }
 

@@ -1,0 +1,504 @@
+{
+  "markets": [
+    {
+      "id": "gcc",
+      "region": "Middle East",
+      "country_en": "GCC (Gulf Cooperation Council bloc: Saudi Arabia, UAE, Kuwait, Qatar, Bahrain, Oman)",
+      "country_zh": "海湾合作委员会(海合会六国)",
+      "authority_en": "GCC Standardization Organization (GSO) issues the Gulf Technical Regulation; national regulators (SFDA, MoIAT/municipalities, etc.) enforce it",
+      "authority_zh": "海湾标准化组织(GSO)制定海湾技术法规,由各成员国监管机构(SFDA、MoIAT/市政等)执行",
+      "law_en": "GSO 1943:2024 Cosmetic Products – Safety Requirements of Cosmetics and Personal Care Products (Gulf Technical Regulation)",
+      "law_zh": "GSO 1943:2024《化妆品——化妆品及个人护理产品安全要求》(海湾技术法规)",
+      "law_ref": "GSO 1943:2024 (Edition 4, approved 2024-05-01); companions GSO 2528:2024 (claims), GSO 2636:2021 (PIF), GSO 2020:2010 (GMP)",
+      "in_force_since": "2009-10-17",
+      "latest_update": {
+        "date": "2024-05-01",
+        "what": "GSO 1943:2024 (Edition 4) and GSO 2528:2024 on cosmetic claims approved, replacing GSO 1943:2021/2022.",
+        "source": "https://www.gso.org.sa/store/standards/GSO:871899/GSO%201943:2024?lang=en"
+      },
+      "market_entry": "No bloc-level system: each member state runs its own pre-market notification/conformity scheme against GSO 1943 (SFDA GHAD/eCosma in KSA, MoIAT ECAS plus Dubai Montaji in UAE, etc.).",
+      "responsible_person": "GSO 1943 requires the manufacturer or responsible person's name/address on the label, and in practice every member state requires a locally licensed importer/agent to notify products.",
+      "safety_file": "Product Information File per GSO 2636:2021 with safety assessment, formula, test data and GMP (GSO 2020 / ISO 22716) evidence, available to authorities on request.",
+      "labeling_key": "Arabic mandatory (Arabic-only or bilingual Arabic/English) with INCI ingredients, batch, expiry/PAO, country of origin and manufacturer/RP; products must be free of pork derivatives and must not carry imagery contrary to Islamic/GCC values; halal certification voluntary.",
+      "animal_testing": "No GCC-wide ban on animal testing of cosmetics identified.",
+      "ingredient_lists": "GSO 1943 annexes of prohibited substances, restricted substances, permitted colorants, preservatives and UV filters, aligned to EU Regulation (EC) No 1223/2009.",
+      "official_url": "https://www.gso.org.sa/store/standards/GSO:871899/GSO%201943:2024?lang=en",
+      "sources": [
+        "https://www.gso.org.sa/store/standards/GSO:871899/GSO%201943:2024?lang=en",
+        "https://www.gso.org.sa/store/standards/GSO:501926/GSO%201943:2009?lang=en",
+        "https://cosmetic.chemlinked.com/cosmepedia/saudi-arabia-cosmetic-regulation",
+        "https://www.bav-institut.de/en/news/investigationsofcosmeticsforexporttosaudiaarabiagso1943"
+      ],
+      "notes": "GSO 1943 is adopted nationally (SFDA.CO/GSO 1943, UAE.S GSO 1943) and enforced by national authorities; consultancy claims of a 'unified GCC regulation 2026' cite no official GSO document, so no 2025-2026 bloc-level change is verified."
+    },
+    {
+      "id": "sa",
+      "region": "Middle East",
+      "country_en": "Saudi Arabia",
+      "country_zh": "沙特阿拉伯",
+      "authority_en": "Saudi Food and Drug Authority (SFDA)",
+      "authority_zh": "沙特食品药品管理局(SFDA)",
+      "law_en": "Cosmetic Products Law (Royal Decree No. M/49 of 18/6/1436H) and its Implementing Regulation, with technical requirements SFDA.CO/GSO 1943",
+      "law_zh": "《化妆品法》(伊历1436年6月18日第M/49号皇家法令)及其实施条例,技术要求为 SFDA.CO/GSO 1943",
+      "law_ref": "Royal Decree No. M/49 dated 18/6/1436H (2015-04-07); Implementing Regulation of the Cosmetic Products Law; SFDA.CO/GSO 1943:2024; SFDA.CO/GSO 2528:2024",
+      "in_force_since": "2015-10-04",
+      "latest_update": {
+        "date": "2025-09-07",
+        "what": "SFDA added 21 substances to its prohibited list (after a 2025-08-14 circular adding three restricted substances); import/manufacture of non-compliant products is banned from 2026-01-01 with sell-through allowed until 2028-01-01.",
+        "source": "https://ecustoms.sgs.com/2025/12/17/navigating-saudi-arabias-updated-cosmetic-regulations/"
+      },
+      "market_entry": "Mandatory pre-market product notification (listing) in the SFDA GHAD unified e-platform (eCosma module; GHAD replaced eCosma on 2023-03-30), decided within 15 days and valid 5 years, plus a shipment Certificate of Conformity via FASEH before customs clearance.",
+      "responsible_person": "Only an SFDA-licensed Saudi establishment (importer/distributor or local manufacturer) can notify products, so foreign brands must appoint such a local agent.",
+      "safety_file": "Product Information File per GSO 2636 with safety assessment, formula, test reports and GMP (GSO 2020 / ISO 22716) evidence held for SFDA inspection; local factories need an SFDA technical licence.",
+      "labeling_key": "Arabic labeling mandatory (bilingual Arabic/English accepted) with INCI list, function, batch, expiry or PAO, responsible party, net content, warnings and country of origin; must be free of pork derivatives; halal certification not legally mandatory.",
+      "animal_testing": "No statutory ban on animal testing of cosmetics identified.",
+      "ingredient_lists": "SFDA lists of prohibited and restricted substances and permitted colorants, preservatives and UV filters (SFDA.CO/GSO 1943 annexes aligned to EU 1223/2009), amended by SFDA circulars of Feb, Aug and Sep 2025.",
+      "official_url": "https://www.sfda.gov.sa/en/regulations",
+      "sources": [
+        "https://cosmetic.chemlinked.com/cosmepedia/saudi-arabia-cosmetic-regulation",
+        "https://www.lexismiddleeast.com/law/SaudiArabia/RoyalDecree_M49_1436/en",
+        "https://www.intertek.com/government/export-import/regulatory-news-updates/news-saudi-arabia/saudi-arabia-cosmetics-ghad/",
+        "https://ecustoms.sgs.com/2025/12/17/navigating-saudi-arabias-updated-cosmetic-regulations/",
+        "https://middle-east.cotecna.com/en/media/news/sfda-updates-cosmetics-regulations"
+      ],
+      "notes": "SFDA's own site blocked fetching, so the 2025 circular dates rely on SGS/Cotecna summaries; Cotecna's Feb-2025 item describes an earlier restricted-substances circular with separate deadlines of 2026-12-01 (production/import) and 2028-12-01 (market)."
+    },
+    {
+      "id": "ae",
+      "region": "Middle East",
+      "country_en": "United Arab Emirates",
+      "country_zh": "阿拉伯联合酋长国",
+      "authority_en": "Ministry of Industry and Advanced Technology (MoIAT, successor of ESMA) for ECAS conformity; Dubai Municipality (Montaji) and other emirate municipalities for product registration",
+      "authority_zh": "工业与先进技术部(MoIAT,原ESMA)负责ECAS合格评定;迪拜市政(Montaji系统)及其他酋长国市政负责产品注册",
+      "law_en": "Cabinet Decision No. 18 of 2014 on the UAE Regulation for the Control of Cosmetics and Personal Care Products, applying UAE.S GSO 1943",
+      "law_zh": "2014年第18号内阁决议《阿联酋化妆品及个人护理产品管控条例》,技术要求采用 UAE.S GSO 1943",
+      "law_ref": "Cabinet Decision No. 18 of 2014; UAE.S GSO 1943:2024; GSO 2528:2024; Cabinet Decision No. 5 of 2014 (fragrances)",
+      "in_force_since": "2014-04-29",
+      "latest_update": {
+        "date": "2024-05-04",
+        "what": "MoIAT updated its Technical Guidelines for Cosmetics and Personal Care Products and adopted GSO 1943:2024 / GSO 2528:2024 (effective 2024-05-01); no new federal cosmetics decision found for 2025-2026.",
+        "source": "https://cosmetic.chemlinked.com/cosmepedia/united-arab-emirates-uae-cosmetic-regulation"
+      },
+      "market_entry": "Two-layer pre-market system: MoIAT ECAS Certificate of Conformity (valid 1 year) against GSO 1943 for import/customs, plus product registration in Dubai Municipality's Montaji system (valid 5 years) before retail sale.",
+      "responsible_person": "Only a UAE-incorporated entity (local manufacturer, importer or distributor) may hold ECAS certificates and Montaji registrations, so foreign brands need a local agent.",
+      "safety_file": "Dossier with Free Sale Certificate, full ingredient report, GMP evidence and accredited lab test reports (microbiology, heavy metals), with a PIF per GSO 2636 held by the local registrant.",
+      "labeling_key": "Arabic labeling mandatory (bilingual Arabic/English accepted) per Cabinet Decision 18/2014 and GSO 1943 with INCI, batch, expiry/PAO, warnings and allergen declaration; pork-free and no imagery contrary to Islamic values; halal certification voluntary but required if halal is claimed.",
+      "animal_testing": "No formal ban on animal testing of cosmetics in the UAE.",
+      "ingredient_lists": "UAE.S GSO 1943 annexes (prohibited, restricted, colorants, preservatives, UV filters) aligned to EU 1223/2009.",
+      "official_url": "https://moiat.gov.ae/en/services/issue-conformity-certificates-for-regulated-products",
+      "sources": [
+        "https://cosmetic.chemlinked.com/cosmepedia/united-arab-emirates-uae-cosmetic-regulation",
+        "https://www.lexismiddleeast.com/law/UnitedArabEmirates/CabinetDecision_18_2014/en",
+        "https://gowlingwlg.com/en/insights-resources/articles/2018/distributing-cosmetics-perfumery-products-in-uae",
+        "https://moiat.gov.ae/en/services/issue-conformity-certificates-for-regulated-products"
+      ],
+      "notes": "Consultancy reports say the Emirates Drug Establishment (Federal Decree-Law 28/2023) took over medicated-product registration from MOHAP at end-2025 while ordinary cosmetics stayed with Montaji; not verified on an official page. Montaji covers Dubai only; other emirates use their own municipal systems."
+    },
+    {
+      "id": "il",
+      "region": "Middle East",
+      "country_en": "Israel",
+      "country_zh": "以色列",
+      "authority_en": "Ministry of Health – Pharmaceutical Division (Cosmetics Department)",
+      "authority_zh": "以色列卫生部药品司(化妆品部门)",
+      "law_en": "Pharmacists Ordinance [New Version] 1981 as amended by Amendment No. 37 (2024) ('What is good for Europe is good for Israel' cosmetics reform), with the Pharmacists' Regulations (Cosmetics)",
+      "law_zh": "《药剂师条例》(1981年新版)及2024年第37号修正案(\"欧洲适用者以色列亦适用\"化妆品改革),以及《药剂师条例(化妆品)》",
+      "law_ref": "Pharmacists Ordinance (Amendment No. 37), 2024; Pharmacists' Regulations (Cosmetics) 5783-2022 (WTO G/TBT/N/ISR/1279)",
+      "in_force_since": "2025-01-01",
+      "latest_update": {
+        "date": "2025-12-30",
+        "what": "MoH legislative memorandum proposes a parallel 'U.S. track' for FDA-compliant cosmetics, retailer verification duties against the MoH cosmetics database, and adding solid soap to the cosmetic definition (proposal, not yet law).",
+        "source": "https://www.shibolet.com/en/key-regulatory-changes-impacting-the-pharmaceutical-industry-2/"
+      },
+      "market_entry": "Since 2025-01-01 the old Cosmetic Product Licence (discontinued 2024-12-31) is replaced by online notification to the MoH (Notification Track) by a registered dealer/responsible representative; EU-, UK- or Swiss-compliant products qualify, while 'sensitive' cosmetics (children under 12, sunscreens, nano, hair straighteners, etc.) stay under stricter approval.",
+      "responsible_person": "An Israel-resident Responsible Person/representative registered in the MoH database must be appointed and is legally liable for the PIF and product safety.",
+      "safety_file": "EU-style Product Information File with Cosmetic Product Safety Report by a qualified assessor, GMP (ISO 22716) and test data, kept 10 years.",
+      "labeling_key": "Hebrew labeling mandatory (English/Arabic optional) with INCI, batch, expiry/PAO, responsible person details and warnings, traceable to the MoH notification/database entry.",
+      "animal_testing": "Banned: testing cosmetics on animals in Israel since 2007 and import/marketing of animal-tested cosmetics since 2013-01-01.",
+      "ingredient_lists": "Annexes aligned to EU Regulation 1223/2009 (prohibited, restricted, colorants, preservatives, UV filters).",
+      "official_url": "https://www.gov.il/en/service/cosmetics-marketing",
+      "sources": [
+        "https://practiceguides.chambers.com/practice-guides/life-sciences-2025/israel",
+        "https://gpcgateway.com/common/news_details/MTQwMw/NDE/SXNyYWVs",
+        "https://www.tuv.com/regulations-and-standards/en/israel-pharmacists-regulations-cosmetics-5783-2022.html",
+        "https://www.shibolet.com/en/key-regulatory-changes-impacting-the-pharmaceutical-industry-2/",
+        "https://www.israel21c.org/israel-bans-import-of-cosmetics-tested-on-animals/",
+        "https://www.gov.il/en/service/cosmetics-marketing"
+      ],
+      "notes": "gov.il pages could not be fetched; the 2026 transition deadline for legacy licences and the Hebrew/English/Arabic label statement come from consultancy pages."
+    },
+    {
+      "id": "eg",
+      "region": "Middle East",
+      "country_en": "Egypt",
+      "country_zh": "埃及",
+      "authority_en": "Egyptian Drug Authority (EDA) – General Administration for Cosmetic Products Registration",
+      "authority_zh": "埃及药品管理局(EDA)化妆品注册总管理局",
+      "law_en": "Law No. 151 of 2019 establishing the Egyptian Drug Authority, with EDA Chairman Decree No. 122 of 2022 on the listing (notification) and circulation of cosmetic products",
+      "law_zh": "2019年第151号法律(设立埃及药品管理局)及2022年EDA主席第122号决定(化妆品登记/通报与流通)",
+      "law_ref": "Law No. 151/2019; EDA Decree No. 122/2022 (effective 2022-02-27); Regulatory Guide for Cosmetics Notification (2023)",
+      "in_force_since": "2022-02-27",
+      "latest_update": {
+        "date": "2023-03-06",
+        "what": "EDA issued the Regulatory Guide for Cosmetics Notification (2023), followed by a Claims Guide (EDREX:GL.CAPP.010), product-naming rules (reported effective 2025-01-01) and a variations-documents guide.",
+        "source": "https://cosmetic.chemlinked.com/cosmepedia/egyptian-cosmetics-regulations"
+      },
+      "market_entry": "Mandatory pre-market notification on the EDA EgyCosm portal; a notification number is issued within 10 working days (3 days fast track) and is valid 10 years.",
+      "responsible_person": "Notification is filed by an Egyptian company registered with the EDA (local manufacturer, importer or scientific office holding a brand-owner authorization letter).",
+      "safety_file": "Composition form with INCI percentages, CoA, stability/shelf-life, Free Sale Certificate for imports, claim substantiation and clarification letters, with cosmetovigilance reporting within 20 days.",
+      "labeling_key": "Arabic mandatory (Arabic plus English artwork) showing product name, notification number/barcode, INCI list and usage instructions; advertising must be primarily Arabic.",
+      "animal_testing": "No statutory ban identified.",
+      "ingredient_lists": "EDA adopts the five EU 1223/2009 annexes (prohibited, restricted, colorants, preservatives, UV filters) plus EDA-specific limits.",
+      "official_url": "https://www.edaegypt.gov.eg/en/",
+      "sources": [
+        "https://cosmetic.chemlinked.com/cosmepedia/egyptian-cosmetics-regulations",
+        "https://eg.andersen.com/medication-cosmetic-vitamin-registration-egypt/",
+        "https://edaegypt.gov.eg/media/1zjbwa1w/regulatory-guide-for-cosmetics-notification.pdf",
+        "https://edaegypt.gov.eg/media/ujnj22c2/claims-guide-for-cosmetics-notification.pdf"
+      ],
+      "notes": "EDA PDFs/announcement pages could not be opened; guide dates are unverified. The 10-year notification validity comes from consultancy sources."
+    },
+    {
+      "id": "za",
+      "region": "Africa",
+      "country_en": "South Africa",
+      "country_zh": "南非",
+      "authority_en": "National Department of Health (Directorate: Food Control) under the FCD Act; SAHPRA only for products with medicinal claims",
+      "authority_zh": "南非国家卫生部(食品管制司);仅具药用宣称的产品归SAHPRA",
+      "law_en": "Foodstuffs, Cosmetics and Disinfectants Act 54 of 1972",
+      "law_zh": "1972年第54号《食品、化妆品和消毒剂法》",
+      "law_ref": "Act 54 of 1972; draft Regulations relating to the Labelling, Advertising and Composition of Cosmetics (GN R.1469, 22 Dec 2017); SANS 289:2022",
+      "in_force_since": "1973-01-01",
+      "latest_update": {
+        "date": "2017-12-22",
+        "what": "Draft Regulations relating to the labelling, advertising and composition of cosmetics (R.1469) were published for comment and remain unfinalised and unenforced as of 2026.",
+        "source": "https://cosmetic.chemlinked.com/cosmepedia/south-africa-cosmetic-regulation"
+      },
+      "market_entry": "None – no pre-market notification or registration; the market is self-regulated under the FCD Act with the CTFA Cosmetic Compendium as industry guidance.",
+      "responsible_person": "No statutory local RP; the manufacturer/importer/distributor named on the label is liable under the Act, and the draft regulations would formalise a South African responsible person.",
+      "safety_file": "No mandatory filing; industry practice and the draft regulations expect a PIF with safety assessment and GMP (ISO 22716).",
+      "labeling_key": "English at minimum with ingredient list, net content per SANS 289 / Legal Metrology Act, and no misleading claims under the ARB/CTFA Cosmetic Advertising Code.",
+      "animal_testing": "No statutory ban on animal testing of cosmetics.",
+      "ingredient_lists": "CTFA Cosmetic Compendium adopts EU 1223/2009 Annexes II–VI; the draft R.1469 Annexures I/II list prohibited (e.g. mercury, chloroform) and restricted substances.",
+      "official_url": "https://www.health.gov.za/",
+      "sources": [
+        "https://cosmetic.chemlinked.com/cosmepedia/south-africa-cosmetic-regulation",
+        "https://cms.law/en/int/expert-guides/cms-expert-guide-on-beauty/south-africa",
+        "https://www.arb.org.za/assets/arb-ctfa-cosmetic-advertising-code-of-practice-2023.pdf"
+      ],
+      "notes": "Sources disagree on whether R.1469 (2017) is final; ChemLinked (updated 2026-08-18) and Chemycal treat it as an unenforced draft, so it is reported as draft here."
+    },
+    {
+      "id": "ng",
+      "region": "Africa",
+      "country_en": "Nigeria",
+      "country_zh": "尼日利亚",
+      "authority_en": "National Agency for Food and Drug Administration and Control (NAFDAC)",
+      "authority_zh": "尼日利亚国家食品药品管理控制局(NAFDAC)",
+      "law_en": "NAFDAC Act Cap N1 LFN 2004 with the Cosmetic Products Registration Regulations 2023, Cosmetics Products Labelling Regulations 2019 and Cosmetics Products (Prohibition of Bleaching Agents) Regulations 2019",
+      "law_zh": "《NAFDAC法》(2004年联邦法律汇编第N1章)及《化妆品注册条例(2023)》《化妆品标签条例(2019)》《化妆品(禁用漂白剂)条例(2019)》",
+      "law_ref": "NAFDAC Act Cap N1 LFN 2004; Cosmetic Products Registration Regulations 2023; Cosmetics Products Labelling Regulations 2019",
+      "in_force_since": "1993",
+      "latest_update": {
+        "date": "2023",
+        "what": "Cosmetic Products Registration Regulations 2023 (posted by NAFDAC in Feb 2024) restated mandatory registration; no new cosmetics regulation was found for 2025-2026, only enforcement actions.",
+        "source": "https://www.nafdac.gov.ng/wp-content/uploads/2024/02/Cosmetics-Products-Registration-Regulations-2023.pdf"
+      },
+      "market_entry": "Mandatory pre-market registration with NAFDAC via the NAPAMS e-portal (registration.nafdac.gov.ng), with the certificate valid 5 years and renewable.",
+      "responsible_person": "Foreign manufacturers must appoint a Nigerian-incorporated local representative holding a Power of Attorney or contract-manufacturing agreement, in whose name the certificate is issued.",
+      "safety_file": "Certificate of Manufacture and Free Sale, comprehensive Certificate of Analysis, GMP inspection of the factory, label artwork and NAFDAC laboratory analysis; skin-lightening agents require precautionary statements.",
+      "labeling_key": "English mandatory with INCI ingredients in descending order, NAFDAC registration number, batch, manufacturing/expiry dates, net content, manufacturer and country of origin, and warnings for skin-lightening agents.",
+      "animal_testing": "No statutory ban identified.",
+      "ingredient_lists": "NAFDAC prohibited/restricted substances, notably bleaching agents (mercury, corticosteroids, hydroquinone above the permitted limit) under the 2019 Bleaching Agents Regulations, with EU/ASEAN lists used as reference.",
+      "official_url": "https://nafdac.gov.ng/cosmetics-medical-devices/cosmetics-guidelines/",
+      "sources": [
+        "https://nafdac.gov.ng/cosmetics-medical-devices/cosmetics-guidelines/",
+        "https://www.nafdac.gov.ng/wp-content/uploads/2024/02/Cosmetics-Products-Registration-Regulations-2023.pdf",
+        "https://www.nafdac.gov.ng/wp-content/uploads/Files/Resources/Regulations/COSMETIC_REGULATIONS/Cosmetics-Products-Labelling-Regulations-2019.pdf",
+        "https://www.mondaq.com/nigeria/dodd-frank-consumer-protection-act/1529838/nafdacs-labelling-requirements-for-cosmetic-products-what-you-need-to-know"
+      ],
+      "notes": "NAFDAC regulation PDFs could not be opened, so commencement dates are year-only (in_force_since is the year NAFDAC was created); the exact hydroquinone limit was not verified from an official text."
+    },
+    {
+      "id": "ke",
+      "region": "Africa",
+      "country_en": "Kenya",
+      "country_zh": "肯尼亚",
+      "authority_en": "Kenya Bureau of Standards (KEBS) for standards and PVoC; Pharmacy and Poisons Board (PPB) for registration of cosmetics as health products (to become KHPTA)",
+      "authority_zh": "肯尼亚标准局(KEBS,标准与出口前符合性验证);药房与毒物委员会(PPB,化妆品作为健康产品注册,拟改组为KHPTA)",
+      "law_en": "Standards Act (Cap 496) with East African standards KS EAS 377 (ingredients) and KS EAS 346 (labelling); Pharmacy and Poisons Act (Cap 244) and the Pharmacy and Poisons (Registration of Health Products and Technologies) Rules 2022",
+      "law_zh": "《标准法》(第496章)及东非标准 KS EAS 377(成分)、KS EAS 346(标签);《药房与毒物法》(第244章)及2022年《健康产品与技术注册规则》",
+      "law_ref": "KS EAS 377-1:2013 et seq.; KS EAS 346; Legal Notice No. 100 of 2022 (commenced 2022-06-09)",
+      "in_force_since": "2022-06-09",
+      "latest_update": {
+        "date": "2026-02-19",
+        "what": "KEBS issued PVoC Manual Version 15 governing Certificates of Conformity for imports (including cosmetics); the KHPTA Bill covering cosmetics passed the National Assembly in Nov 2024 but has not been assented.",
+        "source": "https://kebs.org/wp-content/uploads/2026/03/PVoC-Manual-Version-15.pdf"
+      },
+      "market_entry": "Imports need a KEBS Certificate of Conformity under the PVoC programme (issued pre-shipment by appointed agents) and the KEBS standardisation/import mark, while PPB registration under LN 100/2022 applies to cosmetics defined as health products, especially those with therapeutic claims.",
+      "responsible_person": "Non-Kenyan applicants must appoint a local representative (Kenyan citizen/resident or Kenyan-incorporated company) for PPB registration, and PVoC/import permits run through the Kenyan importer.",
+      "safety_file": "INCI formula, toxicological safety assessment, microbiological and stability data, Certificate of Free Sale and GMP evidence for KEBS/PPB review, with heavy-metal testing increasingly expected.",
+      "labeling_key": "English labelling per KS EAS 346 with INCI ingredients, batch, expiry, full manufacturer address, warnings and the KEBS mark; Kiswahili optional.",
+      "animal_testing": "No statutory ban identified.",
+      "ingredient_lists": "KS EAS 377 parts (prohibited, restricted, colorants, preservatives, UV filters) referencing EU 1223/2009 Annex II/III, with a DEAS 377-1:2020 revision drafted.",
+      "official_url": "https://www.kebs.org/pre-export-verification-of-conformity/",
+      "sources": [
+        "https://new.kenyalaw.org/akn/ke/act/ln/2022/100/eng@2022-12-31",
+        "https://www.kebs.org/pre-export-verification-of-conformity/",
+        "https://kebs.org/wp-content/uploads/2026/03/PVoC-Manual-Version-15.pdf",
+        "https://parliament.go.ke/node/22845",
+        "https://www.mavenrs.com/blog/cosmetic-registration-kenya-kebs-vs-ppb-pvoc-certification-guide-2026"
+      ],
+      "notes": "Division of labour between KEBS and PPB for ordinary cosmetics is in flux (KHPTA Bill pending in the Senate as of 2026); in_force_since refers to the PPB rules while the KEBS standards regime is older."
+    },
+    {
+      "id": "ma",
+      "region": "Africa",
+      "country_en": "Morocco",
+      "country_zh": "摩洛哥",
+      "authority_en": "Moroccan Agency for Medicines and Health Products (AMMPS), successor to the Ministry of Health's Direction du Médicament et de la Pharmacie (DMP)",
+      "authority_zh": "摩洛哥药品与健康产品管理局(AMMPS,接替卫生部药品与药学司DMP)",
+      "law_en": "Law No. 17-04 (Code of Medicines and Pharmacy) with DMP Circular No. 48 DMP/20 establishing cosmetic product registration; Law No. 10-22 creating AMMPS",
+      "law_zh": "第17-04号法律《药品与药学法典》及DMP第48 DMP/20号通函(化妆品注册框架);第10-22号法律(设立AMMPS)",
+      "law_ref": "Loi n° 17-04; Circulaire n° 48 DMP/20 (17 Aug 2012); Loi n° 10-22 promulgated by Dahir n° 1-23-54 (12 Jul 2023)",
+      "in_force_since": "2012-08-17",
+      "latest_update": {
+        "date": "2025-06-11",
+        "what": "AMMPS now processes cosmetic applications filed since 2025-06-11 only after the operator's establishment declaration is updated, tightening traceability of manufacturers and importers during the DMP-to-AMMPS transition.",
+        "source": "https://www.lodj.ma/Cosmetiques-le-Maroc-veut-mieux-tracer-ce-qui-arrive-sur-le-marche_a181545.html"
+      },
+      "market_entry": "Pre-market registration of each cosmetic with AMMPS (ex-DMP): establishment declaration, product file submission and poison-centre (CAPM) code, yielding a temporary certificate (ATD, 1 year) then a definitive certificate valid 5 years.",
+      "responsible_person": "A Moroccan-established manufacturer or importer declared as a cosmetics/body-hygiene establishment with qualified quality-control staff and compliant premises must hold the registration.",
+      "safety_file": "Administrative and technical file with full INCI formula, raw-material and microbiological specifications, analytical and stability results, toxicologist safety assessment, claim substantiation and Free Sale Certificate.",
+      "labeling_key": "French and/or Arabic labeling with Arabic mandatory for precautions/warnings, importer name and address, INCI, batch and expiry; halal certification (IMANOR Label Halal Maroc, NM 08.0.802) voluntary.",
+      "animal_testing": "No statutory ban identified.",
+      "ingredient_lists": "Circular 48 DMP/20 references the EU cosmetics lists (prohibited and restricted substances, CMR ban) and AMMPS follows EU 1223/2009 annexes in practice.",
+      "official_url": "https://www.ammps.gov.ma/",
+      "sources": [
+        "https://www.premiumbeautynews.com/en/morocco-requires-registration-of,4455",
+        "https://www.sante.gov.ma/Reglementation/REGLEMENTATIONDESPRATIQUESMEDICALES/Circulaire%20N%C2%B0%2048%20DMP20%20Cadre%20relatif%20%C3%A0%20l%E2%80%99enregistrement%20des%20produits%20cosm%C3%A9tique.pdf",
+        "https://www.ammps.gov.ma/uploads/textes-reglementaires/lois/loi-10-22-creation-ammps-version-francaise.pdf",
+        "https://www.lodj.ma/Cosmetiques-le-Maroc-veut-mieux-tracer-ce-qui-arrive-sur-le-marche_a181545.html",
+        "https://www.imanor.gov.ma/certification-halal/"
+      ],
+      "notes": "A consultancy blog claims halal certification becomes mandatory for all imported cosmetics on 2026-10-17; no AMMPS/IMANOR source confirms this, so it is treated as unverified."
+    },
+    {
+      "id": "pk",
+      "region": "South Asia",
+      "country_en": "Pakistan",
+      "country_zh": "巴基斯坦",
+      "authority_en": "Drug Regulatory Authority of Pakistan (DRAP) for medicated cosmetics; Pakistan Standards and Quality Control Authority (PSQCA) for compulsory standards; Pakistan General Cosmetics Regulatory Authority (PGCRA) created by the General Cosmetics Act 2023 but not operational",
+      "authority_zh": "巴基斯坦药品监管局(DRAP,药用化妆品);巴基斯坦标准与质量控制局(PSQCA,强制标准);2023年《普通化妆品法》设立的普通化妆品监管局(PGCRA)尚未运作",
+      "law_en": "General Cosmetics Act 2023; DRAP Act 2012 with the Alternative Medicines and Health Products (Enlistment) Rules 2014 for medicated cosmetics; PSQCA compulsory Pakistan Standards",
+      "law_zh": "2023年《普通化妆品法》;2012年《DRAP法》及2014年《替代药物与健康产品登记规则》(药用化妆品);PSQCA强制性巴基斯坦标准",
+      "law_ref": "General Cosmetics Act 2023 (Gazette of Pakistan Extraordinary, 7 Aug 2023); DRAP Act 2012; S.R.O. 412(I)/2014",
+      "in_force_since": "2023-08-07",
+      "latest_update": {
+        "date": "2024-11-23",
+        "what": "A government rightsizing committee decided to abolish the not-yet-operational PGCRA, leaving the General Cosmetics Act 2023 without a functioning regulator and rules.",
+        "source": "https://www.thenews.com.pk/print/1254096-future-of-cosmetics-authority-in-jeopardy"
+      },
+      "market_entry": "No general-cosmetics notification system operates yet; medicated cosmetics, medicated soaps and shampoos need DRAP enlistment, and cosmetics on PSQCA's compulsory list (toilet soap, shampoo, skin cream PS 3228, hair dyes, shaving cream, skin powder, hair cream) need PSQCA conformity certification before import or sale.",
+      "responsible_person": "DRAP enlistment and PSQCA licences are held by a Pakistan-registered importer or manufacturer acting as legal representative of the foreign maker.",
+      "safety_file": "Formula with ingredient limits, CoA, Free Sale Certificate, GMP evidence and PSQCA laboratory test reports, plus safety/quality data for DRAP-enlisted medicated cosmetics.",
+      "labeling_key": "English labeling with ingredients, batch, expiry, manufacturer/importer and the PSQCA or DRAP number where applicable; halal claims must be substantiated.",
+      "animal_testing": "No statutory ban identified.",
+      "ingredient_lists": "DRAP permitted/prohibited ingredient and contaminant (heavy metal, microbial) limits for medicated cosmetics and PSQCA Pakistan Standards (e.g. PS 3228-2017 skin cream); no EU-style annex system yet.",
+      "official_url": "https://www.dra.gov.pk/",
+      "sources": [
+        "https://pakistancode.gov.pk/english/UY2FqaJw1-apaUY2Fqa-apaUY2Npa5pnbA==-sg-jjjjjjjjjjjjj",
+        "https://na.gov.pk/uploads/documents/650598e227a9e_158.pdf",
+        "https://asiaiplaw.com/section/news-analysis/pakistans-general-cosmetics-act-2023",
+        "https://www.thenews.com.pk/print/1254096-future-of-cosmetics-authority-in-jeopardy",
+        "https://www.psqca.com.pk/confirmity-assessment-ca/list-of-compulsory-item-to-meet-pakistan-standards/"
+      ],
+      "notes": "Labeling-language requirement not verified from an official source; PGCRA status after Nov 2024 not confirmed."
+    },
+    {
+      "id": "bd",
+      "region": "South Asia",
+      "country_en": "Bangladesh",
+      "country_zh": "孟加拉国",
+      "authority_en": "Directorate General of Drug Administration (DGDA); Bangladesh Standards and Testing Institution (BSTI) for compulsory standards",
+      "authority_zh": "孟加拉国药品管理总局(DGDA);孟加拉国标准与检测院(BSTI,强制标准)",
+      "law_en": "Drugs and Cosmetics Act 2023 (Act No. 29 of 2023)",
+      "law_zh": "2023年《药品与化妆品法》(2023年第29号法)",
+      "law_ref": "Act No. 29 of 2023 (18 Sept 2023); draft Cosmetics (Licence and Registration) Rules 2026; BSTI mandatory CM-licence product list",
+      "in_force_since": "2023-09-18",
+      "latest_update": {
+        "date": "2026-06-24",
+        "what": "The Health Services Division published the draft Cosmetics (Licence and Registration) Rules 2026 under the 2023 Act for public comment.",
+        "source": "https://hsd.gov.bd/"
+      },
+      "market_entry": "Cosmetics require a DGDA licence/registration (import registration valid up to 5 years) under the 2023 Act, with detailed rules still in draft, and a BSTI CM licence/port clearance certificate is mandatory for cosmetics on the compulsory standards list (328 products as of May 2026).",
+      "responsible_person": "A Bangladesh-registered importer or manufacturer holding the DGDA and BSTI licences must be the applicant, so foreign brands need a local authorised importer.",
+      "safety_file": "Product Information File (Annexure-I), GMP certificate, CoA, Free Sale Certificate, origin-country registration and a declaration of no harmful chemicals, plus a halal certificate if animal by-products are used.",
+      "labeling_key": "Bengali labeling required (supplementary Bengali label for imports) with ingredients, batch, expiry, price and importer details, plus a BSTI metrology certificate for net content.",
+      "animal_testing": "No statutory ban identified.",
+      "ingredient_lists": "No published national annex system; compliance is judged against the applicable Bangladesh Standard (BDS) for each product type and DGDA harmful-chemical declarations.",
+      "official_url": "https://dgda.gov.bd/",
+      "sources": [
+        "https://www.vdb-loi.com/bd_publications/the-drug-and-cosmetics-act-2023-act-no-29-dated-18-september-2023-passed-by-the-bangladesh-parliament/",
+        "https://asiaactual.com/wp-content/uploads/2023/10/Bangladesh-Drug-and-Cosmetics-Act-2023-English.pdf",
+        "http://bdlaws.minlaw.gov.bd/act-details-1447.html",
+        "https://omcmedical.com/bangladesh-cosmetic-product-registration",
+        "https://ssrana.in/articles/labeling-requirements-bangladesh/"
+      ],
+      "notes": "The draft-rules date (2026-06-24) comes from a search snippet because the hsd.gov.bd page could not be fetched; Bengali labeling and 5-year import-registration validity come from consultancy sources."
+    },
+    {
+      "id": "lk",
+      "region": "South Asia",
+      "country_en": "Sri Lanka",
+      "country_zh": "斯里兰卡",
+      "authority_en": "National Medicines Regulatory Authority (NMRA)",
+      "authority_zh": "斯里兰卡国家药品监管局(NMRA)",
+      "law_en": "National Medicines Regulatory Authority Act No. 5 of 2015 (replacing the Cosmetics, Devices and Drugs Act No. 27 of 1980) and the cosmetics regulations/gazettes made under it",
+      "law_zh": "2015年第5号《国家药品监管局法》(取代1980年第27号《化妆品、器械与药品法》)及其化妆品条例",
+      "law_ref": "NMRA Act No. 5 of 2015; Extraordinary Gazette No. 2144/20 (9 Oct 2019); NMRA new-application checklist effective 2025-06-01",
+      "in_force_since": "2015",
+      "latest_update": {
+        "date": "2025-05-19",
+        "what": "NMRA issued a revised 11-document checklist for new cosmetic registrations by importers, effective 2025-06-01, including a heavy-metal CoA, steroid-free declaration, ISO 22716/GMP certificate and Safety Assessment Report.",
+        "source": "https://cosmetic.chemlinked.com/news/cosmetic-news/sri-lanka-revises-document-requirements-for-new-cosmetic-registrations"
+      },
+      "market_entry": "Mandatory pre-market registration with NMRA – Provisional Registration (1–2 years) then Full Registration (5 years) – and imported consignments undergo sampling, testing and inspection for a Certificate of Conformity.",
+      "responsible_person": "A Sri Lankan authorised agent/Marketing Authorisation Holder with an import licence and a brand-owner Letter of Authorization (not older than 3 years) must apply.",
+      "safety_file": "Embassy-attested Free Sale Certificate, finished-product CoA with heavy metals (Pb, As, Hg, Cd) from accredited labs, full composition (INCI, CAS, %, function), steroid-free declaration for leave-on skincare, ISO 22716/GMP certificate and Safety Assessment Report.",
+      "labeling_key": "NMRA-approved label artwork with INCI ingredients, batch, expiry and manufacturer/importer details; English accepted, with Sinhala/Tamil rules not verified.",
+      "animal_testing": "No statutory ban identified.",
+      "ingredient_lists": "NMRA evaluates formulations against international references (EU/ASEAN lists) plus its own steroid and heavy-metal restrictions; no published national annexes were found.",
+      "official_url": "https://www.nmra.gov.lk/pages/cosmetics",
+      "sources": [
+        "https://cosmetic.chemlinked.com/news/cosmetic-news/sri-lanka-revises-document-requirements-for-new-cosmetic-registrations",
+        "https://www.nmra.gov.lk/announcements/checklist-for-submitting-documents---new-applications",
+        "https://www.nmra.gov.lk/pages/legislation",
+        "https://www.intertek.com/government/commercial-government-services/accessing-the-sri-lankan-cosmetics-market/"
+      ],
+      "notes": "NMRA pages could not be fetched; the title of the 2019 cosmetics gazette and label-language rules are unverified, and in_force_since is the year of the NMRA Act."
+    },
+    {
+      "id": "kz",
+      "region": "Eurasia",
+      "country_en": "Kazakhstan (EAEU member)",
+      "country_zh": "哈萨克斯坦(欧亚经济联盟成员)",
+      "authority_en": "Ministry of Health of Kazakhstan – Committee for Sanitary and Epidemiological Control (state registration) and EAEU-accredited certification bodies (declarations), under rules set by the Eurasian Economic Commission",
+      "authority_zh": "哈萨克斯坦卫生部卫生防疫监督委员会(国家注册)及EAEU认可认证机构(符合性声明),规则由欧亚经济委员会制定",
+      "law_en": "EAEU/Customs Union Technical Regulation TR CU 009/2011 'On Safety of Perfumery and Cosmetic Products', applied directly in Kazakhstan as an EAEU member state (no separate national cosmetics law)",
+      "law_zh": "欧亚经济联盟/关税同盟技术法规 TR CU 009/2011《香水化妆品安全》,哈萨克斯坦作为EAEU成员直接适用(无单独国家化妆品法)",
+      "law_ref": "TR CU 009/2011 (Customs Union Commission Decision No. 799 of 23 Sept 2011), as amended by EEC Council Decisions No. 64/2022, No. 114/2024 and No. 74/2025",
+      "in_force_since": "2012-07-01",
+      "latest_update": {
+        "date": "2025-12-24",
+        "what": "EEC Council Decision No. 114 (29 Nov 2024) entered into force (new product categories, state-registration schemes with 5-year certificates, enhanced toxicology testing from 2026-07-01), while Decision No. 74 (12 Sept 2025) adds 14 prohibited substances, a new UV filter and a fluoride ban in children's liquid oral products from 2026-10-28 and a 0.001% formaldehyde labelling threshold from 2027-01-01.",
+        "source": "https://docs.eaeunion.org/documents/435/9762/"
+      },
+      "market_entry": "Pre-market EAC conformity assessment: a Declaration of Conformity (max 5 years) registered by an EAEU-accredited body for most cosmetics, or a State Registration certificate (SGR, now max 5 years) for listed categories (children's, intimate, tanning, whitening, chemical peels, hair dyes, etc.), with documents issued in any EAEU state valid in Kazakhstan.",
+      "responsible_person": "The applicant/declarant must be a legal entity registered in an EAEU member state (Kazakh importer or the manufacturer's authorised representative) whose name and address appear on the label.",
+      "safety_file": "Test reports from accredited EAEU laboratories (microbiology, toxicology/safety, physico-chemical), formula, technical documentation and label samples, with foreign documents translated into Russian.",
+      "labeling_key": "Russian plus Kazakh (state language) labeling with the EAC mark, EAEU applicant name/address, ingredients, batch, shelf life and specific warnings (e.g. fluoride content), as Kazakhstan's Law on Languages requires Kazakh on labels.",
+      "animal_testing": "No ban on animal testing under TR CU 009/2011.",
+      "ingredient_lists": "TR CU 009/2011 Annexes 1–5 (prohibited substances, restricted substances, colorants, preservatives, UV filters), broadly aligned to EU lists and updated by Decisions 64/2022, 114/2024 and 74/2025.",
+      "official_url": "https://eec.eaeunion.org/comission/department/deptexreg/tr/bezopParfum.php",
+      "sources": [
+        "https://docs.eaeunion.org/documents/435/9762/",
+        "https://eec.eaeunion.org/en/news/18-aprelya-vstupili-v-silu-izmeneniya-v-tekhreglament-na-parfyumerno-kosmeticheskuyu-produktsiyu/",
+        "https://standard.kz/en/post/2026_01_opublikovany-izmeneniia-v-tr-ts-0092011-180",
+        "https://schmidt-export.com/news/important-updates-technical-regulation-cosmetics-tr-cu-0092011",
+        "https://omcmedical.com/kazakhstan-cosmetic-product-registration/"
+      ],
+      "notes": "The specific Kazakh committee issuing SGR certificates was not confirmed on an official page. EEC Board Decision No. 87 (7 Oct 2025) updated the standards lists from 2026-04-08 and Board Decision No. 31 (10 Mar 2026) set transition periods for Decision 74."
+    },
+    {
+      "id": "ua",
+      "region": "Eurasia",
+      "country_en": "Ukraine",
+      "country_zh": "乌克兰",
+      "authority_en": "Ministry of Health of Ukraine (regulator and notification portal) and the State Service of Ukraine on Medicines and Drugs Control (market surveillance)",
+      "authority_zh": "乌克兰卫生部(主管机关及通报门户)与乌克兰国家药品管制局(市场监督)",
+      "law_en": "Technical Regulation on Cosmetic Products, approved by Cabinet of Ministers Resolution No. 65 of 20 January 2021 (aligned with EU Regulation (EC) No 1223/2009)",
+      "law_zh": "《化妆品技术法规》(2021年1月20日部长内阁第65号决议批准,对标欧盟1223/2009法规)",
+      "law_ref": "CMU Resolution No. 65 of 2021-01-20 (in force 2024-08-03), as amended by CMU Resolution No. 737 of 2026-06-04",
+      "in_force_since": "2024-08-03",
+      "latest_update": {
+        "date": "2026-06-04",
+        "what": "Resolution No. 737 re-issued Annexes 2–6 in line with EU lists and set staged deadlines: products placed on the market from 2026-08-03 must be notified and fully compliant, legacy/non-notified stock may be sold until 2030-08-03, and the amendment enters into force six months after publication (2026-12-13).",
+        "source": "https://zakon.rada.gov.ua/laws/show/737-2026-%D0%BF"
+      },
+      "market_entry": "Mandatory pre-market notification through the Ministry of Health's electronic portal (CPNP-style) by the responsible person before placing on the market, fully enforced for products placed from 2026-08-03.",
+      "responsible_person": "A responsible person established in Ukraine (manufacturer, importer or a third party mandated in writing) must be designated and named on the label.",
+      "safety_file": "Product Information File with a Cosmetic Product Safety Report signed by a qualified assessor, kept 10 years at the responsible person's address.",
+      "labeling_key": "Ukrainian-language labeling with responsible person name/address, INCI ingredients, batch, durability/PAO, precautions and function, with internationally understood symbols allowed.",
+      "animal_testing": "Banned – the regulation prohibits placing on the market cosmetics tested on animals, mirroring EU Article 18.",
+      "ingredient_lists": "Annexes 2–6 of the Technical Regulation (prohibited, restricted, colorants, preservatives, UV filters) mirroring EU 1223/2009 Annexes II–VI as updated by Resolution 737/2026.",
+      "official_url": "https://zakon.rada.gov.ua/laws/show/65-2021-%D0%BF",
+      "sources": [
+        "https://www.dls.gov.ua/print-article/?pa=152040",
+        "https://cratia.ua/en/technical-regulation-on-cosmetic-products-and-its-requirements/",
+        "https://cratia.ua/ua/amendments-to-the-technical-regulation-on-cosmetic-products/",
+        "https://globalcosing.chemradar.com/news/detail/fq6pn3ajcbgg",
+        "https://zakon.rada.gov.ua/laws/show/737-2026-%D0%BF"
+      ],
+      "notes": "GlobalCosing reports publication of Resolution 737 on 2026-06-13 and entry into force on 2026-12-13; confirm against zakon.rada.gov.ua. The draft had been notified to the WTO on 2025-07-30 with comments to 2026-01-09."
+    }
+  ],
+  "updates_2025_2026": [
+    {
+      "date": "2025-01-01",
+      "market_id": "il",
+      "title_en": "Israel's 'What is good for Europe' cosmetics reform takes effect",
+      "summary_en": "Amendment No. 37 (2024) to the Pharmacists Ordinance replaced the cosmetic product licence (discontinued 2024-12-31) with notification of EU/UK/Swiss-compliant cosmetics by a registered Israeli responsible representative, while sensitive categories remain under approval.",
+      "source": "https://practiceguides.chambers.com/practice-guides/life-sciences-2025/israel"
+    },
+    {
+      "date": "2025-05-19",
+      "market_id": "lk",
+      "title_en": "Sri Lanka NMRA revises document requirements for new cosmetic registrations",
+      "summary_en": "A new 11-document checklist for importers (heavy-metal CoA, steroid-free declaration, ISO 22716/GMP certificate, Safety Assessment Report, embassy-attested FSC) applies from 2025-06-01.",
+      "source": "https://cosmetic.chemlinked.com/news/cosmetic-news/sri-lanka-revises-document-requirements-for-new-cosmetic-registrations"
+    },
+    {
+      "date": "2025-06-11",
+      "market_id": "ma",
+      "title_en": "Morocco's AMMPS conditions cosmetic applications on updated establishment declarations",
+      "summary_en": "Applications filed since 2025-06-11 are processed only after the operator's cosmetics/body-hygiene establishment declaration is updated, part of the DMP-to-AMMPS transition aimed at tracing every product to a responsible operator.",
+      "source": "https://www.lodj.ma/Cosmetiques-le-Maroc-veut-mieux-tracer-ce-qui-arrive-sur-le-marche_a181545.html"
+    },
+    {
+      "date": "2025-09-07",
+      "market_id": "sa",
+      "title_en": "SFDA bans 21 more cosmetic ingredients",
+      "summary_en": "After a 2025-08-14 circular adding three restricted substances, SFDA added 21 substances (e.g. dibutyltin maleate, dibutyltin oxide, 4-nitrosomorpholine, 4-methylimidazole) to its prohibited list; import/manufacture of non-compliant products is banned from 2026-01-01 with sell-through allowed until 2028-01-01.",
+      "source": "https://ecustoms.sgs.com/2025/12/17/navigating-saudi-arabias-updated-cosmetic-regulations/"
+    },
+    {
+      "date": "2025-09-12",
+      "market_id": "kz",
+      "title_en": "EEC Council Decision No. 74/2025 amends TR CU 009/2011 ingredient annexes",
+      "summary_en": "Published 2025-10-28 and applicable across the EAEU (incl. Kazakhstan) from 2026-10-28, it adds 14 prohibited substances, three restricted substances, a new UV filter (incl. nano form) and bans fluorides in liquid oral products for children under 6, with a 0.001% formaldehyde labelling threshold from 2027-01-01; EEC Board Decision No. 31 (2026-03-10) set transition periods.",
+      "source": "https://standard.kz/en/post/2026_01_opublikovany-izmeneniia-v-tr-ts-0092011-180"
+    },
+    {
+      "date": "2025-12-30",
+      "market_id": "il",
+      "title_en": "Israel proposes a 'U.S. track' and retailer duties for cosmetics",
+      "summary_en": "A Ministry of Health legislative memorandum would allow import of FDA-compliant cosmetics alongside the EU track, impose verification duties on retailers via the MoH cosmetics database, bring solid soap into scope and create a standing advisory committee; it remains a proposal.",
+      "source": "https://www.shibolet.com/en/key-regulatory-changes-impacting-the-pharmaceutical-industry-2/"
+    },
+    {
+      "date": "2026-06-04",
+      "market_id": "ua",
+      "title_en": "Ukraine adopts Resolution No. 737 amending the cosmetics Technical Regulation",
+      "summary_en": "Re-issues Annexes 2–6 to EU 1223/2009 levels, keeps 2026-08-03 as the date from which all newly placed cosmetics must be notified and fully compliant, allows legacy/non-notified stock to be sold until 2030-08-03, and enters into force six months after publication (2026-12-13).",
+      "source": "https://globalcosing.chemradar.com/news/detail/fq6pn3ajcbgg"
+    },
+    {
+      "date": "2026-06-24",
+      "market_id": "bd",
+      "title_en": "Bangladesh publishes draft Cosmetics (Licence and Registration) Rules 2026",
+      "summary_en": "The Health Services Division released for comment the draft rules that will operationalise cosmetics licensing and registration under the Drugs and Cosmetics Act 2023 (DGDA), which has so far run without detailed rules.",
+      "source": "https://hsd.gov.bd/"
+    }
+  ]
+}

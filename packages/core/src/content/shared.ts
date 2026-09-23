@@ -76,7 +76,8 @@ export const CERT_BLOCK: Record<Locale, { title: string; note: string }> = {
 export const EMAIL: Record<string, string> = {
   beauty2oem: 'inquiry@beauty2oem.com',
   skin2oem: 'inquiry@skin2oem.com',
-  'biosphere-ai': 'contact@biosphere-ai.com',
+  /* 域名邮箱尚未开通 —— 创始人 2026-09-01:「邮箱暂时改用 huanggw20@gmail.com」;开通后换回域名邮箱 */
+  'biosphere-ai': 'huanggw20@gmail.com',
   medierba: 'contact@medierba.com',
   'biosphere-oralcare': 'inquiry@biosphere-oralcare.com',
 };

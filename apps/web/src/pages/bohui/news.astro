@@ -1,0 +1,127 @@
+---
+/**
+ * 行业资讯管理 —— 采集是自动的(每日计划任务),这里做人工把关:
+ * 看一眼标题党/跑题的下线,误采的删除;也可手动补采一轮。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+/* 排序(创始人 2026-09-01:「起码按照时间排序是需要的」)——
+   默认发布时间新→旧;可切 旧→新 / 按主题。白名单映射,不拼用户输入进 SQL。 */
+const sortKey = new URL(Astro.request.url).searchParams.get('sort') ?? 'new';
+const ORDER: Record<string, string> = {
+  new: 'COALESCE(published_at, orig_date) DESC, id DESC',
+  old: 'COALESCE(published_at, orig_date) ASC, id ASC',
+  topic: `topic, COALESCE(published_at, orig_date) DESC`,
+};
+const { results: rows } = await c.db.prepare(
+  `SELECT id, slug, topic, title_zh, title_en, source_name, source_url, published_at, is_published
+     FROM news ORDER BY ${ORDER[sortKey] ?? ORDER.new} LIMIT 100`,
+).all<any>();
+const nPub = (rows ?? []).filter((r: any) => r.is_published).length;
+const TOPIC: Record<string, string> = { ingredient: '新原料', tech: '新技术', product: '爆款', brand: '品牌', regulation: '法规', industry: '行业' };
+---
+
+<AdminShell title="行业资讯" active="news" email={c.sess.email}>
+  <h1>行业资讯</h1>
+  <p class="lead">共 {rows?.length ?? 0} 条(在线 {nPub})。每日自动采集 + AI 改写(不转载原文);前台见 <a href="/zh-cn/news/" target="_blank">/news/</a>。跑题或质量差的直接下线。</p>
+
+  <div class="ops" style="margin-bottom:1rem;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+    <button class="btn pri" id="collect">立即采集一轮</button>
+    <label style="font-size:.8125rem;color:var(--ad-faint)">排序
+      <select onchange="location.search='?sort='+this.value" style="margin-inline-start:.375rem">
+        <option value="new" selected={sortKey === 'new'}>时间 新 → 旧</option>
+        <option value="old" selected={sortKey === 'old'}>时间 旧 → 新</option>
+        <option value="topic" selected={sortKey === 'topic'}>按主题分组</option>
+      </select>
+    </label>
+    <span id="cstat" style="font-size:.8125rem;color:var(--ad-faint)"></span>
+  </div>
+
+  <details class="feed">
+    <summary class="btn">+ 投喂线索(小红书 / 公众号等国内渠道)</summary>
+    <form id="feedform">
+      <p class="hint">在小红书、公众号看到值得发的内容:贴上链接和标题,可选补几句要点 ——
+        AI 立刻改写成双语原创快讯并发布(转述+点评,注明来源,不搬运原文)。</p>
+      <input name="title" placeholder="原文标题(必填)" required />
+      <input name="url" placeholder="来源链接 https://…(必填)" required />
+      <input name="source" placeholder="来源名称,如:某某公众号 / 小红书@某某" />
+      <textarea name="notes" rows="3" placeholder="要点(可选):把关键信息用自己的话记两三句,改写会更准"></textarea>
+      <button class="btn pri" type="submit">改写并发布</button>
+    </form>
+  </details>
+
+  <table>
+    <thead><tr><th style="width:4.5rem">状态</th><th>标题(中/英)</th><th style="width:5rem">主题</th>
+      <th style="width:11rem">来源</th><th style="width:6.5rem">发布时间</th><th style="width:10rem"></th></tr></thead>
+    <tbody>
+      {(rows ?? []).map((r: any) => (
+        <tr data-id={r.id}>
+          <td><span class:list={['pill', r.is_published ? 'p-ok' : 'p-wait']}>{r.is_published ? '在线' : '下线'}</span></td>
+          <td>
+            <div style="font-weight:600">{r.title_zh}</div>
+            <div style="color:var(--ad-faint);font-size:.75rem">{r.title_en}</div>
+          </td>
+          <td>{TOPIC[r.topic] ?? r.topic}</td>
+          <td style="font-size:.75rem"><a href={r.source_url} target="_blank" rel="noreferrer">{r.source_name}</a></td>
+          <td style="font-size:.75rem">{String(r.published_at ?? '').slice(5, 16)}</td>
+          <td style="text-align:right;white-space:nowrap">
+            <a class="btn" href={`/zh-cn/news/${r.slug}/`} target="_blank">预览</a>
+            <button class="btn" data-pub={r.is_published ? 0 : 1}>{r.is_published ? '下线' : '上线'}</button>
+            <button class="btn" data-del>删</button>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  <div id="toast" class="toast" hidden></div>
+  <style>
+    .toast{position:fixed;right:1.25rem;bottom:1.25rem;background:#10131a;color:#fff;padding:.625rem 1rem;border-radius:7px;font-size:.8125rem;z-index:9}
+    [hidden]{display:none !important}
+    .feed{margin-bottom:1.25rem}
+    .feed>summary{display:inline-block;cursor:pointer;list-style:none}
+    .feed>summary::-webkit-details-marker{display:none}
+    #feedform{display:grid;gap:.5rem;max-width:40rem;padding:.875rem;border:1px solid var(--ad-line);border-radius:8px;background:var(--ad-panel);margin-top:.5rem}
+    #feedform input,#feedform textarea{font:inherit;font-size:.8125rem;padding:.4375rem .5625rem;border:1px solid var(--ad-line);border-radius:6px}
+    #feedform .hint{margin:0;font-size:.75rem;color:var(--ad-faint);line-height:1.6}
+  </style>
+  <script is:inline>
+    const t = document.getElementById('toast');
+    const flash = (m, reload = true) => { t.textContent = m; t.hidden = false; if (reload) setTimeout(() => location.reload(), 600); };
+    const call = (method, body) => fetch('/api/admin/news', {
+      method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined,
+    }).then((r) => r.json());
+
+    document.getElementById('feedform').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = e.target, b = f.querySelector('button');
+      b.disabled = true; b.textContent = '改写中,约 30 秒…';
+      const fd = new FormData(f);
+      const d = await call('POST', { action: 'feed', title: fd.get('title'), url: fd.get('url'),
+        source: fd.get('source'), notes: fd.get('notes') });
+      if (d.ok) flash('已发布:/zh-cn/news/' + d.slug + '/');
+      else { b.disabled = false; b.textContent = '改写并发布'; flash(d.msg || '失败', false); }
+    });
+    document.getElementById('collect').addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      document.getElementById('cstat').textContent = '采集与改写中,约需 1–2 分钟…';
+      const d = await call('POST');
+      flash(d.ok ? `新入 ${d.inserted} 条(抓到 ${d.fetched},去重 ${d.skipped})` : '采集失败', d.ok);
+    });
+    document.querySelectorAll('button[data-pub]').forEach((b) => b.addEventListener('click', async () => {
+      const d = await call('PATCH', { id: +b.closest('tr').dataset.id, is_published: +b.dataset.pub });
+      flash(d.ok ? '已更新' : '失败', d.ok);
+    }));
+    document.querySelectorAll('button[data-del]').forEach((b) => b.addEventListener('click', async () => {
+      if (!confirm('删除这条资讯?')) return;
+      const d = await call('DELETE', { id: +b.closest('tr').dataset.id });
+      flash(d.ok ? '已删除' : '失败', d.ok);
+    }));
+  </script>
+</AdminShell>

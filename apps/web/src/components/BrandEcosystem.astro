@@ -110,7 +110,7 @@ const ROLE: Record<string, string> = {
   }
 
   .role {
-    font-size: 0.625rem;
+    font-size: max(0.625rem, 14px);
     letter-spacing: var(--ck-tracking-eyebrow);
     text-transform: var(--ck-eyebrow-transform);
     color: var(--ck-accent);
@@ -122,11 +122,11 @@ const ROLE: Record<string, string> = {
     font-weight: 700;
     letter-spacing: 0.05em;
   }
-  .dom { font-family: var(--ck-font-mono); font-size: 0.75rem; color: var(--ck-ink-faint); }
+  .dom { font-family: var(--ck-font-mono); font-size: max(0.75rem, 14px); color: var(--ck-ink-faint); }
   .tag { margin-top: 0.375rem; font-size: var(--ck-small); color: var(--ck-ink-soft); }
   .here {
     margin-top: 0.375rem;
-    font-size: 0.6875rem;
+    font-size: max(0.6875rem, 14px);
     color: var(--ck-ink-faint);
   }
 
