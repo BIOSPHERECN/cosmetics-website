@@ -52,11 +52,15 @@ const wx = String((Astro.props as any).wechat ?? _contact.wechat ?? '').trim();
 <footer class="ft">
   <div class="ck-wrap top">
     <div class="col brandcol">
-      <strong class="name">{site.name}</strong>
+      {/* 09-24 图文版:BEAUTY2OEM 用新字标(样式在 apps/web/src/styles/b2o.css);其它站原样 */}
+      {cnOnly ? <strong class="name"><span class="b2o-mark" aria-label={site.name}><b class="m-b">BEAUTY</b><b class="m-2">2</b><b class="m-o">OEM</b></span></strong> : <strong class="name">{site.name}</strong>}
       <p class="zh">{site.nameZh}</p>
       {/* 品牌口径(创始人 2026-08-31 定稿):中文「帛卉化妆品」,英文只用 BIOSPHERE,
           不打集团旗号;法人全称只出现在法务页。 */}
       <p class="group">{cnOnly ? '帛卉化妆品 · 广州工厂' : <>{locale.startsWith('zh') ? '帛卉化妆品 BIOSPHERE' : 'BIOSPHERE'} · {tr('footer.groupLine')}</>}</p>
+      {cnOnly && nav?.length && (
+        <ul class="b2o-fnav">{nav.filter((n) => n.slug).map((n) => <li><a href={L(`/${n.slug}/`)}>{n.label}</a></li>)}</ul>
+      )}
     </div>
 
     {/* 站内导航列已删(创始人 2026-08-31:「和顶部导航基本重复,这个部分可以不要了」)。
@@ -65,7 +69,7 @@ const wx = String((Astro.props as any).wechat ?? _contact.wechat ?? '').trim();
     <div class="col">
       <h2 class="ch">{tr('footer.contact')}</h2>
       <ul class="list">
-        {cnOnly && <li><a href={L('/brief/')}>提交店铺,拿机会简报 →</a></li>}
+        {cnOnly && <li><a href={L('/brief/')}>提交店铺，拿简报 →</a></li>}
         {cnOnly && wx && <li class="plain wx">微信:{wx}</li>}
         {!cnOnly && email && <li><a href={`mailto:${email}`}>{email}</a></li>}
         {/* WhatsApp:海外采购最常用的联络方式,而站上一直一个入口都没有。
@@ -118,6 +122,7 @@ const wx = String((Astro.props as any).wechat ?? _contact.wechat ?? '').trim();
 
   <div class="ck-wrap bottom">
     <p class="rights">© {year} {site.name}. {tr('footer.rights')}</p>
+    {cnOnly && <p class="b2o-aigen">页面中的场景照片为 AI 生成的示意图，不代表具体产品，也不是帛卉车间实拍。</p>}
     {/* 隐私与法律声明:页面早就有(/privacy /terms),只是页脚一直没挂链接。
         对 Google 收录不是硬前提,但它是最基础的信任信号,
         AdSense / 购物类审核则是硬要求 —— 挂上有益无害。
@@ -136,6 +141,18 @@ const wx = String((Astro.props as any).wechat ?? _contact.wechat ?? '').trim();
     {showLocaleSwitch && <LocaleSwitch locale={locale} path={path} drop="up" />}
   </div>
 </footer>
+{/* BEAUTY2OEM 手机吸底条:主按钮 + AI 客服(点它等于点右下角的客服圆钮);拿简报页不出,输入框聚焦时由 CSS 收起 */}
+{cnOnly && !/\/brief\/$/.test(path) && (
+  <div class="b2o-dock">
+    <a class="b2o-btn b2o-btn-pri" href={L('/brief/')}>提交店铺，拿简报<span class="ico" aria-hidden="true">→</span></a>
+    <button type="button" class="b2o-ai" data-b2o-ai>AI 客服</button>
+  </div>
+)}
+{cnOnly && (
+  <script is:inline>
+    document.querySelectorAll('[data-b2o-ai]').forEach(function (b) { b.addEventListener('click', function () { var f = document.getElementById('bh-chat-fab'); if (f) f.click(); }); });
+  </script>
+)}
 
 <style>
   .list .wa { display: inline-flex; align-items: center; gap: .375rem; font-weight: 550; }

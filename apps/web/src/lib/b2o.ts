@@ -24,5 +24,7 @@ export function briefFlags(t: string): string[] {
   if (m1) out.push(`疑似商务数字:${[...new Set(m1)].slice(0, 3).join(' / ')}(商务条款只用工厂口径页)`);
   for (const w of ['保证', '包过', '承诺', 'AI 预测', 'AI预测', '预测爆款', '集团', '印尼工厂', '印尼厂', '海外工厂', '现成配方', '现货']) if (t.includes(w)) out.push(`禁词:${w}`);
   if (/\d/.test(t) && !/出处/.test(t)) out.push('有数字但没写出处');
+  // 09-24 老板会议:不给客户 AI 配方 —— 草稿里出现配方表或成分比例就标出来,审批时删掉
+  if (/配方表|成分表|(配方|成分|INCI|含量|添加量|用量)[^\n]{0,40}?\d+(?:\.\d+)?\s*%/i.test(t)) out.push('疑似配方表或成分比例(不给客户 AI 配方)');
   return out;
 }

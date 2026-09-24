@@ -47,6 +47,8 @@ import Motion from '../components/Motion.astro';
 // BrandEcosystem 已下线:「先删除集团,只是帛卉」(2026-08-31)
 import ProductGrid from '../components/ProductGrid.astro';
 import InquiryCart from '../components/InquiryCart.astro';
+import B2oBlock from '../components/B2oBlock.astro';
+import '../styles/b2o.css';   // 09-24 图文版:全部规则挂在 html[data-brand="beauty2oem"] 下,别的站不命中
 import FactoryBlock from '../components/FactoryBlock.astro';
 import { getSiteByHost, getSiteById, getPageBundle, DEFAULT_LANG, type Lang } from '../lib/db';
 import { readSession, readCookie, COOKIE as ADMIN_COOKIE } from '../lib/auth';
@@ -501,7 +503,7 @@ const ogImage = (() => {
     <MastheadNav locale={lang} path={path} siteName={site!.name}
                  siteNameZh={site!.tagline ?? ''} nav={navForHeader} />
   ) : (
-    <SiteHeader locale={lang} path={path} siteName={site!.name} siteNameZh={site!.tagline ?? ''} nav={navForHeader} showLocaleSwitch={!cnOnly} />
+    <SiteHeader locale={lang} path={path} siteName={site!.name} siteNameZh={site!.tagline ?? ''} nav={navForHeader} showLocaleSwitch={!cnOnly} brand={site!.id} />
   )}
 
   <main id="main">
@@ -516,7 +518,9 @@ const ogImage = (() => {
         漏掉 banner 的后果是双重的:首页同时有两个 h1(搜索引擎不知道该信哪个),
         版式上还多出一条 400px 的标题带把首屏大图整个压到折叠线以下 —— 大图看不见就白做了。 */}
     {(collectionMode
-      || !bodyBlocks.some((b) => ['hero', 'banner', 'slideshow', 'bandimg', 'storehero', 'fx_hero'].includes(b.type))) && (
+      || (!bodyBlocks.some((b) => ['hero', 'banner', 'slideshow', 'bandimg', 'storehero', 'fx_hero'].includes(b.type))
+          /* BEAUTY2OEM 内页的标题 + 主视觉由 B2oBlock 自己出,这里不再叠一条纯文字页头 */
+          && !(cnOnly && bodyBlocks.some((b) => b.type.startsWith('fx_'))))) && (
       <section class="ck-section pagehead">
         <div class="ck-wrap">
           {/* 产品集模式:h1 就是品类名,访客一眼确认「我进对地方了」 */}
@@ -686,7 +690,11 @@ const ogImage = (() => {
           return <ProcRibbon eyebrow={d.eyebrow} title={d.title ?? ''} intro={d.intro}
                              steps={d.steps ?? []} tone={d.tone} />;
         case 'fx_hero': case 'fx_six': case 'fx_opps': case 'fx_latest': case 'fx_bases': case 'fx_steps': case 'fx_contact': case 'fx_cards': case 'fx_ledger': case 'fx_brief':
-          return <FactoryBlock type={b.type} data={d} lang={lang} db={db} siteName={site!.name} email={fxEmail} whatsapp={contactWa} wechat={contactWx} />;
+          /* BEAUTY2OEM 走图文版(B2oBlock,版式与配图);工厂站等其它站照旧 FactoryBlock */
+          return cnOnly
+            ? <B2oBlock type={b.type} data={d} lang={lang} db={db} siteName={site!.name} email={fxEmail} whatsapp={contactWa} wechat={contactWx}
+                        page={slug} pageTitle={bundle!.page.title} pageDesc={bundle!.page.seo_desc} />
+            : <FactoryBlock type={b.type} data={d} lang={lang} db={db} siteName={site!.name} email={fxEmail} whatsapp={contactWa} wechat={contactWx} />;
         case 'signup':
           return <Signup title={d.title ?? ''} body={d.body} placeholder={d.placeholder ?? 'Email'}
                          button={d.button ?? 'OK'} note={d.note} siteId={site!.id} tone={d.tone} />;

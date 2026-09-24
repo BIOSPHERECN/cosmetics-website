@@ -4,6 +4,7 @@ import { loadFleet, paidFirst } from '../../lib/fleet';
 import { chatInLanguage, replyLanguageFor, detectLanguage } from '../../lib/translate.ts';
 import { overQuota, recordUse, tooMany, clientId } from '../../lib/ratelimit';
 import { aiGate } from '../../lib/member';
+import { NO_FORMULA_RULE, leaksFormula, FORMULA_NOTICE_ZH, FORMULA_NOTICE_EN } from '../../lib/no-ai-formula';
 
 export const prerender = false;
 
@@ -121,6 +122,8 @@ export const POST: APIRoute = async ({ request }) => {
           '你只依据下面的【资料】回答;资料里没有的事实与数字,回答「这个我不掌握,建议发起询盘由专员书面答复」。' +
           '三条绝对禁令:1) 绝不报任何价格、单价或价格区间 —— 价格一律以书面报价单为准;' +
           '2) 不编造认证、产能、交期等数字;3) 不做任何功效承诺(化妆品不是药品)。' +
+          NO_FORMULA_RULE +   // 09-24 老板会议:AI 配方没做过稳定性测试,不给客户
+
           '回答要点式、克制,单次不超过 120 字;涉及打样、报价、定制配方时,主动建议点「转人工询盘」按钮(就在本对话框下方)。' +
           '输出为纯文本:不要用 Markdown 语法,**绝不输出任何 URL 或链接** —— 你编的链接一定是错的,按钮就在面板里,不需要链接。\n\n【资料】\n' +
           facts.slice(0, 6000),
@@ -131,6 +134,7 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ ok: false, msg: '客服暂时繁忙,请稍后再试或直接发起询盘' }, 502);
   }
   if (!reply.trim()) return json({ ok: false, msg: '客服暂时繁忙,请直接发起询盘' }, 502);
+  if (leaksFormula(reply)) reply = replyLang.startsWith('zh') ? FORMULA_NOTICE_ZH : FORMULA_NOTICE_EN;
   return json({ ok: true, reply: reply.trim().slice(0, 1200) });
 };
 

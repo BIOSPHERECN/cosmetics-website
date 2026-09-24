@@ -20,6 +20,7 @@ import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { CHAIN_COUNTS } from '@cosmetic/core/content/chain.ts';
 import { pageShell } from '../../../lib/shell';
 import { getCounts } from '../../../lib/counts';
+import { ORG } from '@cosmetic/core/content/org.ts';
 
 export const prerender = false;
 
@@ -44,8 +45,8 @@ const STAGE: Record<Key, { zh: [string, string, string]; en: [string, string, st
     en: ['Packaging', 'Pick the bottle, then the bulk; cartons and films live here too', 'Bottles, jars, tubes, pumps and sprayers shot on white, filtered by type, material, capacity and format; outer cartons, gift boxes, folding boxes, leaflets and films are packaging too, one step after filling.'],
   },
   formula: {
-    zh: ['配方', '料体怎么来', '在册配方按品类、功效、剂型分,每支写关键成分与可售市场;背后是实验室、技术团队和 AI 共创工作台。'],
-    en: ['Formulas', 'How the bulk is made', 'Formulas by category, benefit and format, each with key actives and eligible markets; behind them the lab, the technical team and the AI co-creation bench.'],
+    zh: ['配方', '料体怎么来', '在册配方按品类、功效、剂型分,每支写关键成分与可售市场;背后是帛卉 13,000+ 个经过稳定性测试的成熟配方,只给现成的,不给 AI 现编配方。'],
+    en: ['Formulas', 'How the bulk is made', 'Formulas by category, benefit and format, each with key actives and eligible markets; behind them 13,000+ mature, stability-tested formulas. We hand over proven ones, never AI-generated formulas.'],
   },
   products: {
     zh: ['成品', '走完整条链的东西', '成品品类、生产制造、工厂与产能、OEM/ODM 服务、品牌孵化 —— 从这里看我们做出来的,和我们怎么做出来的。'],
@@ -62,7 +63,7 @@ const STAGE: Record<Key, { zh: [string, string, string]; en: [string, string, st
 };
 
 /* 子项说明按 slug 对;计数 key 在下面用 D1 填 */
-const DESC: Record<string, { zh: string; en: string; n?: string; unit?: [string, string] }> = {
+const DESC: Record<string, { zh: string; en: string; n?: string; fixed?: string; unit?: [string, string] }> = {
   'origin': { zh: '91 个国内主产区,一味原料指得出来的地。', en: '91 domestic growing regions, the place a botanical actually comes from.', n: 'regions', unit: ['个产区', 'regions'] },
   'ingredients': { zh: '草本原料档案:INCI、机理、用量、配伍禁忌,并联各国目录。', en: 'Botanical files: INCI, mechanism, use level, incompatibilities, linked to market inventories.', n: 'ingredients', unit: ['味', 'botanicals'] },
   'classics': { zh: '古方库:外用美容方的方名、出处、药味与现代对应,抽检确认的置顶。', en: 'Classical formula library: external-use beauty formulas with source, herbs and modern counterpart.', n: 'classics', unit: ['方', 'formulas'] },
@@ -73,11 +74,11 @@ const DESC: Record<string, { zh: string; en: string; n?: string; unit?: [string,
   'packaging': { zh: '瓶罐管泵喷,白底实拍,按类型 / 材质 / 容量 / 剂型筛。', en: 'Bottles, jars, tubes, pumps, sprayers on white; filter by type, material, capacity, format.', n: 'packaging', unit: ['款', 'items'] },
   'capabilities/packaging': { zh: '包材方案:结构、材质、配色与合规标识怎么落。', en: 'Packaging solutions: structure, materials, colourways and compliance marks.' },
   'pack': { zh: 'AI 包装设计:说一句需求,出版式草案。', en: 'AI packaging design: describe the brief, get layout drafts.' },
-  'formulas': { zh: '在册配方按品类、功效、剂型翻,看中就报编码。', en: 'Formulas by category, benefit and format; quote the code.', n: 'formulas', unit: ['支', 'formulas'] },
+  'formulas': { zh: '在册配方按品类、功效、剂型翻,看中就报编码。', en: 'Formulas by category, benefit and format; quote the code.', fixed: ORG.formulas.value, unit: ['个成熟配方', 'mature formulas'] },   // 09-24 老板会议:总数口径用成熟配方,不用在线行数
   'rnd/formulation': { zh: '技术与配方:团队、方法与配方开发流程。', en: 'Technology and formulation: team, methods, development flow.' },
   'rnd/lab': { zh: '实验室与检测:仪器、方法与检验能力。', en: 'Laboratory and testing: instruments, methods, capability.' },
-  'studio': { zh: 'AI 共创工作台:从一句需求到配方方向与包材建议。', en: 'AI co-creation bench: from a brief to formula direction and packaging suggestions.' },
-  'ai': { zh: 'AI 工作台总入口:搜索、共创、肌肤检测、包装设计。', en: 'All AI tools: search, co-creation, skin reading, packaging design.' },
+  'studio': { zh: ORG.formulas.noticeZh, en: ORG.formulas.noticeEn },   // 09-24 老板会议:AI 共创已关闭
+  'ai': { zh: 'AI 工作台总入口:搜索、选品链路、包装设计。', en: 'All AI tools: search, product selector, packaging design.' },
   'packaging/?t=use-gift,outer-carton': { zh: '外盒、礼盒、套装盒。', en: 'Outer cartons, gift boxes, sets.', n: 'cartons', unit: ['款', 'items'] },
   'packaging/?t=rigid-box,leaflet,overwrap-film,shrink-sleeve,seal-sticker': { zh: '彩盒、说明书、烟包膜、热缩套、封口贴。', en: 'Folding boxes, leaflets, overwrap film, shrink sleeves, seal stickers.', n: 'paper', unit: ['款', 'items'] },
   'products': { zh: '成品品类:已经走完整条链的例子,从料体到外盒。', en: 'Product categories: examples that ran the whole chain, bulk to carton.', n: 'products', unit: ['例', 'products'] },
@@ -99,7 +100,7 @@ const DESC: Record<string, { zh: string; en: string; n?: string; unit?: [string,
   'cases': { zh: '客户场景:什么样的客户,我们怎么接。', en: 'Client scenarios: who comes to us and how we take it on.' },
   'faq': { zh: '常见问题。', en: 'Frequently asked questions.' },
   'news': { zh: '行业资讯:去 AI 味的行业动态。', en: 'Industry news.', n: 'news', unit: ['篇', 'articles'] },
-  'skin': { zh: 'AI 肌肤检测:上传一张脸,给护理方向。', en: 'AI skin reading: upload a face, get a care direction.' },
+  'skin': { zh: ORG.formulas.noticeZh, en: ORG.formulas.noticeEn },   // 09-24 老板会议:AI 肌肤检测已关闭
 };
 
 /* 实数:一次 batch 取,只取这一站用得到的 */
@@ -192,7 +193,7 @@ const ld = {
             <a class="card" href={H(c.slug)}>
               <h2>{c.label}</h2>
               {d && <p>{zh ? d.zh : d.en}</p>}
-              {n != null && n > 0 && d?.unit && <b class="n">{fmt(n)} <i>{zh ? d.unit[0] : d.unit[1]}</i></b>}
+              {((n != null && n > 0) || d?.fixed) && d?.unit && <b class="n">{d.fixed ?? fmt(n!)} <i>{zh ? d.unit[0] : d.unit[1]}</i></b>}
               <span class="go">{T.enter} →</span>
             </a>
           </li>

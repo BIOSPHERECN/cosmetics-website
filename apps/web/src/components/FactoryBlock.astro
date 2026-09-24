@@ -66,12 +66,15 @@ if (db) {
 }
 const oppDate = String(opps?.date || opps?.updated_at || '').slice(0, 10);
 const VARS: Record<string, string> = {
-  products: fmt(N('products')), summaries: fmt(N('summaries')), formulas: fmt(N('formulas')), classics: fmt(N('classics')), packaging: fmt(N('packaging')),
+  products: fmt(N('products')), summaries: fmt(N('summaries')), formulas: ORG.formulas.value, classics: fmt(N('classics')), packaging: fmt(N('packaging')),
   regs: String(N('regs')), inci: fmt(N('inci')), lines: String(lines), certs: ORG.certs.join(' / '), certs3: ORG.certs.slice(0, 3).join(' / '),
   markets: String(OEM_MARKETS.length), cats: String(OEM_CATEGORIES.length), marketNames: OEM_MARKETS.map((m) => (zh ? m.zh : m.en.replace(/^the /, ''))).join(' / '),
   site: siteName, date: oppDate,
 };
-const fill = (t: any, extra: Record<string, string> = {}) => s(t).replace(/\{(\w+)\}/g, (m, k) => (k in extra ? extra[k] : k in VARS ? VARS[k] : m));
+/* 09-24 老板会议:{formulas} 对外是成熟配方总数 13,000+(不是库里在线行数);后台旧文案「条可直接打样的配方基底」顺手换成事实口径。
+   ponytail: 文本替换兜底,后台把这句改掉后可删 */
+const fill = (t: any, extra: Record<string, string> = {}) => s(t).replace(/\{(\w+)\}/g, (m, k) => (k in extra ? extra[k] : k in VARS ? VARS[k] : m))
+  .replace(`${ORG.formulas.value} 条可直接打样的配方基底`, `${ORG.formulas.value} 个成熟配方,均经稳定性测试`);
 
 const clean = (t: string) => String(t ?? '').split(/\s[|,–—]\s|,|\|/)[0].slice(0, 60);
 const catLabel = (c: string) => (CAT_LABEL[c] ? (zh ? CAT_LABEL[c][0] : CAT_LABEL[c][1]) : c);

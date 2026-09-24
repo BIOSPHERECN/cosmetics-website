@@ -40,9 +40,10 @@ const path = `/${lang}/search/`;
    包材改用货架口径(status='active'),与包材页、首页对外口径一致。 */
 const cn = (await getCounts(db)) ?? {};
 const num = (k: string) => (typeof cn[k] === 'number' ? (cn[k] as number) : 0);
-const nIng = num('ingredients'), nF = num('formulas'), nP = num('packaging'), nT = num('trend_active'), nK = num('kb');
+/* 09-24 老板会议:库里在线配方行数不对外当配方总数用(总数口径是成熟配方 13,000+),这里不列 */
+const nIng = num('ingredients'), nP = num('packaging'), nT = num('trend_active'), nK = num('kb');
 const libs = (zhx: boolean) => ([
-  [nIng, zhx ? '条成分' : 'ingredients'], [nF, zhx ? '支配方' : 'formulas'], [nP, zhx ? '款包材' : 'packaging specs'],
+  [nIng, zhx ? '条成分' : 'ingredients'], [nP, zhx ? '款包材' : 'packaging specs'],
   [nT, zhx ? '条带出处的市场情报' : 'sourced market signals'], [nK, zhx ? '条专家与客服口径' : 'expert and service notes'],
 ] as [number, string][]).filter(([n]) => n > 0).map(([n, l]) => (zhx ? `${n} ${l}` : `${n} ${l}`)).join(zhx ? '、' : ', ');
 

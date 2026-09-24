@@ -27,6 +27,14 @@ export const ORG = {
   /* 2026-09-23 事实修正(协调人):认证只留「工厂口径」页的三项。FDA 是设施注册、EU CPNP 是产品通报、SGS 是检测机构 ——
      都不是认证,此前被当 credentialCategory:'certification' 写进每一页的 hasCredential,已移出;需要时用下面 compliance 的准确措辞。 */
   certs: ['GMPC', 'ISO 22716', 'HALAL'],
+  /* 帛卉硬事实 · 来源:2026-09-24 老板会议。对客户只给这些现成的成熟配方,不给 AI 现编配方(没做过稳定性测试)。
+     对外说配方总数一律用这里,不用库里 formulas 表的行数(那只是在线展示的一部分)。 */
+  formulas: {
+    n: 13000, value: '13,000+', source: '2026-09-24 老板会议',
+    zh: '成熟配方 13,000+,均经稳定性测试', en: '13,000+ mature formulas, all stability-tested',
+    noticeZh: '帛卉有 13,000+ 个经过稳定性测试的成熟配方,我们从中为你匹配现成配方。',
+    noticeEn: 'BIOSPHERE holds 13,000+ mature formulas, all stability-tested. We match a proven one to your brief.',
+  },
   compliance: {
     en: 'US FDA cosmetic facility registration; EU CPNP product notifications filed per product; third-party testing by SGS.',
     zh: '美国 FDA 化妆品设施注册;欧盟 CPNP 按产品逐一通报;第三方检测由 SGS 出具。',

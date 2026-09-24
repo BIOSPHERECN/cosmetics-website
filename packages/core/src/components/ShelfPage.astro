@@ -48,7 +48,7 @@ export interface TreeNode { label: string; count?: number; href: string; on: boo
 export interface ShelfTab {
   step: number;
   label: string;
-  count?: number;
+  count?: number | string;   // 09-24:配方一环显示成熟配方总数口径 '13,000+'
   href: string;
   on: boolean;
   /** 挂在这一环下面的东西,比如配方下面的原料库 */
@@ -122,7 +122,7 @@ const {
             <a href={t.href} class={t.on ? 'on' : ''} aria-current={t.on ? 'page' : undefined}>
               <span class="step" aria-hidden="true">{t.step}</span>
               <span class="lb">{t.label}</span>
-              {typeof t.count === 'number' && <span class="tn">{t.count.toLocaleString()}</span>}
+              {t.count != null && <span class="tn">{typeof t.count === 'number' ? t.count.toLocaleString() : t.count}</span>}
             </a>
             {t.sub && (
               <a class={`sub ${t.sub.on ? 'on' : ''}`} href={t.sub.href}

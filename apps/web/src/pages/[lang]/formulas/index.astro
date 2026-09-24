@@ -1,4 +1,5 @@
 ---
+import { ORG } from '@cosmetic/core/content/org.ts';
 import { TERMS_CONFIRMED } from '../../../lib/terms';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
@@ -107,11 +108,12 @@ if (degraded) {
 }
 
 const T = zh ? {
-  eyebrow: '配方库', filters: '筛选', clearAll: '清除全部', results: '条', empty: '这些条件下没有配方,放宽一个再试。',
+  eyebrow: '配方库', filters: '筛选', clearAll: '清除全部', results: '条在线展示', empty: '这些条件下没有配方,放宽一个再试。',
   shotPending: '实拍整理中',
   cat: '品类', fmt: '剂型', ben: '功效方向', mkt: '可售市场',
   title: '配方库 —— 按剂型、功效、市场翻,看中就报编码',
-  lede: `每一条都写明剂型、关键活性物方向、起订量与打样周期。点进去是完整规格,
+  /* 09-24 老板会议:总数口径是成熟配方 13,000+;下面列表是在线展示的一部分 */
+  lede: `${ORG.formulas.noticeZh}下面是可在线翻阅的一部分,每一条都写明剂型、关键活性物方向、起订量与打样周期。点进去是完整规格,
          底部两个按钮:索取样品、定制这一款。规格为示例参数,实际以打样与书面确认为准。`,
   moq: '起订', days: '打样天',
   note: '本页规格为示例参数,用于说明我们能做的方向。实际配方、起订量与周期以打样与书面确认为准,不含报价。',
@@ -119,12 +121,12 @@ const T = zh ? {
   bands: { low: '经济', mid: '中档', high: '高端' } as Record<string, string>,
   degraded: '数据服务正在恢复,当前显示的是最近一次的快照,筛选暂不可用。',
 } : {
-  eyebrow: 'Formula library', filters: 'Filters', clearAll: 'Clear all', results: 'items',
+  eyebrow: 'Formula library', filters: 'Filters', clearAll: 'Clear all', results: 'shown online',
   empty: 'Nothing matches these filters. Loosen one and try again.',
   shotPending: 'Photography pending',
   cat: 'Category', fmt: 'Format', ben: 'Claim direction', mkt: 'Markets',
   title: 'Formula library — browse by format, claim and market, then quote the code',
-  lede: `Every entry states format, active direction, MOQ and sampling time. Open one for the full specification
+  lede: `${ORG.formulas.noticeEn} Below is the part you can browse online. Every entry states format, active direction, MOQ and sampling time. Open one for the full specification
          and two buttons: request a sample, or customise it. Specifications are sample parameters confirmed at sampling.`,
   moq: 'MOQ', days: 'Sampling',
   note: 'Specifications on this page are sample parameters describing what we can build. Actual formula, MOQ and lead times are confirmed at sampling and in writing. No pricing implied.',

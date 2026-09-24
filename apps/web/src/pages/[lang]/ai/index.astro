@@ -23,6 +23,7 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
 import { getCounts } from '../../../lib/counts';
+import { ORG } from '@cosmetic/core/content/org.ts';
 
 export const prerender = false;
 
@@ -38,22 +39,17 @@ const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
    09-24 C5(代码审计 P0-4):原来每次渲染 4 条 COUNT;现在只读计数文件(tools/counts-refresh.py 写),缺哪项就不显示哪项。 */
 const cn = (await getCounts(db)) ?? {};
 const num = (k: string): number | null => (typeof cn[k] === 'number' ? (cn[k] as number) : null);
-const [nPack, nFormula, nTrend, nIng] = [num('pack_pages'), num('formulas'), num('trend_active'), num('ingredients')];
+const [nPack, nTrend, nIng] = [num('pack_pages'), num('trend_active'), num('ingredients')];
 
 const T = zh ? {
   eyebrow: 'AI 工作台',
   title: '一条路走完:从一个想法,到一封带编码的询盘',
   lede: `我们把站里的几个 AI 工具排成了顺序。不是五个并列的入口让你挑,
-         而是六步,每一步做完你手上会多出一样具体的东西 —— 一个答案、一份方案、
-         一个包材编码、一张效果图、一段可以直接用的文案。`,
-  stepsH: '六步',
+         而是五步,每一步做完你手上会多出一样具体的东西 —— 一个答案、一份方案、
+         一个包材编码、一张效果图、一封带编码的询盘。`,
+  stepsH: '五步',
   base: '这些工具建在什么上面',
   baseSub: '答案不是模型现编的,是从下面这些库里检索出来的,每条都能点开核对出处。',
-  skinH: '另外一个工具:AI 肌肤检测',
-  skinTx: `它服务的是你的终端顾客,不在上面这条采购动线上 —— 放在你的门店或详情页,
-           顾客自测得到一个方向性的判断,再连到对应的产品。
-           它给的是方向参考,不是诊断结论,页面上写明了这一点。`,
-  skinBtn: '看肌肤检测',
   note: 'AI 给出的内容是工作稿,不是结论。配方、法规与报价一律以打样和书面确认为准;法规部分只写方向,以最新官方文本为准。',
   open: '打开',
   gain: '做完你会拿到',
@@ -70,9 +66,6 @@ const T = zh ? {
     ['看样子', 'AI 包装设计', '/pack/',
      '把你的品牌名和风格描述丢进去,先看到大致的效果,再决定要不要打样。',
      '几版效果图,用来内部对齐审美,不用来印刷。'],
-    ['写出去', 'AI 共创', '/studio/',
-     '按你选定的配方与包材,生成卖点文案与详情页结构,你自己再改。',
-     '一份可以直接改的文案初稿。'],
     ['发询盘', '联系我们', '/contact/',
      '把上面几步的编码一起发过来,我们不用再从「你想做什么」问起。',
      '一次对齐,直接进入打样讨论。'],
@@ -81,16 +74,11 @@ const T = zh ? {
   eyebrow: 'AI workbench',
   title: 'One path: from an idea to an enquiry that carries codes',
   lede: `We put our AI tools in order. Not five parallel entrances to choose between —
-         six steps, each one leaving you with something concrete: an answer, a proposal,
-         a packaging code, a rendering, a piece of copy you can actually use.`,
-  stepsH: 'Six steps',
+         five steps, each one leaving you with something concrete: an answer, a proposal,
+         a packaging code, a rendering, an enquiry that carries codes.`,
+  stepsH: 'Five steps',
   base: 'What these tools stand on',
   baseSub: 'Answers are retrieved from the libraries below rather than invented by a model. Every one carries a source you can open.',
-  skinH: 'A separate tool: AI skin analysis',
-  skinTx: `This one serves your end customers and is not part of the sourcing path above.
-           Put it in your store or on a product page: the customer self-tests, gets a directional read,
-           and is routed to the matching product. It gives direction, not a diagnosis, and the page says so.`,
-  skinBtn: 'Open skin analysis',
   note: 'AI output is a working draft, not a conclusion. Formulas, regulatory matters and pricing are confirmed at sampling and in writing; regulatory notes describe direction only and the latest official text governs.',
   open: 'Open',
   gain: 'You walk away with',
@@ -107,9 +95,6 @@ const T = zh ? {
     ['See it', 'AI packaging design', '/pack/',
      'Drop in your brand name and a style description to see roughly how it lands before committing to a sample.',
      'A few renderings for internal alignment — not for print.'],
-    ['Write it', 'AI co-creation', '/studio/',
-     'Generate selling copy and a product page outline against your chosen formula and packaging, then edit it yourself.',
-     'A first draft you can rewrite.'],
     ['Send it', 'Contact', '/contact/',
      'Send the codes from the steps above and we skip the "so what do you want to make" round.',
      'One alignment, straight into sampling.'],
@@ -117,11 +102,12 @@ const T = zh ? {
 };
 
 const bases = [
-  [nFormula, zh ? '条配方规格' : 'formula specs', `/${lang}/selector/`],
+  /* 09-24 老板会议:配方总数对外用成熟配方 13,000+,不用库里在线展示的行数 */
+  [ORG.formulas.value, zh ? '个成熟配方,均经稳定性测试' : 'mature formulas, all stability-tested', `/${lang}/formulas/`],
   [nPack, zh ? '页包材实物图册' : 'catalogue pages', `/${lang}/packaging/`],
   [nIng, zh ? '条成分资料' : 'ingredient records', `/${lang}/search/`],
   [nTrend, zh ? '条带出处的市场信号' : 'sourced market signals', `/${lang}/search/`],
-].filter(([n]) => typeof n === 'number' && (n as number) > 0) as [number, string, string][];
+].filter(([n]) => typeof n === 'string' || (typeof n === 'number' && n > 0)) as [number | string, string, string][];
 
 const ld = {
   '@context': 'https://schema.org', '@type': 'HowTo',
@@ -174,17 +160,11 @@ const ld = {
         <p class="sub">{T.baseSub}</p>
         <ul class="base">
           {bases.map(([n, label, href]) => (
-            <li><a href={href}><strong>{n.toLocaleString()}</strong><span>{label}</span></a></li>
+            <li><a href={href}><strong>{typeof n === 'number' ? n.toLocaleString() : n}</strong><span>{label}</span></a></li>
           ))}
         </ul>
       </section>
     )}
-
-    <section class="sec">
-      <h2>{T.skinH}</h2>
-      <p class="sub wide">{T.skinTx}</p>
-      <a class="btn" href={`/${lang}/skin/`}>{T.skinBtn}</a>
-    </section>
 
     <section class="sec end">
       <p class="fine">{T.note}</p>

@@ -16,6 +16,7 @@
  * 数据变了跑 `python tools/chain-counts.py` 重新生成这一段。
  */
 import type { ShelfTab } from '../components/ShelfPage.astro';
+import { ORG } from './org.ts';
 
 /** 由 tools/chain-counts.py 生成 —— 手改会在下次跑脚本时被覆盖 */
 export const CHAIN_COUNTS = {
@@ -39,7 +40,8 @@ export function buildChain(lang: string, here: ChainHere): ShelfTab[] {
   return [
     { step: 1, label: t.pack, count: CHAIN_COUNTS.packaging,
       href: `${b}/packaging/`, on: here === 'packaging' },
-    { step: 2, label: t.formula, count: CHAIN_COUNTS.formula,
+    /* 09-24 老板会议:配方总数对外用成熟配方 13,000+,不用在线展示的行数 */
+    { step: 2, label: t.formula, count: ORG.formulas.value,
       href: `${b}/formulas/`, on: here === 'formula',
       /* 原料是配方的组成,不是链上单独一环 —— 挂在配方下面才对 */
       sub: { label: t.ing, count: CHAIN_COUNTS.ingredient,

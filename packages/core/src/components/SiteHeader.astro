@@ -26,6 +26,8 @@ export interface Props {
    * 不传时退回到只有「联系询盘」的最小导航(静态站与实验室预览用)。
    */
   nav?: NavNode[];
+  /** 站点 id。只有 'beauty2oem' 走专用分支(字标、主按钮、AI 客服);其它站不传或传别的,走原路径 */
+  brand?: string;
 }
 
 export interface NavNode {
@@ -34,7 +36,9 @@ export interface NavNode {
   children?: NavNode[];
 }
 
-const { locale, path, siteName, siteNameZh, showLocaleSwitch = true, inert = false, nav } = Astro.props;
+const { locale, path, siteName, siteNameZh, showLocaleSwitch = true, inert = false, nav, brand } = Astro.props;
+/* 09-24 图文版:BEAUTY2OEM 字标(2 绿色放大、OEM 红色、BEAUTY 取 --b2o-beauty)+ 主按钮「提交店铺，拿简报」;样式在 apps/web/src/styles/b2o.css */
+const b2o = brand === 'beauty2oem';
 const tr = t(locale);
 
 const L = (p: string) => (inert ? '#' : `/${locale}${p}`);
@@ -78,6 +82,7 @@ const items: NavNode[] = nav?.length
   <div class="ck-wrap bar">
     <a class="mark" href={L('/')} aria-label={siteName}>
       {/* 站内绘制的几何标记:同心方 + 斜线,任何流派下都成立;正式 logo 到位后替换 */}
+      {b2o ? <span class="b2o-mark"><b class="m-b">BEAUTY</b><b class="m-2">2</b><b class="m-o">OEM</b></span> : <>
       <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <rect x="1.5" y="1.5" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.5" />
         <path d="M6 18 L18 6" stroke="currentColor" stroke-width="1.5" />
@@ -87,6 +92,7 @@ const items: NavNode[] = nav?.length
         <strong class="name">{siteName}</strong>
         <span class="zh">{siteNameZh}</span>
       </span>
+      </>}
     </a>
 
     {/* 两级导航:零 JS,靠 :hover / :focus-within 展开 —— 键盘 Tab 同样能打开 */}
@@ -116,7 +122,8 @@ const items: NavNode[] = nav?.length
     <div class="right">
       {/* 字体 A- / A+:创始人 2026-09-11「全部页面也要有调整字体大小的 +-」。改 html 的 font-size,全站 rem 一起缩放;记在 localStorage */}
       <div class="fz" aria-label="font size"><button type="button" data-fz="-1" aria-label="A-">A−</button><button type="button" data-fz="1" aria-label="A+">A+</button></div>
-      <a class="cta" href={L('/contact/')}>{tr('cta.inquiry')}</a>
+      {b2o && <button type="button" class="b2o-ai" data-b2o-ai>AI 客服</button>}
+      <a class="cta" href={b2o ? L('/brief/') : L('/contact/')}>{b2o ? '提交店铺，拿简报' : tr('cta.inquiry')}</a>
       {/* 汉堡钮 = 纯 label(点击联动顶部 checkbox),≥52rem 整块隐藏 */}
       <label class="burger" for="mnav-t" aria-hidden="true">
         <span class="bl"></span>

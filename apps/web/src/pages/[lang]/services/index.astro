@@ -32,6 +32,7 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { SOLUTIONS } from '@cosmetic/core/content/solutions.ts';
 import { CHAIN_COUNTS } from '@cosmetic/core/content/chain.ts';
+import { ORG } from '@cosmetic/core/content/org.ts';
 import { pageShell } from '../../../lib/shell';
 
 export const prerender = false;
@@ -62,7 +63,7 @@ const T = zh ? {
   back: '回到上面', seeFx: '看配方库', seePk: '看包材库',
   chain: [
     ['包材', `${CHAIN_COUNTS.packaging.toLocaleString()} 款`, `${B}/packaging/`],
-    ['配方', `${CHAIN_COUNTS.formula} 支`, `${B}/formulas/`],
+    ['配方', `${ORG.formulas.value} 个成熟配方`, `${B}/formulas/`],   // 09-24 老板会议:总数口径
     ['包装盒', `${CHAIN_COUNTS.carton} 款`, `${B}/packaging/?g=carton`],
     ['产品', `${CHAIN_COUNTS.product} 例`, `${B}/products/`],
   ] as [string, string, string][],
@@ -92,7 +93,7 @@ const T = zh ? {
   back: 'Back to top', seeFx: 'Formulas', seePk: 'Packaging',
   chain: [
     ['Containers', `${CHAIN_COUNTS.packaging.toLocaleString()} items`, `${B}/packaging/`],
-    ['Formulas', `${CHAIN_COUNTS.formula}`, `${B}/formulas/`],
+    ['Formulas', `${ORG.formulas.value} mature`, `${B}/formulas/`],
     ['Cartons', `${CHAIN_COUNTS.carton}`, `${B}/packaging/?g=carton`],
     ['Products', `${CHAIN_COUNTS.product}`, `${B}/products/`],
   ] as [string, string, string][],

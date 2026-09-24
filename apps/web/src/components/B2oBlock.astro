@@ -1,0 +1,513 @@
+---
+/**
+ * BEAUTY2OEM 图文版(09-24 19:xx,定稿见 助手交付/beauty2oem-UI重做/定稿方向.md)。
+ * 只有 beauty2oem 的 fx_* 版块走这里;工厂站(biosphere-ai)照旧走 FactoryBlock,一行不受影响。
+ * 文字仍从后台版块读(标题、导语、步骤、空状态);本组件只管版式、配图与图表。
+ * 需要库数据的两处(有机会卡时的卡片、简报表单)直接复用 FactoryBlock,口径与表单字段只有一份。
+ * 数字全部读 getCounts(构建时打包的计数快照),访客请求零现场统计;起订 / 价格 / 交期一个字不写。
+ * 09-24 v2 零查库:「有没有已发布的机会卡」和公开预判台账也读快照 src/data/b2o-snap.json(tools/counts-refresh.py 导出),本组件不再碰 D1。
+ * 样式全在 styles/b2o.css,作用域 html[data-brand="beauty2oem"]。
+ */
+import FactoryBlock from './FactoryBlock.astro';
+import { getCounts } from '../lib/counts';
+import { ORG } from '@cosmetic/core/content/org.ts';
+import SNAP from '../data/b2o-snap.json';
+
+interface Props {
+  type: string; data: any; lang: string; db: D1Database | undefined; siteName: string; email: string;
+  whatsapp?: string | null; wechat?: string | null;
+  page: string; pageTitle: string; pageDesc?: string | null;
+}
+const { type, data: d = {}, lang, db, siteName, email, whatsapp, wechat, page, pageTitle, pageDesc } = Astro.props;
+const B = `/${lang}`;
+const BRIEF = `${B}/brief/`;
+const arr = (x: any): any[] => (Array.isArray(x) ? x : []);
+const fmt = (n: number) => Number(n || 0).toLocaleString('en-US');
+const counts: any = (await getCounts(db)) ?? {};
+const N = (k: string) => Number(counts[k] ?? 0);
+const lines = Number(ORG.figures.find((f) => f.nameEn === 'Automated production lines')?.value ?? 15);
+const VARS: Record<string, string> = {
+  products: fmt(N('products')), summaries: fmt(N('summaries')), formulas: ORG.formulas.value, packaging: fmt(N('pack_shelf')),
+  regs: String(N('regs')), inci: fmt(N('inci')), lines: String(lines), site: siteName,
+};
+/* 后台文案是半角标点、带「——」「1–2」;本站版式统一:数字区间改「至」,破折号改逗号,中文旁的半角标点改全角 */
+const tidy = (t: any) => String(t ?? '')
+  .replace(/\{(\w+)\}/g, (m, k) => VARS[k] ?? m)
+  .replace(`${ORG.formulas.value} 条可直接打样的配方基底`, `${ORG.formulas.value} 个成熟配方,均经稳定性测试`)   // 同 FactoryBlock:后台旧文案兜底
+  .replace(/(\d)\s*[–—]\s*(\d)/g, '$1 至 $2')
+  .replace(/\s*(——|—|–)\s*/g, ',')
+  .replace(/([一-鿿」》）\)])\s*,\s*/g, '$1，')
+  .replace(/,\s*([一-鿿「《])/g, '，$1')
+  .replace(/([一-鿿」》）\)])\s*:\s*/g, '$1：')
+  .replace(/([一-鿿」》）\)])\s*;\s*/g, '$1；');
+const href = (h: any, fb: string) => { const v = String(h ?? '').trim(); if (!v) return fb; if (v.startsWith('/') && !/^\/(zh-cn|zh-tw|en|ja)\//.test(v)) return `${B}${v}`; return v; };
+
+/* 配图:全部自托管 webp(apps/web/public/b2o/img/),写死宽高防跳版 */
+const IMG: Record<string, [string, number, number, string]> = {
+  hero: ['01-hero-shelf', 1248, 832, '几款无品牌的护肤品摆在浅色石台上,晨光斜照'],
+  desk: ['02-seller-desk', 1248, 832, '卖家在打包台前整理样品瓶和纸箱'],
+  lab: ['03-lab-bench', 1248, 832, '实验台上,戴手套的手用滴管往烧杯里加精华'],
+  pack: ['05-packaging', 1024, 1024, '无品牌的白色与浅绿色包装盒和瓶罐'],
+  qc: ['06-qc-crop', 679, 452, '戴手套的手对着窗光检查一支样品小瓶'],
+  ware: ['07-warehouse', 1248, 832, '明亮的仓库里整齐码放的纸箱'],
+  herb: ['08-botanical', 1024, 1024, '石板上摆着植物油、洋甘菊、茶叶、芦荟和白泥'],
+  hand: ['09-market-hand', 1024, 1024, '手握一支浅绿色玻璃精华瓶'],
+  dark: ['10-dark-close', 1248, 832, ''],
+  vials: ['12-vials-top', 1248, 832, '白色样品架上一排排装着不同颜色原料的小瓶'],
+};
+const img = (k: string, eager = false) => {
+  const [f, w, h, alt] = IMG[k];
+  return { src: `/b2o/img/${f}.webp`, width: w, height: h, alt, loading: eager ? 'eager' : 'lazy', decoding: 'async', fetchpriority: eager ? 'high' : undefined } as any;
+};
+
+/* 机会卡「有没有已发布的」与公开预判台账(is_public=1,≤60 行,只公开字段)都读构建时快照,访客请求零查库。
+   有卡时仍交给 FactoryBlock 渲染(会员分级逻辑只有一份)。快照更新:python tools/counts-refresh.py --b2o 后重新构建部署。 */
+const hasCards = type === 'fx_cards' && !!(SNAP as any).has_cards;
+const ledger: any[] = type === 'fx_ledger' && Array.isArray((SNAP as any).ledger) ? (SNAP as any).ledger : [];
+const dotCls = (x: any, r: any) => (!String(r ?? '').trim() ? '' : x.outcome === 'right' ? 'ok' : x.outcome === 'wrong' ? 'x' : 'mid');
+
+/* 在库数据图:只放同一类东西(库里的条目),对数刻度;产线和市场单独画成可数的方块与圆点 */
+const bars = [
+  { l: '真实产品库', v: N('products'), u: '款', n: `全成分产品,另有 ${fmt(N('summaries'))} 条配方视角解读`, h: 'https://biosphere-ai.com/zh-cn/decoder/' },
+  { l: '原料目录', v: N('inci'), u: '条', n: '各国原料目录,配方阶段先核限用和禁用成分', h: 'https://biosphere-ai.com/zh-cn/regulations/' },
+  { l: '包材现货', v: N('pack_shelf'), u: '款', n: '瓶、罐、管、泵头、彩盒,先按剂型选结构', h: 'https://biosphere-ai.com/zh-cn/packaging/' },
+  /* 09-24 老板会议:配方对外用成熟配方总数 13,000+,不用库里在线行数 */
+  { l: '成熟配方', v: ORG.formulas.n, s: '+', u: '个', n: '均经稳定性测试,从中匹配现成配方,不给 AI 现编配方', h: 'https://biosphere-ai.com/zh-cn/formulas/' },
+].filter((b) => b.v > 0);
+const LOGMAX = 5.3;
+const pct = (v: number) => `${Math.max(2, (Math.log10(Math.max(1, v)) / LOGMAX) * 100).toFixed(1)}%`;
+const TICKS: Array<[number, string]> = [[0, '1'], [1, '10'], [2, '100'], [3, '1千'], [4, '1万'], [5, '10万']];
+const regs = N('regs');
+
+const briefRows = [
+  ['产品结构', '你现在卖什么、靠什么赚钱'],
+  ['缺口', '同类在涨、你还没有的'],
+  ['市场变化', '你在卖和要进的国家、平台'],
+  ['三个方向', '最快可测试、最值得做、差异化'],
+  ['能做到哪', '帛卉支持到哪一步'],
+];
+const stepList = arr(d.steps).map((x) => ({ label: tidy(typeof x === 'string' ? x : x?.label), note: tidy(x?.note) }));
+const Arrow = '→';
+---
+{/* ───────────────────────── 首页 ───────────────────────── */}
+{type === 'fx_hero' && (
+  <>
+    <section class="b2o-sec b2o-hero">
+      <div class="b2o-wrap b2o-grid">
+        <div class="b2o-hero-copy">
+          <h1 class="b2o-h1 b2o-h1-hero"><span class="ln">{tidy(d.title)}</span>{d.sub && <span class="ln">{tidy(d.sub)}</span>}</h1>
+          <p class="b2o-lede">提交店铺，24 小时内拿到一份 1 至 2 页的机会简报。</p>
+          <div class="b2o-cta-row">
+            <a class="b2o-btn b2o-btn-pri" href={BRIEF}>提交店铺，拿简报<span class="ico" aria-hidden="true">{Arrow}</span></a>
+            <a class="b2o-btn b2o-btn-sec" href="#b2o-sample">看简报样张</a>
+          </div>
+          <div class="b2o-promise">
+            <div><b>24<small>小时</small></b><span>内发到你手上</span></div>
+            <div><b>1 至 2<small>页</small></b><span>只写要紧的</span></div>
+            <div><b>3<small>个方向</small></b><span>每个附风险</span></div>
+          </div>
+        </div>
+        <div class="b2o-hero-visual" id="b2o-sample">
+          <figure class="b2o-bezel"><div class="core b2o-ph r32"><img {...img('hero', true)} /></div></figure>
+          <aside class="b2o-sheet" aria-label="简报样张结构">
+            <span class="b2o-mark sm"><b class="m-b">BEAUTY</b><b class="m-2">2</b><b class="m-o">OEM</b></span>
+            <h2>客户产品机会简报 · 样张结构</h2>
+            <ol>
+              <li>产品结构<i style="--w:86%"></i></li>
+              <li>缺口：同类在涨、你还没有的<i style="--w:64%"></i></li>
+              <li>三个方向，每个写风险<i style="--w:78%"></i></li>
+              <li>帛卉能做到哪<i style="--w:52%"></i></li>
+            </ol>
+            <p class="redact">内容已打码，不公开、不给其他客户</p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="b2o-sec alt b2o-read">
+      <div class="b2o-wrap b2o-grid">
+        <figure class="fig b2o-bezel"><div class="core b2o-ph r32"><img {...img('desk')} /></div></figure>
+        <div class="txt">
+          <h2 class="b2o-h2">先读懂你的生意，<br />再谈下一款产品。</h2>
+          {d.lead && <p class="b2o-lede">{tidy(d.lead)}</p>}
+          <dl class="b2o-facts">
+            <div><dt>主销品类</dt><dd>按你的店铺</dd></div>
+            <div><dt>价格带</dt><dd>按你的店铺</dd></div>
+            <div><dt>上新节奏</dt><dd>按你的店铺</dd></div>
+            <div><dt>流量来源</dt><dd>短视频、达人、直播、广告</dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <section class="b2o-sec b2o-band">
+      <div class="b2o-wrap">
+        <div class="b2o-ph band-ph"><img {...img('ware')} /></div>
+        <div class="panel">
+          <h2 class="b2o-h2">提交之后的 24 小时</h2>
+          <ol class="b2o-tl">
+            <li><span class="when">现在</span><b>留一个联系方式</b><p>只要姓名，加手机或微信。店铺情况想说多少说多少。</p></li>
+            <li><span class="when">接下来</span><b>我们读店铺、看信号</b><p>你在卖和准备进的国家、平台，最近在变什么。</p></li>
+            <li><span class="when">24 小时内</span><b>简报发到你手上</b><p>发到你留的微信或手机。第一次沟通不介绍工厂。</p></li>
+          </ol>
+          {d.hint && <p class="note">{tidy(d.hint)}</p>}
+        </div>
+      </div>
+    </section>
+  </>
+)}
+
+{type === 'fx_steps' && page === '' && (
+  <section class="b2o-sec alt b2o-method" id="method">
+    <div class="b2o-wrap">
+      <header class="b2o-head">
+        <h2 class="b2o-h2">{tidy(d.title)}</h2>
+        {d.intro && <p class="b2o-lede">{tidy(d.intro)}</p>}
+      </header>
+      {stepList.slice(0, 4).map((x, i) => (
+        <div class:list={['b2o-row', `r${i + 1}`]}>
+          <span class="no">{String(i + 1).padStart(2, '0')}</span>
+          <h3 class="t">{x.label}</h3>
+          <p class="dsc">{x.note}</p>
+          <div class="v">
+            {i === 0 && <div class="b2o-ph r20"><img {...img('hand')} /></div>}
+            {i === 1 && (
+              <div class="b2o-viz" role="img" aria-label="正方与反方各列证据,最后给出裁决">
+                <div class="debate"><div class="pro"><b>正方 · 支持的证据</b><i style="--w:92%"></i><i style="--w:70%"></i><i style="--w:80%"></i></div><div class="con"><b>反方 · 反对的证据</b><i style="--w:76%"></i><i style="--w:88%"></i><i style="--w:54%"></i></div></div>
+                <div class="verdict"><span>裁决：推进 / 观察 / 放弃</span><span>附失效条件</span></div>
+              </div>
+            )}
+            {i === 2 && (
+              <div class="b2o-viz" role="img" aria-label="回填表示意:三条预判,30、60、90 天均待回填">
+                <div class="b2o-dots">
+                  <span></span><span class="hd">30 天</span><span class="hd">60 天</span><span class="hd">90 天</span>
+                  <span class="lb">预判一</span><i class="dot"></i><i class="dot"></i><i class="dot"></i>
+                  <span class="lb">预判二</span><i class="dot"></i><i class="dot"></i><i class="dot"></i>
+                  <span class="lb">预判三</span><i class="dot"></i><i class="dot"></i><i class="dot"></i>
+                </div>
+                <div class="b2o-legend"><span><i class="dot ok"></i>成立</span><span><i class="dot x"></i>错了</span><span><i class="dot"></i>待回填</span></div>
+              </div>
+            )}
+            {i === 3 && <div class="b2o-ph r20"><img {...img('vials')} /></div>}
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+)}
+
+{/* 机会卡:没有已发布卡片 = 放结构示意样卡 + 台账预览(不写 0,不编数);有卡 = 复用 FactoryBlock */}
+{type === 'fx_cards' && (
+  <section class:list={['b2o-sec', 'b2o-cards', page === 'opportunities' ? 'is-page' : '']}>
+    {page === 'opportunities' && (
+      <div class="b2o-wrap b2o-grid b2o-phead">
+        <div class="t">
+          <h1 class="b2o-h1">{tidy(pageTitle)}</h1>
+          {pageDesc && <p class="b2o-lede">{tidy(pageDesc)}</p>}
+          <div class="b2o-cta-row"><a class="b2o-btn b2o-btn-pri" href={BRIEF}>提交店铺，拿简报<span class="ico" aria-hidden="true">{Arrow}</span></a></div>
+        </div>
+        <figure class="b2o-bezel pic"><div class="core b2o-ph r32 sq"><img {...img('herb', true)} /></div></figure>
+      </div>
+    )}
+    {hasCards ? (
+      <div class="b2o-wrap b2o-fxwrap"><FactoryBlock type="fx_cards" data={d} lang={lang} db={db} siteName={siteName} email={email} whatsapp={whatsapp} wechat={wechat} /></div>
+    ) : (
+      <div class="b2o-wrap">
+        <header class="b2o-head">
+          <h2 class="b2o-h2">{tidy(d.title)}</h2>
+          <p class="b2o-lede">{tidy(d.empty)}</p>
+        </header>
+        <div class="b2o-opp-grid">
+          <article class="b2o-oc" aria-label="机会卡结构示意">
+            <div class="tagrow"><span class="b2o-tag accent">{page === '' ? '结构示意' : '结构示意，首批复核后上线'}</span><span class="b2o-tag">国家 · 平台 · 品类</span></div>
+            <h3>一张机会卡长这样</h3>
+            <div class="stage" aria-label="趋势阶段"><span>萌芽</span><span class="on">上升</span><span>高价</span></div>
+            <dl>
+              <dt>信号</dt><dd>看变化速度，不看排名<small>搜索、新品数、达人数、评论增速</small></dd>
+              <dt>正方证据</dt><dd>支持这个判断的数据和来源<span class="redact" style="--w:70%"></span></dd>
+              <dt>反方证据</dt><dd>反方必须找的反对证据<span class="redact" style="--w:55%"></span></dd>
+              <dt>失效条件</dt><dd>出现什么情况，这个判断就作废<span class="redact" style="--w:40%"></span></dd>
+              <dt>回填</dt><dd><span class="refill"><i class="dot"></i><i class="dot"></i><i class="dot"></i><small>30 / 60 / 90 天</small></span></dd>
+            </dl>
+          </article>
+          {page === '' ? (
+            <div class="b2o-ledger-mini">
+              <h3>预判台账</h3>
+              <div class="b2o-tscroll">
+                <table>
+                  <thead><tr><th>预判</th><th>失效条件</th><th class="c">30 天</th><th class="c">60 天</th><th class="c">90 天</th></tr></thead>
+                  <tbody>
+                    {[70, 55, 88].map((w, i) => (
+                      <tr><td>第 {i + 1} 条 · 复核中</td><td><span class="redact" style={`--w:${w}%`}></span></td><td class="c"><i class="dot"></i></td><td class="c"><i class="dot"></i></td><td class="c"><i class="dot"></i></td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div class="b2o-legend"><span><i class="dot ok"></i>成立</span><span><i class="dot x"></i>错了</span><span><i class="dot"></i>待回填</span></div>
+              <p class="more"><a class="b2o-link" href={`${B}/predictions/`}>看预判记录 {Arrow}</a></p>
+            </div>
+          ) : (
+            <div class="b2o-oc-side">
+              <h3>机会卡按趋势阶段排</h3>
+              <ol class="stages">{['萌芽', '验证', '加速', '扩散', '拥挤', '价格战', '成熟', '衰退'].map((x) => <li class:list={{ hot: x === '验证' || x === '加速' }}>{x}</li>)}</ol>
+              <p class="b2o-lede">最值得抢的是「验证到加速」这一段。代表商品、配方方向和时间窗口不公开，按你的店铺来定。</p>
+              <a class="b2o-btn b2o-btn-pri" href={BRIEF}>提交店铺，拿简报<span class="ico" aria-hidden="true">{Arrow}</span></a>
+            </div>
+          )}
+        </div>
+        {page === '' && <div class="b2o-cta-row"><a class="b2o-btn b2o-btn-pri" href={BRIEF}>提交店铺，拿简报<span class="ico" aria-hidden="true">{Arrow}</span></a></div>}
+      </div>
+    )}
+  </section>
+)}
+
+{/* 产品机会页的七层判断:定稿改成一行链接,指回首页方法段 */}
+{type === 'fx_steps' && page === 'opportunities' && (
+  <section class="b2o-sec b2o-oneline"><div class="b2o-wrap"><a class="b2o-link" href={`${B}/#method`}>{tidy(d.title)}：看我们怎么判断 {Arrow}</a></div></section>
+)}
+
+{/* 判断之后 / 帛卉交付:同一套数据,画成图 */}
+{type === 'fx_six' && (
+  <>
+    {page === 'delivery' && (
+      <section class="b2o-sec b2o-phead-sec">
+        <div class="b2o-wrap b2o-grid b2o-phead">
+          <div class="t">
+            <h1 class="b2o-h1">{tidy(pageTitle)}</h1>
+            {pageDesc && <p class="b2o-lede">{tidy(pageDesc)}</p>}
+          </div>
+          <figure class="b2o-bezel pic"><div class="core b2o-ph r32 sq"><img {...img('pack', true)} /></div></figure>
+        </div>
+      </section>
+    )}
+    <section class:list={['b2o-sec', 'alt', 'b2o-deliver', page === 'delivery' ? 'is-page' : '']}>
+      <div class="b2o-wrap b2o-grid">
+        <div class="side">
+          <figure class="b2o-bezel side-pic"><div class:list={['core', 'b2o-ph', page === 'delivery' ? 'tall' : '']}><img {...img(page === 'delivery' ? 'vials' : 'lab')} /></div></figure>
+          {page === '' && (
+            <div class="b2o-todo" role="img" aria-label="车间实拍图位,待补实拍">
+              <div><b>广州工厂 · 灌装车间</b>此处只放真实拍摄的车间照片<span class="b2o-tag red">待补实拍</span></div>
+            </div>
+          )}
+        </div>
+        <div class="main">
+          <h2 class="b2o-h2">{tidy(d.title)}</h2>
+          {d.intro && <p class="b2o-lede">{tidy(d.intro)}</p>}
+          <div class="b2o-chart">
+            <div class="chart-h"><h3>帛卉可调用的在库条目</h3><span>对数刻度，每格乘以 10</span></div>
+            <div class="b2o-bars" role="list">
+              <div class="axis" aria-hidden="true">
+                {TICKS.map(([p, t]) => <><i style={`left:${((p / LOGMAX) * 100).toFixed(2)}%`}></i><em style={`left:${((p / LOGMAX) * 100).toFixed(2)}%`}>{t}</em></>)}
+              </div>
+              {bars.map((b) => (
+                <a class="bar" role="listitem" href={b.h} aria-label={`${b.l} ${fmt(b.v)}${b.s ?? ''} ${b.u}:${b.n}`}>
+                  <span class="l">{b.l}</span>
+                  <span class="track"><span class="fill" style={`--v:${pct(b.v)}`}></span><span class="tipn">{b.n}</span></span>
+                  <span class="val">{fmt(b.v)}{b.s ?? ''}<small>{b.u}</small></span>
+                </a>
+              ))}
+            </div>
+            <details><summary>查看数据表</summary>
+              <table><thead><tr><th>条目</th><th>数量</th></tr></thead><tbody>{bars.map((b) => <tr><td>{b.l}</td><td>{fmt(b.v)}{b.s ?? ''} {b.u}</td></tr>)}</tbody></table>
+            </details>
+          </div>
+          <div class="b2o-cap">
+            <div class="cap">
+              <h3><b>{lines}</b> 条自动化产线</h3>
+              <div class="sq" role="img" aria-label={`${lines} 条自动化产线`}>{Array.from({ length: lines }).map(() => <i></i>)}</div>
+              <p>{ORG.certs.join('、')} 认证，广州自有工厂，欢迎验厂。</p>
+            </div>
+            {regs > 0 && (
+              <div class="cap">
+                <h3><b>{regs}</b> 个目标市场的准入要点</h3>
+                <div class="dt" role="img" aria-label={`${regs} 个市场`}>{Array.from({ length: regs }).map(() => <i></i>)}</div>
+                <p>配方阶段先核目标国的限用与禁用成分，少返工。</p>
+              </div>
+            )}
+          </div>
+          <p class="b2o-src">数字读自帛卉数据库的计数快照，点每一条可以去工厂站逐条核对。</p>
+        </div>
+      </div>
+    </section>
+  </>
+)}
+
+{/* 帛卉交付页:七个碎步骤改成一条横向链路 + 仓库图 + 待补实拍 */}
+{type === 'fx_steps' && page === 'delivery' && (
+  <section class="b2o-sec b2o-chain">
+    <div class="b2o-wrap">
+      <header class="b2o-head">
+        <h2 class="b2o-h2">{tidy(d.title)}</h2>
+        {d.intro && <p class="b2o-lede">{tidy(d.intro)}</p>}
+      </header>
+      <ol class="chain">{stepList.map((x) => <li><b>{x.label}</b><span>{x.note}</span></li>)}</ol>
+      <div class="pics">
+        <figure class="b2o-bezel"><div class="core b2o-ph r32"><img {...img('ware')} /></div></figure>
+        <div class="b2o-todo" role="img" aria-label="灌装或质检车间实拍图位,待补实拍">
+          <div><b>广州工厂 · 灌装与质检车间</b>此处只放真实拍摄的车间照片<span class="b2o-tag red">待补实拍</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+)}
+
+{/* 拿简报页:四步里的其余步骤已在右栏「提交之后」,这里不再重复 */}
+{type === 'fx_steps' && page === 'brief' && null}
+{type === 'fx_steps' && !['', 'opportunities', 'delivery', 'brief'].includes(page) && (
+  <section class="b2o-sec b2o-chain"><div class="b2o-wrap"><header class="b2o-head"><h2 class="b2o-h2">{tidy(d.title)}</h2></header><ol class="chain">{stepList.map((x) => <li><b>{x.label}</b><span>{x.note}</span></li>)}</ol></div></section>
+)}
+
+{type === 'fx_contact' && (
+  <section class="b2o-sec b2o-close">
+    <div class="b2o-wrap">
+      <div class="box">
+        <div class="b2o-ph bg"><img {...img('dark')} /></div>
+        <div class="in">
+          <h2 class="b2o-h2">{tidy(d.title)}</h2>
+          {d.intro && <p>{tidy(d.intro)}</p>}
+          <a class="b2o-btn b2o-btn-pri" href={href(d.formHref, BRIEF)}>提交店铺，拿简报<span class="ico" aria-hidden="true">{Arrow}</span></a>
+          {wechat && <span class="wx">不想填表，加微信 {wechat}</span>}
+        </div>
+      </div>
+    </div>
+  </section>
+)}
+
+{/* ───────────────────────── 拿简报 ───────────────────────── */}
+{type === 'fx_brief' && (
+  <>
+    <section class="b2o-sec b2o-bhead">
+      <div class="b2o-wrap b2o-grid">
+        <div class="t">
+          <h1 class="b2o-h1">{tidy(pageTitle)}</h1>
+          <p class="b2o-lede">只有姓名必填，手机和微信留一个。24 小时内，简报发到你留的联系方式。</p>
+        </div>
+        <figure class="b2o-bezel strip"><div class="core b2o-ph r32"><img {...img('desk', true)} /></div></figure>
+      </div>
+    </section>
+    <section class="b2o-sec b2o-bform">
+      <div class="b2o-wrap b2o-grid">
+        <div class="formcol">
+          <div class="b2o-prog" id="b2o-prog" aria-hidden="true">
+            <div data-s="1"><i></i>联系方式</div>
+            <div data-s="2"><i></i>你的情况 · 选填</div>
+            <div data-s="3"><i></i>确认同意</div>
+          </div>
+          <FactoryBlock type="fx_brief" data={d} lang={lang} db={db} siteName={siteName} email={email} whatsapp={whatsapp} wechat={wechat} />
+        </div>
+        <aside class="b2o-aside">
+          <div class="toc">
+            <h2>你会拿到的简报<span>1 至 2 页</span></h2>
+            <ol>{briefRows.map(([b, s]) => <li><b>{b}</b><span>{s}</span></li>)}</ol>
+          </div>
+          <div class="after">
+            <h2>提交之后</h2>
+            <ol>
+              <li><b>读懂你的生意</b>整理成客户产品档案，不先推销工厂</li>
+              <li><b>看市场信号，找缺口</b>只推三个方向，每个都写风险</li>
+              <li><b>简报发给你</b>24 小时内，发到你留的联系方式</li>
+            </ol>
+          </div>
+          {wechat && <div class="wxbox"><span>不想填表？直接加微信</span><b>{wechat}</b></div>}
+        </aside>
+      </div>
+    </section>
+    <script>
+      /* 三段进度 + 就地报错(只改视觉,不改字段;后端 api/b2o/brief.ts 照旧兜底校验) */
+      const f = document.querySelector<HTMLFormElement>('.b2o-bform form[action="/api/b2o/brief"]');
+      const prog = document.getElementById('b2o-prog');
+      if (f && prog) {
+        f.noValidate = true;   /* 浏览器自带的气泡提示换成字段下方的就地报错;后端校验不变 */
+        const q =(n: string) => f.querySelector<HTMLInputElement>(`[name="${n}"]`);
+        const notes = f.querySelector<HTMLTextAreaElement>('textarea[name="notes"]');
+        const tpl = notes?.value ?? '';
+        const msg = (el: Element | null, text: string) => {
+          if (!el) return null;
+          let m = el.parentElement?.querySelector<HTMLElement>('.b2o-msg');
+          if (!m) { m = document.createElement('span'); m.className = 'b2o-msg'; m.id = `b2o-msg-${++seq}`; m.setAttribute('role', 'alert'); el.insertAdjacentElement('afterend', m); }
+          m.textContent = text; return m;
+        };
+        let seq = 0;
+        /* 验收 09-24:出错的框读屏要知道「无效 + 为什么」:aria-invalid + aria-describedby 指向就地报错 */
+        const flag = (els: (HTMLElement | null)[], m: HTMLElement | null) => els.forEach((x) => {
+          if (!x) return;
+          x.classList.add('b2o-err'); x.setAttribute('aria-invalid', 'true');
+          if (m) x.setAttribute('aria-describedby', [x.getAttribute('aria-describedby'), m.id].filter(Boolean).join(' '));
+        });
+        const unflag = () => f.querySelectorAll<HTMLElement>('[aria-invalid]').forEach((x) => {
+          x.removeAttribute('aria-invalid');
+          const d = (x.getAttribute('aria-describedby') ?? '').split(' ').filter((t) => t && !t.startsWith('b2o-msg-')).join(' ');
+          d ? x.setAttribute('aria-describedby', d) : x.removeAttribute('aria-describedby');
+        });
+        const val = (n: string) => (q(n)?.value ?? '').trim();
+        const step = () => {
+          const s = [!!val('contact') && !!(val('phone') || val('wechat')), !!notes && notes.value.trim() !== tpl.trim(), !!q('agree_policy')?.checked && !!q('agree_xborder')?.checked];
+          s.forEach((ok, i) => prog.querySelector(`[data-s="${i + 1}"]`)?.classList.toggle('done', ok));
+        };
+        const clear = () => { unflag(); f.querySelectorAll('.b2o-msg').forEach((m) => m.remove()); };
+        f.addEventListener('input', () => { step(); clear(); f.querySelectorAll('.b2o-err').forEach((e) => e.classList.remove('b2o-err')); });
+        f.addEventListener('change', step);
+        f.addEventListener('submit', (e) => {
+          clear();
+          const bad: HTMLElement[] = [];
+          if (!val('contact')) { const el = q('contact'); flag([el], msg(el, '请填姓名。')); if (el) bad.push(el); }
+          if (!val('phone') && !val('wechat')) { const a = q('phone'), b = q('wechat'); flag([a, b], msg(b, '手机和微信至少留一个。')); if (a) bad.push(a); }
+          const ag = f.querySelector('.agree');
+          if (!q('agree_policy')?.checked || !q('agree_xborder')?.checked) { msg(ag?.lastElementChild ?? null, '请先勾选两项同意，再提交。'); if (!bad.length && q('agree_policy')) bad.push(q('agree_policy')!); }
+          if (bad.length) { e.preventDefault(); e.stopImmediatePropagation(); bad[0].focus(); }
+        }, true);
+        step();
+      }
+    </script>
+  </>
+)}
+
+{/* ───────────────────────── 预判记录 ───────────────────────── */}
+{type === 'fx_ledger' && (
+  <>
+    <section class="b2o-sec b2o-phead-sec">
+      <div class="b2o-wrap b2o-grid b2o-phead">
+        <div class="t">
+          <h1 class="b2o-h1">{tidy(pageTitle)}</h1>
+          {pageDesc && <p class="b2o-lede">{tidy(pageDesc)}</p>}
+        </div>
+        <figure class="b2o-bezel pic"><div class="core b2o-ph r32 wide"><img {...img('qc', true)} /></div></figure>
+      </div>
+    </section>
+    <section class="b2o-sec alt b2o-ledger">
+      <div class="b2o-wrap b2o-grid">
+        <div class="head">
+          <h2 class="b2o-h2">{tidy(d.title)}</h2>
+          {d.intro && <p class="b2o-lede">{tidy(d.intro)}</p>}
+        </div>
+        <div class="tbl">
+          <div class="b2o-tscroll">
+            <table>
+              <caption class="vh">预判记录台账</caption>
+              <thead><tr><th>预判</th><th>失效条件</th><th class="c">30 天</th><th class="c">60 天</th><th class="c">90 天</th></tr></thead>
+              <tbody>
+                {ledger.length ? ledger.map((x) => (
+                  <tr>
+                    <td><small>{String(x.made_at ?? '').slice(0, 10)}</small>{x.title}</td>
+                    <td>{x.invalidation || '待补'}</td>
+                    {[x.r30, x.r60, x.r90].map((r) => <td class="c"><i class:list={['dot', dotCls(x, r)]} title={String(r ?? '') || '待回填'}></i></td>)}
+                  </tr>
+                )) : [70, 55, 88].map((w, i) => (
+                  <tr><td>第 {i + 1} 条 · 复核中</td><td><span class="redact" style={`--w:${w}%`}></span></td><td class="c"><i class="dot"></i></td><td class="c"><i class="dot"></i></td><td class="c"><i class="dot"></i></td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div class="b2o-legend"><span><i class="dot ok"></i>成立</span><span><i class="dot x"></i>错了</span><span><i class="dot"></i>待回填</span></div>
+          {!ledger.length && <p class="b2o-src">{d.empty ? tidy(d.empty) : '第一批预判正在写入，回填后逐条公开。'}</p>}
+          <div class="b2o-cta-row"><a class="b2o-btn b2o-btn-pri" href={BRIEF}>提交店铺，拿简报<span class="ico" aria-hidden="true">{Arrow}</span></a></div>
+        </div>
+      </div>
+    </section>
+  </>
+)}
+
+{/* 其余 fx_*(工厂站专用的 fx_opps / fx_latest / fx_bases)在本站不出现;万一后台加了,按工厂站版式兜底 */}
+{['fx_opps', 'fx_latest', 'fx_bases'].includes(type) && (
+  <div class="b2o-wrap b2o-fxwrap"><FactoryBlock type={type} data={d} lang={lang} db={db} siteName={siteName} email={email} whatsapp={whatsapp} wechat={wechat} /></div>
+)}

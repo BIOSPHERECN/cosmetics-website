@@ -4,6 +4,7 @@ import { chat, loadFleet, paidFirst } from '../../../lib/fleet';
 import { overQuota, recordUse, tooMany, clientId } from '../../../lib/ratelimit';
 import { getMember } from '../../../lib/member';
 import { gate, DAILY } from '../../../lib/quota';
+import { NO_FORMULA_RULE, leaksFormula, FORMULA_NOTICE_ZH, FORMULA_NOTICE_EN } from '../../../lib/no-ai-formula';
 
 export const prerender = false;
 
@@ -207,7 +208,7 @@ export const POST: APIRoute = async ({ request }) => {
     const c = await db.prepare(
       `SELECT answer, hits_json FROM search_cache WHERE qkey=? AND created_at > datetime('now','-7 days')`)
       .bind(qkey).first<any>();
-    if (c) return json({ ok: true, answer: c.answer, hits: JSON.parse(c.hits_json), cached: true });
+    if (c) return json({ ok: true, answer: leaksFormula(c.answer) ? (lang.startsWith('zh') ? FORMULA_NOTICE_ZH : FORMULA_NOTICE_EN) : c.answer, hits: JSON.parse(c.hits_json), cached: true });
   } catch { /* 缓存表还没建好时照常走 */ }
 
   const inner = await retrieve(db, q, lang);
@@ -225,12 +226,14 @@ export const POST: APIRoute = async ({ request }) => {
 3. 涉及法规只讲方向并提醒「以最新官方文本为准」;不写具体报价与交期数字。
 4. 不用绝对化用词与医疗功效表述。
 5. **最多四句话**,先给结论,不铺排、不小标题、不列清单 —— 详细内容让客户点下面的来源卡片看。
-6. 站内资料(成分/配方/包材/专题/知识库)优先于网络资料;两者冲突时说明分歧。`
+6. 站内资料(成分/配方/包材/专题/知识库)优先于网络资料;两者冲突时说明分歧。
+7. ${NO_FORMULA_RULE}`
     : `You are the search assistant on the BIOSPHERE (帛卉化妆品) website, serving B2B buyers and brand owners.
 Rules: answer ONLY from the MATERIAL below; cite with [n]; if it is not there, say the site has no such information.
 Regulatory points: direction only, note that the latest official text governs. No prices or lead times. No superlatives or medical claims.
 At most four sentences, conclusion first, no headings or bullet lists — detail lives in the source cards below.
-Prefer our own library over web results; if they disagree, say so.`;
+Prefer our own library over web results; if they disagree, say so.
+Never give a formula table, ingredient percentages or an invented formula (web material included). If asked for a formula, answer only: "${FORMULA_NOTICE_EN}" and suggest an inquiry.`;
 
   try {
     const fleet = paidFirst(await loadFleet(db, env as any));
@@ -239,7 +242,8 @@ Prefer our own library over web results; if they disagree, say so.`;
       { role: 'system', content: sys },
       { role: 'user', content: `${zh ? '问题' : 'Question'}: ${q}\n\n${zh ? '资料' : 'MATERIAL'}:\n${ctx}` },
     ], { maxTokens: 1200, timeoutMs: 40000, fleet });
-    const answer = (r.text || '').trim();
+    let answer = (r.text || '').trim();
+    if (leaksFormula(answer)) answer = zh ? FORMULA_NOTICE_ZH : FORMULA_NOTICE_EN;   // 09-24:不给客户 AI 配方
     if (answer) {
       try {
         await db.prepare(

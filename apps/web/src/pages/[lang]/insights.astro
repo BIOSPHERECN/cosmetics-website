@@ -4,13 +4,15 @@
  * 正文在同目录 _insights-v1.md(源:助手交付/BEAUTY2OEM/市场调研-v1/跨境美妆卖家选品与供应链洞察-对外版-v1.md,
  * 只改两处:品牌行「帛卉(BIOSPHERE)」→「帛卉化妆品」、询盘入口 → /zh-cn/brief/)。表格与脚注靠 Astro 自带 GFM,零新依赖。
  * 只在 beauty2oem 出;别的站 404(工厂站不挂这份,middleware 也只把 insights/ 列进 B2O 白名单)。
+ * 09-24 图文版(助手交付/beauty2oem-UI重做/定稿方向.md):主视觉 + 左吸顶目录 + 正文 65 字行宽 + 右吸顶行动条;样式在 styles/b2o.css。
  */
 import { env } from 'cloudflare:workers';
 import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../lib/shell';
-import { Content } from './_insights-v1.md';
+import { Content, getHeadings } from './_insights-v1.md';
+import '../../styles/b2o.css';
 
 export const prerender = false;
 
@@ -22,6 +24,7 @@ if (shell.site?.id !== 'beauty2oem' || lang !== 'zh-cn') return new Response('No
 const path = `/${lang}/insights/`;
 const title = '跨境美妆卖家选品与供应链洞察(2026 秋)';
 const desc = '写给国内跨境美妆卖家:出口与平台数据、选品与选厂逻辑、17 个市场的准入要点,以及帛卉基于美国亚马逊榜单快照和各国法规原文的六条独家洞察。每个数字都有出处脚注。';
+const toc = getHeadings().filter((h) => h.depth === 2 && !/脚注|footnote/i.test(h.text));
 ---
 
 <BaseLayout
@@ -32,39 +35,58 @@ const desc = '写给国内跨境美妆卖家:出口与平台数据、选品与�
 >
   <a class="ck-skip-link" href="#main">跳到正文</a>
   <SiteHeader locale={lang as any} path={path} siteName={shell.site!.name} siteNameZh={shell.site!.tagline ?? ''}
-              nav={shell.nav} showLocaleSwitch={false} />
+              nav={shell.nav} showLocaleSwitch={false} brand={shell.site!.id} />
   <main id="main" class="ins">
-    <p class="eyebrow">洞察 · 帛卉化妆品公开研究 v1 · 数据截至 2026-09-23</p>
-    <h1>{title}</h1>
-    <article class="doc"><Content /></article>
-    <p class="cta"><a class="btn" href="/zh-cn/brief/">提交店铺,拿机会简报 →</a></p>
+    <section class="b2o-sec b2o-ins-head">
+      <div class="b2o-wrap b2o-grid">
+        <div class="t">
+          <p class="meta">洞察 · 帛卉化妆品公开研究 v1 · 数据截至 2026-09-23</p>
+          <h1 class="b2o-h1">{title}</h1>
+          <p class="b2o-lede">出口与平台数据、选品和选厂逻辑、17 个市场的准入要点，以及六条帛卉独家洞察。每个数字都有出处脚注。</p>
+        </div>
+        <figure class="b2o-bezel pic"><div class="core b2o-ph"><img src="/b2o/img/11-notebook.webp" width="1248" height="832" alt="浅色木桌上摊开一本空白笔记本,旁边是几支无品牌的样品瓶和一杯茶" loading="eager" fetchpriority="high" decoding="async" /></div></figure>
+      </div>
+    </section>
+    <section class="b2o-sec alt b2o-ins-body">
+      <div class="b2o-wrap b2o-grid">
+        <nav class="b2o-ins-toc" id="目录" aria-label="本文目录">
+          <h2>目录</h2>
+          <ol>{toc.map((h) => <li><a href={`#${h.slug}`}>{h.text}</a></li>)}</ol>
+        </nav>
+        <article class="doc"><Content /></article>
+        <aside class="b2o-ins-rail">
+          <div class="card">
+            <span class="b2o-tag accent">简报样张</span>
+            <h2>这份是行业版，你的店铺那一版只写你。</h2>
+            <ol>
+              <li>产品结构<i style="--w:86%"></i></li>
+              <li>缺口<i style="--w:64%"></i></li>
+              <li>三个方向，每个写风险<i style="--w:78%"></i></li>
+            </ol>
+            <a class="b2o-btn b2o-btn-pri" href="/zh-cn/brief/">提交店铺，拿简报<span class="ico" aria-hidden="true">→</span></a>
+          </div>
+        </aside>
+      </div>
+    </section>
   </main>
   <SiteFooter locale={lang as any} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site!.name } as any}
               siblings={[]} email={shell.email} nav={shell.nav} showLocaleSwitch={false} cnOnly={true} />
 
   <style>
-    .ins { max-width: 56rem; margin: 0 auto; padding: 3rem var(--ck-gutter, 1rem) 4rem; }
-    .eyebrow { font-size: .875rem; color: var(--ck-ink-soft); margin: 0 0 .5rem; }
-    h1 { font-size: clamp(1.75rem, 4vw, 2.5rem); font-weight: 650; letter-spacing: -.02em; line-height: 1.25; margin: 0 0 2rem; }
-    .doc :global(h2) { font-size: 1.5rem; margin: 3rem 0 1rem; }
-    .doc :global(h3) { font-size: 1.1875rem; margin: 2rem 0 .75rem; }
     .doc :global(p), .doc :global(li) { font-size: 1rem; line-height: 1.8; color: var(--ck-ink-soft); }
     .doc :global(p) { margin: 0 0 1rem; }
     .doc :global(ul), .doc :global(ol) { padding-inline-start: 1.25rem; margin: 0 0 1rem; }
     .doc :global(strong) { color: var(--ck-ink, inherit); }
-    .doc :global(blockquote) { margin: 1rem 0; padding: .75rem 1rem; border-inline-start: 3px solid var(--ck-accent); background: rgb(0 0 0 / .03); border-radius: 8px; }
+    .doc :global(blockquote) { margin: 0 0 1.5rem; padding: .75rem 1rem; border-inline-start: 3px solid var(--ck-accent); background: var(--ck-surface); border-radius: 8px; }
     .doc :global(blockquote p) { margin: 0; font-size: .9375rem; }
-    .doc :global(hr) { border: 0; border-top: 1px solid rgb(0 0 0 / .1); margin: 2.5rem 0; }
+    .doc :global(hr) { border: 0; border-top: 1px solid var(--ck-line); margin: 2.5rem 0; }
     /* 宽表在手机上横向滚动,不撑破页面 */
     .doc :global(table) { display: block; overflow-x: auto; border-collapse: collapse; margin: 0 0 1.25rem; font-size: .875rem; line-height: 1.6; }
-    .doc :global(th), .doc :global(td) { border: 1px solid rgb(0 0 0 / .12); padding: .5rem .625rem; vertical-align: top; min-width: 5rem; }
-    .doc :global(th) { background: rgb(0 0 0 / .04); text-align: start; white-space: nowrap; }
+    .doc :global(th), .doc :global(td) { border: 1px solid var(--ck-line); padding: .5rem .625rem; vertical-align: top; min-width: 5rem; }
+    .doc :global(th) { background: var(--ck-surface); text-align: start; white-space: nowrap; }
     .doc :global(a) { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
     .doc :global(sup a) { text-decoration: none; color: var(--ck-accent); padding: 0 .1em; }
     .doc :global(.footnotes) { margin-top: 3rem; font-size: .8125rem; }
     .doc :global(.footnotes li) { font-size: .8125rem; line-height: 1.65; overflow-wrap: anywhere; }
-    .cta { margin: 2.5rem 0 0; }
-    .btn { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 1.375rem; border-radius: 980px; text-decoration: none;
-           font-size: .9375rem; font-weight: 600; background: var(--ck-accent); color: var(--ck-on-accent); }
   </style>
 </BaseLayout>

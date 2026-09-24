@@ -21,6 +21,7 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { CHAIN_COUNTS } from '@cosmetic/core/content/chain.ts';
+import { ORG } from '@cosmetic/core/content/org.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { pageShell } from '../../../lib/shell';
 
@@ -46,7 +47,7 @@ const T = zh ? {
     { step: 1, name: '包材库', n: CHAIN_COUNTS.packaging, unit: '款', href: `${B}/packaging/`,
       desc: '瓶、罐、管、泵头、喷头。白底实拍,按类型、材质、容量、适配剂型筛。',
       detail: '3,674 款有实物图 · 30 种类型 · 47 种材质' },
-    { step: 2, name: '配方库', n: CHAIN_COUNTS.formula, unit: '支', href: `${B}/formulas/`,
+    { step: 2, name: '配方库', n: ORG.formulas.value, unit: '个成熟配方', href: `${B}/formulas/`,
       desc: '按品类、功效、剂型分。每支写明关键成分与适配市场,不写做不到的宣称。',
       detail: '可按剂型反查能装它的包材' },
     { step: 3, name: '包装盒', n: CHAIN_COUNTS.carton, unit: '款', href: `${B}/packaging/?t=use-gift,outer-carton`,
@@ -73,7 +74,7 @@ const T = zh ? {
     { step: 1, name: 'Packaging', n: CHAIN_COUNTS.packaging, unit: 'items', href: `${B}/packaging/`,
       desc: 'Bottles, jars, tubes, pumps and sprayers. Real shots on white, filtered by type, material, capacity and format.',
       detail: '3,674 photographed · 30 types · 47 materials' },
-    { step: 2, name: 'Formulas', n: CHAIN_COUNTS.formula, unit: '', href: `${B}/formulas/`,
+    { step: 2, name: 'Formulas', n: ORG.formulas.value, unit: 'mature', href: `${B}/formulas/`,
       desc: 'By category, benefit and format. Key actives and eligible markets stated; no claims we cannot support.',
       detail: 'Cross-reference packaging that fits each format' },
     { step: 3, name: 'Cartons', n: CHAIN_COUNTS.carton, unit: '', href: `${B}/packaging/?t=use-gift,outer-carton`,

@@ -5,11 +5,12 @@
 占当天 D1 读量六成 —— 六站总览页每次渲染都现算计数,而 GPTBot 一周抓这些页 20 万次。
 SQLite 的 COUNT(*) 是全表扫,数字又一天变不了几次,所以改成:这里算好 → 写一行 → 页面读一行(1 行 vs 8,235 行)。
 灌完数据(品牌、古方、法规、目录…)顺手跑一下;tools/pulse-collect.py 也会带着跑。
-    python tools/counts-refresh.py"""
-import io, json, os, sys
+    python tools/counts-refresh.py          # 全部计数 + BEAUTY2OEM 快照
+    python tools/counts-refresh.py --b2o    # 只导 BEAUTY2OEM 快照(机会卡有没有 + 公开预判台账)"""
+import io, json, os, subprocess, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-from _bohui import d1, d1_exec  # noqa: E402
+from _bohui import d1, d1_exec, _wenv  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 Q = {
     "bases": "SELECT COUNT(*) n FROM herb_bases", "classics": "SELECT COUNT(*) n FROM classics", "inci": "SELECT COUNT(*) n FROM inci_catalog",
@@ -27,6 +28,8 @@ Q = {
     "summaries": "SELECT COUNT(*) n FROM market_products WHERE summary_zh IS NOT NULL AND summary_zh <> ''",
     "formulas": "SELECT COUNT(*) n FROM formulas WHERE status IN ('sample','active')",
     "packaging": "SELECT COUNT(*) n FROM packaging WHERE status='active'",
+    # 09-24 货架口径(对外用这个):与 /packaging/ 列表页同一谓词,客户点进去翻到的就是这个数
+    "pack_shelf": "SELECT COUNT(*) n FROM packaging WHERE status IN ('sample','active')",
     # 09-24 安全架构 C5:站内 AI 检索页、AI 工作台首屏的库存量(原来每次渲染现算 COUNT)
     "ingredients": "SELECT COUNT(*) n FROM ingredients WHERE status='published'",
     "trend_active": "SELECT COUNT(*) n FROM trends WHERE status='active'",
@@ -35,7 +38,27 @@ Q = {
 }
 
 
+def b2o_snap():
+    """09-24 图文版零查库:BEAUTY2OEM 的「有没有已发布的机会卡」和公开预判台账(≤60 行、只取公开字段)导成静态 JSON,
+    随构建打包,页面(components/B2oBlock.astro)只读它。查询带 -c apps/web/wrangler.toml 写明库名,失败就报错退出、不覆盖旧快照。"""
+    def q(sql):
+        p = subprocess.run(["npx", "wrangler", "d1", "execute", "bohui-cms-v2", "--remote", "--json", "-c", "apps/web/wrangler.toml", "--command", sql],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=os.path.dirname(HERE), env=_wenv(),
+                           shell=(os.name == "nt"), timeout=180)
+        return json.loads(p.stdout)[0]["results"]
+    snap = {
+        "has_cards": bool(q("SELECT 1 AS x FROM b2o_opp_cards WHERE status = 'published' LIMIT 1")),
+        "ledger": q("SELECT id, made_at, title, invalidation, outcome, r30, r60, r90 FROM b2o_predictions WHERE is_public = 1 ORDER BY made_at DESC, id DESC LIMIT 60"),
+        "updated_at": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M"),
+    }
+    f = os.path.join(os.path.dirname(HERE), "apps", "web", "src", "data", "b2o-snap.json")
+    io.open(f, "w", encoding="utf-8", newline="\n").write(json.dumps(snap, ensure_ascii=False, indent=1))
+    print("BEAUTY2OEM 快照已写:", f, "· 有卡", snap["has_cards"], "· 台账", len(snap["ledger"]), "行(重新构建部署后生效)")
+
+
 def main():
+    b2o_snap()
+    if "--b2o" in sys.argv: return
     out = {}
     for k, sql in Q.items():
         try: out[k] = int(d1(sql)[0]["n"])
