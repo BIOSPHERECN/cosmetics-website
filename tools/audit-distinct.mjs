@@ -10,8 +10,9 @@
  * 看的是**成句的长文本有多少是逐字重复的**:
  * 一句 30 字以上的话在两个站上一字不差,那就是抄的。
  */
-const BASE = process.argv[2] || 'https://bohui-web.huanggw20.workers.dev';
-const SITES = ['biosphere-ai', 'beauty2oem', 'skin2oem', 'medierba', 'biosphere-oralcare'];
+import { LIVE, ALL_SITES, siteBase } from './probe-fetch.mjs';   // 09-24:默认打正式域名(只有两站在线),给基址才用 ?site= 切五站
+const ARG = process.argv[2];
+const SITES = ARG ? ALL_SITES : Object.keys(LIVE);
 
 /**
  * 只取 <main> 里的内容,并且**先切掉集团生态版块与页脚**。
@@ -40,7 +41,8 @@ const sentences = (txt) => [...new Set(
 
 const corpus = {};
 for (const s of SITES) {
-  const r = await fetch(`${BASE}/zh-cn/?site=${s}`, { signal: AbortSignal.timeout(45000) });
+  const [b, qs] = siteBase(ARG, s);
+  const r = await fetch(`${b}/zh-cn/${qs ? '?' + qs : ''}`, { signal: AbortSignal.timeout(45000) });
   corpus[s] = new Set(sentences(ownBody(await r.text())));
 }
 

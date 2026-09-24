@@ -7,8 +7,10 @@
  *   data-brand   → 品牌色微调(sites/<id>/src/styles/brand.css)
  * 所以「换风格」= 换一个属性值,不动任何页面代码。这是 5 域名 × 4 风格能在一套模板里跑的原因。
  */
+import { ldJson } from '../content/ldjson.ts';
 import { HREFLANG, OG_LOCALE, LOCALES, isRtl, switchLocalePath, type Locale } from '../i18n/index.ts';
 import ChatWidget from '../components/ChatWidget.astro';
+import { env as cfEnv } from 'cloudflare:workers';
 import '../styles/tokens.css';
 // 字体层放在中性令牌之后、流派之前:它改写字体族与字号阶梯,
 // 但仍允许各流派/风格在其上继续覆盖(如奢华系改用衬线)。
@@ -118,6 +120,8 @@ const ogImg = ogImage
   ? (ogImage.startsWith('http') ? ogImage : `${base}${ogImage}`)
   : `${base}/media/57`;
 const ld = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+/* 09-24 W1b:Turnstile site key 读运行时 vars(公司 = wrangler.toml,平台 = mkconfig.py 写入自己那把);空 = 不注入组件 */
+const tsKey = String((cfEnv as any)?.TURNSTILE_SITE_KEY ?? '').trim();
 ---
 
 <!doctype html>
@@ -173,29 +177,16 @@ const ld = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
     {/* 结构化数据 —— 搜索引擎靠它出富摘要,AI 答案引擎靠它取事实。
         普通 HTML 里的「20,000 ㎡」机器要靠猜;放进 JSON-LD 就是明确的一条数据。 */}
     {ld.map((obj) => (
-      <script type="application/ld+json" set:html={JSON.stringify(obj)} />
+      <script type="application/ld+json" set:html={ldJson(obj)} />
     ))}
 
-    {/* dtc 主题的标题字。口味迭代记录:系统雅黑(黑压压)→ 思源宋体(创始人:
-        「宋体不好看了,还是换思源或者阿里字体」)→ 现为**思源黑体**(Noto Sans SC),
-        字栈里备了阿里普惠体(本机装有就优先普惠体的圆润,没装落思源黑)。
-        display=swap:字体到达前先用系统字渲染,大陆直连拿不到 Google Fonts 也只是回落。 */}
-    {theme === 'dtc' && (
-      <>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        {/* 09-23 B3 国内可访问:外链样式表放 head 会挡渲染(display=swap 管不到这张 CSS),
-            国内连不上 Google 就白屏到超时。改成 media=print 预载、到了再切 all —— 不挡首屏,
-            海外照样用上思源黑体;国内拿不到就一直是字栈里的苹方/雅黑。 */}
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@500;700;900&display=swap" media="print" onload="this.media='all'" />
-        <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@500;700;900&display=swap" /></noscript>
-      </>
-    )}
+    {/* 09-24 W1:撤掉 Google Fonts(beauty2oem 铁令:国内可访问,不引 Google 服务)。
+        dtc 标题字栈回落到本机阿里普惠体 / 苹方 / 雅黑;要统一字形再自托管(@fontsource)。 */}
     <slot name="head" />
     {/* Organization —— 每一页都带。2026-09-07 之前它只在 CMS 页与资讯页出现,
       而 AI 答案引擎最常落到的恰恰是单品详情页与服务页,那些页一点公司信息都没有。
       @id 全站一致,同一页重复出现也会被消费方合并,所以不必去删各页里已有的那份。 */}
-  <script type="application/ld+json" set:html={JSON.stringify(orgJsonLd(base, siteName, locale, description, (Astro.locals as any)?.contact))} is:inline />
+  <script type="application/ld+json" set:html={ldJson(orgJsonLd(base, siteName, locale, description, (Astro.locals as any)?.contact))} is:inline />
 </head>
   <body>
     <slot />
@@ -249,6 +240,28 @@ const ld = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
         sync();
       })();
     </script>
+    {/* 09-24 W1b 人机验证:凡是提交到询盘 / 简报接口的表单,统一在提交键前注入 Turnstile(服务端配了 secret 就缺令牌拒收,见 lib/human.ts)。
+        已自带组件的表单跳过;没有这类表单的页面不加载脚本。组件来自 challenges.cloudflare.com(国内可达,不走 Google)。 */}
+    {tsKey && (
+      <script is:inline define:vars={{ tsKey }}>
+        try {
+          const fs = document.querySelectorAll('form[action="/api/inquiry"]:not([data-hc]),form[action="/api/b2o/brief"]:not([data-hc])');   /* data-hc = 已接点选码(C8),不再注入 */
+          const mine = [];
+          fs.forEach((f) => {
+            if (f.querySelector('.cf-turnstile')) return;
+            const d = document.createElement('div'); d.className = 'cf-turnstile'; d.dataset.sitekey = tsKey; d.dataset.size = 'flexible'; d.style.margin = '.5rem 0';
+            const b = f.querySelector('button[type=submit],input[type=submit],button:not([type])');
+            b ? b.parentNode.insertBefore(d, b) : f.appendChild(d); mine.push(d);
+          });
+          if (fs.length) {
+            if (window.turnstile) mine.forEach((d) => window.turnstile.render(d, { sitekey: tsKey, size: 'flexible' }));
+            else if (!document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]')) {
+              const s = document.createElement('script'); s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'; s.async = true; document.head.appendChild(s);
+            }
+          }
+        } catch (e) {}
+      </script>
+    )}
     {/* 真人信标:只有能执行 JS 的浏览器才会打到 /api/pulse,爬虫不会 —— 看真人流量只认这一条(2026-09-15)。
         不带任何个人信息;后台路径不打。 */}
     <script is:inline>

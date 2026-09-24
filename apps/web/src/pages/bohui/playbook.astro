@@ -16,7 +16,7 @@ const url = new URL(Astro.request.url);
 const q = (url.searchParams.get('q') ?? '').trim();
 const kind = url.searchParams.get('kind') ?? '';
 const stage = url.searchParams.get('stage') ?? '';
-const KINDS = ['路径', '工作流', '规则', '策略', '提示词', '模板', '案例', '资料'];
+const KINDS = ['路径', '工作流', '规则', '策略', '提示词', '模板', '案例', '资料', '知识卡片', '方法卡'];   // 后两类 09-24 C4:走人审上下线,在 /bohui/kb 操作
 const STAGES = ['找客户', '背调', '开发信', '跟进', '询盘', '谈判', '合规', '市场', '通用'];
 
 const where: string[] = [], bind: unknown[] = [];
@@ -38,7 +38,7 @@ const slug = want && (await c.db.prepare(`SELECT slug FROM playbooks WHERE slug=
 const cur = slug ? await c.db.prepare(`SELECT * FROM playbooks WHERE slug=?`).bind(slug).first<any>() : null;
 const edit = url.searchParams.get('edit') === '1';
 const link = (p: Record<string, string>) => { const u = new URLSearchParams(); if (q) u.set('q', q); if (kind) u.set('kind', kind); if (stage) u.set('stage', stage); for (const [k, v] of Object.entries(p)) v ? u.set(k, v) : u.delete(k); return `?${u}`; };
-const KC: Record<string, string> = { 路径: '#0b6e64', 工作流: '#1d4ed8', 规则: '#7c3aed', 策略: '#b45309', 提示词: '#0f766e', 模板: '#be185d', 案例: '#a16207', 资料: '#475569' };
+const KC: Record<string, string> = { 路径: '#0b6e64', 工作流: '#1d4ed8', 规则: '#7c3aed', 策略: '#b45309', 提示词: '#0f766e', 模板: '#be185d', 案例: '#a16207', 资料: '#475569', 知识卡片: '#15803d', 方法卡: '#4338ca' };
 ---
 
 <AdminShell title="销售知识库" active="playbook" email={c.sess.email} tenant={c.tenant}>
@@ -92,7 +92,8 @@ const KC: Record<string, string> = { 路径: '#0b6e64', 工作流: '#1d4ed8', �
             <select name="stage">{STAGES.map((s) => <option value={s} selected={(cur?.stage ?? '通用') === s}>{s}</option>)}</select>
             <input name="tags" value={cur?.tags ?? ''} placeholder="标签,逗号分隔" />
           </div>
-          {cur?.slug === 'rules-for-ai' && <p class="warn">这一篇会原样进入开发信 / 询盘首回的模型提示词。改完看下一封信有没有按新规则写。</p>}
+          {cur?.status && <p class="warn">这是一张卡。改了标题或正文,保存后回到「待审」,要管理员在知识库页重新人审才能对外用。</p>}
+          {cur?.slug === 'rules-for-ai' &&<p class="warn">这一篇会原样进入开发信 / 询盘首回的模型提示词。改完看下一封信有没有按新规则写。</p>}
           <textarea name="body" rows="28" required>{cur?.body ?? ''}</textarea>
           <div class="row end"><a class="btn" href={cur ? link({ s: cur.slug }) : link({})}>取消</a><button class="btn pri" type="submit">保存</button></div>
         </form>
@@ -100,7 +101,8 @@ const KC: Record<string, string> = { 路径: '#0b6e64', 工作流: '#1d4ed8', �
         <>
           <div class="dh">
             <span class="k big" style={`--c:${KC[cur.kind] || '#475569'}`}>{cur.kind}</span>
-            <span class="meta">{cur.stage} · {cur.tags} · 更新 {String(cur.updated_at).slice(0, 16)}{cur.slug === 'rules-for-ai' ? ' · 进 AI 提示词' : ''}</span>
+            <span class="meta">{cur.stage} · {cur.tags} · 更新 {String(cur.updated_at).slice(0, 16)}{cur.slug === 'rules-for-ai' ? ' · 进 AI 提示词' : ''}{cur.status ? ` · ${cur.status === '在用' ? `已人审(${cur.reviewed_by ?? ''})可对外` : `${cur.status} · 不可对外`}` : ''}{cur.source && !/^(manual|edited|seed)/.test(cur.source) ? ` · 出处 ${cur.source}` : ''}</span>
+            {cur.status && <a class="btn" href="/bohui/kb/">去人审 / 上下线</a>}
             <button class="btn" type="button" data-copy title="复制正文(提示词 / 模板直接贴去用)">复制正文</button>
             <a class="btn" href={link({ s: cur.slug, edit: '1' })}>编辑</a>
           </div>

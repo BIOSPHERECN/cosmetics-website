@@ -94,6 +94,12 @@ const NAV: { group: string; items: NavItem[] }[] = [
     { id: 'customs', label: '海关线索', href: '/bohui/customs/', roles: SALES },
     { id: 'companies', label: 'CRM · 客户', href: '/bohui/companies/', roles: SALES },
     { id: 'deals', label: 'CRM · 机会看板', href: '/bohui/deals/', roles: SALES },
+    /* 2026-09-24 W3:BEAUTY2OEM 客户认同七级(SOP 03-v2 §4.1)、Amazon 快照实力 / 速度榜、机会简报草稿助手(只出稿,审批后人工发) */
+    { id: 'b2o-trust', label: '客户认同等级', href: '/bohui/b2o-trust/', roles: SALES },
+    { id: 'b2o-rank', label: '实力榜与速度榜', href: '/bohui/b2o-rank/', roles: SALES },
+    { id: 'b2o-brief', label: '机会简报助手', href: '/bohui/b2o-brief/', roles: SALES },
+    /* 2026-09-24 C3:预判引擎机会卡池(SOP 02-v2 §8.3)—— 研发签字、改状态、30/60/90 天复盘;研发(lab)也要进来签字 */
+    { id: 'b2o-pool', label: '机会卡池', href: '/bohui/b2o-pool/', roles: [...SALES, 'lab'] },
     { id: 'playbook', label: '销售知识库', href: '/bohui/playbook/', roles: SALES },
     { id: 'market', label: '爆款周报', href: '/bohui/market/', roles: SALES },
     /* 2026-09-18 GPT 设计包 P004 落地:按市场×类目看成分出现频率(频率≠销量),业务部与周报同一批人看 */

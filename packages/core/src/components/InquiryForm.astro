@@ -26,6 +26,22 @@ export interface Props {
 
 const { title, intro, labels, email, subject } = Astro.props;
 const action = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+const zh = String(Astro.currentLocale ?? '').startsWith('zh') || /^\/zh(?:-|\/)/.test(Astro.url.pathname);
+const INQUIRY_QS = (zh
+  ? [
+      '① 想做什么产品（品类、功效）？', '答:', '',
+      '② 卖到哪些国家、走什么渠道？', '答:', '',
+      '③ 首单大概多少量、计划什么时候上市？', '答:', '',
+      '④ 有没有参考产品或配方（可贴链接）？', '答:', '',
+      '⑤ 需要哪些认证或注册（比如 FDA、CPNP、HALAL）？', '答:',
+    ]
+  : [
+      '① What product do you want to make (category and benefits)?', 'A:', '',
+      '② Which countries and sales channels are you targeting?', 'A:', '',
+      '③ What is the approximate first-order volume and planned launch time?', 'A:', '',
+      '④ Do you have a reference product or formula (links are welcome)?', 'A:', '',
+      '⑤ Which certifications or registrations do you need (such as FDA, CPNP, or HALAL)?', 'A:',
+    ]).join('\n');
 ---
 
 <section class="fm ck-section" id="inquiry" aria-label={title}>
@@ -48,29 +64,17 @@ const action = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
           <input class="in" type="text" name="name" required autocomplete="name" />
         </label>
         <label class="field">
-          <span class="lab">{labels.company}</span>
-          <input class="in" type="text" name="company" required autocomplete="organization" />
-        </label>
-      </div>
-      <div class="row">
-        <label class="field">
           <span class="lab">{labels.email}</span>
-          <input class="in" type="email" name="email" required autocomplete="email" />
-        </label>
-        <label class="field">
-          <span class="lab">{labels.country}</span>
-          <input class="in" type="text" name="country" required autocomplete="country-name" />
+          <input class="in" type="email" name="email" autocomplete="email" />
         </label>
       </div>
-      {/* WhatsApp:海外采购最常用的联络方式,留了号码业务员能直接聊,不用等邮件来回。可选,不设门槛。
-          标签统一写 WhatsApp 不翻译(同页脚 WeChat 的纪律:它是标识符)。 */}
       <label class="field">
-        <span class="lab">WhatsApp <small style="font-weight:400;opacity:.7">(optional)</small></span>
+        <span class="lab">{zh ? 'WhatsApp 或电话（邮箱或此项至少填一个）' : 'WhatsApp or phone (email or this field is required)'}</span>
         <input class="in" type="tel" name="whatsapp" autocomplete="tel" inputmode="tel" placeholder="+62 812 3456 7890" maxlength="40" />
       </label>
       <label class="field">
         <span class="lab">{labels.need}</span>
-        <textarea class="in ta" name="message" rows="5" required data-prefill-need></textarea>
+        <textarea class="in ta" name="message" rows="15" required data-prefill-need>{INQUIRY_QS}</textarea>
         {/* AI 客服「转人工」的交接:对话摘要经 sessionStorage 带进来,预填后即清,
             不进 URL(隐私纪律:个人内容不进查询串)。只填空表单,不覆盖人已写的字。
             选品链路带过来的组合(配方号/包材号/市场/诉求)走查询串,那是产品信息不是隐私。 */}
@@ -78,14 +82,14 @@ const action = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
           try {
             const ta = document.querySelector('textarea[data-prefill-need]');
             const s = sessionStorage.getItem('bh-chat-handoff');
-            if (ta && s && !ta.value) { ta.value = s; sessionStorage.removeItem('bh-chat-handoff'); }
+            if (ta && s) { ta.value += String.fromCharCode(10, 10) + s; sessionStorage.removeItem('bh-chat-handoff'); }
             const q = new URLSearchParams(location.search);
             const bits = [];
             if (q.get('formula')) bits.push('配方 ' + q.get('formula'));
             if (q.get('pack')) bits.push('包材 ' + q.get('pack'));
             if (q.get('market')) bits.push('目标市场 ' + q.get('market'));
             if (q.get('claim')) bits.push('诉求 ' + q.get('claim'));
-            if (ta && bits.length && !ta.value) ta.value = bits.join(' · ') + String.fromCharCode(10, 10);
+            if (ta && bits.length) ta.value += String.fromCharCode(10, 10) + bits.join(' · ');
           } catch {}
         </script>
       </label>
@@ -103,12 +107,24 @@ const action = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
         if (!f) return;
         const fb = document.getElementById('inqfb');
         const zh = document.documentElement.lang.indexOf('zh') === 0;
+        const email = f.elements.email;
+        const whatsapp = f.elements.whatsapp;
+        const validateContact = () => {
+          const missing = !email.value.trim() && !whatsapp.value.trim();
+          const msg = missing ? (zh ? '邮箱和 WhatsApp 或电话至少填写一个。' : 'Enter an email or a WhatsApp/phone number.') : '';
+          email.setCustomValidity(msg);
+          whatsapp.setCustomValidity(msg);
+          return !missing;
+        };
+        email.addEventListener('input', validateContact);
+        whatsapp.addEventListener('input', validateContact);
         if (new URLSearchParams(location.search).get('sent') === '1' && fb) {
           fb.textContent = zh ? '已收到,我们会尽快回复。' : 'Received. We will get back to you shortly.';
           fb.className = 'fb ok';
         }
         f.addEventListener('submit', async (e) => {
           e.preventDefault();
+          if (!validateContact()) { f.reportValidity(); return; }
           const btn = f.querySelector('.submit');
           btn.disabled = true;
           if (fb) { fb.className = 'fb'; fb.textContent = zh ? '提交中…' : 'Sending…'; }

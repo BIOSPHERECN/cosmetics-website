@@ -23,6 +23,7 @@ import { loadFleet, vision, chat, paidFirst } from '../../../lib/fleet';
 import { replyLanguageRule, chatInLanguage } from '../../../lib/translate.ts';
 import { overQuota, recordUse, tooMany, clientId, sweep } from '../../../lib/ratelimit';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { aiGate } from '../../../lib/member';
 
 export const prerender = false;
 
@@ -51,6 +52,9 @@ export const POST: APIRoute = async ({ request }) => {
      这类风险不需要攻击者有技术:一个写错的爬虫就能触发。 */
   const who = clientId(request);
   if (await overQuota(db, 'ai.skin', who)) return tooMany('ai.skin');
+  /* 09-24 C10(代码审计 P1-4):只给会员用,并计每日额度 —— 不登录、只按 IP 限次时,换 IP 就能把模型免费额度烧干 */
+  const denied = await aiGate(request, env, db, 'ai.skin');
+  if (denied) return denied;
 
   try {
     await recordUse(db, 'ai.skin', who);

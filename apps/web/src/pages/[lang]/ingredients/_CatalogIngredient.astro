@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 /**
@@ -66,25 +67,22 @@ const fns = zh ? fnZh : fnEn;
 const rating: 'green' | 'yellow' | 'red' = fact?.rating ?? (by('cn-stsc').length ? 'red' : by('eu-annex').length ? 'yellow' : 'green');
 const what = zh ? (fact?.what_zh || fact?.what_en) : (fact?.what_en || fnEn.join(', '));
 
-/* 含该成分的热销产品:走 market_product_inci 精确键 JOIN(2026-09-18 任务 I,GPT 设计包 product_ingredients):instr 子串 PEG-8 会命中 PEG-80;
-   facts 键与 cn 键都试(IN (?, ?));表灌满前查空就不显段 */
-const prods = await many<{ id: number; brand: string | null; title: string; title_zh: string | null; country: string | null; cat_zh: string | null; cat: string | null; total: number }>(
-  `SELECT p.id, p.brand, p.title, p.title_zh, p.country, p.cat, p.cat_zh, COUNT(*) OVER () AS total FROM market_product_inci m JOIN market_products p ON p.id = m.product_id
-    WHERE m.inci_key IN (?, ?) GROUP BY p.id ORDER BY p.last_seen DESC, p.id DESC LIMIT 12`, fk, ck);
-const total = prods[0]?.total ?? 0;
-/* 相关成分:先按「同产品共现次数」(GPT 原则:关系表比子串/功能标签更真),排除水/甘油等高频基础成分;
-   关系表没灌到这个成分时退回旧口径(同首功能标签,facts rowid ≈ 产品数降序) */
-const BASE = ['WATER', 'AQUA', 'WATER/AQUA/EAU', 'GLYCERIN', 'PHENOXYETHANOL', 'BUTYLENE GLYCOL', '1,2-HEXANEDIOL', 'ETHYLHEXYLGLYCERIN', 'SODIUM HYALURONATE', 'CAPRYLIC/CAPRIC TRIGLYCERIDE', 'XANTHAN GUM', 'DISODIUM EDTA', 'CARBOMER', 'TOCOPHEROL', 'PROPANEDIOL', 'DIMETHICONE'];
-const cooc = prods.length ? await many<{ inci_key: string; name_zh: string | null; functions_zh: string | null; functions: string | null; rating: string | null }>(
-  /* 09-23 A1:共现只在含它的前 200 个产品里算(原来全量自连接:烟酰胺一次读 133 万行、1.4 秒,每小时合计 8 千万行);
-     facts 只给最后 8 条补名字,不再逐行 LEFT JOIN。
-     ponytail: 200 是抽样上限,排前 8 的共现成分基本稳定;要全量口径就离线算一张共现表 */
-  `WITH a AS (SELECT DISTINCT product_id FROM market_product_inci WHERE inci_key IN (?, ?) LIMIT 200),
-     t AS (SELECT b.inci_key, COUNT(*) AS n FROM a JOIN market_product_inci b ON b.product_id = a.product_id
-            WHERE b.inci_key NOT IN (?, ?, ${BASE.map(() => '?').join(',')}) GROUP BY b.inci_key ORDER BY n DESC LIMIT 8)
-   SELECT t.inci_key, f.name_zh, f.functions_zh, f.functions, f.rating FROM t LEFT JOIN ingredient_facts f ON f.inci_key = t.inci_key ORDER BY t.n DESC`, fk, ck, fk, ck, ...BASE) : [];
+/* 含该成分的热销产品 / 常与它同配的成分(09-24 零读取第一批):改读固定表 ing_prods / ing_cooc(迁移 0123)。
+   两段原来每次现算(market_product_inci JOIN 取前 12 款 + 总数;含它的前 100 个产品里数共现、排除水/甘油等基础成分),
+   靠 memo 仍是公司库部署后残留读量第 1、2 名(每天约 1.5 亿行)。现在由 tools/ing-precompute.py 在本机按原 SQL 算好写入,口径一字没改,
+   这里按主键读(用去重后的 keys:fk = ck 时实测读 2 行,写成 IN (?, ?) 同值两次要读 3 行)。
+   fk 那行存的是 fk ∪ cnKey(fk) 两键合并的结果(= 原 IN (fk, ck));fk 不在产品表里时才取 ck 那行。
+   表里没有这个键 → 两段都不显示,不回退现算。只在 full 块里渲染,未登录 / 超额访客不查。 */
+const pre = full ? await many<{ inci_key: string; total: number; pj: string; cj: string | null }>(
+  `SELECT p.inci_key, p.total, p.json AS pj, c.json AS cj FROM ing_prods p LEFT JOIN ing_cooc c ON c.inci_key = p.inci_key WHERE p.inci_key IN (${inK})`, ...keys) : [];
+const pr = pre.find((r) => r.inci_key === fk) ?? pre[0];
+const arr = <T,>(s: string | null | undefined): T[] => { try { const v = s ? JSON.parse(s) : []; return Array.isArray(v) ? v : []; } catch { return []; } };
+const prods = arr<{ id: number; brand: string | null; title: string; title_zh: string | null; country: string | null; cat_zh: string | null; cat: string | null }>(pr?.pj);
+const total = pr?.total ?? 0;
+const cooc = arr<{ inci_key: string; name_zh: string | null; rating: string | null }>(pr?.cj);
+/* 共现为空时退回旧口径「相关成分」(同首功能标签,facts rowid ≈ 产品数降序) */
 const fn0 = fnEn[0] ?? '';
-const related = cooc.length ? cooc : fn0 ? await many<{ inci_key: string; name_zh: string | null; functions_zh: string | null; functions: string | null; rating: string | null }>(
+const related = cooc.length ? cooc : full && fn0 ? await many<{ inci_key: string; name_zh: string | null; functions_zh: string | null; functions: string | null; rating: string | null }>(
   `SELECT inci_key, name_zh, functions_zh, functions, rating FROM ingredient_facts WHERE inci_key <> ? AND functions LIKE ? ORDER BY rowid LIMIT 8`, fk, `%${fn0}%`) : [];
 const relH = cooc.length ? (zh ? '常与它同配的成分' : 'Often formulated with') : null;   // 共现口径才换标题;退回旧口径仍叫「相关成分」
 
@@ -117,14 +115,14 @@ const T = zh ? {
   whatH: '它是什么、怎么用', regH: '各国目录状态', regNo: '序号', regNote: '按 INCI 名精确对账;盐 / 酯形式与别名可能漏配,以最新官方文本为准。',
   prodH: '含该成分的热销产品', prodN: (n: number) => `共 ${n.toLocaleString()} 款`, relH: '相关成分', struct: '化学结构', formula: '分子式', mw: '分子量', more: 'SMILES / IUPAC',
   aliases: '别名', none: '暂无解读,先看功能与各国目录状态。', ask: '想用这个成分做产品?发起询盘',
-  fine: '功能取自欧盟 CosIng 与中国已使用原料目录;刺激与评级为帛卉内部口径,非监管结论;致痘评级需要公开文献出处,本批暂未标注出处,暂不展示。结构图与分子数据来自 PubChem。',
+  fine: '功能取自欧盟 CosIng 与中国已使用原料目录;刺激与评级为帛卉内部口径,非监管结论;致痘评级只在有公开文献出处时显示,并附出处链接。结构图与分子数据来自 PubChem。',
   desc: (n: string) => `${n} 是什么、做什么、刺激与致痘倾向、在中国 / 欧盟 / 东盟等目录里的状态,以及含它的热销产品。`,
 } : {
   home: 'Home', lib: 'Ingredient index', decoder: 'Ingredient decoder', irr: 'Irritancy', com: 'Comedogenic', rating: { green: 'Routine', yellow: 'Restricted / note', red: 'Prohibited / high-risk' } as Record<string, string>,
   whatH: 'What it is and how it is used', regH: 'Status in national inventories', regNo: 'No.', regNote: 'Matched on the exact INCI name; salts, esters and synonyms may be missed. The latest official text prevails.',
   prodH: 'Popular products with this ingredient', prodN: (n: number) => `${n.toLocaleString()} products`, relH: 'Related ingredients', struct: 'Chemical structure', formula: 'Formula', mw: 'Mol. weight', more: 'SMILES / IUPAC',
   aliases: 'Also known as', none: 'Not decoded yet — see functions and inventory status below.', ask: 'Want to build with this ingredient? Send an enquiry',
-  fine: 'Functions from EU CosIng and the China inventory; irritancy and rating are our internal reading, not a regulatory conclusion; comedogenic ratings need a published source and this batch is not yet sourced, so they are not shown. Structure and molecular data from PubChem.',
+  fine: 'Functions from EU CosIng and the China inventory; irritancy and rating are our internal reading, not a regulatory conclusion; comedogenic ratings are shown only where a published source exists, with the source linked. Structure and molecular data from PubChem.',
   desc: (n: string) => `What ${n} is and does, its irritancy and comedogenic tendency, its status in the China, EU and ASEAN inventories, and popular products that contain it.`,
 };
 
@@ -165,6 +163,7 @@ const ldOut = [...(full ? ld : ld.slice(0, 1)), paywallLd(origin + path, String(
         {full && <p class="bar paywalled">
           {fns.slice(0, 6).map((f) => <span class="fn">{f}</span>)}
           {fact && fact.irritancy != null && <span class="num">{T.irr} {fact.irritancy}/5</span>}
+          {fact && fact.comedogenic != null && /^https?:\/\//.test(String(fact.comedogenic_src ?? '')) && <span class="num">{T.com} {fact.comedogenic}/5 <a href={String(fact.comedogenic_src).split(/\s*;\s*/)[0]} rel="nofollow noopener" target="_blank">↗</a></span>}
           <span class={`rt ${rating}`}>{T.rating[rating]}</span>
         </p>}
         <MemberGate lang={lang} g={gt} next={path} what={['完整资料', 'the full profile']} />
@@ -224,7 +223,7 @@ const ldOut = [...(full ? ld : ld.slice(0, 1)), paywallLd(origin + path, String(
   <SiteFooter locale={lang as any} path={path}
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />
-  <script type="application/ld+json" set:html={JSON.stringify(ldOut)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(ldOut)} is:inline />
 
   <style>
     .ing { max-width: min(112.5rem, 100%); margin: 0 auto; padding: 1.5rem var(--ck-gutter, 1.25rem) 3rem; }

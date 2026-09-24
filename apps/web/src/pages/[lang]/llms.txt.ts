@@ -111,7 +111,7 @@ GMPC · ISO 22716:2007 · HALAL —— 工厂级认证。
 
 ## 目标市场
 
-东南亚与中东(HALAL 认证,货由广州出口)· 欧美(ISO 22716 / FDA / EU CPNP)· 巴西与南美(亚马逊植物双源)。
+东南亚与中东(持 HALAL 证书,覆盖范围以证书为准;货由广州出口)· 欧美(ISO 22716 / FDA / EU CPNP)· 巴西与南美(亚马逊植物双源)。
 
 ${await citableTable(db, base, true, lang)}
 

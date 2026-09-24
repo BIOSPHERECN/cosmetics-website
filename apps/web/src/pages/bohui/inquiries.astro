@@ -194,13 +194,13 @@ const jevLine = (j: string) => { try { const a = JSON.parse(j).answers ?? {}; co
                 <dt>留言</dt><dd class="msg">{r.message}</dd>
                 {r.ai_summary && <><dt>AI 判断</dt><dd class="ai">{r.ai_grade ? `[${r.ai_grade}] ` : ''}{r.ai_summary}</dd></>}
                 {r.jev_json && <><dt>Jev 判断</dt><dd class="ai">{jevLine(r.jev_json)}</dd></>}
-                {/* 秒级首回:模型按对方语言写好的第一封回信。配了 Resend 会自动发(auto_replied_at 有值);没配就在这里复制或点「用邮件发」 */}
+                {/* 首回草稿:模型按对方语言写好的第一封回信。09-24 起不自动发(auto_replied_at 只剩历史值),业务员看过后复制或点「用邮件发」从自己邮箱发 */}
                 {r.ai_reply && (() => { const [subj, ...rest] = String(r.ai_reply).split('\n\n'); const body = rest.join('\n\n'); return (
                   <>
                     <dt>首回草稿</dt>
                     <dd>
                       <div class="reply" data-reply>
-                        <div class="rh"><b>{subj}</b>{r.auto_replied_at ? <span class="pill p-ok">已自动发出 {String(r.auto_replied_at).slice(5, 16)}</span> : <span class="pill p-warn">未发送</span>}
+                        <div class="rh"><b>{subj}</b>{r.auto_replied_at ? <span class="pill p-ok">已自动发出 {String(r.auto_replied_at).slice(5, 16)}</span> : <span class="pill p-warn">未发送 · 人审后用邮件发</span>}
                           <button class="btn" data-copy>复制正文</button>
                           <a class="btn" href={`mailto:${r.email}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`}>用邮件发</a></div>
                         <pre class="rb" data-body>{body}</pre>

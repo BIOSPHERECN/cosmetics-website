@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 /** 古方单页 —— 创始人 2026-09-11 22:0x「各国的是不是单独链接,是不是更利于 GEO」「你朝着必须引入 GEO 和 SEO 流量奋斗」。
@@ -50,7 +51,7 @@ const rows: [string, string][] = [['出处', r.book], ['用途', r.purposes], ['
   title={title} description={answer} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
   indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
   <a class="ck-skip-link" href="#main">{tSkip}</a>
-  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
   <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
   <main id="main">
     <p class="back"><a href={`${B}/classics/`}>← 古方库</a></p>

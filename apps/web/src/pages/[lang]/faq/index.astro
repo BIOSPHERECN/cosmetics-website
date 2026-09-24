@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { t as uiT, type Locale } from '@cosmetic/core/i18n';
 /**
  * 常见问题总表 —— AI 答案引擎的入口页。
@@ -118,7 +119,7 @@ const T = zh ? {
         },
         {
           q: '想卖中东,HALAL 怎么弄?',
-          a: '我们持 HALAL 认证(2024),配方与产线按 HALAL 要求执行;货由广州基地生产出口。',
+          a: '我们持 HALAL 认证(2024),覆盖范围以证书为准;目标市场认不认这张证,以当地主管机构为准。货由广州基地生产出口。',
           d: [
             'HALAL 不只看成分,还看产线有没有交叉污染 —— 所以要看工厂本身的认证,不是一张代办的证书。',
           ],
@@ -329,7 +330,7 @@ const T = zh ? {
         },
         {
           q: 'How does HALAL work for the Middle East?',
-          a: 'We hold HALAL certification; formulas and lines follow HALAL requirements, and goods are made in Guangzhou for export.',
+          a: 'We hold HALAL certification (2024); its scope is as stated on the certificate, and whether your target market accepts it is decided by that market’s authority. Goods are made in Guangzhou for export.',
           d: [
             'HALAL covers cross-contamination on the line, not only the ingredient list — which is why the plant\'s own certification matters.',
           ],
@@ -527,7 +528,7 @@ const desc = zh
   <SiteFooter locale={lang} path={path}
               site={{ ...(shell.staticSite ?? {}), name: site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />
-  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(jsonLd)} is:inline />
 </BaseLayout>
 
 <style>

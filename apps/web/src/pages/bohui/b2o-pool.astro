@@ -1,0 +1,222 @@
+---
+/**
+ * 机会卡池(C3 预判引擎 MVP,2026-09-24)。SOP 02-v2 §8.3「员工只看三张清单」的后台一页:
+ *   等研发签字 → 改状态(研发签了才能改;第一次改 = 预判冻结 + 记账本)→ 到期复盘(30 / 60 / 90 天,机器先出草稿)。
+ * 卡和草稿由本机 tools/intel/predict.py 每天写(正方 / 反方 / 裁决三份,数字都带 b2o_signals 出处);本页只读 + 三个按钮。
+ * 读量:列表 = 卡 ≤200 行 + 每卡按 idx_b2o_pred_card 取 1 行预判;详情 = 卡 1 行 + 预判 1 行 + 草稿 ≤10 行 + 信号 ≤20 行(主键)。
+ * 商务条款不在这里写;客户信息不上屏。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { VERDICTS, RESULTS, GAPS } from '../../lib/b2o-pool';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+type P = Record<string, any>;
+const jp = (t: unknown, d: any = {}) => { try { return JSON.parse(String(t ?? '')) ?? d; } catch { return d; } };
+const id = Number(new URL(Astro.request.url).searchParams.get('id')) || 0;
+const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);   // 北京日期
+const boss = c.sess.role === 'admin', chief = c.sess.lab_role === 'chief';
+
+let rows: P[] = [], card: P | null = null, pred: P | null = null, judg: Record<string, P> = {}, sigs: P[] = [], err = '';
+try {
+  if (id) {
+    card = await c.db.prepare(`SELECT * FROM b2o_opp_cards WHERE id=?`).bind(id).first<P>();
+    if (card) {
+      pred = await c.db.prepare(`SELECT * FROM b2o_predictions WHERE card_id=? ORDER BY id DESC LIMIT 1`).bind(id).first<P>();
+      if (pred) for (const j of (await c.db.prepare(`SELECT side, model, argument, created_at FROM b2o_judgments WHERE prediction_id=? ORDER BY id`).bind(pred.id).all<P>()).results) judg[j.side] = j;
+      const ids = ((jp(card.stage_basis).signal_ids ?? []) as unknown[]).map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 20);
+      if (ids.length) sigs = (await c.db.prepare(`SELECT id, calc_date, code, direction, subject_key, val, n, passed, is_proxy, evidence FROM b2o_signals WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all<P>()).results;
+    }
+  } else {
+    /* predict.py 建卡时能力闸门写的是 {r:'pending'};只有 pass / fail 才算签过,否则机器卡全被当成「已签字、待改状态」 */
+    rows = (await c.db.prepare(`SELECT c.id, c.headline, c.country, c.platform, c.stage, c.verdict, c.subject_key, NULLIF(json_extract(c.gates_json,'$.capability.r'),'pending') cap,
+        p.id pid, p.verdict ai, p.frozen_at, p.due30, p.due60, p.due90, p.r30, p.r60, p.r90
+      FROM b2o_opp_cards c LEFT JOIN b2o_predictions p ON p.id = (SELECT MAX(id) FROM b2o_predictions WHERE card_id = c.id)
+      ORDER BY c.id DESC LIMIT 200`).all<P>()).results;
+  }
+} catch (e) { err = String((e as Error)?.message ?? e).slice(0, 160); }
+
+/* 到期复盘:机器草稿已出(auto)、人还没选结果 */
+const dueOf = (r: P) => [30, 60, 90].filter((d) => jp(r[`r${d}`]).auto && !jp(r[`r${d}`]).result);
+const nextDue = (r: P) => r.frozen_at ? [30, 60, 90].map((d) => ({ d, at: r[`due${d}`] })).find((x) => x.at && !jp(r[`r${x.d}`]).result) : undefined;
+const waitSign = rows.filter((r) => r.pid && !r.cap);
+const waitStatus = rows.filter((r) => r.cap && r.pid && !r.frozen_at);
+const waitReview = rows.filter((r) => dueOf(r).length);
+const CAP: Record<string, string> = { pass: '能做', fail: '做不了' };
+const CHECK: Record<string, string> = { fake_growth: '是不是假增长', promo: '是不是大促带来的', price_broken: '价格是不是已经打烂', local_factory_edge: '本地工厂是不是更有优势',
+  regulatory: '法规过不过', window_short: '窗口是不是太短', customer_mismatch: '客户对不对得上', rank_not_sales: '排名≠销量', single_source: '是不是只有一个数据源', drug_like: '是不是涉药' };
+const invTxt = (x: P) => x.manual ? x.manual : `${x.win} 天内 ${x.code} 的「${({ passed: '是否成立', val: '数值', delta: '变化' } as P)[x.field] ?? x.field}」${({ all: '每次都', any: '任一次', latest: '最近一次' } as P)[x.agg] ?? ''} ${x.op} ${x.value} → ${x.then}`;
+const cap = card ? jp(card.gates_json).capability : null;
+const capR = cap?.r === 'pass' || cap?.r === 'fail' ? cap.r as string : undefined;   // 'pending' = 没签
+/* 改状态:五选一,不满足条件的置灰并写缺哪条(§4.5「改状态怎么用」) */
+const why = (v: string) => !capR ? '研发还没签字' : capR === 'fail' && v !== '观察' && v !== '放弃' ? '研发签了做不了' : v === '推进' && !boss ? '要老板拍板' : '';
+const pro = jp(judg.pro?.argument), con = jp(judg.con?.argument), rul = jp(judg.ruling?.argument);
+---
+
+<AdminShell title="机会卡池" active="b2o-pool" email={c.sess.email} tenant={c.tenant}>
+  <h1>机会卡池</h1>
+  <p class="lead">机器每天看 Amazon 美国站快照,挑出变化最大的方向,写好「正方 / 反方 / 裁决」三份草稿。<b>研发签字后才能改状态</b>;第一次改状态时判断被锁定、记进经验账本,第 30 / 60 / 90 天自动出复盘草稿,你只要选「对 / 错 / 部分 / 无法判断」。</p>
+  <p class="note warn">规则 v1 未认可(阈值是初值,待老板认);美亚数字都是代理:排名≠销量、评论≠销量。商务条款一律「待业务确认」。</p>
+
+  {err ? <div class="empty">卡池读不到(迁移 0122 还没灌?):{err}</div> : id ? (
+    !card ? <div class="empty">卡片 #{id} 不存在。<a href="/bohui/b2o-pool/">回卡池</a></div> : (
+    <>
+      <p><a href="/bohui/b2o-pool/">← 回卡池</a></p>
+      <section class="panel">
+        <h2>#{card.id} {card.headline}</h2>
+        <p>{card.country} · {card.platform} · 阶段(暂定):{card.stage ?? '—'} · 主体 <code>{card.subject_key ?? '人工卡'}</code></p>
+        <p>看到的变化:{card.signals || '—'}</p>
+        <p>现在状态:<b>{card.verdict ?? '未定'}</b>{pred?.verdict && !pred.frozen_at && <span class="dim"> · 机器裁决建议:{pred.verdict}</span>}
+          {pred?.frozen_at ? <span class="pill p-ok">判断已锁定 {String(pred.frozen_at).slice(0, 10)}</span> : pred ? <span class="pill p-wait">判断是草稿</span> : null}</p>
+      </section>
+
+      {pred && (
+        <div class="grid3">
+          <section class="panel">
+            <h2>正方 · 为什么值得跟</h2>
+            <p><b>{pro.claim ?? pred.pro ?? '—'}</b></p>
+            <ul>{(pro.facts ?? []).map((f: P) => <li>{f.tier} {f.text} <span class="dim">〔{f.evidence}〕</span></li>)}</ul>
+            {pro.why_now && <p>为什么是现在:{pro.why_now}</p>}
+            <p class="dim">{judg.pro?.model ?? '未出'}</p>
+          </section>
+          <section class="panel">
+            <h2>反方 · 为什么可能不值得</h2>
+            <table><tbody>{Object.entries(CHECK).map(([k, v]) => <tr><td class="dim">{v}</td><td>{con.checks?.[k] ?? '数据缺'}</td></tr>)}</tbody></table>
+            <ul>{(con.counter_evidence ?? []).map((f: P) => <li>{f.tier} {f.text} <span class="dim">〔{f.evidence}〕</span></li>)}</ul>
+            <p>最大不确定:{con.biggest_uncertainty ?? pred.uncertainty ?? '—'}</p>
+            <p class="dim">{judg.con?.model ?? '未出'}</p>
+          </section>
+          <section class="panel">
+            <h2>裁决 · 建议状态「{rul.verdict ?? pred.verdict ?? '—'}」</h2>
+            <p>{rul.why ?? pred.ruling ?? '—'}</p>
+            <p>出现这些情况就撤回判断:</p>
+            <ul>{(jp(card.invalidation_json, []) as P[]).map((x) => <li>{invTxt(x)}</li>)}</ul>
+            {rul.next_action && <p>下一步:{rul.next_action}</p>}
+            <p class="dim">{judg.ruling?.model ?? '未出'}</p>
+          </section>
+        </div>
+      )}
+
+      {sigs.length > 0 && (
+        <section class="panel">
+          <h2>用到的信号(出处)</h2>
+          <table>
+            <thead><tr><th>编号</th><th>日期</th><th>信号</th><th>方向</th><th>数值</th><th class="r">样本</th><th>成立</th><th>说明</th></tr></thead>
+            <tbody>{sigs.map((g) => { const e = jp(g.evidence); return (
+              <tr><td class="num">b2o_signals:{g.id}</td><td>{g.calc_date}</td><td>{g.code} {e.metric ?? ''}</td><td>{g.direction}</td><td>{e.shown ?? g.val}</td><td class="r num">{g.n}</td>
+                <td>{g.passed === 1 ? '成立' : g.passed === -1 ? '反向' : '不成立'}{g.is_proxy ? '(代理)' : ''}</td><td class="dim">{e.why}{e.proxy ? ` · ${e.proxy}` : ''}</td></tr>); })}</tbody>
+          </table>
+        </section>
+      )}
+
+      <div class="grid2">
+        <section class="panel">
+          <h2>① 研发签字(能不能做)</h2>
+          {capR && <p>已签:<b>{CAP[capR]}</b> · {cap.proxy_by ? `代录(原审核人 ${cap.by},依据 ${cap.proxy_basis})` : `账号 #${cap.by}`} · {cap.at}{cap.note ? ` · ${cap.note}` : ''}</p>}
+          {chief || boss ? (
+            <form data-op="sign" class="stack">
+              <label><input type="radio" name="r" value="pass" required /> 能做(有同剂型成品 / Base / 兼容包材,没有未解决的工程阻断)</label>
+              <label><input type="radio" name="r" value="fail" /> 做不了</label>
+              <input name="note" placeholder="一句话说明(选「做不了」必填)" maxlength="200" />
+              {!chief && (<>
+                <p class="dim">你不是研发负责人账号,这是代录:</p>
+                <input name="proxy_for" placeholder="原审核人姓名" maxlength="40" required />
+                <input name="proxy_basis" placeholder="依据:微信截图文件名" maxlength="120" required />
+              </>)}
+              <button class="btn pri" type="submit">{capR ? '重新签' : '签字'}</button> <span class="st dim"></span>
+            </form>
+          ) : <p class="dim">只有研发负责人(总工)能签;管理员可代录。</p>}
+        </section>
+        <section class="panel">
+          <h2>② 改状态</h2>
+          {!pred ? <p class="dim">这张卡还没有判断稿。</p> : !(chief || boss) ? <p class="dim">改状态要研发负责人(总工)或管理员;你可以看判断稿、到期后填复盘。</p> : (
+            <form data-op="status" class="stack">
+              <select name="verdict" required>
+                <option value="">选一个状态</option>
+                {Object.keys(VERDICTS).map((v) => <option value={v} disabled={!!why(v)} selected={v === card.verdict}>{v}{why(v) ? `(${why(v)})` : ''}</option>)}
+              </select>
+              <p class="dim">{pred.frozen_at ? '判断已锁定:再改只改卡片状态,会记一条变更。' : '第一次改状态 = 批准判断:判断原文锁定、记进经验账本,开始 30 / 60 / 90 天计时。'}</p>
+              <button class="btn pri" type="submit" disabled={!capR}>确定</button> <span class="st dim"></span>
+            </form>
+          )}
+        </section>
+      </div>
+
+      {pred?.frozen_at && (
+        <section class="panel">
+          <h2>③ 复盘</h2>
+          <table>
+            <thead><tr><th>节点</th><th>到期</th><th>机器草稿</th><th>结果</th></tr></thead>
+            <tbody>{[30, 60, 90].map((d) => { const r = jp(pred![`r${d}`]); const a = r.auto; return (
+              <tr><td>第 {d} 天</td><td>{pred![`due${d}`] ?? '—'}</td>
+                <td>{a ? <>信号是否延续:{a.continued};撤回条件:{(a.invalidation ?? []).map((x: P) => `#${x.i} ${x.hit ? '触发' : x.hit === false ? '未触发' : '数据缺'}`).join(',') || '无机器条件'};阶段:{a.stage_at_judgment ?? '—'} → {a.stage_now ?? '—'}</> : <span class="dim">到期当天自动出</span>}</td>
+                <td>{r.result ? <b>{r.result}{r.gap_type && r.gap_type !== '无' ? ` · ${r.gap_type}` : ''}</b> : a ? (
+                  <form data-op="review" class="stack" data-node={d}>
+                    <select name="result" required><option value="">判断结果</option>{Object.keys(RESULTS).map((k) => <option>{k}</option>)}</select>
+                    <select name="gap_type"><option value="">错误类型(选「错 / 部分」必选)</option>{GAPS.map((g) => <option>{g}</option>)}</select>
+                    <input name="best" placeholder="最有价值信号,如 S3" maxlength="20" />
+                    <input name="misleading" placeholder="最误导信号,如 S7" maxlength="20" />
+                    <input name="next_rule" placeholder="下次应该怎么判断(选「错 / 部分」必填)" maxlength="300" />
+                    <button class="btn pri" type="submit">记复盘</button> <span class="st dim"></span>
+                  </form>) : '—'}</td></tr>); })}</tbody>
+          </table>
+        </section>
+      )}
+    </>)
+  ) : (
+    <>
+      <div class="cards">
+        <div class:list={['card', waitSign.length && 'warn']}><div class="k">等研发签字</div><div class="v">{waitSign.length}</div><div class="s">签了才能改状态</div></div>
+        <div class:list={['card', waitStatus.length && 'warn']}><div class="k">已签字、待改状态</div><div class="v">{waitStatus.length}</div><div class="s">改了就锁定判断、记账本</div></div>
+        <div class:list={['card', waitReview.length && 'bad']}><div class="k">到期复盘</div><div class="v">{waitReview.length}</div><div class="s">选 对 / 错 / 部分 / 无法判断</div></div>
+      </div>
+      {rows.length === 0 ? <div class="empty">卡池还是空的。本机每天跑 tools/intel/predict.py 后这里会出现新卡。</div> : (
+        <table>
+          <thead><tr><th>#</th><th>卡片</th><th>国家 · 平台</th><th>阶段(暂定)</th><th>研发签字</th><th>状态</th><th>判断</th><th>下一步</th></tr></thead>
+          <tbody>{rows.map((r) => { const nd = nextDue(r), due = dueOf(r); return (
+            <tr>
+              <td class="num">{r.id}</td>
+              <td><a href={`/bohui/b2o-pool/?id=${r.id}`}>{r.headline ?? '(无标题)'}</a>{r.subject_key && <div class="dim">{r.subject_key}</div>}</td>
+              <td>{r.country} · {r.platform}</td>
+              <td>{r.stage ?? '—'}</td>
+              <td>{r.cap ? <span class:list={['pill', r.cap === 'pass' ? 'p-ok' : 'p-bad']}>{CAP[r.cap]}</span> : <span class="pill p-wait">待签</span>}</td>
+              <td>{r.verdict ?? <span class="dim">未定{r.ai ? `(机器建议 ${r.ai})` : ''}</span>}</td>
+              <td>{!r.pid ? '—' : r.frozen_at ? <span class="pill p-ok">已锁定</span> : <span class="pill p-wait">草稿</span>}</td>
+              <td>{due.length ? <a class="pill p-bad" href={`/bohui/b2o-pool/?id=${r.id}`}>第 {due.join(' / ')} 天复盘待填</a>
+                : !r.pid ? '—' : !r.cap ? '等研发签字' : !r.frozen_at ? '改状态' : nd ? `第 ${nd.d} 天复盘 ${nd.at}` : '复盘已完'}</td>
+            </tr>); })}</tbody>
+        </table>
+      )}
+      <p class="dim">今天 {today} · 卡片由本机每日任务生成(每天最多 3 张新卡);首批 10 张是人工卡,没有机器信号,复盘时「信号是否延续」显示数据缺。</p>
+    </>
+  )}
+
+  <script is:inline define:vars={{ id, pid: pred?.id ?? 0 }}>
+    document.querySelectorAll('form[data-op]').forEach((f) => f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const st = f.querySelector('.st'), o = { op: f.dataset.op, id, ...Object.fromEntries(new FormData(f)) };
+      if (o.op === 'review') { o.node = Number(f.dataset.node); o.pid = pid; }
+      const btn = f.querySelector('button[type=submit]'); btn.disabled = true;   // 防连点:账本只追加,多记删不掉
+      st.textContent = '提交中…';
+      try {
+        const r = await fetch('/api/admin/b2o-pool', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(o) });
+        const j = await r.json();
+        st.textContent = j.msg || (j.ok ? '好了' : '失败');
+        if (j.ok) setTimeout(() => location.reload(), 900); else btn.disabled = false;
+      } catch { st.textContent = '网络出错,稍后再试'; btn.disabled = false; }
+    }));
+  </script>
+
+  <style>
+    .panel{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:1rem 1.125rem;margin-bottom:.75rem}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem} .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem}
+    h2{font-size:.9375rem;margin:0 0 .5rem}
+    .stack{display:flex;flex-direction:column;gap:.5rem;align-items:flex-start} .stack input:not([type=radio]),.stack select{min-width:16rem}
+    th.r,td.r{text-align:right} .dim{color:var(--ad-faint);font-size:.75rem}
+    td,li,p{font-size:.875rem} td{vertical-align:top}
+    @media (max-width:60rem){.grid2,.grid3{grid-template-columns:1fr}}
+  </style>
+</AdminShell>

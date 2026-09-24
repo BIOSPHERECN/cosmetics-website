@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { apiGuard, json } from '../../../lib/guard';
+import { apiGuard, json, requireAdmin } from '../../../lib/guard';
+import { CARD_KINDS } from '../../../lib/kb-cards';
 import { chat, loadFleet } from '../../../lib/fleet';
 
 export const prerender = false;
@@ -17,16 +18,20 @@ export const POST: APIRoute = async ({ request }) => {
     const title = String(b.title ?? '').trim().slice(0, 120), body = String(b.body ?? '').trim().slice(0, 40000), tags = String(b.tags ?? '').trim().slice(0, 200);
     const kind = String(b.kind ?? '规则').slice(0, 10), stage = String(b.stage ?? '通用').slice(0, 10);
     if (!slug || !title || body.length < 20) return json({ ok: false, msg: 'slug / 标题 / 正文(≥20 字)都要有' }, 400);
-    const before = await c.db.prepare(`SELECT body FROM playbooks WHERE slug=?`).bind(slug).first<{ body: string }>();
-    await c.db.prepare(`INSERT INTO playbooks (slug, kind, stage, title, tags, body, source, uid) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(slug) DO UPDATE SET kind=excluded.kind, stage=excluded.stage, title=excluded.title, tags=excluded.tags, body=excluded.body, uid=excluded.uid, updated_at=datetime('now')`)
-      .bind(slug, kind, stage, title, tags, body, before ? 'edited' : 'manual', c.sess.uid).run();
+    const before = await c.db.prepare(`SELECT body, title, status FROM playbooks WHERE slug=?`).bind(slug).first<{ body: string; title: string; status: string | null }>();
+    /* 卡片(知识卡片 / 方法卡)改了标题或正文就回到「待审」,等管理员重新人审 —— 审过的是旧文字,不能替新文字背书 */
+    const isCard = CARD_KINDS.includes(kind) || before?.status != null;
+    const status = !isCard ? null : before && before.status && before.body === body && before.title === title ? before.status : '待审';
+    await c.db.prepare(`INSERT INTO playbooks (slug, kind, stage, title, tags, body, source, uid, status) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(slug) DO UPDATE SET kind=excluded.kind, stage=excluded.stage, title=excluded.title, tags=excluded.tags, body=excluded.body, uid=excluded.uid, status=excluded.status, reviewed_by=CASE WHEN excluded.status='待审' THEN NULL ELSE reviewed_by END, reviewed_at=CASE WHEN excluded.status='待审' THEN NULL ELSE reviewed_at END, updated_at=datetime('now')`)
+      .bind(slug, kind, stage, title, tags, body, before ? 'edited' : 'manual', c.sess.uid, status).run();
     // 改过的版本留一份在 revisions,改坏了能找回
     await c.db.prepare(`INSERT INTO revisions (entity, entity_id, before_json, after_json, user_id) VALUES ('playbook', ?, ?, ?, ?)`).bind(slug, JSON.stringify({ body: before?.body ?? null }), JSON.stringify({ body }), c.sess.uid).run().catch(() => {});
     return json({ ok: true, slug });
   }
   if (b.op === 'ask') {
     const q = String(b.q ?? '').trim().slice(0, 1000); if (q.length < 2) return json({ ok: false, msg: '问一句具体的' }, 400);
-    const { results } = await c.db.prepare(`SELECT slug, title, body FROM playbooks ORDER BY slug`).all<any>();
+    // 未经人审(待审)和已下线的卡不喂给模型;普通篇 status 为 NULL 照旧
+    const { results } = await c.db.prepare(`SELECT slug, title, body FROM playbooks WHERE status IS NULL OR status='在用' ORDER BY slug`).all<any>();
     /* 外部参考库(WorkBuddy 抓的资料)按关键词取最相关 6 篇片段一起喂 —— 简单 LIKE 检索,不建向量库;每篇只给 1,500 字 */
     const kw = q.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter((w) => w.length >= 2).slice(0, 4);
     let refs: any[] = [];
@@ -41,6 +46,20 @@ export const POST: APIRoute = async ({ request }) => {
       { role: 'user', content: q }], { fleet, maxTokens: 700, timeoutMs: 30000 });
     const a = String(r.text ?? '').trim(); if (!a) return json({ ok: false, msg: '模型没返回,稍后再试' }, 502);
     return json({ ok: true, answer: a });
+  }
+  if (b.op === 'review') {
+    /* 卡片上下线。「人审通过并上线」只给管理员(销售主管签字这一步);下线谁都能点 —— 拿不准先下线最安全 */
+    const slug = String(b.slug ?? '');
+    const row = await c.db.prepare(`SELECT status FROM playbooks WHERE slug=?`).bind(slug).first<{ status: string | null }>();
+    if (!row || row.status == null) return json({ ok: false, msg: '只有知识卡片 / 方法卡走上下线' }, 400);
+    if (b.to === '在用') {
+      const deny = requireAdmin(c); if (deny) return json({ ok: false, msg: '人审上线要管理员账号(销售主管)来点' }, 403);
+      await c.db.prepare(`UPDATE playbooks SET status='在用', reviewed_by=?, reviewed_at=datetime('now') WHERE slug=?`).bind(c.sess.email, slug).run();
+    } else if (b.to === '下线') {
+      await c.db.prepare(`UPDATE playbooks SET status='下线' WHERE slug=?`).bind(slug).run();
+    } else return json({ ok: false, msg: 'to 只能是 在用 / 下线' }, 400);
+    await c.db.prepare(`INSERT INTO revisions (entity, entity_id, before_json, after_json, user_id) VALUES ('playbook', ?, ?, ?, ?)`).bind(slug, JSON.stringify({ status: row.status }), JSON.stringify({ status: b.to }), c.sess.uid).run().catch(() => {});
+    return json({ ok: true });
   }
   return json({ ok: false, msg: '未知 op' }, 400);
 };

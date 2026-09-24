@@ -69,7 +69,7 @@ export const ROLES: Role[] = ['admin', 'editor', 'sales', 'viewer', 'lab'];
 const ADMIN_ONLY = ['user', 'provider', 'fleet-health', 'gateway', 'setup',
                     'invite', 'site-contact', 'site-variant', 'vision-bench', 'inquiry-export', 'crm-export',
                     'member'];   // 09-23 网站会员改档位(free / pro)是商务决定,只给 admin
-const SALES_OK = ['inquiry', 'inquiry-summarize', 'prospect', 'crm', 'playbook', 'sandbox', 'matters', 'mail', 'customs', 'outreach'];   // 2026-09-16:业务员要能记外联状态、用 AI 总结;09-18 推演沙盘(任务 S)业务部也开;09-18 业务协同工作台(matters)业务部可写;09-18 邮件中心(mail)业务部收发;09-18 开发信发送(outreach)业务部发
+const SALES_OK = ['inquiry', 'inquiry-summarize', 'prospect', 'crm', 'playbook', 'sandbox', 'matters', 'mail', 'customs', 'outreach', 'b2o-brief', 'b2o-profile', 'b2o-pool'];   // 2026-09-16:业务员要能记外联状态、用 AI 总结;09-18 推演沙盘(任务 S)业务部也开;09-18 业务协同工作台(matters)业务部可写;09-18 邮件中心(mail)业务部收发;09-18 开发信发送(outreach)业务部发;09-24 机会简报草稿(b2o-brief)业务部出稿;09-24 C2 客户档案(b2o-profile)业务部记沟通、改档案;09-24 C3 机会卡池(b2o-pool)业务部填到期复盘
 /** 自己的两步验证任何人都要能设 —— 否则新账号永远开不了 TOTP */
 const SELF_OK = ['totp'];
 
@@ -82,7 +82,7 @@ export function roleAllows(role: string, cap: string, method: string): boolean {
   if (role === 'admin') return true;
   if (SELF_OK.includes(cap)) return true;
   if (role === 'viewer') return method === 'GET' || method === 'HEAD';
-  if (role === 'lab') return cap === 'formula-lab' || cap === 'prompts' || cap === 'sandbox';   // 实验室账号:配方实验室 + 效果图提示词(09-18 开发部也要出效果图)+ 推演沙盘(09-18 任务 S),其余 403
+  if (role === 'lab') return cap === 'formula-lab' || cap === 'prompts' || cap === 'sandbox' || cap === 'b2o-pool';   // 09-24 C3 研发负责人在机会卡池签能力闸门(接口内再核 lab_role=chief);实验室账号:配方实验室 + 效果图提示词(09-18 开发部也要出效果图)+ 推演沙盘(09-18 任务 S),其余 403
   if (ADMIN_ONLY.includes(cap)) return false;
   if (role === 'sales') return SALES_OK.includes(cap);
   if (role === 'editor') return !ADMIN_ONLY.includes(cap);

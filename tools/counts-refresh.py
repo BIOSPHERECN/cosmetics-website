@@ -27,6 +27,11 @@ Q = {
     "summaries": "SELECT COUNT(*) n FROM market_products WHERE summary_zh IS NOT NULL AND summary_zh <> ''",
     "formulas": "SELECT COUNT(*) n FROM formulas WHERE status IN ('sample','active')",
     "packaging": "SELECT COUNT(*) n FROM packaging WHERE status='active'",
+    # 09-24 安全架构 C5:站内 AI 检索页、AI 工作台首屏的库存量(原来每次渲染现算 COUNT)
+    "ingredients": "SELECT COUNT(*) n FROM ingredients WHERE status='published'",
+    "trend_active": "SELECT COUNT(*) n FROM trends WHERE status='active'",
+    "kb": "SELECT COUNT(*) n FROM kb_entries WHERE is_published=1",
+    "pack_pages": "SELECT COUNT(*) n FROM pack_assets WHERE kind='page'",
 }
 
 
@@ -37,12 +42,30 @@ def main():
         except Exception: pass
     try: out["registry"] = {str(r["registry"]): int(r["n"]) for r in d1("SELECT registry, COUNT(*) n FROM inci_catalog GROUP BY registry")}
     except Exception: pass
+    # 09-24 主线:图谱页分类计数(原来每次 GROUP BY kg_nodes 全表),前 14 类
+    try: out["graph_types"] = {str(r["type"]): int(r["n"]) for r in d1("SELECT type, COUNT(*) n FROM kg_nodes GROUP BY type ORDER BY n DESC LIMIT 14")}
+    except Exception: pass
+    # 09-24 D2:/decoder/ 不带搜索时的总数与市场/类目分面({市场或 '-': {COALESCE(cat_zh,cat) 或 '': 款数}},约 118 格)。
+    # 页面原来每次 GROUP BY 全表 29.5 万行;这里一天算一次。键口径与页面筛选 `COALESCE(cat_zh, cat) = ?` 一致。
+    try:
+        mpf = {}
+        for r in d1("SELECT COALESCE(NULLIF(country,''),'-') c, COALESCE(cat_zh, cat, '') k, COUNT(*) n FROM market_products WHERE inci IS NOT NULL AND length(inci) > 30 GROUP BY c, k"):
+            mpf.setdefault(str(r["c"]), {})[str(r["k"])] = int(r["n"])
+        if mpf: out["mpf"] = mpf
+    except Exception: pass
+    # 09-24 创始人:「定时把统计好的数字写到首页,前端就只是一个静态固定的数字」。
+    # 同一份结果写成静态文件,随网站构建打进包里;页面读它不碰 D1(静态资源不计费)。pulse 那一行留作兜底。
+    out["updated_at"] = __import__("datetime").datetime.now().strftime("%Y-%m-%d")
+    static = os.path.join(os.path.dirname(HERE), "apps", "web", "src", "data", "site-counts.json")
+    os.makedirs(os.path.dirname(static), exist_ok=True)
+    io.open(static, "w", encoding="utf-8", newline="\n").write(json.dumps(out, ensure_ascii=False, indent=0))
+    print("静态文件已写:", static, "(重新构建部署后生效)")
     js = json.dumps(out, ensure_ascii=False).replace("'", "''")
     f = os.path.join(HERE, "_counts.sql")
     io.open(f, "w", encoding="utf-8", newline="\n").write(
         "CREATE TABLE IF NOT EXISTS pulse (k TEXT PRIMARY KEY, json TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT (datetime('now')));\n"
         f"INSERT OR REPLACE INTO pulse (k, json, updated_at) VALUES ('counts', '{js}', datetime('now'));\n")
-    d1_exec(f); print("counts 已写:", {k: v for k, v in out.items() if k != "registry"}, "· 目录", len(out.get("registry", {})))
+    d1_exec(f); print("counts 已写:", {k: v for k, v in out.items() if k not in ("registry", "mpf")}, "· 目录", len(out.get("registry", {})))
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@
  *   单子是怎么丢的?        丢单原因分布
  * 加权预测 = Σ(金额 × 阶段赢率)。目标先用 ?target= 传(默认 50 万美元/季),等设置页再落库。
  */
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import AdminShell from '../../layouts/AdminShell.astro';
 import { pageGuard } from '../../lib/guard';
 import { STAGES, OPEN_STAGES } from '../../lib/crm';
@@ -53,7 +54,7 @@ const chart = { stages: byStage.map((s) => s.label), amt: byStage.map((s) => Mat
     <div class="ch"><b>钱压在哪一关</b><div id="ch-st" style="height:14rem"></div></div>
     <div class="ch"><b>单子怎么丢的</b>{reasons.length ? <div id="ch-lost" style="height:14rem"></div> : <p class="dim">还没有丢单记录。丢单时选原因,这里就有图。</p>}</div>
   </div>
-  <script type="application/json" id="dd" is:inline set:html={JSON.stringify(chart)} />
+  <script type="application/json" id="dd" is:inline set:html={ldJson(chart)} />
 
   <div class="board">
     {byStage.map((s) => (

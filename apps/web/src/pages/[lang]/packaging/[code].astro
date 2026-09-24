@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { TERMS_CONFIRMED } from '../../../lib/terms';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT, type Locale } from '@cosmetic/core/i18n';
@@ -218,5 +219,5 @@ const ld = [
   <SiteFooter locale={lang} path={path}
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />
-  <script type="application/ld+json" set:html={JSON.stringify(ld)} />
+  <script type="application/ld+json" set:html={ldJson(ld)} />
 </BaseLayout>

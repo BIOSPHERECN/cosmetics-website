@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 /**
  * 链位工作台 —— 一张有四个洞的物料清单,取代六步向导。
@@ -30,6 +31,7 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { PACK_SHELF } from '@cosmetic/core/generated/pack-shelf.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { memo } from '../../../lib/memo';
 import { PACK_TYPE_LABEL, FMT_LABEL, label, packName, dualCapacity, materialFamily }
   from '../../../lib/catalog';
 import { pageShell } from '../../../lib/shell';
@@ -53,10 +55,10 @@ const codes = raw.split('+').map((c) => c.trim().toUpperCase())
 
 /* 配方:100 行的小表,一次取回。比起旧版那四条无 LIMIT 的查询,这是唯一一条。 */
 const formulas = db
-  ? (((await db.prepare(
+  ? await memo('formulas-chain', 3600, async () => (((await db.prepare(   // 09-24 D2:记 1 小时
       `SELECT code, category, format, benefits, moq, lead_days, markets, ai_summary
          FROM formulas WHERE status IN ('sample','active') ORDER BY code`)
-      .all<any>().catch(() => ({ results: [] }))).results ?? []) as any[])
+      .all<any>().catch(() => ({ results: [] }))).results ?? []) as any[]))
   : [];
 
 const packById = new Map(PACK_SHELF.map((p) => [p.code, p]));
@@ -266,7 +268,7 @@ const PER = 24;
   <SiteFooter locale={lang} path={path}
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />
-  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
 
   <style>
     .cw { max-width: min(112.5rem, 100%); margin: 0 auto;

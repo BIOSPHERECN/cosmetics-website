@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { TERMS_CONFIRMED } from '../../../lib/terms';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT, type Locale } from '@cosmetic/core/i18n';
@@ -362,7 +363,7 @@ const indexable = shell.site?.is_live === 1 && active.length === 0 && cur === 1;
       labels={{ filters: T.filters, clearAll: T.clearAll, empty: T.empty,
                 results: T.results, shotPending: T.shotPending }} />
   </main>
-  {itemListLd && <script type="application/ld+json" set:html={JSON.stringify(itemListLd)} is:inline />}
+  {itemListLd && <script type="application/ld+json" set:html={ldJson(itemListLd)} is:inline />}
   <SiteFooter locale={lang} path={path}
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />

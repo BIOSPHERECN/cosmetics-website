@@ -4,6 +4,7 @@
  * 创始人 2026-09-15:「爆款分析报告,你有隔几天就调研吗」「最好可以生成一个图表展现,有销量走向数据分析」。
  * 公开的 /trends/market/ 给客户看榜单;这一页给老板/研发/业务看「所以我们该做什么」。
  */
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import AdminShell from '../../layouts/AdminShell.astro';
 import { pageGuard } from '../../lib/guard';
 import { mdLite } from '../../lib/md-lite';
@@ -76,7 +77,7 @@ const kwGroups = rep ? [...new Set((rep.keywords as any[]).map((k) => k.group))]
           </details>
         ))}
       </div>
-      <script type="application/json" id="kw" is:inline set:html={JSON.stringify(rep.keywords)} />
+      <script type="application/json" id="kw" is:inline set:html={ldJson(rep.keywords)} />
     </>
   )}
 

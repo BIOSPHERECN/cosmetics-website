@@ -12,11 +12,13 @@ import { t as uiT } from '@cosmetic/core/i18n';
  * URL:/[lang]/decoder/<id>-<slug>/,只按前缀 id 取行,slug 不校验,错了 301 到正确的。
  * ingredient_facts 由 D 任务建表与灌数;这里只读、一次 IN (?) 取齐,表还没建或缺行时全部兜成灰 / 「暂无解读」。
  */
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { env } from 'cloudflare:workers';
 import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
+import { memo } from '../../../lib/memo';
 import { decoderPath, decoderSlug, splitInci, factKey, marketLabel, TAG_LABEL, displayTitle, ingredientPath, catLabel as catName, cleanTitle } from '../../../lib/decoder';
 import MemberGate from '../../../components/MemberGate.astro';
 import { pageGate, paywallLd } from '../../../lib/member';
@@ -51,11 +53,12 @@ const keys = [...new Set(names.map(factKey))];
 type Fact = { inci_key: string; name_zh: string | null; functions: string | null; functions_zh: string | null; what_zh: string | null; what_en: string | null;
               irritancy: number | null; comedogenic: number | null; rating: string | null; tags: string | null };
 const facts = new Map<string, Fact>();
-for (const f of await many<Fact>(`SELECT inci_key, name_zh, functions, functions_zh, what_zh, what_en, irritancy, /* 无出处的致痘分不对外(公司库没有 comedogenic_src 列,3,720 条一条文献依据都没有)。明早加列后换成 CASE WHEN 过滤。 */ NULL AS comedogenic, rating, tags FROM ingredient_facts WHERE inci_key IN (${keys.map(() => '?').join(',')})`, ...keys))
+/* 预览版(未登录 / 超额)不出解读,不查 facts(09-24 安全架构 C3) */
+for (const f of !full ? [] : await many<Fact>(`SELECT inci_key, name_zh, functions, functions_zh, what_zh, what_en, irritancy, /* 致痘分只出有文献出处的(09-24 W1:公司库 118 条带 comedogenic_src) */ CASE WHEN comedogenic_src <> '' THEN comedogenic END AS comedogenic, rating, tags FROM ingredient_facts WHERE inci_key IN (${keys.map(() => '?').join(',')})`, ...keys))
   facts.set(f.inci_key, f);
 /* 原料公开页(草本原料库 149 条):有就跳过去,没有就锚到本页解读段 */
 const ingSlug = new Map<string, string>();
-for (const g of await many<{ slug: string; inci: string }>(`SELECT slug, inci FROM ingredients WHERE status = 'published'`)) ingSlug.set(factKey(g.inci ?? ''), g.slug);
+for (const g of await memo('ing-slugs', 3600, () => many<{ slug: string; inci: string }>(`SELECT slug, inci FROM ingredients WHERE status = 'published'`))) ingSlug.set(factKey(g.inci ?? ''), g.slug);
 
 const rows = names.map((n, i) => {
   const k = factKey(n); const f = facts.get(k) ?? null;
@@ -80,9 +83,13 @@ const keySet = new Set(keyRows.map((r) => r.i));
 const others = rows.filter((r) => !keySet.has(r.i));
 
 const catKey = p.cat_zh || p.cat;
-const related = catKey ? await many<any>(
-  `SELECT id, brand, title, title_zh, country FROM market_products WHERE COALESCE(cat_zh, cat) = ? AND country IS ? AND id != ? AND inci IS NOT NULL AND length(inci) > 30 ORDER BY last_seen DESC, id DESC LIMIT 6`,
-  catKey, p.country ?? null, p.id) : [];
+/* 09-24 C3(代码审计 P0-2):这条原来每个产品现算一次,是公司库读量第一的查询(24 小时 88 亿行,平均每次 4.1 万行)——
+   规划器挑了按时间排的 idx_mp_seen_ok 再逐行过滤类目,冷门类目要扫几万行。现在:
+   ① INDEXED BY idx_mp_related(0109:类目, 国家, 时间)只读 7 行;② 按「类目 × 国家」记 24 小时(mpf 快照 118 格,每机房每天至多 118 条);
+   ③ 多取 1 条,在内存里去掉当前产品,同类目的产品共用一份。 */
+const related = catKey ? (await memo(`dec-rel:${catKey}|${p.country ?? ''}`, 86400, () => many<any>(
+  `SELECT id, brand, title, title_zh, country FROM market_products INDEXED BY idx_mp_related WHERE COALESCE(cat_zh, cat) = ? AND country IS ? AND inci IS NOT NULL AND length(inci) > 30 ORDER BY last_seen DESC, id DESC LIMIT 7`,
+  catKey, p.country ?? null))).filter((r: any) => r.id !== p.id).slice(0, 6) : [];
 
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
@@ -93,17 +100,17 @@ const catLabel = catName(zh ? (p.cat_zh || p.cat) : (p.cat || p.cat_zh), zh);
 const T = zh ? {
   home: '首页', lib: '成分解读', overview: '全成分概览', overviewSub: '按标签顺序;颜色是帛卉内部评级:绿 常规、黄 限用或需留意、红 禁用或高风险、灰 暂无解读。',
   hl: '亮点', free: '无', has: '含', keyH: '关键成分', otherH: '其他成分',
-  skim: '速览表', th: ['成分', '作用', '刺激', '评级'], comHidden: '致痘评级需要公开文献出处,本批暂未标注出处,暂不展示。', rating: { green: '绿', yellow: '黄', red: '红', none: '—' } as Record<string, string>,
+  skim: '速览表', th: ['成分', '作用', '刺激 · 致痘', '评级'], comHidden: '致痘评级只显示有公开文献出处的成分,其余显示「—」。', rating: { green: '绿', yellow: '黄', red: '红', none: '—' } as Record<string, string>,
   explained: '逐成分解读', none: '暂无解读', related: '同品类相关产品', n: '个成分',
   src: (d: string) => `来源:产品标签公开全成分,采集于 ${d};评级为帛卉内部口径,非监管结论。`, link: '产品页面', ask: '想做这一类产品?发起询盘', claims: '宣称',
-  lede: (n: number) => `${p.brand ? p.brand + ' ' : ''}${title} 的标签共列出 ${n} 个成分,已解读 ${covered} 个。逐条看每个成分做什么、刺激与致痘倾向、在各国目录里的状态。`,
+  lede: (n: number) => `${p.brand ? p.brand + ' ' : ''}${title} 的标签共列出 ${n} 个成分${full ? `,已解读 ${covered} 个` : ''}。逐条看每个成分做什么、刺激与致痘倾向、在各国目录里的状态。`,
 } : {
   home: 'Home', lib: 'Ingredient decoder', overview: 'Ingredients overview', overviewSub: 'Label order. Colour is our internal rating: green routine, yellow restricted or worth a look, red prohibited or high-risk, grey not yet decoded.',
   hl: 'Highlights', free: 'Free of', has: 'Contains', keyH: 'Key ingredients', otherH: 'Other ingredients',
-  skim: 'Skim through', th: ['Ingredient', 'What it does', 'Irritancy', 'Rating'], comHidden: 'Comedogenic ratings need a published source. This batch is not yet sourced, so it is not shown.', rating: { green: 'Green', yellow: 'Yellow', red: 'Red', none: '—' } as Record<string, string>,
+  skim: 'Skim through', th: ['Ingredient', 'What it does', 'Irritancy · Comedogenic', 'Rating'], comHidden: 'Comedogenic ratings are shown only where a published source exists; others show "—".', rating: { green: 'Green', yellow: 'Yellow', red: 'Red', none: '—' } as Record<string, string>,
   explained: 'Ingredients explained', none: 'Not decoded yet', related: 'Related products in this category', n: 'ingredients',
   src: (d: string) => `Source: full ingredient list published on the product label, collected ${d}. Ratings are our internal reading, not a regulatory conclusion.`, link: 'Product page', ask: 'Want to build one like this? Send an enquiry', claims: 'Claims',
-  lede: (n: number) => `${p.brand ? p.brand + ' ' : ''}${title} lists ${n} ingredients on its label, ${covered} decoded. See what each one does, its irritancy and comedogenic tendency, and its status in national inventories.`,
+  lede: (n: number) => `${p.brand ? p.brand + ' ' : ''}${title} lists ${n} ingredients on its label${full ? `, ${covered} decoded` : ''}. See what each one does, its irritancy and comedogenic tendency, and its status in national inventories.`,
 };
 const tagLabel = (t: string) => TAG_LABEL[t]?.[zh ? 0 : 1] ?? t;
 
@@ -176,7 +183,7 @@ const ldOut = [...(full ? ld : ld.slice(0, 1)), paywallLd(origin + path, title)]
           <tr>
             <td><a href={`#${r.anchor}`}>{r.n}</a>{r.zh && <small>{r.zh}</small>}</td>
             <td>{r.fn || <span class="dim">{T.none}</span>}</td>
-            <td class="num">{r.f && r.f.irritancy != null ? String(r.f.irritancy) : '—'}</td>
+            <td class="num">{r.f && r.f.irritancy != null ? String(r.f.irritancy) : '—'} · {r.f && r.f.comedogenic != null ? String(r.f.comedogenic) : '—'}</td>
             <td><span class={`dot ${r.rating}`}></span>{T.rating[r.rating] ?? '—'}</td>
           </tr>))}</tbody>
       </table>
@@ -209,7 +216,7 @@ const ldOut = [...(full ? ld : ld.slice(0, 1)), paywallLd(origin + path, title)]
   <SiteFooter locale={lang as any} path={path}
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />
-  <script type="application/ld+json" set:html={JSON.stringify(ldOut)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(ldOut)} is:inline />
 
   <style>
     .dec { max-width: min(112.5rem, 100%); margin: 0 auto; padding: 1.5rem var(--ck-gutter, 1.25rem) 3rem; }

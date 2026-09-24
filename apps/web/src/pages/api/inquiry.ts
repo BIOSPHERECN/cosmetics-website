@@ -25,6 +25,7 @@ import { env } from 'cloudflare:workers';
 import { overQuota, recordUse, tooMany, clientId, sweep } from '../../lib/ratelimit';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { gradeAndNotify } from '../../lib/inquiry-ai';
+import { humanGate } from '../../lib/human';
 
 export const prerender = false;
 
@@ -33,6 +34,18 @@ const json = (b: unknown, status = 200) =>
 
 /** 邮箱只做「长得像不像」的校验:严格的 RFC 正则会把合法地址误杀,得不偿失 */
 const looksEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s);
+
+/** 极简问答框:兼容新表单的圈号、中英文答案标记,也兼容旧的 `1.` 模板。 */
+function questionAnswers(message: string): Record<number, string> {
+  const answers: Record<number, string> = {};
+  const numberOf = (mark: string) => '①②③④⑤'.indexOf(mark) + 1 || Number(mark.replace(/\D/g, ''));
+  const re = /(?:^|\n)\s*([①②③④⑤]|[1-5](?=[.、)]))[.、)]?[^\n]*\n\s*(?:答|A)\s*[:：][ \t]*([\s\S]*?)(?=\n\s*(?:[①②③④⑤]|[1-5](?=[.、)]))[.、)]?[^\n]*\n|$)/gi;
+  for (const match of message.replace(/\r/g, '').matchAll(re)) {
+    const answer = match[2].trim();
+    if (answer) answers[numberOf(match[1])] = answer.slice(0, 1000);
+  }
+  return answers;
+}
 
 /** 从域名认站点;认不出来退回请求里带的 site,再不行给集团站 */
 async function resolveSite(db: D1Database, host: string, hint: string): Promise<string> {
@@ -73,11 +86,19 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return json({ ok: false, msg: '请求格式错误' }, 400);
   }
 
+  const source = (f.source ?? 'form').slice(0, 32);
+  const name = (f.name ?? '').trim();
+  /* Turnstile:蜜罐只挡最笨的脚本。09-24 W1b 起配了 secret 就缺令牌一律拒收(原来不带令牌直接放行),规则见 lib/human.ts */
+  const human = await humanGate(env, String((f as any)['cf-turnstile-response'] ?? ''), isForm,
+    new URL(request.url).hostname.endsWith('beauty2oem.com'));   // beauty2oem 只出中文
+  if (human) return human;
+
   const email = (f.email ?? '').trim();
-  /* WhatsApp 可选:只留号码字符;少于 6 位当没填。存原样(带国家码),业务员点 wa.me 时再去符号 */
+  /* WhatsApp / 电话只留常见号码字符;少于 6 位当没填。 */
   const whatsapp = (() => { const v = String(f.whatsapp ?? '').replace(/[^+\d\s()-]/g, '').trim().slice(0, 40); return v.replace(/\D/g, '').length >= 6 ? v : null; })();
-  if (!looksEmail(email)) {
-    return isForm ? backTo(request, 'bad') : json({ ok: false, msg: '请填写有效的邮箱地址' }, 400);
+  /* newsletter 是旧的纯邮箱订阅入口;其余询盘姓名必填,邮箱与 WhatsApp / 电话至少一个。 */
+  if ((source !== 'newsletter' && !name) || (!email && !whatsapp) || (email && !looksEmail(email))) {
+    return isForm ? backTo(request, 'bad') : json({ ok: false, msg: '请填写姓名,并至少留下有效邮箱或 WhatsApp / 电话' }, 400);
   }
 
   /* 反垃圾三条,都只加分不拦截:
@@ -85,11 +106,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
   let spam = 0;
   if ((f.website ?? '').trim()) spam += 5;
   const message = (f.message ?? '').trim();
+  const answers = questionAnswers(message.slice(0, 8000));   // 请求体不限长,懒惰匹配 + 前瞻在超长正文上会吃 CPU,只解析前 8000 字
+  const category = (answers[1] ?? f.category ?? '').trim().slice(0, 40) || null;
+  const volume = (answers[3] ?? f.volume ?? '').trim().slice(0, 40) || null;
   if ((message.match(/https?:\/\//g) ?? []).length >= 3) spam += 3;
   if (!message && !(f.name ?? '').trim()) spam += 1;
 
   const site = await resolveSite(db, new URL(request.url).hostname, (f.site ?? '').trim());
-  const source = (f.source ?? 'form').slice(0, 32);
 
   /* 来源页与站外来源。
      没有这两列,后台只能回答「这个月来了 20 条」;有了才能回答
@@ -109,25 +132,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
     try { return r ? new URL(r).pathname.slice(0, 200) : null; } catch { return null; }
   })();
 
-  /* Turnstile:蜜罐字段只挡最笨的脚本,挡不住真机器人。
-     密钥没配时**放行而不是拒绝** —— 一个校验组件的配置问题
-     不该让所有真实询盘都进不来(今天已经吃过三次「失败伪装成成功」的亏,
-     这里反过来:宁可漏挡,不可误杀线索)。 */
-  const tsSecret = (env as any).TURNSTILE_SECRET as string | undefined;
-  const tsToken = String((f as any)['cf-turnstile-response'] ?? '');
-  if (tsSecret && tsToken) {
-    try {
-      const v = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-        method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ secret: tsSecret, response: tsToken,
-          remoteip: request.headers.get('CF-Connecting-IP') ?? '' }),
-      });
-      const vr = await v.json<{ success?: boolean }>();
-      if (!vr?.success) return json({ ok: false, msg: '人机校验未通过,请重试' }, 400);
-    } catch { /* 校验服务本身不可用时放行,理由同上 */ }
-  }
-
   let newId = 0;
   try {
     /* 09-21 01:2x 线上每一单都 500「参数绑定数量错误」:0068 加了 whatsapp 值却没加进列名,12 个 ? 绑 13 个值。创始人在 beauty2ai 上提交时发现,帛卉站同样中招。 */
@@ -138,7 +142,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     ).bind(
       site,
       (f.lang ?? 'zh-cn').slice(0, 12),
-      (f.name ?? '').slice(0, 120) || '(未填姓名)',
+      name.slice(0, 120) || '(未填姓名)',
       (f.company ?? '').slice(0, 160) || null,
       email.slice(0, 200),
       request.headers.get('CF-IPCountry') || null,
@@ -150,8 +154,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
       refHost,
       /* 品类与数量级:报价前必问的两件,做成结构化字段而不是留在正文里 ——
          留在正文就得逐条人读,后台没法筛,也答不了「哪类询盘最多」。 */
-      (f.category ?? '').slice(0, 40) || null,
-      (f.volume ?? '').slice(0, 40) || null,
+      category,
+      volume,
       whatsapp,
     ).run();
     newId = Number((ins as any).meta?.last_row_id ?? 0);
@@ -165,7 +169,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   /* 入库之后:AI 分级 + 群通知,放到响应之后跑(waitUntil),访客秒得回执。
      订阅框(newsletter)不通知 —— 那不是询盘。 */
   if (newId && source !== 'newsletter') {
-    const job = gradeAndNotify(db, env as any, newId, { name: (f.name ?? '').slice(0, 120) || '(未填姓名)', company: (f.company ?? '').slice(0, 160) || null, email: email.slice(0, 200), country: request.headers.get('CF-IPCountry') || null, message: message.slice(0, 4000), lang: (f.lang ?? 'zh-cn').slice(0, 12), source_path: srcPath, category: (f.category ?? '').slice(0, 40) || null, volume: (f.volume ?? '').slice(0, 40) || null, whatsapp });
+    const job = gradeAndNotify(db, env as any, newId, { name: name.slice(0, 120) || '(未填姓名)', company: (f.company ?? '').slice(0, 160) || null, email: email.slice(0, 200), country: request.headers.get('CF-IPCountry') || null, message: message.slice(0, 4000), lang: (f.lang ?? 'zh-cn').slice(0, 12), source_path: srcPath, category, volume, whatsapp });
     const ctx = (locals as any)?.cfContext;   // Astro 6:runtime.ctx 已移除,用 cfContext
     if (ctx?.waitUntil) ctx.waitUntil(job); else await job.catch(() => {});
   }

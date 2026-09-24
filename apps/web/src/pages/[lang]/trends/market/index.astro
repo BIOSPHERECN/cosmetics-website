@@ -10,6 +10,8 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../../lib/shell';
+import { memo } from '../../../../lib/memo';
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 export const prerender = false;
 const lang = Astro.params.lang ?? 'zh-cn'; const zh = lang.startsWith('zh');
 const db = (env as any).DB as D1Database | undefined; const tSkip = uiT(lang as any)('a11y.skip');
@@ -18,14 +20,20 @@ const CAT: Record<string, [string, string]> = { beauty: ['美妆总榜', 'Beauty
 let latest = ''; let days = 0; let rows: any[] = []; let prev: Record<string, number> = {};
 if (db) {
   try {
-    const m = await db.prepare("SELECT MAX(date) d, COUNT(DISTINCT date) n FROM market_snapshots WHERE platform = 'amazon-us'").first<any>();
-    latest = m?.d ?? ''; days = Number(m?.n ?? 0);
-    if (latest) {
-      rows = ((await db.prepare("SELECT s.cat, s.pid, s.rank, s.price, s.rating, s.reviews, p.title, p.brand, p.url, p.img FROM market_snapshots s JOIN market_products p ON p.platform = s.platform AND p.pid = s.pid WHERE s.platform = 'amazon-us' AND s.date = ? ORDER BY s.cat, s.rank").bind(latest).all<any>()).results ?? []) as any[];
-      /* 上一天名次,用来标「新上榜/上升」 —— 只有一天时为空 */
-      const pd = await db.prepare("SELECT MAX(date) d FROM market_snapshots WHERE platform = 'amazon-us' AND date < ?").bind(latest).first<any>();
-      if (pd?.d) for (const r of (((await db.prepare("SELECT cat, pid, rank FROM market_snapshots WHERE platform = 'amazon-us' AND date = ?").bind(pd.d).all<any>()).results ?? []) as any[])) prev[`${r.cat}|${r.pid}`] = Number(r.rank);
-    }
+    /* 09-24 C5(代码审计 P0-4):这一页的数据与 ?c= 无关 —— 整包记 1 小时,随便带个 c 值不再每次现算
+       (按日期去重计数一次就是 1.16 万行,整页约 1.2 万行)。 */
+    ({ latest, days, rows, prev } = await memo('mkt-snap', 3600, async () => {
+      let latest = ''; let days = 0; let rows: any[] = []; const prev: Record<string, number> = {};
+      const m = await db.prepare("SELECT MAX(date) d, COUNT(DISTINCT date) n FROM market_snapshots WHERE platform = 'amazon-us'").first<any>();
+      latest = m?.d ?? ''; days = Number(m?.n ?? 0);
+      if (latest) {
+        rows = ((await db.prepare("SELECT s.cat, s.pid, s.rank, s.price, s.rating, s.reviews, p.title, p.brand, p.url, p.img FROM market_snapshots s JOIN market_products p ON p.platform = s.platform AND p.pid = s.pid WHERE s.platform = 'amazon-us' AND s.date = ? ORDER BY s.cat, s.rank").bind(latest).all<any>()).results ?? []) as any[];
+        /* 上一天名次,用来标「新上榜/上升」 —— 只有一天时为空 */
+        const pd = await db.prepare("SELECT MAX(date) d FROM market_snapshots WHERE platform = 'amazon-us' AND date < ?").bind(latest).first<any>();
+        if (pd?.d) for (const r of (((await db.prepare("SELECT cat, pid, rank FROM market_snapshots WHERE platform = 'amazon-us' AND date = ?").bind(pd.d).all<any>()).results ?? []) as any[])) prev[`${r.cat}|${r.pid}`] = Number(r.rank);
+      }
+      return { latest, days, rows, prev };
+    }));
   } catch { rows = []; }
 }
 const cats = Object.keys(CAT).filter((c) => rows.some((r) => r.cat === c));
@@ -47,7 +55,7 @@ const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const B = `/${lang}`; const path = `${B}/trends/market/`; const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
 const T = zh ? { eyebrow: '市场 · 获客', title: `美国 Amazon 美妆榜单每天在卖什么?${cats.length} 个品类的价格带、品牌集中度与名次走向`, lede: `每天抓一次 Amazon 美区 Best Sellers 前 100(${cats.length} 个品类),只记名次、价格、评分、评论数;不估销量、不转评论。看三件事:什么价格带在走量、榜单被哪些品牌占着、谁在快速冲上来。`, kpi: ['最新快照', '快照天数', '品类', '产品数'], all: '全部品类', top: '前 10', price: '价格带分布(前 100)', brand: '品牌集中度(前 100 里占几席)', median: '中位价', reviews: '评论合计', newIn: '今日新上榜', rank: '名次', name: '产品', brandH: '品牌', priceH: '价格', rating: '评分', rev: '评论数', note: '来源:Amazon.com Best Sellers 公开榜单,每日 06:30(北京时间)抓取;名次与评论数为抓取时刻的公开值。走向图在快照满 2 天后出现。本页不构成任何销量估计。', ask: '想做榜上这一类产品?把目标价格带和市场发我们,回你可用配方与包材方案。', cta: '发起询盘', trend: '名次走向(近 14 天)', pending: '快照满 2 天后显示名次走向与新上榜。' }
              : { eyebrow: 'Market · buyers', title: `What sells on Amazon US Beauty every day? Price bands, brand concentration and rank moves across ${cats.length} categories`, lede: `Amazon US Best Sellers top 100 in ${cats.length} categories, captured daily: rank, price, rating, review count only. No sales estimates, no review text. Three questions: which price band moves volume, which brands hold the list, who is climbing fast.`, kpi: ['Latest snapshot', 'Days captured', 'Categories', 'Products'], all: 'All categories', top: 'Top 10', price: 'Price band distribution (top 100)', brand: 'Brand concentration (seats in top 100)', median: 'Median price', reviews: 'Reviews total', newIn: 'New today', rank: 'Rank', name: 'Product', brandH: 'Brand', priceH: 'Price', rating: 'Rating', rev: 'Reviews', note: 'Source: Amazon.com Best Sellers public lists, captured daily 06:30 Beijing time; ranks and review counts are the public values at capture time. Rank trends appear after 2 days of snapshots. Nothing here is a sales estimate.', ask: 'Want to make a product in one of these categories? Send us the target price band and market; we reply with formula and packaging options.', cta: 'Send an inquiry', trend: 'Rank trend (14 days)', pending: 'Rank trends and new entries appear after two days of snapshots.' };
-const chartData = JSON.stringify({ bands: BANDS, cats: show.map((c) => ({ key: c, label: L(c), bands: (stats as any)[c].bands, brands: (stats as any)[c].topBrands })) });
+const chartData = ldJson({ bands: BANDS, cats: show.map((c) => ({ key: c, label: L(c), bands: (stats as any)[c].bands, brands: (stats as any)[c].topBrands })) });
 ---
 <BaseLayout locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
   title={T.title} description={T.lede} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path} indexable={shell.site?.is_live === 1 && !fCat} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>

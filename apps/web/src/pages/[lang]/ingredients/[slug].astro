@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 /**
@@ -17,6 +18,7 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import ItemDetail from '@cosmetic/core/components/ItemDetail.astro';
 import { pageShell } from '../../../lib/shell';
+import { memo } from '../../../lib/memo';
 import { BEN_LABEL, FMT_LABEL, label } from '../../../lib/catalog';
 import { inciKey as cnKey } from '../../../lib/inci-key';
 import { factKey, ingredientSlug } from '../../../lib/decoder';
@@ -89,9 +91,9 @@ const cats: any[] = db && inciKey ? (((await db.prepare(
      FROM inci_catalog WHERE inci_key = ? ORDER BY registry`)
   .bind(inciKey).all<any>().catch(() => ({ results: [] }))).results ?? []) as any[]) : [];
 const cat = cats.find((c) => String(c.registry) === 'cn-nmpa-2021') ?? null;
-const regs: any[] = db && g ? (((await db.prepare(
+const regs: any[] = db && g ? await memo('inci-regs-st', 3600, async () => (((await db.prepare(
   `SELECT id, region, name_zh, name_en, status FROM inci_registry ORDER BY sort_order`)
-  .all<any>().catch(() => ({ results: [] }))).results ?? []) as any[]) : [];
+  .all<any>().catch(() => ({ results: [] }))).results ?? []) as any[])) : [];
 /* 禁限用表(负面清单)里没出现 ≠ 可用;正面目录里没出现 = 未收录。两句话不能混,分开写。 */
 const NEG = new Set(['eu-annex', 'asean-acd', 'jp-std', 'ca-hotlist', 'us-fda', 'cn-stsc', 'kr-safety', 'br-anvisa']);
 
@@ -282,6 +284,6 @@ const ldOut = [...(full ? ld : ld.slice(0, 1)), paywallLd(origin + path, String(
   <SiteFooter locale={lang as any} path={path}
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />
-  <script type="application/ld+json" set:html={JSON.stringify(ldOut)} is:inline />   {/* T 审查:显式 is:inline 消 astro(4000) 警告,与 _CatalogIngredient 同写法 */}
+  <script type="application/ld+json" set:html={ldJson(ldOut)} is:inline />   {/* T 审查:显式 is:inline 消 astro(4000) 警告,与 _CatalogIngredient 同写法 */}
 </BaseLayout>
 )}

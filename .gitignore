@@ -64,3 +64,12 @@ tools/_*.py.bak*
 crm/
 .agnes-image.json
 data/cosdna/
+# 09-24 S04:data/ 整目录不进公开仓(数据、备份、语料一律只留本机)
+data/
+# 09-24 S04:tools 下的探针产物、下划线开头的本机草稿/缓存/备份、探针截图,不进公开仓
+tools/.*
+tools/**/_*
+tools/*.jpg
+tools/*.png
+tools/*.webp
+tools/*.pdf

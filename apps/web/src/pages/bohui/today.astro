@@ -33,7 +33,7 @@ const { groups, total } = await loadToday(c.db);
   </div>
 
   <style>
-    .cols{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.75rem} @media (max-width:70rem){.cols{grid-template-columns:1fr}}
+    .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.75rem} @media (max-width:70rem){.cols{grid-template-columns:1fr}}
     .box{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:.875rem 1rem}
     h2{font-size:.9375rem;margin:0 0 .625rem;display:flex;gap:.5rem;align-items:center} .n{font-size:.75rem;background:#10131a;color:#fff;border-radius:999px;padding:.0625rem .5rem}
     .item{display:grid;gap:.125rem;padding:.5rem .625rem;border-radius:7px;text-decoration:none;color:inherit;border:1px solid transparent;margin-bottom:.25rem}

@@ -24,6 +24,7 @@
  * 分组是给下拉用的 —— 几十个语言平铺成一列没法找,按大区分组才选得动。
  */
 import { getDraft } from './page-versions';
+import { memo } from './memo';
 
 export const LANG_GROUPS: { group: string; langs: [string, string][] }[] = [
   { group: '主要语言', langs: [['en', 'English'], ['zh-cn', '简体中文'], ['zh-tw', '繁體中文'], ['jp', '日本語'], ['kr', '한국어'], ['fr', 'Français'], ['de', 'Deutsch'], ['ru', 'Русский']] },
@@ -217,6 +218,8 @@ export async function getNav(db: D1Database, siteId: string, lang: Lang): Promis
      ②的用处:原料溯源有 100 个子页,菜单里只放 13 个 —— 创始人看到的就是
      「基地依然还是那几个」。挂一条「全部 N 种」到菜单末尾,余下 87 个才有入口。
      用聚合查询而不是相关子查询:相关子查询在这张表上曾把 3,716 行读成 392 万行。 */
+  /* 09-24 R2:每次渲染都查(一天 30 万次 × 638 行),导航几天才改一次 —— 记 10 分钟,和页面缓存同寿命 */
+  const rows = await memo(`nav:${siteId}:${lang}`, 600, async () => {
   const [navRes] = await db.batch<any>([
     db.prepare(
       `SELECT p.id, p.slug, p.parent_id, i.nav_label,
@@ -231,9 +234,9 @@ export async function getNav(db: D1Database, siteId: string, lang: Lang): Promis
     /* 「父标签 · N」自动项 2026-09-11 已去掉,这里原来还带着一条 in_nav=0 的分组计数:
        每次渲染多读 250 行,罗盘实测一天 64,408 次 = 1,600 万行,结果没人用。删。 */
   ]);
-
-  const rows = (navRes?.results ?? []) as
+  return (navRes?.results ?? []) as
     { id: number; slug: string; parent_id: number | null; nav_label: string }[];
+  });
   const byId = new Map(rows.map((r) => [r.id, { slug: r.slug, label: r.nav_label, children: [] as NavItem[] }]));
   const top: NavItem[] = [];
   for (const r of rows) {

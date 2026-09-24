@@ -456,6 +456,8 @@ const packLine = packCode
         const r = await res.json().catch(() => ({ ok: false, msg: T.httpErr.replace('{s}', String(res.status)) }));
         clearInterval(timer);
         /* 失败提示要可懂:接口的 msg 已是人话;没有 msg 才报 HTTP 状态 */
+        /* 09-24 C10:接口改为只给会员用 —— 没登录就带着回跳地址去登录页 */
+        if (r.need === 'login' && r.href) { location.href = r.href; return; }
         if (!r.ok) { say(r.msg || T.httpErr.replace('{s}', String(res.status)), true); return; }
 
         $('empty').hidden = true;

@@ -95,6 +95,8 @@ const T = zh ? {
       const j = await r.json();
       const text = j.ok ? j.reply : (j.msg || busyMsg);
       wait.textContent = text;
+      /* 09-24 C10:客服接口改为只给会员用 —— 没登录时在回复后面给一个登录链接(登录后回到当前页) */
+      if (j.need === 'login' && j.href) { const a = document.createElement('a'); a.href = j.href; a.textContent = String(locale).startsWith('zh') ? ' 去登录 →' : ' Sign in →'; wait.appendChild(a); }
       if (j.ok) { msgs.push({ role: 'assistant', content: text }); save(); }
     } catch { wait.textContent = busyMsg; }
     busy = false;

@@ -21,6 +21,7 @@ import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import ShelfPage from '@cosmetic/core/components/ShelfPage.astro';
 import { buildChain } from '@cosmetic/core/content/chain.ts';
 import { pageShell } from '../../../lib/shell';
+import { memo } from '../../../lib/memo';
 import { SHELF_SNAPSHOT } from '@cosmetic/core/generated/shelf-snapshot.ts';
 import { FMT_LABEL, BEN_LABEL, CAT_LABEL, formulaName } from '../../../lib/catalog';
 
@@ -41,9 +42,9 @@ const fCat = pick('c'), fFmt = pick('f'), fBen = pick('b'), fMkt = pick('m');
 let rows: any[] = [];
 if (db) {
   try {
-    rows = ((await db.prepare(
+    rows = await memo('formulas-shelf', 3600, async () => ((await db.prepare(   // 09-24 D2:与语种无关,记 1 小时
       `SELECT code, category, format, benefits, moq, lead_days, markets, cost_band, ai_summary, status
-         FROM formulas WHERE status IN ('sample','active') ORDER BY code`).all<any>()).results ?? []) as any[];
+         FROM formulas WHERE status IN ('sample','active') ORDER BY code`).all<any>()).results ?? []) as any[]);
   } catch { rows = []; }
 }
 

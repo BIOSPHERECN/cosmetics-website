@@ -28,8 +28,9 @@ const b64u = (b: ArrayBuffer | Uint8Array) =>
 const unb64u = (s: string) =>
   Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 
-/** 常数时间比较 —— 长度不同直接判否,长度相同则全程比完再返回 */
-function timingSafeEqual(a: string, b: string): boolean {
+/** 常数时间比较 —— 长度不同直接判否,长度相同则全程比完再返回。
+ *  导出给 CRON_KEY 这类共享密钥的比较用(09-24 暴露面自查 L3:`!==` 按字节提前返回) */
+export function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
@@ -78,7 +79,8 @@ export async function issueSession(user: { id: number; email: string; role: stri
 
 /** 校验会话。签名不符或已过期一律返回 null —— 调用方只需判空 */
 export async function readSession(token: string | undefined, secret: string): Promise<Session | null> {
-  if (!token || !token.includes('.')) return null;
+  /* 密钥为空一律不认(09-24 代码审计 P2-1):空密钥签出的会话谁都能伪造 */
+  if (!token || !secret || !token.includes('.')) return null;
   const [body, sig] = token.split('.');
   if (!timingSafeEqual(sig, await sign(body, secret))) return null;
   try {

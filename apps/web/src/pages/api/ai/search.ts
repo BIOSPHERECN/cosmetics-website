@@ -173,7 +173,10 @@ export const POST: APIRoute = async ({ request }) => {
 
   const b = (await request.json().catch(() => ({}))) as { q?: string; lang?: string };
   const q = String(b.q ?? '').trim().slice(0, 200);
-  const lang = String(b.lang ?? 'zh-cn').slice(0, 10);
+  /* 09-24 红队:lang 只收站点的 18 个语种码。以前任意 10 个字符都行,而 7 天缓存键带 lang —— 同一个问题换个 lang 就是未命中:
+     每次七张表 '%词%' 打分 + 一次全网检索 + 一次模型调用,额度却只按问题扣一条、限速只按 IP(换 IP 就无上限)。 */
+  const lang0 = String(b.lang ?? 'zh-cn');
+  const lang = ['en', 'zh-cn', 'zh-tw', 'jp', 'kr', 'fr', 'de', 'ru', 'id', 'my', 'th', 'vn', 'ph', 'es', 'pt', 'ar', 'tr', 'in'].includes(lang0) ? lang0 : 'en';
   if (q.length < 2) return json({ ok: false, msg: '问题太短' }, 400);
 
   /* 会员限额(2026-09-23):AI 搜索与详情页共用一个每日配额(lib/quota.ts),同一个问题当天重复问不再扣 */

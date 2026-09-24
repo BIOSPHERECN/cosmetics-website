@@ -28,7 +28,13 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
+import { getCounts } from '../../../lib/counts';
 import { searchHint } from '../../../lib/searchhint';
+import { memo } from '../../../lib/memo';
+import MemberGate from '../../../components/MemberGate.astro';
+import { searchGate } from '../../../lib/member';
+import { searchMemo, nodeHits } from '../../../lib/search';
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 
 export const prerender = false;
 
@@ -39,9 +45,15 @@ const sHint = searchHint(lang);
 const tSkip = uiT(lang as any)('a11y.skip');
 const db = (env as any).DB as D1Database | undefined;
 const url = new URL(Astro.url);
-const q = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
+const q0 = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
+/* 09-24 搜索计每日额度(安全架构 C2):未登录、爬虫、超额不查库,只出默认图谱 + 登录/额度卡 */
+const sg = await searchGate(Astro, env, db, 'graph', q0);
+const q = sg && sg.state !== 'full' ? '' : q0;
 const nid = Math.max(0, Number(url.searchParams.get('n') ?? 0) || 0);
-const kind = (url.searchParams.get('t') ?? '').trim().slice(0, 20);
+/* 类型只认计数文件里有的(随机 ?t= 每个都是新缓存键,且 type 列没索引,一次整扫 8 千多行) */
+const typeCounts = (await getCounts(db))?.graph_types as Record<string, number> | undefined;
+const kind0 = (url.searchParams.get('t') ?? '').trim().slice(0, 20);
+const kind = !typeCounts || Object.hasOwn(typeCounts, kind0) ? kind0 : '';
 
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const path = `/${lang}/graph/`;
@@ -84,18 +96,18 @@ if (db) {
         }
       }
     } else if (q) {
-      hits = ((await db.prepare(
-        'SELECT id, name, type, description, origin FROM kg_nodes WHERE name LIKE ? ORDER BY origin, LENGTH(name), id LIMIT 60')
-        .bind(`%${q}%`).all<any>()).results ?? []);
+      /* 09-24 C2 会员搜索:FTS(0125)取命中,1–2 字只做名字前缀;按词记 1 小时(lib/search.ts) */
+      hits = await searchMemo('graph', q, 0, () => nodeHits(db, q));
     } else {
-      types = ((await db.prepare(
-        'SELECT type, COUNT(*) n FROM kg_nodes GROUP BY type ORDER BY n DESC LIMIT 14').all<any>()).results ?? []);
-      hits = kind
+      /* 09-24:分类计数读静态计数文件(counts-refresh.py 写 graph_types),不再每次 GROUP BY 全表 8,235 行 */
+      types = typeCounts ? Object.entries(typeCounts).map(([type, n]) => ({ type, n })) : [];
+      /* type / origin 列都没索引,这两条都是整扫 8 千多行:与语种无关,记 1 小时 */
+      hits = await memo(`kg-hits:${kind}`, 3600, async () => (kind
         ? ((await db.prepare(
             'SELECT id, name, type, description, origin FROM kg_nodes WHERE type = ? ORDER BY id LIMIT 60')
             .bind(kind).all<any>()).results ?? [])
         : ((await db.prepare(
-            "SELECT id, name, type, description, origin FROM kg_nodes WHERE origin IN ('classic','sourced') ORDER BY origin, id LIMIT 60").all<any>()).results ?? []);
+            "SELECT id, name, type, description, origin FROM kg_nodes WHERE origin IN ('classic','sourced') ORDER BY origin, id LIMIT 60").all<any>()).results ?? [])) as any[]);
     }
     /* ── 可视化用的子图 ──────────────────────────────────────────────
        创始人 2026-09-10 09:2x:「你这不是应该也有真的知识图谱 OB 那样的展现吗,
@@ -121,9 +133,9 @@ if (db) {
           `SELECT DISTINCT edge_id AS eid FROM kg_edge_nodes WHERE node_id IN (${ph}) LIMIT 70`)
           .bind(...seed).all<any>()).results ?? []) as any[]).map((r) => Number(r.eid));
       } else {
-        edgeIds = (((await db.prepare(
+        edgeIds = await memo('kg-home-edges', 3600, async () => (((await db.prepare(
           "SELECT id FROM kg_edges WHERE origin IN ('classic','sourced') ORDER BY origin, arity DESC LIMIT 70")
-          .all<any>()).results ?? []) as any[]).map((r) => Number(r.id));
+          .all<any>()).results ?? []) as any[]).map((r) => Number(r.id)));
       }
     }
     if (edgeIds.length) {
@@ -154,8 +166,9 @@ if (db) {
       gEdges = ge.map((e) => ({ i: Number(e.id), n: String(e.name), t: String(e.type || ''), o: String(e.origin || 'machine'), p: byE.get(Number(e.id)) ?? [] }))
                  .filter((e) => e.p.length >= 2);
     }
-    const c = await db.prepare('SELECT COUNT(*) n FROM kg_nodes').first<any>();
-    total = Number(c?.n ?? 0);
+    /* 09-24:总数只读计数文件(counts-refresh.py 写 graph);文件缺这一项就不显示数字,不回退全表 COUNT */
+    const cg = (await getCounts(db))?.graph;
+    total = typeof cg === 'number' ? cg : 0;
   } catch { /* 图谱表还没建好时不该把整页拖垮 */ }
 }
 
@@ -215,7 +228,7 @@ const ld = [
    否则实体名里若出现 '</script' 就把这段脚本提前截断 —— 这类注入很难查。 */
 const gJson = JSON.stringify({ n: gNodes, e: gEdges })
   .split(String.fromCharCode(60)).join(String.fromCharCode(92) + 'u003c');
-const indexable = shell.site?.is_live === 1 && !q && !nid && !kind;
+const indexable = shell.site?.is_live === 1 && !q0 && !nid && !kind;
 const href = (p: Record<string, string>) => path + '?' + new URLSearchParams(p).toString();
 /* 三种来源必须一眼分得开:古籍记载 / 站内档案 / 机器抽取。
    混在一起显示,客户会把模型抽的关系当成我们背书的结论。 */
@@ -231,7 +244,7 @@ const srcClass = (o: string) => (o === 'machine' ? 'mc' : 'cl');
   indexable={indexable} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
 >
   <a class="ck-skip-link" href="#main">{tSkip}</a>
-  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
   <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
               siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
   <main id="main">
@@ -242,10 +255,11 @@ const srcClass = (o: string) => (o === 'machine' ? 'mc' : 'cl');
         ? <p class="lede">{node.type && <span class="tag">{node.type}</span>}<span class:list={['tag', 'src', srcClass(node.origin)]}>{srcLabel(node.origin)}</span>{node.description}</p>
         : <p class="lede">{T.lede}</p>}
       <form class="search" method="get" action={path}>
-        <input type="search" name="q" value={q} placeholder={T.ph} aria-label={T.ph} maxlength="60" />
+        <input type="search" name="q" value={q0} placeholder={T.ph} aria-label={T.ph} maxlength="60" />
         <button type="submit">{T.search}</button>
-        {(q || nid || kind) && <a class="clear" href={path}>{node ? T.back : T.clear}</a>}
+        {(q0 || nid || kind) && <a class="clear" href={path}>{node ? T.back : T.clear}</a>}
       </form>
+      {sg && <MemberGate lang={lang} g={sg} next={`${path}?q=${encodeURIComponent(q0)}`} what={['图谱检索结果', 'search results']} />}
       {sHint && <p class="shint">{sHint}</p>}
     <p class="note">{T.note}</p>
     </header>

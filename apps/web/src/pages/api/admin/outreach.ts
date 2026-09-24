@@ -21,13 +21,24 @@ export const prerender = false;
      POST research_ok {ids}     ① 调研审批(按勾选的开发信找到线索):官网 / 品牌名 / ICP 理由人看过;needs_review 的线索不许过
      POST approve     {ids}     ② 文案审批:调研已过 + 邮箱 valid 才能审;记 approved_hash(收件人+主题+正文+调研关键字段)
      POST send        {ids}     ③ 发送审批 = 管理员点「真发」,只发 status='approved';逐封二次校验(gate)→ 进 outbox(幂等键)→ 领租约 → 发 → 有回执才记 sent
-   状态:outreach_log draft → approved → sent | unknown(发出去了但没拿到回执 / 发到一半断掉:不当已发、也不重发,人工查)。 */
+   状态:outreach_log draft → approved → sent | unknown(发出去了但没拿到回执 / 发到一半断掉:不当已发、也不重发,人工查)。
+
+   2026-09-24 W7(AI 获客定稿 WP-04 前三条,防误发):Cloudflare 发信条款禁冷邮件,冷信一律不经 Worker 发 ——
+     POST send    {ids, test_to}  只剩样例分支;不带 test_to → 410
+     POST handoff {id}            取「人发送包」:再跑 gate() → 占 outbox(via=manual,租约 24 小时)→ 返回 mailto(收件人 + 主题 + 正文 + 密送存档地址 LOG_ADDR),
+                                  由真人从自己的域名邮箱一对一发出。只有 OUTREACH_SENDERS 里的账号能取;OUTREACH_DAILY_MAX 没配或 ≤0 = 冻结
+     审批人白名单 OUTREACH_APPROVERS(Worker secret,逗号分隔的登录邮箱):① ② 只有名单里的真人能点;gate() 要求 research_ok_by、approved_by 此刻都在名单里 ——
+     「主线代创始人」这类代批不在名单,一律拦。名单没配 = 一封不放(失败即关)。
+     ponytail: 名单放 secret,改名单要 wrangler secret put;定稿 WP-04 的 HMAC 签名 + playbook 名单(reviewers_set)随 0111 迁移再上。 */
 const STATUSES = new Set(['draft', 'approved', 'sent', 'unknown', 'replied', 'unsubscribed', 'bounced']);
 const SALES = 'sales@biosphere-ai.com';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const ICP_MIN = 60;                  // 与 outreach-build.py 出草稿的门槛一致
 const CHECK_MAX_DAYS = 30;           // 邮箱校验结果 30 天内有效,过期要重跑 contact_check.py
+const list = (v: unknown) => String(v ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+const approvers = () => list((env as any).OUTREACH_APPROVERS);
+const LOG_ADDR = () => String((env as any).LOG_ADDR ?? '').trim() || 'log@biosphere-ai.com';
 const sha256 = async (s: string) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map((x) => x.toString(16).padStart(2, '0')).join('');
 const brandKey = (s: string) => String(s ?? '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 /** 审批快照:草稿与调研里任何一项变了,哈希就对不上,必须重审 */
@@ -48,6 +59,12 @@ async function gate(db: D1Database, o: any): Promise<string[]> {
   const email = String(o.contact_email ?? '').trim().toLowerCase();
   if (o.status !== 'approved' || !o.approved_at) bad.push('文案未审批');
   if (!o.research_ok_at) bad.push('调研未审批');
+  const ok = approvers();
+  if (!ok.length) bad.push('审批人白名单没配(OUTREACH_APPROVERS),一封不放');
+  else {
+    if (o.research_ok_at && !ok.includes(String(o.research_ok_by ?? '').trim().toLowerCase())) bad.push(`调研审批人「${o.research_ok_by ?? '–'}」不在白名单(代批不算)`);
+    if (o.approved_at && !ok.includes(String(o.approved_by ?? '').trim().toLowerCase())) bad.push(`文案审批人「${o.approved_by ?? '–'}」不在白名单(代批不算)`);
+  }
   if (Number(o.needs_review) === 1) bad.push('线索待复核(官网 / 品牌名对不上)');
   if (Number(o.step) === 1 && o.p_status !== 'new') bad.push(`线索状态是 ${o.p_status},首封只发 new`);
   if ((Number(o.icp_score) || 0) < ICP_MIN) bad.push(`ICP ${o.icp_score ?? '–'} < ${ICP_MIN}`);
@@ -60,7 +77,7 @@ async function gate(db: D1Database, o: any): Promise<string[]> {
   return bad;
 }
 
-const ROW_SQL = `SELECT o.*, p.brand, p.website, p.icp_score, p.status p_status, p.needs_review, p.research_ok_at,
+const ROW_SQL = `SELECT o.*, p.brand, p.website, p.icp_score, p.status p_status, p.needs_review, p.research_ok_at, p.research_ok_by,
        cc.status cc_status, cc.checked_at >= datetime('now', '-${CHECK_MAX_DAYS} days') cc_fresh
   FROM outreach_log o JOIN prospects p ON p.id=o.prospect_id LEFT JOIN outreach_contact_check cc ON cc.email=lower(o.contact_email) WHERE o.id=?`;
 const pickIds = (b: any) => [...new Set((Array.isArray(b.ids) ? b.ids : []).map(Number).filter((n: number) => n > 0))].slice(0, 50) as number[];
@@ -97,6 +114,7 @@ async function handle(c: Ctx, b: any, method: string) {
 
   if (b.op === 'research_ok' || b.op === 'approve') {
     const ids = pickIds(b); if (!ids.length) return json({ ok: false, msg: '没勾选' }, 400);
+    if (!approvers().includes(String(c.sess.email ?? '').trim().toLowerCase())) return json({ ok: false, msg: '你的账号不在审批人白名单(OUTREACH_APPROVERS),不能审批' }, 403);
     const results: { id: number; ok: boolean; msg?: string }[] = [];
     for (const id of ids) {
       const o = await db.prepare(ROW_SQL).bind(id).first<any>();
@@ -118,90 +136,47 @@ async function handle(c: Ctx, b: any, method: string) {
   if (b.op === 'send') {
     const ids = pickIds(b).slice(0, 20);
     const testTo = String(b.test_to ?? '').trim().toLowerCase();
+    if (!testTo) return json({ ok: false, msg: '冷信不经本站发送(Cloudflare 发信只发事务邮件):请用「取发送包」,从真人邮箱一对一发' }, 410);
     if (!ids.length) return json({ ok: false, msg: '没勾选' }, 400);
-    if (testTo && !EMAIL_RE.test(testTo)) return json({ ok: false, msg: '样例收件邮箱不合法' }, 400);
-    if (!testTo && c.sess.role !== 'admin') return json({ ok: false, msg: '③ 发送审批只有管理员(创始人)能点;业务可以审调研、审文案、发样例' }, 403);
+    if (!EMAIL_RE.test(testTo)) return json({ ok: false, msg: '样例收件邮箱不合法' }, 400);
     if (!canSend(env)) return json({ ok: false, msg: '发信未接入:Cloudflare「电子邮件发送」要接入域名 biosphere-ai.com(备选 RESEND_API_KEY)' }, 400);
-    const from = mailFrom(env);
-    const DAILY_MAX = Number((env as any).OUTREACH_DAILY_MAX) || 20;   // 新域名养信誉:每天封顶;送达率稳了再在 secret 里调大
-    if (!testTo) {
-      // 租约过期 = 上次发到一半 Worker 断了,服务商那边发没发出去不可知 → unknown,永不自动重发(宁可漏一封,不可重一封)
-      await db.batch([
-        db.prepare(`UPDATE outreach_log SET status='unknown' WHERE id IN (SELECT outreach_id FROM outreach_outbox WHERE status='sending' AND lease_until < datetime('now'))`),
-        db.prepare(`UPDATE outreach_outbox SET status='unknown', error='lease_expired' WHERE status='sending' AND lease_until < datetime('now')`),
-      ]);
-    }
-    const results: { id: number; ok: boolean; msg?: string; via?: string; receipt?: string }[] = [];
+    const results: { id: number; ok: boolean; msg?: string; via?: string }[] = [];
     for (const [i, id] of ids.entries()) {
       const o = await db.prepare(ROW_SQL).bind(id).first<any>();
       if (!o) { results.push({ id, ok: false, msg: '不存在' }); continue; }
-      let obId = 0;
-      if (!testTo) {
-        const bad = await gate(db, o);
-        if (bad.length) { results.push({ id, ok: false, msg: `${o.brand}:${bad.join(';')}` }); continue; }
-        const used = (await db.prepare(`SELECT COUNT(*) n FROM outreach_outbox WHERE status IN ('sending','sent','unknown') AND created_at >= date('now')`).first<{ n: number }>())?.n ?? 0;
-        if (used >= DAILY_MAX) { results.push({ id, ok: false, msg: `今日额度 ${DAILY_MAX} 封已用完` }); break; }
-        // 进 outbox:幂等键冲突 = 同邮箱或同品牌这一封已经进过发件箱。只有「服务商当场拒收(failed)且内容没变」的那一行可以重新排队
-        const email = String(o.contact_email).trim().toLowerCase(), step = Number(o.step) || 1, ph = o.approved_hash;
-        const ins = await db.prepare(`INSERT INTO outreach_outbox (outreach_id, idem_key, brand_key, step, payload_hash, approved_by) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING RETURNING id`)
-          .bind(id, `${email}#${step}`, brandKey(o.brand), step, ph, who).first<{ id: number }>();
-        const re = ins ?? await db.prepare(`UPDATE outreach_outbox SET status='queued', error=NULL, approved_by=? WHERE outreach_id=? AND status='failed' AND payload_hash=? RETURNING id`).bind(who, id, ph).first<{ id: number }>();
-        if (!re) {
-          const ex = await db.prepare(`SELECT outreach_id, status FROM outreach_outbox WHERE idem_key=? OR (brand_key=? AND step=?)`).bind(`${email}#${step}`, brandKey(o.brand), step).first<any>();
-          results.push({ id, ok: false, msg: `${o.brand}:同邮箱或同品牌第 ${step} 封已进过发件箱(#${ex?.outreach_id} ${ex?.status}),不重发` }); continue;
-        }
-        // 领租约:只有把 queued 改成 sending 的那个请求能发(两个人同时点「真发」也只发一次)
-        const lease = await db.prepare(`UPDATE outreach_outbox SET status='sending', lease_until=datetime('now', '+2 minutes') WHERE id=? AND status='queued' RETURNING id`).bind(re.id).first();
-        if (!lease) { results.push({ id, ok: false, msg: '被另一个请求领走了' }); continue; }
-        obId = re.id;
-      }
-      if (i) await sleep(3000);   // 同一域名连发不间隔 = 群发特征;3 秒是专家口径的下限
-      let r: Awaited<ReturnType<typeof sendMail>>;
-      try {
-        r = await sendMail(env, {
-          to: [testTo || String(o.contact_email)], subject: testTo ? `[样例] ${o.subject}` : String(o.subject),
-          text: String(o.body_text ?? ''), html: o.body_html || undefined, replyTo: SALES,
-        });
-      } catch (e) {
-        if (obId) await db.batch([
-          db.prepare(`UPDATE outreach_outbox SET status='unknown', error=? WHERE id=?`).bind(`exception:${String(e).slice(0, 120)}`, obId),
-          db.prepare(`UPDATE outreach_log SET status='unknown' WHERE id=?`).bind(id),
-        ]);
-        results.push({ id, ok: false, msg: '发送中途异常,结果未知(记 unknown,不自动重发)' }); continue;
-      }
-      if (!r.ok) {
-        // 服务商当场拒收 = 没发出去,可以改好后重排队
-        if (obId) await db.prepare(`UPDATE outreach_outbox SET status='failed', error=?, lease_until=NULL WHERE id=?`).bind(String(r.msg).slice(0, 200), obId).run();
-        results.push({ id, ok: false, msg: r.msg });
-        if (/E_SENDER|未接入|quota|配额|rate/i.test(String(r.msg))) break;   // 域名 / 配额级错误:后面的也发不出,别一封封撞
-        continue;
-      }
-      if (testTo) { results.push({ id, ok: true, via: r.via }); continue; }
-      if (!r.id) {
-        // 回查:没有服务商回执 id,就没有「已发送」的证据 —— 不记 sent,也不重发
-        await db.batch([
-          db.prepare(`UPDATE outreach_outbox SET status='unknown', error='no_provider_receipt', via=?, lease_until=NULL WHERE id=?`).bind(r.via ?? null, obId),
-          db.prepare(`UPDATE outreach_log SET status='unknown' WHERE id=?`).bind(id),
-        ]);
-        results.push({ id, ok: false, msg: '服务商没给回执 id:记 unknown,不当已发,也不重发' }); continue;
-      }
-      // 真发:mails 记出站行,message_id = 服务商返回的 messageId(Cloudflare 的 Message-ID 是平台头,不许自定义;对方回信的 In-Reply-To 就是它),
-      // 回信关联在 apps/mail-worker linkOutreach:按 message_id 命中,命不中按发件人邮箱兜底。outreach_log → sent,prospects → sent
-      const messageId = r.id.startsWith('<') ? r.id : `<${r.id}>`;
-      const text = String(o.body_text ?? '');
-      const mail = await db.prepare(
-        `INSERT INTO mails (direction, message_id, thread_id, from_addr, from_name, to_addrs, subject, text, snippet, received_at, status, assignee_uid)
-         VALUES ('out', ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'read', ?) RETURNING id`)
-        .bind(messageId, messageId, from.email, c.sess.email, String(o.contact_email), String(o.subject), text, text.replace(/\s+/g, ' ').slice(0, 160), c.sess.uid).first<{ id: number }>();
-      await db.batch([
-        db.prepare(`UPDATE outreach_outbox SET status='sent', provider_id=?, via=?, sent_at=datetime('now'), lease_until=NULL WHERE id=?`).bind(messageId, r.via ?? null, obId),
-        db.prepare(`UPDATE outreach_log SET status='sent', sent_at=datetime('now'), mail_id=? WHERE id=?`).bind(mail?.id ?? null, id),
-        db.prepare(`UPDATE prospects SET status=CASE WHEN status='new' THEN 'sent' ELSE status END, outreach_step=MAX(COALESCE(outreach_step,0), ?), last_outreach_at=datetime('now'), updated_at=datetime('now') WHERE id=?`).bind(Number(o.step) || 1, o.prospect_id),
-      ]);
-      results.push({ id, ok: true, via: r.via, receipt: messageId });
+      if (i) await sleep(3000);
+      const r = await sendMail(env, { to: [testTo], subject: `[样例] ${o.subject}`, text: String(o.body_text ?? ''), html: o.body_html || undefined, replyTo: SALES }).catch((e) => ({ ok: false, msg: String(e).slice(0, 120) } as any));
+      results.push({ id, ok: r.ok, msg: r.msg, via: r.via });
+      if (!r.ok && /E_SENDER|未接入|quota|配额|rate/i.test(String(r.msg))) break;
     }
     const sent = results.filter((x) => x.ok).length;
-    return json({ ok: sent > 0, sent, test: !!testTo, results, msg: sent ? undefined : results[0]?.msg });
+    return json({ ok: sent > 0, sent, test: true, results, msg: sent ? undefined : results[0]?.msg });
+  }
+
+  if (b.op === 'handoff') {
+    const me = String(c.sess.email ?? '').trim().toLowerCase();
+    if (!me || !list((env as any).OUTREACH_SENDERS).includes(me)) return json({ ok: false, msg: '取发送包只有 OUTREACH_SENDERS 里的真人发件人能点' }, 403);
+    const DAILY_MAX = Number((env as any).OUTREACH_DAILY_MAX);
+    if (!(DAILY_MAX > 0)) return json({ ok: false, msg: '冷信冻结中:OUTREACH_DAILY_MAX 没配或 ≤0' }, 403);
+    const id = Number(b.id) || 0;
+    // 租约过期 = 取了包 24 小时没确认发没发 → unknown,永不自动重发(宁可漏一封,不可重一封)
+    await db.batch([
+      db.prepare(`UPDATE outreach_log SET status='unknown' WHERE id IN (SELECT outreach_id FROM outreach_outbox WHERE status='sending' AND lease_until < datetime('now'))`),
+      db.prepare(`UPDATE outreach_outbox SET status='unknown', error='lease_expired' WHERE status='sending' AND lease_until < datetime('now')`),
+    ]);
+    const o = await db.prepare(ROW_SQL).bind(id).first<any>();
+    if (!o) return json({ ok: false, msg: '不存在' }, 404);
+    const bad = await gate(db, o);
+    if (bad.length) return json({ ok: false, msg: `${o.brand}:${bad.join(';')}`, bad }, 400);
+    const used = (await db.prepare(`SELECT COUNT(*) n FROM outreach_outbox WHERE status IN ('sending','sent','unknown') AND created_at >= date('now')`).first<{ n: number }>())?.n ?? 0;
+    if (used >= DAILY_MAX) return json({ ok: false, msg: `今日额度 ${DAILY_MAX} 封已用完` }, 429);
+    // 进 outbox:幂等键冲突 = 同邮箱或同品牌这一封已经取过包,不再给第二次
+    const email = String(o.contact_email).trim().toLowerCase(), step = Number(o.step) || 1;
+    const ins = await db.prepare(`INSERT INTO outreach_outbox (outreach_id, idem_key, brand_key, step, payload_hash, approved_by, status, via, lease_until) VALUES (?, ?, ?, ?, ?, ?, 'sending', 'manual', datetime('now', '+24 hours')) ON CONFLICT DO NOTHING RETURNING id`)
+      .bind(id, `${email}#${step}`, brandKey(o.brand), step, o.approved_hash, me).first<{ id: number }>();
+    if (!ins) return json({ ok: false, msg: `${o.brand}:同邮箱或同品牌第 ${step} 封已取过发送包,不重给` }, 409);
+    const mailto = `mailto:${encodeURIComponent(email).replace("%40", "@")}?subject=${encodeURIComponent(String(o.subject ?? ''))}&body=${encodeURIComponent(String(o.body_text ?? ''))}&bcc=${encodeURIComponent(LOG_ADDR())}`;
+    return json({ ok: true, id, mailto, bcc: LOG_ADDR(), from_hint: '用你自己的 @biosphere-ai.com 邮箱发,密送地址别删(存档记账用)' });
   }
 
   if (b.op === 'mark_reply') {

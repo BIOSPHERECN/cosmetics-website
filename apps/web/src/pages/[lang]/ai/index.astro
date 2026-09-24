@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 /**
@@ -21,6 +22,7 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
+import { getCounts } from '../../../lib/counts';
 
 export const prerender = false;
 
@@ -32,17 +34,11 @@ const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const path = `/${lang}/ai/`;
 const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
 
-/* 底座数据的真实体量 —— 写具体数字,不写「海量」。查不到就不显示,不编。 */
-const num = async (sql: string): Promise<number | null> => {
-  if (!db) return null;
-  try { return ((await db.prepare(sql).first<{ n: number }>())?.n) ?? null; } catch { return null; }
-};
-const [nPack, nFormula, nTrend, nIng] = await Promise.all([
-  num(`SELECT COUNT(*) n FROM pack_assets WHERE kind='page'`),
-  num(`SELECT COUNT(*) n FROM formulas WHERE status IN ('sample','active')`),
-  num(`SELECT COUNT(*) n FROM trends WHERE status='active'`),
-  num(`SELECT COUNT(*) n FROM ingredients`),
-]);
+/* 底座数据的真实体量 —— 写具体数字,不写「海量」。查不到就不显示,不编。
+   09-24 C5(代码审计 P0-4):原来每次渲染 4 条 COUNT;现在只读计数文件(tools/counts-refresh.py 写),缺哪项就不显示哪项。 */
+const cn = (await getCounts(db)) ?? {};
+const num = (k: string): number | null => (typeof cn[k] === 'number' ? (cn[k] as number) : null);
+const [nPack, nFormula, nTrend, nIng] = [num('pack_pages'), num('formulas'), num('trend_active'), num('ingredients')];
 
 const T = zh ? {
   eyebrow: 'AI 工作台',
@@ -199,7 +195,7 @@ const ld = {
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />
 
-  <script type="application/ld+json" set:html={JSON.stringify(ld)} />
+  <script type="application/ld+json" set:html={ldJson(ld)} />
 
   <style>
     main { max-width: 56rem; margin: 0 auto; padding: clamp(2rem, 5vw, 3.5rem) clamp(1rem, 4vw, 2.5rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }

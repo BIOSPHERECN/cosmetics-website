@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { t as uiT, type Locale } from '@cosmetic/core/i18n';
 /**
  * 对比类内容 —— 「A 还是 B」这一类问题的答案页。
@@ -165,7 +166,7 @@ const desc = item ? item.verdict : L.lede;
   <SiteFooter locale={lang} path={path}
               site={{ ...(shell.staticSite ?? {}), name: site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />
-  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(jsonLd)} is:inline />
 </BaseLayout>
 
 <style>

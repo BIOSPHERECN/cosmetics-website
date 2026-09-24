@@ -21,9 +21,13 @@ import ShelfPage from '@cosmetic/core/components/ShelfPage.astro';
 import { buildChain } from '@cosmetic/core/content/chain.ts';
 import { pageShell } from '../../../lib/shell';
 import { getCounts } from '../../../lib/counts';
+import { memo } from '../../../lib/memo';
 import { SHELF_SNAPSHOT } from '@cosmetic/core/generated/shelf-snapshot.ts';
 import { BEN_LABEL, FMT_LABEL, label } from '../../../lib/catalog';
 import { ingredientSlug } from '../../../lib/decoder';
+import MemberGate from '../../../components/MemberGate.astro';
+import { searchGate } from '../../../lib/member';
+import { searchMemo, catalogHits, byIds, capText, isShort, CAP } from '../../../lib/search';
 
 export const prerender = false;
 
@@ -41,15 +45,19 @@ const fFam = pick('k'), fFn = pick('b'), fFmt = pick('f');
 /* 统一检索(创始人 2026-09-10 15:2x:「原料库和原料检索是不是有重复,你需要整合,别搞得客户傻傻分不清」)。
    两层数据不合并 —— 帛卉档案是我们的观点(配伍/稳定性/投料),官方目录是客观收录,混成一张表客户就分不清
    哪句是法规、哪句是工厂说法;但**入口只留一个、搜索框只有一个**:一次输入,两组结果并排给,各自标明出处。 */
-const q = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
+const q0 = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
+/* 09-24 搜索计每日额度(安全架构 C2):未登录、爬虫、超额不搜(两层都不搜),只出货架 + 登录/额度卡 */
+const sg = await searchGate(Astro, env, db, 'ingredients', q0);
+const q = sg && sg.state !== 'full' ? '' : q0;
 
 let rows: any[] = [];
 if (db) {
   try {
-    rows = ((await db.prepare(
+    /* 09-24 D2:三小时 2.5 万次 × 291 行 —— 与语种、参数无关,记 1 小时 */
+    rows = await memo('ing-all', 3600, async () => ((await db.prepare(
       `SELECT slug, inci, name_zh, aliases, family, functions, formats, mechanism_zh,
               use_level, cost_band, confidence
-         FROM ingredients WHERE status='published' ORDER BY family, name_zh`).all<any>()).results ?? []) as any[];
+         FROM ingredients WHERE status='published' ORDER BY family, name_zh`).all<any>()).results ?? []) as any[]);
   } catch { rows = []; }
 }
 
@@ -57,12 +65,13 @@ if (db) {
 let regs: any[] = [];
 let regHits: any[] = [];
 let regHitCounts: Record<string, number> = {};
+let regCapped = false;
 if (db) {
   try {
     /* 各目录条数先读缓存行(tools/counts-refresh.py),没有再 GROUP BY 全表扫(55k 行,罗盘实测一天 4,200 万行) */
     const cached = (await getCounts(db))?.registry;
     if (cached) {
-      regs = (((await db.prepare(`SELECT id, region, name_zh, name_en FROM inci_registry ORDER BY sort_order`).all<any>()).results ?? []) as any[])
+      regs = (await memo('inci-regs', 3600, async () => ((await db.prepare(`SELECT id, region, name_zh, name_en FROM inci_registry ORDER BY sort_order`).all<any>()).results ?? []) as any[]))
         .map((r) => ({ ...r, n: cached[String(r.id)] ?? 0 })).filter((r) => r.n > 0);
     } else {
       regs = ((await db.prepare(
@@ -71,15 +80,13 @@ if (db) {
           ORDER BY r.sort_order`).all<any>()).results ?? []) as any[];
     }
     if (q) {
-      const like = `%${q.toUpperCase()}%`, likeZh = `%${q}%`;
-      regHits = ((await db.prepare(
-        `SELECT registry, no, name_zh, inci, cas FROM inci_catalog
-          WHERE inci_key LIKE ? OR name_zh LIKE ? OR cas = ?
-          ORDER BY registry, LENGTH(inci) LIMIT 30`).bind(like, likeZh, q).all<any>()).results ?? []) as any[];
-      const cs = ((await db.prepare(
-        `SELECT registry, COUNT(*) n FROM inci_catalog WHERE inci_key LIKE ? OR name_zh LIKE ? OR cas = ? GROUP BY registry`)
-        .bind(like, likeZh, q).all<any>()).results ?? []) as any[];
-      for (const r of cs) regHitCounts[String(r.registry)] = Number(r.n);
+      /* 09-24 C2 会员搜索:上一版两条 '%词%' 全表扫(5.7 万行 × 2,约 11.4 万行/次)。现在命中表(最多 1,001 条)走 FTS(lib/search.ts),
+         各目录条数在内存里数(超过上限标「+」),按「目录、INCI 长短」取前 30 条再按主键回表;两段都按词记 1 小时。1–2 个字不查目录。 */
+      const hits = await searchMemo('ingredients', q, 0, () => catalogHits(db, q));
+      regCapped = hits.length > CAP;
+      for (const h of hits.slice(0, CAP)) regHitCounts[h.reg] = (regHitCounts[h.reg] ?? 0) + 1;
+      const top = [...hits].sort((a, b) => (a.reg < b.reg ? -1 : a.reg > b.reg ? 1 : 0) || (a.len ?? 0) - (b.len ?? 0)).slice(0, 30).map((h) => h.id);
+      regHits = await searchMemo('ingredients', q, 1, () => byIds(db, 'SELECT rowid AS id, registry, no, name_zh, inci, cas FROM inci_catalog WHERE rowid IN (%IDS%)', top));
     }
   } catch { regs = []; regHits = []; }
 }
@@ -145,7 +152,7 @@ const T = zh ? {
   sBtn: '搜索', sClear: '清除',
   gOurs: '帛卉原料档案(机理 · 配伍禁忌 · 投料要点)', gReg: '各国官方原料目录(客观收录,不是我们的说法)',
   sNone: '两层都没有命中。换 INCI 名或 CAS 号再试;官方目录只有中文与英文索引。',
-  sMore: (n: number, name: string) => `在「${name}」里共 ${n.toLocaleString()} 条,查看全部 →`,
+  sMore: (n: number, name: string, plus = false) => `在「${name}」里共 ${n.toLocaleString()}${plus ? '+' : ''} 条,查看全部 →`,
   regStrip: '已入库的官方目录', regEntries: '条',
   title: '草本原料库 —— 配伍禁忌、稳定性、投料要点,写在明处',
   lede: `一百条常用草本与配套活性物。每条不只写它是什么,更写和什么一起用会出问题、
@@ -165,7 +172,7 @@ const T = zh ? {
   sBtn: 'Search', sClear: 'Clear',
   gOurs: 'BIOSPHERE ingredient dossiers (mechanism · incompatibilities · plant notes)', gReg: 'Official inventories by market (objective listings, not our opinion)',
   sNone: 'No match in either layer. Try the INCI name or CAS number; inventories are indexed in Chinese and English only.',
-  sMore: (n: number, name: string) => `${n.toLocaleString()} entries in ${name}, see all →`,
+  sMore: (n: number, name: string, plus = false) => `${n.toLocaleString()}${plus ? '+' : ''} entries in ${name}, see all →`,
   regStrip: 'Inventories on file', regEntries: 'entries',
   title: 'Botanical ingredient library — incompatibilities, stability and processing, stated',
   lede: `One hundred botanicals and their common partners. Each entry states not only what it is, but what it
@@ -182,11 +189,11 @@ const T = zh ? {
 const TI = zh ? {
   h: '成分索引', lede: (n: number) => `${n.toLocaleString()} 个常见成分:功能、刺激倾向、内部评级、化学结构图与各国目录状态,点进去看含它的热销产品。`,
   all: '全部', fn: '功能', rating: '评级', rt: { green: '常规', yellow: '限用 / 留意', red: '禁用 / 高风险' } as Record<string, string>,
-  th: ['成分', '功能', '刺激', '评级'], comHidden: '致痘评级需要公开文献出处,本批暂未标注出处,暂不展示。', n: (n: number) => `${n.toLocaleString()} 个`, empty: '没有符合的成分,放宽一个条件再试。', prev: '上一页', next: '下一页', page: (a: number, b: number) => `第 ${a} / ${b} 页`,
+  th: ['成分', '功能', '刺激 · 致痘', '评级'], comHidden: '致痘评级只显示有公开文献出处的成分,其余显示「—」。', n: (n: number) => `${n.toLocaleString()} 个`, empty: '没有符合的成分,放宽一个条件再试。', prev: '上一页', next: '下一页', page: (a: number, b: number) => `第 ${a} / ${b} 页`,
 } : {
   h: 'Ingredient index', lede: (n: number) => `${n.toLocaleString()} common ingredients: function, irritancy, internal rating, chemical structure and inventory status by market — open one for the popular products that contain it.`,
   all: 'All', fn: 'Function', rating: 'Rating', rt: { green: 'Routine', yellow: 'Restricted / note', red: 'Prohibited / high-risk' } as Record<string, string>,
-  th: ['Ingredient', 'Function', 'Irritancy', 'Rating'], comHidden: 'Comedogenic ratings need a published source. This batch is not yet sourced, so it is not shown.', n: (n: number) => `${n.toLocaleString()} items`, empty: 'Nothing matches. Loosen one filter and try again.', prev: 'Previous', next: 'Next', page: (a: number, b: number) => `Page ${a} of ${b}`,
+  th: ['Ingredient', 'Function', 'Irritancy · Comedogenic', 'Rating'], comHidden: 'Comedogenic ratings are shown only where a published source exists; others show "—".', n: (n: number) => `${n.toLocaleString()} items`, empty: 'Nothing matches. Loosen one filter and try again.', prev: 'Previous', next: 'Next', page: (a: number, b: number) => `Page ${a} of ${b}`,
 };
 
 const facets = [
@@ -228,12 +235,13 @@ type FactRow = { inci_key: string; name_zh: string | null; functions: string | n
 let facts: FactRow[] = [];
 if (db && !degraded) {
   try {
-    facts = ((await db.prepare(
-      `SELECT f.inci_key, f.name_zh, f.functions, f.functions_zh, f.irritancy, /* 无出处的致痘分不对外(公司库没有 comedogenic_src 列,3,720 条一条文献依据都没有)。明早加列后换成 CASE WHEN 过滤。 */ NULL AS comedogenic, f.rating, COALESCE(s1.png_key, s2.png_key) png_key
+    /* 09-24 R2:整表 5,845 行 + 两次 JOIN,每个 ?l= ?fn= ?r= ?p= ?q= 组合 × 17 语种各算一遍(一天 34 万次 × 8,161 行)。记 1 小时。 */
+    facts = await memo('ing-facts', 3600, async () => ((await db.prepare(
+      `SELECT f.inci_key, f.name_zh, f.functions, f.functions_zh, f.irritancy, /* 致痘分只出有文献出处的(09-24 W1:公司库 118 条带 comedogenic_src) */ CASE WHEN f.comedogenic_src <> '' THEN f.comedogenic END AS comedogenic, f.rating, COALESCE(s1.png_key, s2.png_key) png_key
          FROM ingredient_facts f
          LEFT JOIN ingredient_structures s1 ON s1.inci_key = f.inci_key
          LEFT JOIN ingredient_structures s2 ON s2.inci_key = replace(replace(replace(f.inci_key, ',', ' '), '-', ' '), '/', ' ')
-        ORDER BY f.inci_key`).all<FactRow>()).results ?? []) as FactRow[];
+        ORDER BY f.inci_key`).all<FactRow>()).results ?? []) as FactRow[]);
   } catch { facts = []; }
 }
 const fnTokens = (r: FactRow) => String(zh ? (r.functions_zh || r.functions) : (r.functions || r.functions_zh)).split('·')[0].split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
@@ -260,7 +268,7 @@ const idxHref = (o: Partial<{ l: string; fn: string; r: string; p: number }>) =>
   return (qs ? `${path}?${qs}` : path) + '#index';
 };
 
-const indexable = shell.site?.is_live === 1 && active.length === 0 && !q && !fLetter && !fFnZh && !fRating && page === 1;
+const indexable = shell.site?.is_live === 1 && active.length === 0 && !q0 && !fLetter && !fFnZh && !fRating && page === 1;
 ---
 
 <BaseLayout
@@ -279,10 +287,11 @@ const indexable = shell.site?.is_live === 1 && active.length === 0 && !q && !fLe
     <section class="unified-search" aria-label={T.sTitle}>
       <h2>{T.sTitle}</h2>
       <form method="get" action={path} class="sform">
-        <input type="search" name="q" value={q} placeholder={T.sPh} maxlength="60" autocomplete="off" />
+        <input type="search" name="q" value={q0} placeholder={T.sPh} maxlength="60" autocomplete="off" />
         <button type="submit">{T.sBtn}</button>
-        {q && <a class="clear" href={path}>{T.sClear}</a>}
+        {q0 && <a class="clear" href={path}>{T.sClear}</a>}
       </form>
+      {sg && <MemberGate lang={lang} g={sg} next={`${path}?q=${encodeURIComponent(q0)}`} what={['检索结果', 'search results']} />}
       {q && (
         <div class="sres">
           <h3>{T.gOurs} · {items.length}</h3>
@@ -293,7 +302,8 @@ const indexable = shell.site?.is_live === 1 && active.length === 0 && !q && !fLe
               ))}
             </ul>
           )}
-          <h3>{T.gReg} · {Object.values(regHitCounts).reduce((a, b) => a + b, 0).toLocaleString()}</h3>
+          <h3>{T.gReg} · {regCapped ? capText(CAP + 1) : Object.values(regHitCounts).reduce((a, b) => a + b, 0).toLocaleString()}</h3>
+          {isShort(q) && <p class="none">{zh ? '官方目录检索请输入至少 3 个字;或点下面的目录进去按名称前缀查。' : 'Type at least 3 characters to search the official inventories, or open an inventory below.'}</p>}
           {regHits.length > 0 && (
             <ul class="regl">
               {regHits.map((r) => (
@@ -307,7 +317,7 @@ const indexable = shell.site?.is_live === 1 && active.length === 0 && !q && !fLe
             </ul>
           )}
           {Object.entries(regHitCounts).map(([rid, n]) => (
-            <p class="more"><a href={`/${lang}/inci/${rid}/?q=${encodeURIComponent(q)}`}>{T.sMore(Number(n), regName(rid))}</a></p>
+            <p class="more"><a href={`/${lang}/inci/${rid}/?q=${encodeURIComponent(q)}`}>{T.sMore(Number(n), regName(rid), regCapped)}</a></p>
           ))}
           {items.length === 0 && regHits.length === 0 && <p class="none">{T.sNone}</p>}
         </div>
@@ -354,7 +364,7 @@ const indexable = shell.site?.is_live === 1 && active.length === 0 && !q && !fLe
                 <td class="im">{r.png_key && <img src={`/asset/${r.png_key}`} alt="" width="40" height="40" loading="lazy" decoding="async" />}</td>
                 <td><a href={`/${lang}/ingredients/${ingredientSlug(r.inci_key)}/`}>{r.inci_key}</a>{zh && r.name_zh && <small>{r.name_zh}</small>}</td>
                 <td class="fnc">{fnTokens(r).slice(0, 3).map((t) => <span>{t}</span>)}</td>
-                <td class="num">{r.irritancy != null ? String(r.irritancy) : '—'}</td>
+                <td class="num">{r.irritancy != null ? String(r.irritancy) : '—'} · {r.comedogenic != null ? String(r.comedogenic) : '—'}</td>
                 <td><span class={`dot ${r.rating ?? 'none'}`}></span>{TI.rt[r.rating ?? ''] ?? '—'}</td>
               </tr>))}</tbody>
           </table>
@@ -429,7 +439,7 @@ const indexable = shell.site?.is_live === 1 && active.length === 0 && !q && !fLe
     .degraded { max-width: min(112.5rem, 100%); margin: 0 auto;
                 padding: 0 var(--ck-gutter, 1.25rem); font-size: .8125rem;
                 color: var(--ck-ink-soft); line-height: 1.7; }
-    /* 致痘列隐藏时的说明(2026-09-22):无出处的评级不对外 */
+    /* 致痘列说明:只出有出处的评级(09-24 W1) */
     .sub { font-size: .8125rem; line-height: 1.6; opacity: .7; margin: .5rem 0 0; }
   </style>
 </BaseLayout>

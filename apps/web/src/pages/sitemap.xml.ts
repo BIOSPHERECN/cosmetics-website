@@ -17,6 +17,8 @@ import { COMPARE_ZH } from '@cosmetic/core/content/compare.ts';
 import { GUIDES_ZH } from '@cosmetic/core/content/guides.ts';
 import { CASES_ZH } from '@cosmetic/core/content/cases.ts';
 import { decoderSlug, ingredientSlug } from '../lib/decoder';
+import { SITEMAP_PARTS } from '../lib/canon';
+import { getCounts } from '../lib/counts';
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -29,18 +31,28 @@ type Part = 'pages' | 'news' | 'formulas' | 'packaging' | 'ingredients' | 'decod
 /* 2026-09-08 再拆:catalog 一份 15.5 MB —— 没超 Google 的 50 MB 上限,
    但一份十几兆的文件每次都要抓取器整份下载,而我们每天只改几条。
    拆成三份之后,改配方只需要重抓配方那一份。 */
-const PARTS: Part[] = ['pages', 'news', 'formulas', 'packaging', 'ingredients', 'decoder'];
+const PARTS = SITEMAP_PARTS as Part[];   // 名单与中间件缓存键共用 lib/canon.ts 那一份
+/* 09-24 C4(代码审计 P0-3):解读库一片 5,000 款(× 2 语 = 1 万条 URL),按 id 区间切,每片只按主键读这一段;
+   原来 part=decoder 一次读全表 14.9 万行、拼 30 万条 URL,还不进边缘缓存。分片号 ?p= 由中间件规整成 0–99 再进缓存键。 */
+const SHARD = 5000;
+/* 分片 24 小时进边缘缓存(浏览器 1 小时);索引仍 1 小时 */
+const PART_CACHE = 'public, max-age=3600, s-maxage=86400';
 
 export const GET: APIRoute = async ({ url }) => {
   const db = (env as any).DB as D1Database | undefined;
   if (!db) return new Response('sitemap unavailable', { status: 503 });
 
   const part = url.searchParams.get('part') as Part | null;
+  const shard = Math.max(0, Math.min(99, parseInt(url.searchParams.get('p') ?? '', 10) || 0));   // 与 lib/canon.ts 的 p 规整同口径
   /* 无参数 = 出索引 */
   if (!part || !PARTS.includes(part)) {
     const host = url.hostname;
     const NL = '\n';
+    /* 解读库分片数按最大 id 算(主键取最大值,读 1 行) */
+    const maxId = Number((await db.prepare('SELECT MAX(id) AS m FROM market_products').first<{ m: number }>().catch(() => null))?.m ?? 0);
+    const decShards = Math.min(100, Math.max(1, Math.ceil((maxId + 1) / SHARD)));
     const kids = PARTS
+      .flatMap((p) => (p === 'decoder' ? Array.from({ length: decShards }, (_, i) => `${p}&amp;p=${i}`) : [p]))
       .map((p) => '  <sitemap><loc>https://' + host + '/sitemap.xml?part=' + p + '</loc></sitemap>')
       .join(NL);
     const xml = '<?xml version=\"1.0\" encoding=\"UTF-8\"?>' + NL
@@ -182,10 +194,9 @@ export const GET: APIRoute = async ({ url }) => {
   /* 2026-09-10 各国目录版块化:每个已入库的目录一页(cn-nmpa-2021 / eu-cosing / ca-hotlist / us-fda …)。
      查 inci_catalog 的 GROUP BY 而不是 inci_registry —— 只收有数据的,没抓到的目录不进 sitemap。 */
   if (part === 'pages') {
-    const { results: regs } = await db
-      .prepare(`SELECT registry AS r, COUNT(*) AS n FROM inci_catalog GROUP BY registry`).all<any>()
-      .catch(() => ({ results: [] as any[] }));
-    for (const r of (regs ?? []) as any[]) if (r.r && Number(r.n) > 0) push(`inci/${r.r}/`, '0.8');
+    /* 09-24 C4:目录条数读计数文件(counts-refresh.py 写,构建时打进包),不再 GROUP BY 全表 5.7 万行 */
+    const regs = (await getCounts(db))?.registry ?? {};
+    for (const [r, n] of Object.entries(regs)) if (r && Number(n) > 0) push(`inci/${r}/`, '0.8');
   }
   /* 买手问答(tools/geo-answers.py):结论前置的答案页,是 GEO 的主力内容,必须进 sitemap。 */
   /* 各国法规:一市场一页(创始人:「不做成独立的业务,GEO、SEO 就无法读取」) */
@@ -313,7 +324,8 @@ export const GET: APIRoute = async ({ url }) => {
      创始人 2026-09-17:「他们的信息好像更全,是需要学习的,我们是不是也可以变成这样」。 */
   if (part === 'decoder') {
     const { results } = await db
-      .prepare(`SELECT id, brand, title, last_seen FROM market_products WHERE inci IS NOT NULL AND length(inci) > 30 ORDER BY id`)
+      .prepare(`SELECT id, brand, title, last_seen FROM market_products WHERE id >= ? AND id < ? AND inci IS NOT NULL AND length(inci) > 30 ORDER BY id`)
+      .bind(shard * SHARD, (shard + 1) * SHARD)
       .all<{ id: number; brand: string; title: string; last_seen: string }>()
       .catch(() => ({ results: [] as any[] }));
     const two = ['zh-cn', 'en'];
@@ -335,8 +347,8 @@ ${parts.join('\n')}
   return new Response(xml, {
     headers: {
       'content-type': 'application/xml; charset=utf-8',
-      // 内容改动通过后台发布,一小时的缓存不会让新页面等太久
-      'cache-control': 'public, max-age=3600',
+      // 内容改动通过后台发布:浏览器 1 小时;边缘 24 小时(09-24 C4,分片不再每次现读)
+      'cache-control': PART_CACHE,
     },
   });
 };

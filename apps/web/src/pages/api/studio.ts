@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import { loadFleet, chat, paidFirst } from '../../lib/fleet';
 import { replyLanguageRule, chatInLanguage, replyLanguageFor } from '../../lib/translate.ts';
 import { overQuota, recordUse, tooMany, clientId } from '../../lib/ratelimit';
+import { aiGate } from '../../lib/member';
 /* 站上已经写过的判断,压成 1.4k tokens 的摘要。
    不做检索是因为量级不到:三十几条整份带上比切片检索更准 ——
    切片会切断「这一题和那一题的关系」。4,476 款包材那种量级才需要检索。 */
@@ -47,6 +48,9 @@ export const POST: APIRoute = async ({ request }) => {
   /* 同 /api/ai/skin:公开接口 + 真实模型调用 = 必须限流,理由见 lib/ratelimit.ts */
   const who = clientId(request);
   if (await overQuota(db, 'ai.studio', who)) return tooMany('ai.studio');
+  /* 09-24 C10(代码审计 P1-4):只给会员用,并计每日额度 —— 不登录、只按 IP 限次时,换 IP 就能把模型免费额度烧干 */
+  const denied = await aiGate(request, env, db, 'ai.studio');
+  if (denied) return denied;
   await recordUse(db, 'ai.studio', who);
   if (!db) return json({ ok: false, msg: '数据源未就绪' }, 500);
 

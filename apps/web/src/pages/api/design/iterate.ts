@@ -18,6 +18,7 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { loadFleet, chat, paidFirst } from '../../../lib/fleet';
 import { tooMany, clientId, recordUse, overQuota, sweep } from '../../../lib/ratelimit';
+import { aiGate, getMember } from '../../../lib/member';
 
 export const prerender = false;
 
@@ -41,8 +42,11 @@ export const POST: APIRoute = async ({ request }) => {
   const cid = clientId(request);
   /* 每一次迭代都要打一次文本模型 + 排一张图。放开了会被人当免费出图站刷,
      所以按客户端限流;项目本身不限,限的是出图频次。 */
-  if (await tooMany(db, cid, 'design', 12, 3600)) return json({ ok: false, error: 'rate' }, 429);
-  if (await overQuota(db, 'design', 400)) return json({ ok: false, error: 'quota' }, 429);
+  /* 09-24(代码审计 P2-3):原来两行参数都传错('design' 不在 QUOTA 表里、tooMany 不收这些参数),每次调用都抛 TypeError,
+     接口实际一直是坏的。修功能不拆限流:按 QUOTA['ai.design'](每小时 12 次)限客户端,再过会员与每日额度(C10)。 */
+  if (await overQuota(db, 'ai.design', cid)) return tooMany('ai.design');
+  const denied = await aiGate(request, env, db, 'ai.design');
+  if (denied) return denied;
 
   let body: any;
   try { body = await request.json(); } catch { return json({ ok: false, error: 'bad-json' }, 400); }
@@ -157,10 +161,14 @@ export const POST: APIRoute = async ({ request }) => {
     .first<{ id: number }>().catch(() => null);
   if (!ver) return json({ ok: false, error: 'db' }, 500);
 
+  /* 09-24 P1-2:出图单记下会员(0127 的列;没迁移时退回老写法) */
+  const mid = (await getMember(request, env, db))?.id ?? null;
   const job = await db.prepare(
-    `INSERT INTO pack_jobs (lang, fact_line, brief, prompt, version_id) VALUES (?,?,?,?,?) RETURNING id`)
-    .bind(lang, `design#${project.token} v${n}`, note || project.brief, prompt, ver.id)
-    .first<{ id: number }>().catch(() => null);
+    `INSERT INTO pack_jobs (lang, fact_line, brief, prompt, version_id, member_id) VALUES (?,?,?,?,?,?) RETURNING id`)
+    .bind(lang, `design#${project.token} v${n}`, note || project.brief, prompt, ver.id, mid)
+    .first<{ id: number }>()
+    .catch(() => db.prepare(`INSERT INTO pack_jobs (lang, fact_line, brief, prompt, version_id) VALUES (?,?,?,?,?) RETURNING id`)
+      .bind(lang, `design#${project.token} v${n}`, note || project.brief, prompt, ver.id).first<{ id: number }>().catch(() => null));
 
   await db.batch([
     db.prepare(`UPDATE design_versions SET job_id = ? WHERE id = ?`).bind(job?.id ?? null, ver.id),
@@ -168,7 +176,7 @@ export const POST: APIRoute = async ({ request }) => {
       .bind(...(title && isFirst ? [title, project.id] : [project.id])),
   ]).catch(() => null);
 
-  await recordUse(db, cid, 'design').catch(() => null);
+  await recordUse(db, 'ai.design', cid).catch(() => null);
   await sweep(db).catch(() => null);
 
   return json({ ok: true, token: project.token, version: n, versionId: ver.id, title });

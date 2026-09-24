@@ -1,0 +1,252 @@
+---
+/**
+ * 自家点选文字验证码 · 前端(安全架构 v1 L3,两站字节一致;样式照极验点选样板,只学样式不接极验)。
+ * 放进页面后只注册 window.__hc,不自动弹出(本组件先不接入任何页面):
+ *   await window.__hc.open('login' | 'search' | 'form' | 'acct')   → true = 已拿到 8 小时通行证(cookie 由 /api/cap/pass 下发)
+ *   await window.__hc.fetch(url, init)                             → 普通 fetch;接口回 428 时弹题,过了自动重交一次
+ * 用法:<ClickCaptcha lang={lang} email="站内客服邮箱" />(email 用于「看不清」兜底,两站各传各的)
+ *
+ * 让通用破解工具找不到题:闭合 Shadow DOM、canvas 画图(页面上没有 <img>)、无 class、全部内联样式、
+ * 脚本里不出现 captcha / verify / slider / track / bg / puzzle 这类字眼;图片随 JSON 以 base64 下发,提示字也画在 canvas 里。零外链。
+ * 手机:宽度 ≤ 480px 贴底弹出,卡片 min(92vw, 360px),按钮高 44px;判题容差圆在服务端,最窄卡片上直径仍 ≥ 44px。
+ * 无障碍:role=dialog + 读屏说明;图片区可用键盘(方向键移动准星、回车落点、退格撤销);「放大」把卡片放宽约一倍;
+ * 实在做不了点「看不清」,给出站内邮箱由人工处理。不设免验证通道,否则脚本会直接走那条路。
+ * 注意:下面的内联脚本原样下发给浏览器,里面不写注释、不用上面那些字眼。
+ */
+interface Props { lang?: string; email?: string; api?: string }
+const { lang = 'zh-cn', email = '', api = '/api/cap' } = Astro.props;
+const zh = lang.startsWith('zh');
+---
+<script is:inline define:vars={{ zh, email, api }}>
+(() => {
+  if (window.__hc) return;
+  const L = zh ? {
+    title: '请在下图依次点击', ok: '确定', close: '关闭', again: '换一题', zoom: '放大', help: '看不清', area: '图片区域',
+    desc: '图中有 5 个字。请按标题右侧的顺序点其中 3 个,点满后按「确定」。点到序号圆点可以撤销。用键盘时:方向键移动准星,回车落点,退格撤销。',
+    loading: '加载中…', wrong: '没点对,已换一题', exp: '题目过期了,已换一题', limit: '尝试次数太多,请 10 分钟后再试',
+    off: '暂时无法完成,请稍后再试', net: '网络不稳,请点「换一题」重试', done: '通过',
+    helpText: email ? '实在看不清?请发邮件到 ' + email + ',写明你要登录或提交的内容,我们人工处理。' : '实在看不清?请点「换一题」,或通过页面底部的联系方式找我们。',
+  } : {
+    title: 'Tap in this order:', ok: 'Confirm', close: 'Close', again: 'New one', zoom: 'Zoom', help: "Can't read it", area: 'Picture area',
+    desc: 'The picture shows 5 characters. Tap the 3 shown at the top right, in that order, then press Confirm. Tap a numbered dot to undo. Keyboard: arrow keys move the crosshair, Enter taps, Backspace undoes.',
+    loading: 'Loading…', wrong: 'Not quite. Here is a new one.', exp: 'That one expired. Here is a new one.', limit: 'Too many tries. Please wait 10 minutes.',
+    off: 'Temporarily unavailable. Please try again later.', net: 'Network hiccup. Tap "New one" to retry.', done: 'Done',
+    helpText: email ? "Can't complete it? Email " + email + ' and tell us what you were trying to do. We will handle it by hand.' : "Can't complete it? Tap New one, or reach us via the contact details at the bottom of the page.",
+  };
+  const ICON = {
+    close: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>',
+    again: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>',
+    zoom: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M11 8v6M8 11h6M16.5 16.5L21 21"/></svg>',
+  };
+  const rid = () => 'x' + crypto.getRandomValues(new Uint32Array(1))[0].toString(36);
+  const el = (tag, css, attrs, kids) => {
+    const n = document.createElement(tag);
+    if (css) n.style.cssText = css;
+    for (const k in attrs || {}) n.setAttribute(k, attrs[k]);
+    for (const c of kids || []) n.append(c);
+    return n;
+  };
+  const FONT = 'font:14px/1.45 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;';
+  const BTN = 'width:44px;height:44px;border:0;padding:0;margin:0;background:transparent;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:#6e6e73;cursor:pointer;';
+  let st = null, pending = null;
+
+  function build(kind, done) {
+    const host = el('div', 'position:fixed;inset:0;z-index:2147483000;display:block;');
+    const root = host.attachShadow({ mode: 'closed' });
+    const tid = rid(), did = rid();
+    const ttl = el('div', 'font-size:15px;color:#1d1d1f;', { id: tid }, [L.title]);
+    const hint = el('canvas', 'height:30px;display:block;', { 'aria-hidden': 'true' });
+    const desc = el('div', 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;', { id: did }, [L.desc]);
+    const pic = el('canvas', 'display:block;width:100%;height:auto;border-radius:8px;background:#e8e8ed;touch-action:manipulation;cursor:pointer;outline:none;', { tabindex: '0', role: 'application', 'aria-label': L.area, 'aria-describedby': did });
+    const msg = el('div', 'min-height:18px;margin-top:4px;font-size:13px;color:#6e6e73;', { 'aria-live': 'polite' });
+    const ok = el('button', 'display:block;width:100%;height:44px;margin:6px 0 0;border:0;border-radius:22px;background:#1d1d1f;color:#fff;font-size:15px;cursor:pointer;opacity:.35;', { type: 'button', disabled: '' }, [L.ok]);
+    const bClose = el('button', BTN, { type: 'button', 'aria-label': L.close, title: L.close });
+    const bAgain = el('button', BTN, { type: 'button', 'aria-label': L.again, title: L.again });
+    const bZoom = el('button', BTN, { type: 'button', 'aria-label': L.zoom, title: L.zoom, 'aria-pressed': 'false' });
+    bClose.innerHTML = ICON.close; bAgain.innerHTML = ICON.again; bZoom.innerHTML = ICON.zoom;
+    const bHelp = el('button', 'height:44px;padding:0 8px;margin-left:auto;border:0;background:transparent;color:#0066cc;font-size:13px;cursor:pointer;border-radius:10px;', { type: 'button', 'aria-expanded': 'false' }, [L.help]);
+    const helpBox = el('div', 'display:none;margin-top:4px;font-size:13px;color:#1d1d1f;background:#f5f5f7;border-radius:10px;padding:8px 10px;');
+    helpBox.textContent = L.helpText;
+    const card = el('div', FONT + 'position:absolute;box-sizing:border-box;background:#fff;color:#1d1d1f;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.28);padding:14px 14px 6px;', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': tid, 'aria-describedby': did }, [
+      el('div', 'display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:34px;margin-bottom:8px;', null, [ttl, hint]),
+      desc, pic, msg, ok,
+      el('div', 'display:flex;align-items:center;gap:2px;margin-top:4px;', null, [bClose, bAgain, bZoom, bHelp]),
+      helpBox,
+    ]);
+    root.append(el('div', 'position:absolute;inset:0;background:rgba(0,0,0,.45);'), card);
+
+    const s = { host, root, card, pic, hint, msg, ok, zoomed: false, q: null, im: null, dots: [], moves: 0, tr: true, pt: 'mouse', last: 0, kx: 0, ky: 0, busy: false, kind, done, prev: document.activeElement };
+    const focusables = [pic, ok, bClose, bAgain, bZoom, bHelp];
+    const ring = () => { for (const f of focusables) f.style.boxShadow = s.kbd && root.activeElement === f ? '0 0 0 3px rgba(0,113,227,.45)' : ''; };
+    for (const f of focusables) {
+      f.addEventListener('focus', () => { ring(); if (f === pic) draw(s); });
+      f.addEventListener('blur', () => { ring(); if (f === pic) draw(s); });
+    }
+    root.addEventListener('pointerdown', () => { s.kbd = false; ring(); }, true);
+    root.addEventListener('keydown', (e) => {
+      if (!s.kbd) { s.kbd = true; ring(); draw(s); }
+      if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+      if (e.key === 'Tab') {
+        const i = focusables.indexOf(root.activeElement), n = focusables.length;
+        e.preventDefault();
+        focusables[(i + (e.shiftKey ? n - 1 : 1) + n) % n].focus();
+      }
+    });
+    pic.addEventListener('pointermove', () => { s.moves++; });
+    pic.addEventListener('pointerdown', (e) => {
+      if (!s.q || s.busy) return;
+      e.preventDefault();
+      const r = pic.getBoundingClientRect();
+      tap(s, (e.clientX - r.left) * pic.width / r.width, (e.clientY - r.top) * pic.height / r.height, e.pointerType || 'mouse', e.isTrusted);
+    });
+    pic.addEventListener('keydown', (e) => {
+      if (!s.q || s.busy) return;
+      const step = pic.width / (e.shiftKey ? 10 : 40), mv = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+      if (mv) {
+        e.preventDefault();
+        s.kx = Math.min(pic.width, Math.max(0, s.kx + mv[0] * step));
+        s.ky = Math.min(pic.height, Math.max(0, s.ky + mv[1] * step));
+        draw(s);
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        tap(s, s.kx, s.ky, 'key', e.isTrusted);
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        s.dots.pop(); sync(s);
+      }
+    });
+    ok.addEventListener('click', () => submit(s));
+    bClose.addEventListener('click', () => finish(false));
+    bAgain.addEventListener('click', () => load(s));
+    bZoom.addEventListener('click', () => { s.zoomed = !s.zoomed; bZoom.setAttribute('aria-pressed', String(s.zoomed)); place(s); draw(s); });
+    bHelp.addEventListener('click', () => { const on = helpBox.style.display === 'none'; helpBox.style.display = on ? 'block' : 'none'; bHelp.setAttribute('aria-expanded', String(on)); });
+    s.onResize = () => { place(s); draw(s); };
+    addEventListener('resize', s.onResize);
+    place(s);
+    document.body.append(host);
+    pic.focus();
+    return s;
+  }
+
+  function place(s) {
+    const narrow = matchMedia('(max-width: 480px)').matches;
+    const w = s.zoomed ? 'min(96vw, 680px)' : narrow ? 'min(92vw, 360px)' : '340px';
+    s.card.style.width = w;
+    s.card.style.left = '50%';
+    if (narrow) { s.card.style.top = 'auto'; s.card.style.bottom = 'calc(12px + env(safe-area-inset-bottom, 0px))'; s.card.style.transform = 'translateX(-50%)'; }
+    else { s.card.style.bottom = 'auto'; s.card.style.top = '50%'; s.card.style.transform = 'translate(-50%, -50%)'; }
+  }
+
+  function say(s, text, bad) { s.msg.textContent = text || ''; s.msg.style.color = bad ? '#c9342a' : '#6e6e73'; }
+
+  function sync(s) {
+    const full = !!s.q && s.dots.length === s.q.n && !s.busy;
+    s.ok.disabled = !full;
+    s.ok.style.opacity = full ? '1' : '.35';
+    s.ok.style.cursor = full ? 'pointer' : 'default';
+    draw(s);
+  }
+
+  function tap(s, x, y, pt, trusted) {
+    const k = s.pic.width / Math.max(1, s.pic.getBoundingClientRect().width);
+    const hit = s.dots.findIndex((d) => Math.hypot(d.x - x, d.y - y) <= 15 * k);
+    if (hit >= 0) { s.dots.splice(hit); sync(s); return; }
+    if (s.dots.length >= s.q.n) return;
+    const now = performance.now();
+    s.dots.push({ x, y, dt: now - s.last, mv: s.moves });
+    s.last = now; s.moves = 0; s.pt = pt; s.tr = s.tr && trusted;
+    sync(s);
+  }
+
+  function draw(s) {
+    const c = s.pic.getContext('2d');
+    if (!s.im || !s.q) { c.clearRect(0, 0, s.pic.width, s.pic.height); return; }
+    const { w, hy } = s.q;
+    c.drawImage(s.im, 0, 0, w, hy, 0, 0, w, hy);
+    const k = s.pic.width / Math.max(1, s.pic.getBoundingClientRect().width), r = 13 * k;
+    s.dots.forEach((d, i) => {
+      c.beginPath(); c.arc(d.x, d.y, r, 0, Math.PI * 2);
+      c.fillStyle = '#0071e3'; c.fill();
+      c.lineWidth = 2 * k; c.strokeStyle = '#fff'; c.stroke();
+      c.fillStyle = '#fff'; c.font = '600 ' + Math.round(15 * k) + 'px -apple-system,BlinkMacSystemFont,sans-serif';
+      c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(String(i + 1), d.x, d.y + k);
+    });
+    if (s.root.activeElement === s.pic && s.kbd) {
+      c.lineWidth = 2 * k; c.strokeStyle = '#fff';
+      c.beginPath(); c.arc(s.kx, s.ky, 10 * k, 0, Math.PI * 2);
+      c.moveTo(s.kx - 16 * k, s.ky); c.lineTo(s.kx + 16 * k, s.ky); c.moveTo(s.kx, s.ky - 16 * k); c.lineTo(s.kx, s.ky + 16 * k);
+      c.stroke();
+    }
+  }
+
+  async function load(s, note) {
+    s.q = null; s.im = null; s.dots = []; s.moves = 0; s.tr = true; s.pt = 'mouse';
+    sync(s);
+    say(s, note || L.loading, !!note);
+    let r, j;
+    try {
+      r = await fetch(api + '/new?k=' + encodeURIComponent(s.kind), { credentials: 'same-origin', cache: 'no-store' });
+      j = await r.json();
+    } catch { say(s, L.net, true); return; }
+    if (r.status === 429) { say(s, L.limit, true); return; }
+    if (!r.ok || !j.ok) { say(s, L.off, true); return; }
+    const bytes = Uint8Array.from(atob(j.img.replace(/-/g, '+').replace(/_/g, '/')), (ch) => ch.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }));
+    const im = new Image();
+    im.src = url;
+    try { await im.decode(); } catch { URL.revokeObjectURL(url); say(s, L.off, true); return; }
+    s.pic.width = j.w; s.pic.height = j.hy;
+    s.hint.width = j.hw; s.hint.height = j.h - j.hy;
+    s.hint.style.width = Math.round(30 * j.hw / (j.h - j.hy)) + 'px';
+    s.hint.getContext('2d').drawImage(im, 0, j.hy, j.hw, j.h - j.hy, 0, 0, j.hw, j.h - j.hy);
+    URL.revokeObjectURL(url);
+    s.q = j; s.im = im; s.kx = j.w / 2; s.ky = j.hy / 2; s.last = performance.now();
+    if (!note) say(s, '');
+    sync(s);
+  }
+
+  async function submit(s) {
+    if (!s.q || s.busy || s.dots.length !== s.q.n) return;
+    s.busy = true; sync(s);
+    const body = { t: s.q.t, c: s.dots.map((d) => [Math.round(d.x), Math.round(d.y), Math.round(d.dt)]), m: s.dots.map((d) => d.mv), pt: s.pt, tr: s.tr };
+    let r, j = {};
+    try {
+      r = await fetch(api + '/pass', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      j = await r.json().catch(() => ({}));
+    } catch { s.busy = false; sync(s); say(s, L.net, true); return; }
+    s.busy = false;
+    if (r.ok && j.ok) { say(s, L.done); finish(true); return; }
+    if (r.status === 429) { s.q = null; sync(s); say(s, L.limit, true); return; }
+    if (r.status >= 500) { sync(s); say(s, L.off, true); return; }
+    await load(s, j.code === 'exp' ? L.exp : L.wrong);
+  }
+
+  function finish(result) {
+    const s = st;
+    if (!s) return;
+    st = null; pending = null;
+    removeEventListener('resize', s.onResize);
+    s.host.remove();
+    if (s.prev && s.prev.focus) s.prev.focus();
+    s.done(result);
+  }
+
+  function open(kind) {
+    if (pending) return pending;
+    pending = new Promise((done) => {
+      st = build(String(kind || 'form'), done);
+      load(st);
+    });
+    return pending;
+  }
+
+  window.__hc = {
+    open,
+    fetch: async (url, init) => {
+      const r = await fetch(url, init);
+      if (r.status !== 428) return r;
+      return (await open('form')) ? fetch(url, init) : r;
+    },
+  };
+})();
+</script>

@@ -20,6 +20,9 @@ import { env as cfEnv } from 'cloudflare:workers';
 import { readSession, readCookie, COOKIE } from './lib/auth';
 /* lib/quota 只依赖 ai-ip(纯数据),同样可以进中间件 */
 import { answerBot } from './lib/quota';
+/* lib/member 只依赖 auth 与 quota;lib/canon 没有任何依赖(09-24 C1) */
+import { memberSigned } from './lib/member';
+import { canonical, isPagePath, keyParams, uncacheable } from './lib/canon';
 /* 简→繁:只带 cn2t 这一半词典(全量还含繁→简,我们用不到)。
    opencc-js 是纯 JS、无 Node 依赖,可以进 Worker;
    **它不是 @cosmetic/core**,不会把组件模块图拉进中间件。 */
@@ -193,7 +196,7 @@ function fromHeader(h: string | null): L | null {
    帛卉面向国内跨境卖家的「产品机会预判与共创」站:只出简体中文 5 页 + 共用登录页。
    其余页面 301 到工厂站同路径 —— 配方 / 包材 / 法规 / 解读只在 biosphere-ai.com 留一份,不做两份重复内容;
    sitemap 只列这 5 页(共用的 sitemap 会把配方、资讯全挂到本域名下,而那些地址这里都是 301)。 */
-const B2O_PAGES = ['', 'opportunities/', 'brief/', 'predictions/', 'delivery/'];
+const B2O_PAGES = ['', 'opportunities/', 'brief/', 'predictions/', 'delivery/', 'privacy/', 'insights/'];   // 09-24 W6 加洞察页(src/pages/[lang]/insights.astro)
 function b2oSitemap(host: string): Response {
   const urls = B2O_PAGES.map((p) => `<url><loc>https://${host}/zh-cn/${p}</loc></url>`).join('');
   return new Response(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`,
@@ -214,6 +217,7 @@ function b2oLlms(host: string): Response {
 - [提交店铺,拿机会简报](${b}brief/):24 小时内交付 1–2 页《客户产品机会简报》
 - [预判记录](${b}predictions/):对的错的都公开,30 / 60 / 90 天回填
 - [帛卉交付能力](${b}delivery/)
+- [跨境美妆卖家选品与供应链洞察(2026 秋)](${b}insights/):出口与平台数据、选品选厂逻辑、17 个市场准入要点、六条基于榜单快照与法规原文的独家洞察,数字均带出处脚注
 
 ## 工厂事实
 - 帛卉工厂站与已核实的工厂数字:https://biosphere-ai.com/llms.txt
@@ -318,13 +322,22 @@ const route = async (ctx: Parameters<Parameters<typeof defineMiddleware>[0]>[0],
     return next();
   }
 
+  /* 09-24 红队:页面只收 GET / HEAD。Astro 页面对任何方法都会整页渲染,而边缘缓存只对 GET 生效 ——
+     POST 一个页面地址 = 每次现渲染、读库;边缘 S2 又放过 POST,云机房出口不用过质询就能刷。站内没有任何表单提交到页面地址(都走 /api/)。 */
+  if (ctx.request.method !== 'GET' && ctx.request.method !== 'HEAD')
+    return new Response(null, { status: 405, headers: { Allow: 'GET, HEAD', 'Cache-Control': 'no-store' } });
   if (b2o) { const r = b2oPage(pathname, search); if (r) return r; }
 
   const segs = pathname.split('/').filter(Boolean);
   const first = (segs[0] ?? '').toLowerCase();
 
   // 已经是正规语言前缀 → 原样放行,一个字节都不动
-  if ((LOCALES as readonly string[]).includes(first)) return next();
+  if ((LOCALES as readonly string[]).includes(first)) {
+    /* 09-24 红队:/ZH-CN/、/Zh-cn/ 也走到这里 —— 页面拿原样的 lang 渲染(判不出中文、canonical 写成大写),
+       每种大小写又各占一份边缘缓存,换大小写就能把未命中放大十几倍。一律 301 到小写(用 segs 重拼,不会拼出 // 开头的外跳地址)。 */
+    if (segs[0] !== first) return ctx.redirect(`/${[first, ...segs.slice(1)].join('/')}${pathname.endsWith('/') ? '/' : ''}${search}`, 301);
+    return next();
+  }
 
   // 别名前缀(/jp/、/zh/、/in/…)→ 换成正规码,后面的路径原样带过去
   if (ALIAS[first]) {
@@ -430,17 +443,12 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     return new Response(null, { status: 301, headers: { Location: u.toString() } });
   }
 
-  /* ② workers.dev 的生产地址收口到正式域名。
-     bohui-web.huanggw20.workers.dev 会把整个站再对外发一份 —— 同一份内容两个域名,
-     搜索引擎按重复内容处理,还可能把这个地址收进索引,以后想撤都撤不干净。
-     预览地址(带前缀的 *-bohui-web.workers.dev)不动,那是我们自己验证用的。 */
+  /* ② 只认自家域名(09-24 暴露面自查 H1)。workers.dev 与带版本号的预览地址不在 zone 之内,
+     边缘的 WAF 规则与限速对它们全不起作用,却连着生产库 —— 后台已关、wrangler.toml 也钉死了 false,这里再兜一层:
+     域名不在 HOST_SITE_MW(含 www.)里一律 404。本地开发(localhost)与创始人账号副本(COPY_OF,跑在它自己的 workers.dev 上)放行。 */
   const host = new URL(ctx.request.url).hostname;
-  if (host === 'bohui-web.huanggw20.workers.dev') {
-    const u = new URL(ctx.request.url);
-    u.hostname = 'biosphere-ai.com';
-    u.protocol = 'https:';
-    return new Response(null, { status: 301, headers: { Location: u.toString() } });
-  }
+  const dev = host === 'localhost' || host === '127.0.0.1' || !!(cfEnv as any)?.COPY_OF;
+  if (!dev && !siteIdForHost(host)) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
 
   /* ③ 边缘缓存:同一个页面重复被访问时不再碰 D1。
      起因(2026-09-04):免费档 D1 的每日行读被打满 —— 每个 SSR 页面都要读版块、
@@ -449,6 +457,19 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
      未命中才渲染并回填。后台、接口、带会话 cookie 的请求一律不缓存。 */
   const req = ctx.request;
   const url0 = new URL(req.url);
+  /* 后台会话、会员会话先验签再认(09-24 C1 / 代码审计 P0-4):以前只看 cookie 在不在,
+     带一个假 bh_mem(或 bh_sess)就能让任何页面每次都绕过缓存现渲染。验签是纯 WebCrypto,不碰 D1。 */
+  const ck = req.headers.get('cookie') || '';
+  const staff = ck.includes(`${COOKIE}=`)
+    && !!(await readSession(readCookie(ck, COOKIE), String((cfEnv as any)?.AUTH_SECRET ?? '')).catch(() => null));
+  const member = !staff && /(?:^|;\s*)bh_mem=/.test(ck) && await memberSigned(ck, cfEnv);
+  /* 规范化(09-24 安全架构 C1,参数登记表在 lib/canon.ts):页面路径补尾斜杠、只留登记过的参数、取值夹到范围内,
+     不一致就 301 一次。301 落在 WAF 之后,跳过去的请求会再过一遍边缘规则(S1 / R2 的通配都带尾斜杠)。
+     后台已登录的人不跳(草稿预览等参数只给他们用),本地与副本不跳。 */
+  if ((req.method === 'GET' || req.method === 'HEAD') && !staff && !dev && isPagePath(url0.pathname)) {
+    const to = canonical(url0.pathname, url0.search);
+    if (to) return new Response(null, { status: 301, headers: { Location: to } });
+  }
   /* 哪些路径允许**带参数**进缓存,以及这个路径上哪些参数真的影响渲染。
      2026-09-07 实测:边缘缓存命中率只有 0.22%,而全站 24 小时 6.5 万次请求 ——
      原因就是上一版这里写了 !url0.search:**任何带 ? 的 URL 一律不缓存**。
@@ -458,36 +479,33 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
      没列在这张表里的路径,带 ? 仍然一律不缓存 —— 比如站内搜索:
      q 决定结果,把它从缓存键里抹掉会让所有人拿到同一份搜索结果,那是错的答案。
      宁可不缓存,也不能缓存错。 */
-  const CACHE_PARAMS: [RegExp, string[]][] = [
-    [/^\/[\w-]+\/packaging\/?$/, ['p', 'u', 'g', 't', 'a', 'f']],
-    [/^\/[\w-]+\/formulas\/?$/, ['c', 'f', 'b', 'm']],
-    [/^\/[\w-]+\/ingredients\/?$/, ['k', 'b', 'f', 'l', 'fn', 'r', 'p']],   // l 字母 / fn 功能 / r 评级 / p 页:成分索引(09-17 原料页 v2)
-    [/^\/[\w-]+\/news\/?$/, ['p', 'topic', 'sort']],
-    [/^\/[\w-]+\/trends\/market\/?$/, ['c']],
-  ];
-  /* 从不影响渲染的参数:广告/统计带的,以及我自己调试时加的缓存穿透参数。
-     把它们从缓存键里剔掉,顺带治好一个自伤:今天我用 ?z=随机数 验证了几十次,
-     每一次都是一个全新的缓存键、一次完整渲染。 */
-  const JUNK = /^(utm_|fbclid$|gclid$|msclkid$|ref$|from$|z$|cb$|nc$|_$)/;
-
-  const sigParams = (CACHE_PARAMS.find(([re]) => re.test(url0.pathname)) ?? [null, []])[1];
-  const qKeys = [...url0.searchParams.keys()];
-  const unknown = qKeys.filter((k) => !sigParams.includes(k) && !JUNK.test(k));
+  /* 09-24 C1:哪些参数进缓存键、哪些让整页不缓存,统一由 lib/canon.ts 的登记表决定(原 CACHE_PARAMS / JUNK 两张表挪过去了,
+     还补了上一版漏登记的:包材 c、原料 q、解读 mk/cat/p、古方 t/p、图谱 n/t、目录 p、sitemap part/p 等)。
+     广告与调试参数(utm_、?z= 之类)照旧只从缓存键里剔掉。 */
+  const noCache = uncacheable(url0.pathname, url0.searchParams);
 
   /* 会员查看限额(2026-09-23,lib/quota.ts):详情页对认证爬虫出全文、对未登录真人出预览、对会员出全文并计数。
      爬虫判定只在这里算一次,页面读 locals.goodBot —— 缓存键与页面用的必须是同一个判定,
      否则谁先来谁定版本:Googlebot 拿到预览(SEO 塌),或真人拿到全文(限额形同虚设)。
      会员请求整站不进缓存(和后台会话同理),未登录那份预览与爬虫那份全文分两个键。 */
-  const goodBot = answerBot(req.headers.get('user-agent') || '', req.headers.get('cf-connecting-ip') || '');
+  /* 09-24 C6(代码审计 P0-6):边缘注入的 x-bh-vbot / x-bh-vcat(F3 的 Transform Rule 由 cf.client.bot 与
+     cf.verified_bot_category 写入)。
+     09-24 红队:这两个头**只能否决、不能放行**。F3 还没上线,客户端自己带 `x-bh-vbot: true` + `x-bh-vcat: Search Engine Crawler`
+     就能冒充认证爬虫拿全文、不计额度(边缘 R1 只看 UA,拦不住头);F3 上了若规则只在 cf.client.bot 为真时才写头,客户端的同名头照样透传。
+     所以先过 answerBot(UA + OpenAI 网段),头在时再要求它确认;头不在时与旧判定相同,GEO 不塌。
+     要删 answerBot 这一支,须先确认 F3 对**每个请求**都覆盖写这两个头(自带 x-bh-vbot: true 请求详情页,x-bh-gate 仍是 login)。 */
+  const vbot = req.headers.get('x-bh-vbot');
+  const goodBot = answerBot(req.headers.get('user-agent') || '', req.headers.get('cf-connecting-ip') || '')
+    && (vbot === null || (vbot === 'true' && /^(search engine crawler|ai search|ai assistant)$/i.test(req.headers.get('x-bh-vcat') || '')));
   (ctx.locals as any).goodBot = goodBot;
   const gateKey = /^\/[\w-]+\/(decoder|ingredients|formula)\/[^/]+\/?$/.test(url0.pathname) ? (goodBot ? 'bot' : 'anon') : '';
+  /* 09-24 红队:HEAD 也走缓存(键仍按 GET 建)。Astro 页面对 HEAD 照样整页渲染、正文完整(只有接口才去掉正文),
+     以前 HEAD 一律不查缓存,同一个已缓存的地址用 HEAD 刷就是无限次现渲染读库;回给 HEAD 的正文由运行时丢弃。 */
   const cacheable =
-    req.method === 'GET' &&
+    (req.method === 'GET' || req.method === 'HEAD') &&
     !url0.pathname.startsWith('/api/') &&
     !url0.pathname.startsWith('/bohui/') &&
-    unknown.length === 0 &&
-    !(req.headers.get('cookie') || '').includes('bh_sess') &&
-    !/(?:^|;\s*)bh_mem=/.test(req.headers.get('cookie') || '');
+    !noCache && !staff && !member;
   const cache = (caches as any).default as Cache | undefined;
   /* 缓存键带版本号。2026-09-07:D1 日读额度耗尽期间,「数据源未就绪」那一页是以
      HTTP 200 渲染的,于是被原样缓存了一小时 —— 我用 ?cb= 验证时绕过了缓存,
@@ -496,18 +514,13 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   /* v3(2026-09-07 上午):D1 额度耗尽期间,边缘把一批 404 与 503 缓存住了 ——
      修好之后访客拿到的仍是坏副本。推版本号是清掉它们唯一干净的办法。 */
   /* v4(2026-09-07 晚):sitemap 拆分、繁中上线、跨站兜底重写 —— 清掉全部旧副本 */
-  const CACHE_V = 'v80';   // 09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
+  const CACHE_V = 'v83';   // 09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。
        ?p=2&t=jar 与 ?t=jar&p=2 是同一个页面,不该占两份缓存;
        ?z=随机数 更不该每次都是新键。 */
-    const keep: [string, string][] = [];
-    for (const k of sigParams) {
-      const v = u.searchParams.get(k);
-      if (v) keep.push([k, v]);
-    }
-    keep.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+    const keep = keyParams(u.pathname, u.searchParams);   // 已按名字排序、值已规整(lib/canon.ts)
     u.search = '';
     for (const [k, v] of keep) u.searchParams.append(k, v);
     if (gateKey) u.searchParams.set('__gate', gateKey);   // 必须在 u.search = '' 之后(平台 09-22 踩过:放前面被清掉,Googlebot 命中真人那份)

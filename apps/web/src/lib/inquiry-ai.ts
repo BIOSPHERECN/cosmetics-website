@@ -7,19 +7,32 @@
  *   ② 推到群机器人:NOTIFY_WEBHOOK 支持企业微信 / 飞书 / 钉钉 / Telegram 四种地址,按 URL 认;
  *      没配就只落库,后台「询盘线索」页照常能看。
  *   ③ 秒级首回(2026-09-16 加,创始人转来的行业横评:「响应超过 5 分钟,留资转化率掉一半」「7×24 秒级响应」是外贸 AI 获客第一卖点):
- *      模型顺手写一封对方语言的首回(确认收到 + 我们能做什么 + 两个问题),存 ai_reply;配了 RESEND_API_KEY 就直接发出去(只发 A/B 级),
- *      没配就留在后台给业务员一键复制。C/spam 不回,省得给推销邮件回执。
+ *      模型顺手写一封对方语言的首回(确认收到 + 我们能做什么 + 两个问题),存 ai_reply;09-24 起一律只存草稿,人审后由业务员自己的邮箱发(不再自动发)。
+ *     C/spam 不回,省得给推销邮件回执。
  * 调用方式:在 API 里 waitUntil,不拖慢给访客的回执。
  */
 import { chat, loadFleet } from './fleet';
-import { judge, INQUIRY_QUESTIONS, summarize } from './jev';
+import { judge, INQUIRY_QUESTIONS } from './jev';
 import { redact } from './mail';
 import { sendMail, canSend } from './mail';
 
 const PROMPT = `你是一家中国化妆品 OEM/ODM 工厂(广州,15 条产线,GMPC/ISO22716/HALAL,主做印尼与中东、欧美私标)的资深外贸业务经理。
 读下面这条官网询盘,只输出 JSON:{"grade":"A|B|C|spam","summary":"一句话:对方是谁、要什么、量级、市场","next":"给业务员的下一步(一句话,含要问对方的 2 个问题)","lang":"对方语言代码",
-"reply_subject":"首回邮件主题(对方语言)","reply":"首回邮件正文(对方语言,≤120 词):谢谢来信并复述对方要的东西;我们对应能做什么(品类 + GMPC/ISO22716/HALAL;起订量、出样周期、价格不写具体数字,强调大货产能与准时交付,业务经理报价时给);问 2 个推进问题(目标市场/规格容量/预计首单量/有无配方或参考样);说明业务经理 24 小时内跟进;落款 BIOSPHERE,不写电话,不吹牛"}。
+"reply_subject":"首回邮件主题(对方语言)","reply":"首回邮件正文(对方语言,≤120 词):谢谢来信并复述对方要的东西;我们对应能做什么(品类 + GMPC/ISO22716/HALAL,HALAL 只说有证书、覆盖范围以证书为准,不说能进哪个市场;起订量、出样周期、价格不写具体数字,强调大货产能与准时交付,业务经理报价时给);问 2 个推进问题(目标市场/规格容量/预计首单量/有无配方或参考样);说明业务经理 24 小时内跟进;落款 BIOSPHERE,不写电话,不吹牛"}。
 分级:A=明确品类+量级或目标市场,像真采购;B=有需求但信息不全;C=学生/求职/泛泛咨询/供应商推销;spam=广告/无意义。C/spam 的 reply 留空。不要解释。`;
+
+/* 09-24 W1(B4 v2 第六节第 4 点):发给模型前把姓名/邮箱/电话/微信换成占位。入库与群通知照旧用原值。
+   姓名用 {{NAME}} 占位,模型写进首回/摘要的占位再换回真名。 */
+export function maskPii(s: string, row: { name?: string | null; email?: string | null; whatsapp?: string | null }): string {
+  let t = s;
+  for (const [v, ph] of [[row.email, '{{EMAIL}}'], [row.whatsapp, '{{PHONE}}'], [row.name, '{{NAME}}']] as const) {
+    const x = String(v ?? '').trim();
+    if (x.length >= (/^[\x00-\x7f]+$/.test(x) ? 4 : 2)) t = t.split(x).join(ph);   // 短英文名不替换,免得误伤 Lipstick 这类词
+  }
+  return redact(t)
+    .replace(/((?:微信|wechat|weixin|vx|wx)\s*(?:号)?\s*[::]?\s*)[A-Za-z][\w-]{4,19}/gi, '$1{{WECHAT}}')
+    .replace(/(?<!\d)1[3-9]\d{9}(?!\d)/g, '{{PHONE}}');
+}
 
 export async function gradeAndNotify(db: D1Database, env: any, id: number, row: { name: string; company: string | null; email: string; country: string | null; message: string; lang: string; source_path: string | null; category: string | null; volume: string | null; whatsapp?: string | null; noReply?: boolean }) {
   let grade = '', summary = '', next = '', replySubject = '', reply = '';
@@ -31,30 +44,31 @@ export async function gradeAndNotify(db: D1Database, env: any, id: number, row: 
 
 【写信规则(必须遵守)】
 ${rules.body.slice(0, 4000)}` : PROMPT;
-    const r = await chat(env, [{ role: 'system', content: sys }, { role: 'user', content: `姓名:${row.name}\n公司:${row.company ?? ''}\n邮箱:${row.email}\n国家:${row.country ?? ''}\n品类:${row.category ?? ''}\n量级:${row.volume ?? ''}\n来源页:${row.source_path ?? ''}\n正文:${row.message.slice(0, 2000)}` }], { fleet, json: true, maxTokens: 1000, timeoutMs: 30000 });
-    const raw = String(r.text ?? ''); const j = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
+    const r = await chat(env, [{ role: 'system', content: sys }, { role: 'user', content: maskPii(`姓名:${row.name}\n公司:${row.company ?? ''}\n邮箱:${row.email}\n国家:${row.country ?? ''}\n品类:${row.category ?? ''}\n量级:${row.volume ?? ''}\n来源页:${row.source_path ?? ''}\n正文:${row.message.slice(0, 2000)}`, row) }], { fleet, json: true, maxTokens: 1000, timeoutMs: 30000 });
+    const raw = String(r.text ?? '').split('{{NAME}}').join(row.name ?? ''); const j = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
     grade = ['A', 'B', 'C', 'spam'].includes(j.grade) ? j.grade : 'B'; summary = String(j.summary ?? '').slice(0, 300); next = String(j.next ?? '').slice(0, 300);
     if (grade === 'A' || grade === 'B') { replySubject = String(j.reply_subject ?? '').slice(0, 160); reply = String(j.reply ?? '').slice(0, 2000); }
     await db.prepare('UPDATE inquiries SET ai_grade = ?, ai_summary = ?, ai_reply = ? WHERE id = ?').bind(grade, `${summary}${next ? ' ‖ 下一步:' + next : ''}`, reply ? `${replySubject}\n\n${reply}` : null, id).run();
   } catch { /* 分级失败不影响通知 */ }
 
-  // 秒级首回:只在能发信且是 A/B 级时真发。发信走 lib/mail 的三选一(2026-09-18:Cloudflare Email Sending 优先,Resend 备选;发件域名要先接入)
-  let sent = false;
-  if (reply && !row.noReply && canSend(env)) {   // noReply:BEAUTY2OEM 简报表单承诺人工 24 小时交付,不发 AI 首回
-    const r = await sendMail(env, { to: [row.email], subject: replySubject || 'Re: your inquiry to BIOSPHERE', text: reply });
-    sent = r.ok;   // 发不出去就留给业务员手动发,后台有草稿
-    if (sent) await db.prepare("UPDATE inquiries SET auto_replied_at = datetime('now') WHERE id = ?").bind(id).run();
+  /* 09-24 W7(AI 获客定稿 WP-02):A/B 级首回只存草稿(ai_reply),不再自动发给询盘人 —— 业务员在后台看过后用自己的邮箱「用邮件发」。
+     通知先于群机器人:发 NOTIFY_MAIL(没配发 MAIL_DIGEST_TO,都没配发本站 sales@ —— 进后台邮件中心并按 MAIL_FORWARD_TO 转业务员),分级失败也发,附原文前 500 字。这是内部事务信。 */
+  const text = `【官网询盘 #${id}${grade ? ' · ' + grade : ''}】${row.company ?? ''} ${row.name}(${row.country ?? '-'})\n${summary || row.message.slice(0, 140)}\n${next ? '下一步:' + next + '\n' : ''}邮箱:${row.email}${row.whatsapp ? '\nWhatsApp:' + row.whatsapp : ''}${reply ? '\n首回:草稿在后台,人审后用邮件发' : ''}\n后台:https://biosphere-ai.com/bohui/inquiries`;
+  const notifyTo = (String(env.NOTIFY_MAIL ?? '').trim() || String(env.MAIL_DIGEST_TO ?? '').trim() || 'sales@biosphere-ai.com').split(',').map((s) => s.trim()).filter(Boolean);
+  if (notifyTo.length && canSend(env)) {
+    const r = await sendMail(env, { to: notifyTo, subject: `[官网] 询盘 #${id}${grade ? ' · ' + grade : ''} ${row.company ?? row.name}${row.country ? ' · ' + row.country : ''}`, text: `${text}\n\n正文(前 500 字):\n${row.message.slice(0, 500)}`, replyTo: row.email }).catch(() => ({ ok: false }));
+    if (r.ok) await db.prepare("UPDATE inquiries SET notified_at = datetime('now') WHERE id = ?").bind(id).run().catch(() => {});
+  }
+  /* Jev 影子(09-22 接入,已停):只有 JEV_SHADOW='1' 才跑,且排在所有通知之后,不拖通知、不进通知正文 */
+  if (env.JEV_SHADOW === '1') {
+    try {
+      const jr = await judge(env, maskPii(`国家:${row.country ?? ''}\n公司:${row.company ?? ''}\n正文:${row.message}`, row), INQUIRY_QUESTIONS);
+      if (jr) await db.prepare('UPDATE inquiries SET jev_json = ? WHERE id = ?').bind(JSON.stringify({ answers: jr.answers, ms: jr.ms }).slice(0, 4000), id).run().catch(() => {});
+    } catch { /* 影子跑,不影响主流程 */ }
   }
 
   const hook = String(env.NOTIFY_WEBHOOK ?? '').trim();
   if (!hook) return;
-  /* Jev 影子判断(09-22 创始人「jev 要接入」):与舰队分级并排记账,不接管。脱敏后只送正文与国家;失败静默。 */
-  let jevLine = '';
-  try {
-    const jr = await judge(env, redact(`国家:${row.country ?? ''}\n公司:${row.company ?? ''}\n正文:${row.message}`), INQUIRY_QUESTIONS);
-    if (jr) { jevLine = summarize(jr); await db.prepare('UPDATE inquiries SET jev_json = ? WHERE id = ?').bind(JSON.stringify({ answers: jr.answers, ms: jr.ms }).slice(0, 4000), id).run().catch(() => {}); }
-  } catch { /* 影子跑,不影响主流程 */ }
-  const text = `【官网询盘 #${id}${grade ? ' · ' + grade : ''}】${row.company ?? ''} ${row.name}(${row.country ?? '-'})\n${summary || row.message.slice(0, 140)}\n${jevLine ? 'Jev:' + jevLine + '\n' : ''}${next ? '下一步:' + next + '\n' : ''}邮箱:${row.email}${row.whatsapp ? '\nWhatsApp:' + row.whatsapp : ''}${reply ? '\n首回:' + (sent ? '已自动发出' : '草稿在后台,一键复制') : ''}\n后台:https://biosphere-ai.com/bohui/inquiries`;
   let body: unknown;
   if (/qyapi\.weixin\.qq\.com/.test(hook)) body = { msgtype: 'text', text: { content: text } };
   else if (/open\.feishu\.cn|larksuite\.com/.test(hook)) body = { msg_type: 'text', content: { text } };

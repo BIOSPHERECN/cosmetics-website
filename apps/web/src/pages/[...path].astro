@@ -49,12 +49,14 @@ import ProductGrid from '../components/ProductGrid.astro';
 import InquiryCart from '../components/InquiryCart.astro';
 import FactoryBlock from '../components/FactoryBlock.astro';
 import { getSiteByHost, getSiteById, getPageBundle, DEFAULT_LANG, type Lang } from '../lib/db';
+import { readSession, readCookie, COOKIE as ADMIN_COOKIE } from '../lib/auth';
 import { orgJsonLd, siteJsonLd, breadcrumbJsonLd, faqJsonLd, productJsonLd, itemListJsonLd } from '../lib/jsonld';
 import { isLocale, t as uiT, isLocale as _l } from '@cosmetic/core/i18n';
 import { getVariant, getSite as getStaticSite } from '@cosmetic/core/registry';
 // Astro v6 起 Astro.locals.runtime.env 已移除,绑定改从 cloudflare:workers 取
 import { env } from 'cloudflare:workers';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { memo } from '../lib/memo';
 
 export const prerender = false;
 
@@ -114,7 +116,10 @@ if (!db) {
       ?? (override ? await getSiteById(db, override, lang) : null)
       /* 兜底按域名回到本站,绝不硬编码别的站(2026-09-07 跨站串标题事故) */
       ?? (siteIdForHost(Astro.url.hostname) ? await getSiteById(db, siteIdForHost(Astro.url.hostname)!, lang) : null);
-    if (site) bundle = await getPageBundle(db, site.id, slug, lang);
+    /* A9 草稿预览:只有带 ?draft= 且已登录后台的人才看草稿(draft 不进边缘缓存键,不会漏给访客) */
+    const withDraft = Astro.url.searchParams.has('draft')
+      && !!(await readSession(readCookie(Astro.request.headers.get('cookie'), ADMIN_COOKIE), (env as any)?.AUTH_SECRET ?? '').catch(() => null));
+    if (site) bundle = await getPageBundle(db, site.id, slug, lang, { withDraft });
   } catch (e) {
     dbError = e instanceof Error ? e.message : String(e);
     quotaHit = /daily row read limit|exceeded .*limit|7500/i.test(dbError);
@@ -302,10 +307,10 @@ const catalog = bundle?.page.template === 'products' && db && site
 /* 原来只在产品页查(筛选条用);创始人:「导航栏产品品类也下拉分类!」——
    顶部导航每页都在,品类清单改为全页可用(一条 GROUP BY,开销可忽略) */
 const catCounts = db && site
-  ? ((await db.prepare(
+  ? await memo(`prod-cats:${site.id}`, 600, async () => ((await db.prepare(   // 09-24 D2:每页都跑,记 10 分钟
       `SELECT category, COUNT(*) n FROM products
         WHERE site_id = ? AND status = 'published' GROUP BY category ORDER BY n DESC`,
-    ).bind(site.id).all<{ category: string; n: number }>().catch(() => ({ results: [] }))).results ?? [])
+    ).bind(site.id).all<{ category: string; n: number }>().catch(() => ({ results: [] }))).results ?? []))
   : [];
 const CAT_LABEL: Record<string, Record<string, string>> = {
   'zh-cn': { skincare: '护肤', makeup: '彩妆', oral: '口腔护理', kids: '儿童护肤', body: '身体护理', hair: '洗护', cleansing: '洁护', all: '全部' },

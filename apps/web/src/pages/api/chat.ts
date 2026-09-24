@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import { loadFleet, paidFirst } from '../../lib/fleet';
 import { chatInLanguage, replyLanguageFor, detectLanguage } from '../../lib/translate.ts';
 import { overQuota, recordUse, tooMany, clientId } from '../../lib/ratelimit';
+import { aiGate } from '../../lib/member';
 
 export const prerender = false;
 
@@ -23,6 +24,10 @@ export const POST: APIRoute = async ({ request }) => {
 
   const who = clientId(request);
   if (await overQuota(db, 'ai.chat', who)) return tooMany('ai.chat');
+  /* 09-24 C10(代码审计 P1-4):只给会员用,并计每日额度 —— 不登录、只按 IP 限次时,换 IP 就能把模型免费额度烧干 */
+  /* 客服多轮对话:当天用过就只算一条,不逐条扣;每小时轮次仍受上面的按 IP 上限 */
+  const denied = await aiGate(request, env, db, 'ai.chat', false);
+  if (denied) return denied;
   await recordUse(db, 'ai.chat', who);
   if (!db) return json({ ok: false, msg: '数据源未就绪' }, 500);
 

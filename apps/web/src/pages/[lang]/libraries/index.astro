@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 /**
  * 产品库总览 —— 四个库的索引页。
@@ -145,7 +146,7 @@ const ld = {
   <SiteFooter locale={lang as any} path={path}
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />
-  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
 
   <style>
     .lib { max-width: min(112.5rem, 100%); margin: 0 auto;

@@ -15,9 +15,11 @@ export const GET: APIRoute = async ({ params, request }) => {
   const id = Number(params.id);
   if (!db || !Number.isFinite(id)) return new Response('Not found', { status: 404 });
 
-  const row = await db.prepare(`SELECT mime, data, url, driver, r2_key FROM media WHERE id=?`).bind(id)
-    .first<{ mime: string; data: unknown; url: string | null; driver: string; r2_key: string | null }>();
-  if (!row) return new Response('Not found', { status: 404 });
+  const row = await db.prepare(`SELECT mime, data, url, driver, r2_key, folder FROM media WHERE id=?`).bind(id)
+    .first<{ mime: string; data: unknown; url: string | null; driver: string; r2_key: string | null; folder: string | null }>();
+  /* 客户定制出图(folder='packjob')不走公开顺序号 —— 从 1 数到 N 就能看遍所有客户的图(09-24 代码审计 P1-2)。
+     这类图只从 /api/ai/pack-img 按归属取。 */
+  if (!row || row.folder === 'packjob') return new Response('Not found', { status: 404 });
 
   // 外链驱动(R2 / 站内静态)只做 302,不代理流量。
   // 注意 Response.redirect 只吃绝对地址,给它 '/media/shots/x.jpg' 会直接抛 ——

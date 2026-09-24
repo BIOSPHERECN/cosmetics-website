@@ -19,7 +19,7 @@ const PROMPT = `你是一家中国化妆品 OEM/ODM 工厂(广州,15 条产线,G
 {"category":"询盘|报价|样品|投诉|供应商|垃圾|其他","summary":"中文,不超过 60 字:对方是谁、要什么、要我们做什么","reply_subject":"回信主题(对方语言)","reply":"回信正文(对方语言,不超过 120 词)"}
 分类口径:询盘=想找我们代工或买产品;报价=已在谈,问价或催报价单;样品=要样、寄样、样品反馈;投诉=质量、交期、售后不满;供应商=向我们推销原料、包材、服务;垃圾=广告、钓鱼、无意义;其他=以上都不是(招聘、财务、平台通知等)。
 只有 询盘/报价/样品 才写 reply,其余 reply 与 reply_subject 留空。
-回信规则:谢谢来信并复述对方要的东西;我们对应能做什么(品类 + GMPC/ISO22716/HALAL,强调大货产能与准时交付);起订量、出样周期、价格、交期一律不写具体数字(由业务经理报);问 2 个推进问题(目标市场 / 规格容量 / 预计首单量 / 有无配方或参考样);说明业务经理 24 小时内跟进;落款 BIOSPHERE;不写电话,不吹牛。不要解释。`;
+回信规则:谢谢来信并复述对方要的东西;我们对应能做什么(品类 + GMPC/ISO22716/HALAL,HALAL 只说有证书、覆盖范围以证书为准,不说能进哪个市场;强调大货产能与准时交付);起订量、出样周期、价格、交期一律不写具体数字(由业务经理报);问 2 个推进问题(目标市场 / 规格容量 / 预计首单量 / 有无配方或参考样);说明业务经理 24 小时内跟进;落款 BIOSPHERE;不写电话,不吹牛。不要解释。`;
 
 /** 邮箱 / 电话 / 网址换占位。只用于送模型的副本,库里存的是原文 */
 export function redact(s: string): string {
@@ -89,18 +89,22 @@ export function mailAlert(m: { id: number; from_addr: string | null; from_name: 
 export function canSend(env: any): boolean {
   return typeof env?.EMAIL?.send === 'function' || !!String(env?.RESEND_API_KEY ?? '').trim();
 }
-export function mailFrom(env: any): { email: string; name: string; raw: string } {
-  const raw = String(env?.MAIL_FROM || 'BIOSPHERE <inquiry@biosphere-ai.com>').trim();
+/** 发件地址按站点域名选(09-23「哪个网站就用哪个域名发」):site 传站点 host、收件地址串或邮箱都行,含哪个域名就用哪个;都不含 → MAIL_FROM(工厂站)。
+    新站要发信:先在 Email Sending 接入域名(zones/{zone}/email/sending/subdomains),再在这里加一行 */
+const SITE_FROM: Record<string, string> = { 'beauty2oem.com': '帛卉化妆品 <hello@beauty2oem.com>' };
+export function mailFrom(env: any, site?: string | null): { email: string; name: string; raw: string } {
+  const s = String(site ?? '').toLowerCase(), hit = Object.keys(SITE_FROM).find((d) => s.includes(d));
+  const raw = String(hit ? SITE_FROM[hit] : env?.MAIL_FROM || 'BIOSPHERE <inquiry@biosphere-ai.com>').trim();
   const m = /^(.*?)\s*<([^>]+)>$/.exec(raw);
   return m ? { name: m[1].replace(/^"|"$/g, '').trim(), email: m[2].trim(), raw } : { name: '', email: raw, raw };
 }
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-export async function sendMail(env: any, m: { to: string[]; subject: string; text: string; html?: string; replyTo?: string; headers?: Record<string, string> }): Promise<{ ok: boolean; id?: string; via?: 'cloudflare' | 'resend'; msg?: string }> {
+export async function sendMail(env: any, m: { to: string[]; subject: string; text: string; html?: string; replyTo?: string; headers?: Record<string, string>; site?: string | null }): Promise<{ ok: boolean; id?: string; via?: 'cloudflare' | 'resend'; msg?: string }> {
   const to = m.to.map((s) => s.trim()).filter((s) => EMAIL_RE.test(s));
   if (!to.length) return { ok: false, msg: '收件人邮箱不合法' };
-  const from = mailFrom(env);
-  const replyTo = m.replyTo || env.MAIL_REPLY_TO || undefined;
+  const from = mailFrom(env, m.site);
+  const replyTo = m.replyTo || (from.raw === mailFrom(env).raw ? env.MAIL_REPLY_TO : undefined) || undefined;   // 工厂站的 MAIL_REPLY_TO 不套到别的站
   const cf = env?.EMAIL;
   let cfErr = '';
   if (typeof cf?.send === 'function') {

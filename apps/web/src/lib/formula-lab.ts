@@ -931,7 +931,7 @@ export async function rateMaterials<T extends { inci: string; name?: string }>(d
   type Fact = { inci_key: string; rating: string; irritancy: number | null; comedogenic: number | null; functions: string | null; functions_zh: string | null };
   const facts = new Map<string, Fact>();
   if (keys.length) {
-    const rs = (await db.prepare(`SELECT inci_key,rating,irritancy,/* 无出处的致痘分不对外(公司库没有 comedogenic_src 列,3,720 条一条文献依据都没有)。明早加列后换成 CASE WHEN 过滤。 */ NULL AS comedogenic,functions,functions_zh FROM ingredient_facts WHERE inci_key IN (${ph(keys.length)})`).bind(...keys).all<Fact>()).results ?? [];
+    const rs = (await db.prepare(`SELECT inci_key,rating,irritancy,/* 致痘分只出有文献出处的(09-24 W1:公司库 118 条带 comedogenic_src) */ CASE WHEN comedogenic_src <> '' THEN comedogenic END AS comedogenic,functions,functions_zh FROM ingredient_facts WHERE inci_key IN (${ph(keys.length)})`).bind(...keys).all<Fact>()).results ?? [];
     for (const r of rs) facts.set(r.inci_key, r);
   }
   for (const m of rows as any[]) {

@@ -44,6 +44,8 @@ export const QUOTA = {
   'ai.search': { limit: 30, windowMin: 60 },
   /* AI 客服:对话轮次多于共创,给到 30/小时;刷爆的引导走询盘,不是无限聊天 */
   'ai.chat': { limit: 30, windowMin: 60 },
+  /* 设计迭代(api/design/iterate):一次打文本模型 + 排一张图,12/小时(09-24 补登记,原代码按这个数写的) */
+  'ai.design': { limit: 12, windowMin: 60 },
   /* 向量检索的**全站**日上限(不分 IP)。
      按 IP 限流挡不住分布式脚本,而 Vectorize 是按「查询的向量维度数」计费的 ——
      一次 topK=20 × 1024 维不贵,量堆起来才贵。这一条是刹车不是节流:
@@ -55,6 +57,11 @@ export const QUOTA = {
      真正挡批量注册的是 Turnstile,这两条挡的是「过了人机验证之后的滥发」。 */
   'member.mail': { limit: 3, windowMin: 60 },
   'member.ip': { limit: 20, windowMin: 60 },
+  /* 09-24 红队:一张点选码通行证(8 小时、同 /16 换 IP 也认)最多换 3 封登录信,再要就重新做题。
+     不设这条,一次做题就能批量注册、或拿别人的邮箱狂发登录信(发信域名信誉受损);Turnstile 档每封本来就要一次新令牌 */
+  'member.pass': { limit: 3, windowMin: 480 },
+  /* 同上,beauty2oem 简报:一张通行证最多 3 份 */
+  'form.pass': { limit: 3, windowMin: 480 },
 } satisfies Record<string, Quota>;
 
 export type QuotaKey = keyof typeof QUOTA;

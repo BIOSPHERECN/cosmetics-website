@@ -16,7 +16,8 @@ if ((process.env.HTTPS_PROXY || process.env.HTTP_PROXY) && !process.env.NODE_USE
   process.exit(spawnSync(process.execPath, [self, ...process.argv.slice(2)], { stdio: 'inherit', env: process.env }).status ?? 1);
 }
 
-const B = (process.argv[2] || 'https://bohui-web.huanggw20.workers.dev').replace(/\/+$/, '');
+import { LIVE } from './probe-fetch.mjs';   // 09-24:workers.dev 已关 → 默认打正式域名,自动带自家探针头
+const B = (process.argv[2] || LIVE['biosphere-ai']).replace(/\/+$/, '');
 let pass = 0, fail = 0;
 const t = (name, ok, extra = '') => { ok ? (pass++, console.log('  ✓', name, extra)) : (fail++, console.log('  ✗', name, extra)); return ok; };
 const get = (p, o = {}) => fetch(B + p, { redirect: 'manual', ...o });

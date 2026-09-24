@@ -6,8 +6,16 @@
 #    若在此处写死 main,Cloudflare 的 vite 插件会在构建**前**去校验该文件是否存在,
 #    而它要构建完才生成 —— 形成鸡生蛋死锁,构建直接失败。
 name = "bohui-web"
+# 09-24 安全:workers.dev 与带版本号的预览地址会绕过正式域名上的全部防火墙规则,直接读生产库。
+# 已在后台关掉;这里钉死,防止下次部署又自动打开。本地验证一律打正式域名。
+workers_dev = false
+preview_urls = false
 compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
+# 09-24 C1:自定义入口 = Astro 适配器的 fetch + Cloudflare Cron(BEAUTY2OEM 自动草稿 / 心跳)。
+# 指向 src 里的源文件(构建前就存在),不是 dist 产物,所以不撞上面说的「构建前校验 main」死锁。
+# 回滚:删掉这一行和下面 [triggers] 两行,重新构建部署即回到适配器默认入口。
+main = "./src/worker.ts"
 
 # 内容库:5 站 × 4 语 × 页面/版块/产品/媒体/询盘
 [[d1_databases]]
@@ -36,6 +44,12 @@ dataset = "bohui_pulse"
 [[kv_namespaces]]
 binding = "SESSION"
 id = "a461419944d4422cb81e374a391632ce"
+
+# 09-24 安全 L3 自家点选码题库(lib/captcha.ts、api/cap/*):题图 + 加密答案,每周由私有仓 capbank/rotate.py 轮换。
+# 没绑或 CAP_SECRET 没设时 /api/cap/new 回 503(fail closed)。同一 id 记在本机 .env 的 CAPBANK_KV_ID。
+[[kv_namespaces]]
+binding = "CAPBANK"
+id = "cf5cc6d044e748d684181e20a411f6a7"
 
 # ── 发信(2026-09-18 邮件中心)────────────────────────────────────
 # Cloudflare Email Sending(Beta,账号级「电子邮件服务 → 电子邮件发送」,Workers Paid;每月含 3,000 封,之后 $0.35/千封)。
@@ -73,3 +87,7 @@ TURNSTILE_SITE_KEY = "0x4AAAAAAEh9PTvpt4eaYV_q"
 
 # 说明:R2 走 S3 兼容接口而非绑定 —— 桶在创始人主账号、站点在 BIOSPHERECN 账号,
 # 绑定只能同账号。凭据用 `wrangler secret put` 注入,不写在本文件。
+
+# 09-24 C1:每 10 分钟跑一次 BEAUTY2OEM 第一期自动化(src/lib/b2o-auto.ts:简报兜底 + 第 3/7/14 天再触达 + jobs 心跳)。
+[triggers]
+crons = ["*/10 * * * *"]

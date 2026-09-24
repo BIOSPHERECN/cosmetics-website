@@ -36,6 +36,10 @@ export async function loadToday(db: D1Database): Promise<{ groups: TodoGroup[]; 
     `SELECT id, from_addr, from_name, subject, ai_category, ai_summary, CAST((julianday('now') - julianday(received_at)) * 24 AS INTEGER) AS h
        FROM mails WHERE direction='in' AND status IN ('unread','read') AND replied_at IS NULL AND (ai_category IS NULL OR ai_category IN ('询盘','报价','样品','投诉'))
         AND julianday('now') - julianday(received_at) >= 4.0/24 ORDER BY received_at LIMIT 30`).all<any>());
+  /* 09-24 C1 BEAUTY2OEM 自动草稿(P03 简报 / P04 第 3·7·14 天再触达):待审、待发、失败都进今日待办;审批前不能发 */
+  const b2o = await safe(db.prepare(
+    `SELECT d.id, d.profile_id, d.kind, d.status, p.contact_ref, CAST((julianday('now') - julianday(d.updated_at)) * 24 AS INTEGER) AS h
+       FROM b2o_auto_drafts d LEFT JOIN b2o_profiles p ON p.id=d.profile_id WHERE d.status IN ('draft','approved','failed') ORDER BY d.id LIMIT 30`).all<any>());
   const today = new Date().toISOString().slice(0, 10);
 
   const inq: Todo[] = [
@@ -56,11 +60,16 @@ export async function loadToday(db: D1Database): Promise<{ groups: TodoGroup[]; 
     report ? { href: '/bohui/market/', title: `爆款周报 ${report.date}`, text: '看「行动」两条:研发立项 + 业务切入点' } : { href: '/bohui/market/', title: '还没有周报', text: '爆款周报每周一生成' },
     { href: '/en/trends/market/', blank: true, title: '公开榜单页', text: '给客户看的市场快照,发开发信时可以附链接' },
   ];
+  const KN: Record<string, string> = { brief: '机会简报', retouch3: '第 3 天再触达', retouch7: '第 7 天电话', retouch14: '第 14 天再触达' };
+  const b2oT: Todo[] = b2o.map((r: any) => ({ href: `/bohui/b2o-brief/?draft=${r.id}#auto`, late: r.status === 'approved' ? r.h >= 1 : r.h >= 4,
+    title: `${KN[r.kind] ?? r.kind} · ${(r.contact_ref || '').split('-')[0] || `B2O-${r.profile_id}`}`,
+    text: r.status === 'draft' ? '草稿待顾问核对、管理员批准(批准前不能发)' : r.status === 'approved' ? '已批准 → 在企业微信发出后回来点「已发」' : '自动生成失败,可在简报助手手工出稿' }));
   const groups: TodoGroup[] = [
     { key: 'inq', label: '询盘', n: inq.length, items: inq, empty: '询盘都处理过了。' },
     { key: 'out', label: '定向外联', n: out.length, items: out, empty: 'A 级都发过了,等回复。' },
     { key: 'deal', label: '机会', n: deal.length, items: deal, empty: '机会都在动。' },
+    { key: 'b2o', label: 'BEAUTY2OEM 草稿', n: b2oT.length, items: b2oT, empty: '没有待审或待发的草稿。' },
     { key: 'market', label: '市场', items: market, empty: '' },
   ];
-  return { groups, total: inq.length + out.length + deal.length };
+  return { groups, total: inq.length + out.length + deal.length + b2oT.length };
 }

@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { TERMS_CONFIRMED } from '../../../lib/terms';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
@@ -403,7 +404,7 @@ const ldOut = [...(full ? ld : ld.slice(0, 1)), paywallLd(origin + path, title)]
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />
 
-  <script type="application/ld+json" set:html={JSON.stringify(ldOut)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(ldOut)} is:inline />
 
   <style>
     /* 版式按"留白 + 细线 + 一行一条"来:同行那份帮助中心之所以舒服,

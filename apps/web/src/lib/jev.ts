@@ -19,6 +19,7 @@ export type JevResult = { answers: Record<string, JevAnswer>; ms: number; usage?
 
 export async function judge(env: any, state: string, questions: Record<string, JevQuestion>, timeoutMs = 8000): Promise<JevResult | null> {
   const key = String(env?.TYPESAFE_API_KEY ?? '').trim();
+  if (env?.JEV_SHADOW !== '1') return null;   // 09-24 W7:Jev 已停,所有调用处(询盘 / 会诊)默认不跑;要恢复影子记账设 JEV_SHADOW=1
   if (!key || !state.trim()) return null;
   const t0 = Date.now();
   try {

@@ -15,7 +15,8 @@
  *   ⑤ 地区自动跳与语言码别名按预期落地
  *
  * 跑法:node tools/ship-gate.mjs [基址]
- *      node tools/ship-gate.mjs https://bohui-web.huanggw20.workers.dev
+ *      node tools/ship-gate.mjs                 默认打两个正式域名(按域名认站,自动带自家探针头 x-bohui-probe)
+ *      node tools/ship-gate.mjs http://127.0.0.1:4321   给基址就沿用 ?site= 切五站(本地 / 副本)
  */
 /* Node 的 fetch 默认不认 HTTP_PROXY/HTTPS_PROXY —— 在走代理的机器上会直接连接超时,
    报出来的是 UND_ERR_CONNECT_TIMEOUT,看着像站挂了,其实是本机出不去。
@@ -28,8 +29,10 @@ if ((process.env.HTTPS_PROXY || process.env.HTTP_PROXY) && !process.env.NODE_USE
   process.exit(r.status ?? 1);
 }
 
-const BASE = (process.argv[2] ?? 'https://bohui-web.huanggw20.workers.dev').replace(/\/+$/, '');
-const SITES = ['beauty2oem', 'skin2oem', 'medierba', 'biosphere-ai', 'biosphere-oralcare'];
+import { LIVE, ALL_SITES, siteBase } from './probe-fetch.mjs';
+const ARG = process.argv[2];
+const BASE = (ARG ?? LIVE['biosphere-ai']).replace(/\/+$/, '');
+const SITES = ARG ? ALL_SITES : Object.keys(LIVE);
 const LOCALES = ['en', 'zh-cn', 'jp', 'kr', 'fr', 'de', 'ru', 'id', 'my', 'th', 'vn', 'ph', 'es', 'pt', 'ar', 'tr', 'in'];
 const HREFLANG = { en: 'en', 'zh-cn': 'zh-CN', jp: 'ja', kr: 'ko', fr: 'fr', de: 'de', ru: 'ru', id: 'id', my: 'ms', th: 'th', vn: 'vi', ph: 'tl', es: 'es', pt: 'pt', ar: 'ar', tr: 'tr', in: 'hi' };
 
@@ -41,8 +44,8 @@ const fails = [];
 const warns = [];
 const fail = (where, what) => fails.push(`${where}  ${what}`);
 
-async function get(path, headers = {}) {
-  const r = await fetch(BASE + path, { headers, redirect: 'manual' });
+async function get(path, headers = {}, base = BASE) {
+  const r = await fetch(base + path, { headers, redirect: 'manual' });
   return { status: r.status, loc: r.headers.get('location'), html: r.status === 200 ? await r.text() : '' };
 }
 
@@ -57,9 +60,10 @@ function linksOf(html, locale) {
 }
 
 async function checkPage(site, locale, slug) {
-  const path = `/${locale}/${slug ? slug + '/' : ''}?site=${site}`;
+  const [b, qs] = siteBase(ARG, site);
+  const path = `/${locale}/${slug ? slug + '/' : ''}${qs ? '?' + qs : ''}`;
   const where = `${site} · ${locale} · /${slug}`;
-  const { status, html } = await get(path);
+  const { status, html } = await get(path, {}, b);
   if (status !== 200) { fail(where, `HTTP ${status}`); return; }
 
   // ① h1
@@ -125,7 +129,8 @@ for (const [from, want] of [['/jp/', '/ja/'], ['/jp/products/', '/ja/products/']
 console.log('\n[2/3] 逐页体检(h1 / 价格 / hreflang / lang)');
 let n = 0;
 for (const site of SITES) {
-  const { html } = await get(`/zh-cn/?site=${site}`);
+  const [b, qs] = siteBase(ARG, site);
+  const { html } = await get(`/zh-cn/${qs ? '?' + qs : ''}`, {}, b);
   const slugs = linksOf(html, 'zh-cn');
   console.log(`   ${site}:${slugs.length} 页 × ${LOCALES.length} 语`);
   for (const locale of LOCALES) {

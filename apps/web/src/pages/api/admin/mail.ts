@@ -115,9 +115,10 @@ async function handle(c: Ctx, b: any, method: string) {
     if (text.length > 20000) return json({ ok: false, msg: '正文最长 20000 字' }, 400);
     // 串会话:In-Reply-To = 原信;References = 会话首封 + 原信(去重)。客户的邮件客户端据此把我们的回信挂在同一条线下
     const refs = m.direction === 'in' && m.message_id ? [...new Set([m.thread_id, m.message_id].filter(Boolean))].join(' ') : '';
-    const r = await sendMail(env, { to, subject, text, headers: refs ? { 'In-Reply-To': m.message_id, References: refs } : undefined });
+    const site = m.direction === 'in' ? m.to_addrs : m.from_addr;   // 发到哪个域名的信,就从哪个域名回
+    const r = await sendMail(env, { to, subject, text, site, headers: refs ? { 'In-Reply-To': m.message_id, References: refs } : undefined });
     if (!r.ok) return json({ ok: false, msg: r.msg }, 400);
-    const fromAddr = mailFrom(env).email;
+    const fromAddr = mailFrom(env, site).email;
     await db.batch([
       db.prepare(`INSERT INTO mails (direction, message_id, thread_id, from_addr, from_name, to_addrs, subject, text, snippet, received_at, status, assignee_uid, inquiry_id, matter_id, company_id)
                   VALUES ('out', ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'read', ?, ?, ?, ?)`)

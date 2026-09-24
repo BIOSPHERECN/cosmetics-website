@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { t as uiT, type Locale } from '@cosmetic/core/i18n';
 /**
  * 操作指南(HowTo)—— GEO 诊断点名的两块空白:「HowTo 操作指南」与「知识库」。
@@ -215,7 +216,7 @@ const desc = item ? item.answer : L.lede;
   <SiteFooter locale={lang} path={path}
               site={{ ...(shell.staticSite ?? {}), name: site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />
-  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(jsonLd)} is:inline />
 </BaseLayout>
 
 <style>

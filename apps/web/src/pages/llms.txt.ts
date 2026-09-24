@@ -129,7 +129,7 @@ batch and test reports.
 
 ## Target markets
 
-Southeast Asia and the Middle East (HALAL certified, shipped from Guangzhou) ·
+Southeast Asia and the Middle East (HALAL certificate held, scope as stated on the certificate; shipped from Guangzhou) ·
 Europe and North America (ISO 22716) · Brazil and South America (Amazonian botanical dual-source).
 
 ${citable}

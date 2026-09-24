@@ -16,7 +16,13 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
+import { memo } from '../../../lib/memo';
+import { getCounts } from '../../../lib/counts';
 import { decoderPath, splitInci, marketLabel, catLabel, cleanTitle } from '../../../lib/decoder';
+import MemberGate from '../../../components/MemberGate.astro';
+import { searchGate } from '../../../lib/member';
+import { searchMemo, productHits, byIds, capText, type MpHit } from '../../../lib/search';
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 
 export const prerender = false;
 
@@ -32,34 +38,69 @@ const url = new URL(Astro.url);
 
 const mk = (url.searchParams.get('mk') ?? '').trim().toLowerCase().slice(0, 4).replace(/[^a-z-]/g, '');
 const cat = (url.searchParams.get('cat') ?? '').trim().slice(0, 24);
-const q = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
-const page = Math.max(1, Math.min(200, parseInt(url.searchParams.get('p') ?? '1', 10) || 1));
+const q0 = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
+/* 09-24 搜索计每日额度(安全架构 C2):未登录、爬虫、超额不查库,只出列表 + 登录/额度卡 */
+const sg = await searchGate(Astro, env, db, 'decoder', q0);
+const q = sg && sg.state !== 'full' ? '' : q0;
+/* 带词最多翻 10 页,列表最多 20 页(安全架构 3.1);中间件按同一口径把越界的 ?p= 301 回来 */
+const PMAX = q ? 10 : 20;
+const page = Math.max(1, Math.min(PMAX, parseInt(url.searchParams.get('p') ?? '1', 10) || 1));
 
 /* 只取有全成分的行(与后台 hot.astro 同一口径) */
 const BASE = `inci IS NOT NULL AND length(inci) > 30`;
 const conds: string[] = [BASE]; const bind: unknown[] = [];
 if (mk) { conds.push(mk === '-' ? `(country IS NULL OR country = '')` : `country = ?`); if (mk !== '-') bind.push(mk); }
 if (cat) { conds.push(`COALESCE(cat_zh, cat) = ?`); bind.push(cat); }
-const qCond = `(brand LIKE ? OR title LIKE ? OR title_zh LIKE ? OR inci LIKE ? OR cat_zh LIKE ? OR cat LIKE ?)`;
-const qBind = () => { const l = `%${q}%`; const c = `%${q.replace(/(霜|液|乳|水|膏|油|皂|露|喷雾|精华液)$/u, '')}%`; return [l, l, l, l, c, c]; };
-if (q) { conds.push(qCond); bind.push(...qBind()); }
 const W = `WHERE ${conds.join(' AND ')}`;
+const ROW = 'id, country, brand, title, title_zh, title_en, cat, cat_zh, inci, last_seen';
 
 let total = 0; let rows: any[] = []; let mks: any[] = []; let cats: any[] = [];
 if (db) {
   try {
-    total = (await db.prepare(`SELECT COUNT(*) n FROM market_products ${W}`).bind(...bind).first<{ n: number }>())?.n ?? 0;
-    const pages0 = Math.max(1, Math.ceil(total / PAGE));
-    const cur0 = Math.min(page, pages0);
-    rows = ((await db.prepare(`SELECT id, country, brand, title, title_zh, title_en, cat, cat_zh, inci, last_seen FROM market_products ${W} ORDER BY last_seen DESC, id DESC LIMIT ? OFFSET ?`)
-      .bind(...bind, PAGE, (cur0 - 1) * PAGE).all<any>()).results ?? []) as any[];
-    const mkW = [BASE, ...(q ? [qCond] : []), ...(cat ? ['COALESCE(cat_zh, cat) = ?'] : [])].join(' AND '); const mkB = [...(q ? qBind() : []), ...(cat ? [cat] : [])];
-    mks = ((await db.prepare(`SELECT NULLIF(country, '') country, COUNT(*) n FROM market_products WHERE ${mkW} GROUP BY NULLIF(country, '') ORDER BY (NULLIF(country, '') IS NULL), n DESC`).bind(...mkB).all<any>()).results ?? []) as any[];
-    const catW = [BASE, ...(q ? [qCond] : []), ...(mk ? [mk === '-' ? `(country IS NULL OR country = '')` : 'country = ?'] : [])].join(' AND '); const catB = [...(q ? qBind() : []), ...(mk && mk !== '-' ? [mk] : [])];
-    cats = ((await db.prepare(`SELECT NULLIF(COALESCE(cat_zh, cat), '') k, COUNT(*) n FROM market_products WHERE ${catW} GROUP BY k ORDER BY (NULLIF(COALESCE(cat_zh, cat), '') IS NULL), n DESC LIMIT 24`).bind(...catB).all<any>()).results ?? []) as any[];
+    if (q) {
+      /* 09-24 C2 会员搜索:上一版对 inci 长文本做 '%词%',总数 + 列表 + 两组分面 4 条全表扫,一个新词约 60 万行。
+         现在命中表(最多 1,001 条,只带 id / 市场 / 类目)由 lib/search.ts 走 FTS 取;总数封顶显示「1000+」,
+         分面在内存里对命中表计数,不再分组现算;每页按主键回表 48 行。命中表与每页各按「词(+筛选+页)」记 1 小时。 */
+      const hits = await searchMemo('decoder', q, 0, () => productHits(db, q));
+      const inMk = (h: MpHit) => !mk || (mk === '-' ? !h.country : h.country === mk);
+      const inCat = (h: MpHit) => !cat || h.k === cat;
+      const tally = (xs: MpHit[], key: 'country' | 'k') => {
+        const m = new Map<string | null, number>();
+        for (const h of xs) m.set(h[key], (m.get(h[key]) ?? 0) + 1);
+        return [...m.entries()].sort((x, y) => Number(x[0] === null) - Number(y[0] === null) || y[1] - x[1]);
+      };
+      const hit = hits.filter((h) => inMk(h) && inCat(h));
+      total = hit.length;
+      mks = tally(hits.filter(inCat), 'country').map(([country, n]) => ({ country, n }));
+      cats = tally(hits.filter(inMk), 'k').map(([k, n]) => ({ k, n })).slice(0, 24);
+      const cur0 = Math.min(page, Math.max(1, Math.ceil(total / PAGE)));
+      const ids = hit.slice((cur0 - 1) * PAGE, cur0 * PAGE).map((h) => h.id);
+      rows = await searchMemo(`decoder:${mk}|${cat}`, q, cur0, () => byIds(db, `SELECT ${ROW} FROM market_products WHERE id IN (%IDS%)`, ids));
+    } else {
+      /* 09-24 D2:总数与两组分面读计数文件里的 mpf 快照({市场: {类目: 款数}},118 格,counts-refresh.py 写,构建时打进包),不现算。
+         快照缺失(计数文件坏了)时不回退全表现算:分面不出,总数只按当前这一页算。 */
+      const mpf = (await memo('counts-mpf', 600, async () => ((await getCounts(db))?.mpf ?? null) as any)) as Record<string, Record<string, number>> | null;
+      if (mpf) {
+        const sum = (o: Record<string, number>) => Object.values(o).reduce((a, b) => a + b, 0);
+        const inMk = (c: string) => !mk || c === mk;
+        total = Object.entries(mpf).filter(([c]) => inMk(c)).reduce((a, [, o]) => a + (cat ? (o[cat] ?? 0) : sum(o)), 0);
+        mks = Object.entries(mpf).map(([c, o]) => ({ country: c === '-' ? null : c, n: cat ? (o[cat] ?? 0) : sum(o) }))
+          .filter((r) => r.n > 0).sort((a, b) => Number(a.country === null) - Number(b.country === null) || b.n - a.n);
+        const agg: Record<string, number> = {};
+        for (const [c, o] of Object.entries(mpf)) if (inMk(c)) for (const [k, n] of Object.entries(o)) agg[k] = (agg[k] ?? 0) + n;
+        cats = Object.entries(agg).map(([k, n]) => ({ k: k === '' ? null : k, n }))
+          .sort((a, b) => Number(a.k === null) - Number(b.k === null) || b.n - a.n).slice(0, 24);
+      }
+      const cur0 = mpf ? Math.min(page, Math.max(1, Math.ceil(total / PAGE))) : 1;
+      rows = await memo(`dec-rows:${mk}|${cat}||${cur0}`, 3600, async () => ((await db.prepare(
+        // nosemgrep: visitor-live-aggregate 列表翻页 p≤20(页面与中间件双重封顶),按 idx_mp_seen_ok / idx_mp_related 顺序读,至多 OFFSET+48≈960 行,记 1 小时
+        `SELECT ${ROW} FROM market_products ${W} ORDER BY last_seen DESC, id DESC LIMIT ? OFFSET ?`)
+        .bind(...bind, PAGE, (cur0 - 1) * PAGE).all<any>()).results ?? []) as any[]);
+      if (!mpf) total = rows.length;
+    }
   } catch { rows = []; }
 }
-const pages = Math.max(1, Math.ceil(total / PAGE));
+const pages = Math.min(PMAX, Math.max(1, Math.ceil(total / PAGE)));
 const cur = Math.min(page, pages);
 
 const link = (o: Record<string, string | number | undefined>) => {
@@ -73,13 +114,13 @@ const link = (o: Record<string, string | number | undefined>) => {
 const T = zh ? {
   eyebrow: '全球产品库 · 全球配方库', title: '全球产品配方库 · 市场上有什么产品、别人家的产品是怎么做的',
   lede: '各国电商榜单上正在卖的产品,按标签公开的全成分逐条解读:每个成分做什么、刺激与致痘倾向、在各国目录里的状态。看同类爆款怎么配,再来谈你的配方。',
-  search: '搜品牌、产品名或成分', go: '搜索', market: '市场', cat: '类目', all: '全部', results: '款', n: '个成分',
+  search: '搜品牌或产品名(查成分请去原料页)', go: '搜索', market: '市场', cat: '类目', all: '全部', results: '款', n: '个成分',
   empty: '这些条件下没有产品,放宽一个再试。', clear: '清除筛选', prev: '上一页', next: '下一页', pageOf: '分页',
   note: '来源:各产品标签公开的全成分,由电商榜单每日采集;评级为平台内部口径,非监管结论。',
 } : {
   eyebrow: 'Global product and formula library', title: 'Global product and formula library · what the market sells and how it is made',
   lede: 'Products currently selling on major marketplaces, decoded from the full ingredient list on their labels: what each ingredient does, irritancy and comedogenic tendency, and its status in national inventories.',
-  search: 'Search brand, product or ingredient', go: 'Search', market: 'Market', cat: 'Category', all: 'All', results: 'products', n: 'ingredients',
+  search: 'Search brand or product name (ingredients: see the ingredient pages)', go: 'Search', market: 'Market', cat: 'Category', all: 'All', results: 'products', n: 'ingredients',
   empty: 'Nothing matches these filters. Loosen one and try again.', clear: 'Clear filters', prev: 'Previous', next: 'Next', pageOf: 'Pagination',
   note: 'Source: full ingredient lists published on product labels, collected daily from marketplace rankings. Ratings are our internal reading, not a regulatory conclusion.',
 };
@@ -109,7 +150,7 @@ const itemListLd = items.length ? {
   itemListElement: items.map((it, i) => ({ '@type': 'ListItem', position: (cur - 1) * PAGE + i + 1,
     item: { '@type': 'Product', name: it.name, brand: { '@type': 'Brand', name: it.brand }, url: `${origin}${it.href}` } })),
 } : null;
-const indexable = shell.site?.is_live === 1 && !mk && !cat && !q && cur === 1;
+const indexable = shell.site?.is_live === 1 && !mk && !cat && !q0 && cur === 1;
 ---
 
 <BaseLayout
@@ -133,7 +174,7 @@ const indexable = shell.site?.is_live === 1 && !mk && !cat && !q && cur === 1;
         <form class="search" method="get" action={path}>
           {mk && <input type="hidden" name="mk" value={mk} />}
           {cat && <input type="hidden" name="cat" value={cat} />}
-          <input type="search" name="q" value={q} placeholder={T.search} aria-label={T.search} maxlength="60" />
+          <input type="search" name="q" value={q0} placeholder={T.search} aria-label={T.search} maxlength="60" />
           <button type="submit">{T.go}</button>
         </form>
         <h2>{T.market}</h2>
@@ -152,9 +193,10 @@ const indexable = shell.site?.is_live === 1 && !mk && !cat && !q && cur === 1;
 
       <section class="list">
         <div class="bar">
-          <p class="count">{total.toLocaleString()} {T.results}</p>
+          <p class="count">{q ? capText(total) : total.toLocaleString()} {T.results}</p>
           {(mk || cat || q) && <a class="clear" href={path}>{T.clear}</a>}
         </div>
+        {sg && <MemberGate lang={lang} g={sg} next={`${path}?q=${encodeURIComponent(q0)}`} what={['检索结果', 'search results']} />}
         {items.length === 0 ? <p class="empty">{T.empty}</p> : (
           <ul class="grid">
             {items.map((it) => (
@@ -180,7 +222,7 @@ const indexable = shell.site?.is_live === 1 && !mk && !cat && !q && cur === 1;
       </section>
     </div>
   </main>
-  {itemListLd && <script type="application/ld+json" set:html={JSON.stringify(itemListLd)} is:inline />}
+  {itemListLd && <script type="application/ld+json" set:html={ldJson(itemListLd)} is:inline />}
   <SiteFooter locale={lang as any} path={path}
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />

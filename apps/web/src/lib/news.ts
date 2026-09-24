@@ -225,7 +225,7 @@ export function validateArticle(
   /* 去 AI 味闸门:这些词一出现,读者一眼就知道是模型写的,AI 引擎也会把它当低质模板文。
      和数字纪律一样机器拦,不靠提示词里的「请不要」。 */
   const AI_ZH = /(随着[^,,。]{0,12}的(发展|推进|到来|普及)|近年来|值得注意的是|综上所述|总的来说|总而言之|不难看出|在这一背景下|在此背景下|众所周知|毋庸置疑|可以说[,,]|让我们|首先[,,][^。]*其次[,,][^。]*(最后|再次)[,,])/;
-  const AI_EN = /(In today's|It is worth noting|In conclusion|In summary|delve|landscape of|game-changer|leverag(e|ing)|unlock(s|ing)? the|a testament to|paradigm|synerg(y|ies)|cutting-edge|Furthermore, )/;
+  const AI_EN = /\b(In today's|It is worth noting|In conclusion|In summary|delve|landscape of|game-changer|leverag(e|ing)|unlock(s|ing)? the|a testament to|paradigm|synerg(y|ies)|cutting-edge|Furthermore, )/;
   const tellZh = d.body_zh.match(AI_ZH); const tellEn = d.body_en.match(AI_EN);
   if (tellZh) problems.push(`中文出现模板套话「${tellZh[0].slice(0, 12)}」—— 改成具体事实或直接删掉`);
   if (tellEn) problems.push(`英文出现模板套话「${tellEn[0]}」—— 改成具体事实或直接删掉`);

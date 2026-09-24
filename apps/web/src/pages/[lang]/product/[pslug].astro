@@ -87,13 +87,15 @@ const specs = (() => {
 })();
 const real = (o: any) => (o && typeof o === 'object' && !o._pending ? o : null);
 const techBlocks: { title: string; body: string }[] = Array.isArray(specs.tech) ? specs.tech : [];
+/* 历史产品(B2 发布,tools/b2o-products/import.py)的 specs_json 是列表 [{label,value}]:剂型 / 容量 / 主要成分 */
+const specList: { label: string; value: string }[] = Array.isArray(specs) ? specs.filter((x: any) => x && x.label && x.value) : [];
 const position = (real(specs.position) ?? {}) as { market?: string; audience?: string };
 const sales = real(specs.sales) as { text?: string } | null;
 const versus = real(specs.versus) as { rows?: { them: string; us: string }[] } | null;
 
 const T = lang === 'zh-cn'
   ? { back: '返回产品品类', moq: '起订量', inquiry: '就这款发起询盘', more: '同品类还有', desc: '产品说明',
-      tech: '产品特点', position: '产品定位', posMarket: '目标市场', posAudience: '目标客户',
+      tech: '产品特点', specs: '产品规格', position: '产品定位', posMarket: '目标市场', posAudience: '目标客户',
       sales: '销售情况', versus: '竞品对照', vsThem: '常见竞品', vsUs: '本品优势',
       chainH: '这支产品背后的链路',
       chainNote: '配方、原料、产区、包材、质检在站内都是可点开的实体 —— 具体到这支产品用哪条配方与哪套包材,按询盘确认,不在页面上假装已经绑定。',
@@ -101,7 +103,7 @@ const T = lang === 'zh-cn'
       cPack: '包材库(含彩盒与外封膜)', cQc: '质检体系 36 项', cReg: '各国备案索引',
       note: '以上为公开产品信息。具体规格、包材与交期按询盘沟通;功效宣称以第三方检测报告为准。' }
   : { back: 'Back to products', moq: 'MOQ', inquiry: 'Inquire about this product', more: 'More in this category', desc: 'About this product',
-      tech: 'Product highlights', position: 'Positioning', posMarket: 'Target markets', posAudience: 'Target buyers',
+      tech: 'Product highlights', specs: 'Specifications', position: 'Positioning', posMarket: 'Target markets', posAudience: 'Target buyers',
       sales: 'Sales record', versus: 'Versus common alternatives', vsThem: 'Common alternative', vsUs: 'This product',
       chainH: 'The chain behind this product',
       chainNote: 'Formulation, ingredients, source regions, packaging and quality control are all live entities on this site. Which formula and which packaging set apply to this product is confirmed per inquiry — the page does not pretend they are already bound.',
@@ -177,6 +179,15 @@ const jsonLd = [
           </div>
         </div>
       </div>
+
+      {specList.length > 0 && (
+        <section class="desc">
+          <h2>{T.specs}</h2>
+          <dl class="pos">
+            {specList.map((x) => (<><dt>{x.label}</dt><dd>{x.value}</dd></>))}
+          </dl>
+        </section>
+      )}
 
       {techBlocks.length > 0 && (
         <section class="desc">

@@ -21,6 +21,7 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../lib/shell';
 import { searchHint } from '../../lib/searchhint';
+import { getCounts } from '../../lib/counts';
 
 export const prerender = false;
 
@@ -33,21 +34,22 @@ const db = (env as any).DB as D1Database | undefined;
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const path = `/${lang}/search/`;
 
-/* 库存量直接写进首屏 —— 这既是给人看的底气,也是给 AI 抓取的事实 */
-const count = async (sql: string) => {
-  if (!db) return 0;
-  try { return (await db.prepare(sql).first<{ n: number }>())?.n ?? 0; } catch { return 0; }
-};
-const nIng = await count(`SELECT COUNT(*) n FROM ingredients WHERE status='published'`);
-const nF = await count(`SELECT COUNT(*) n FROM formulas WHERE status IN ('sample','active')`);
-const nP = await count(`SELECT COUNT(*) n FROM packaging`);
-const nT = await count(`SELECT COUNT(*) n FROM trends WHERE status='active'`);
-const nK = await count(`SELECT COUNT(*) n FROM kb_entries WHERE is_published=1`);
+/* 库存量直接写进首屏 —— 这既是给人看的底气,也是给 AI 抓取的事实。
+   09-24 C5(代码审计 P0-4):原来每次渲染 5 条全表计数(约 2.2 万行),随便带个参数就能绕过缓存逐次现算;
+   现在只读计数文件(tools/counts-refresh.py 写,构建时打进包)。某项没有就不写这一项,不回退现算、不编。
+   包材改用货架口径(status='active'),与包材页、首页对外口径一致。 */
+const cn = (await getCounts(db)) ?? {};
+const num = (k: string) => (typeof cn[k] === 'number' ? (cn[k] as number) : 0);
+const nIng = num('ingredients'), nF = num('formulas'), nP = num('packaging'), nT = num('trend_active'), nK = num('kb');
+const libs = (zhx: boolean) => ([
+  [nIng, zhx ? '条成分' : 'ingredients'], [nF, zhx ? '支配方' : 'formulas'], [nP, zhx ? '款包材' : 'packaging specs'],
+  [nT, zhx ? '条带出处的市场情报' : 'sourced market signals'], [nK, zhx ? '条专家与客服口径' : 'expert and service notes'],
+] as [number, string][]).filter(([n]) => n > 0).map(([n, l]) => (zhx ? `${n} ${l}` : `${n} ${l}`)).join(zhx ? '、' : ', ');
 
 const T = zh ? {
   eyebrow: 'AI 搜索',
   title: '问一句话,拿一段有出处的回答',
-  lead: `先查我们自己的库(${nIng} 条成分、${nF} 支配方、${nP} 款包材、${nT} 条带出处的市场情报、${nK} 条专家与客服口径),再补全网。`,
+  lead: libs(true) ? `先查我们自己的库(${libs(true)}),再补全网。` : '先查我们自己的库,再补全网。',
   ph: '例:烟酰胺在精华里一般加多少?出欧盟的防晒要注意什么?',
   go: '提问', running: '检索中…',
   egs: ['出口欧盟需要准备哪些资料', '敏感肌精华可以用哪些活性物', '30ml 精华配什么包材', '巴西市场怎么进'],
@@ -58,7 +60,7 @@ const T = zh ? {
 } : {
   eyebrow: 'AI search',
   title: 'Ask a question, get a sourced answer',
-  lead: `We search our own library first (${nIng} ingredients, ${nF} formulas, ${nP} packaging specs, ${nT} sourced market signals, ${nK} expert and service notes), then the open web.`,
+  lead: libs(false) ? `We search our own library first (${libs(false)}), then the open web.` : 'We search our own library first, then the open web.',
   ph: 'e.g. How much niacinamide goes into a serum? What does an EU sunscreen need?',
   go: 'Ask', running: 'Searching…',
   egs: ['What do I need to sell in the EU', 'Actives for sensitive-skin serums', 'Packaging for a 30ml serum', 'How to enter Brazil'],

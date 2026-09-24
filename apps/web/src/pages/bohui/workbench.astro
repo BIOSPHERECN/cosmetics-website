@@ -7,6 +7,7 @@
  * 铁令:金额三项只显示人填的数,空就是「—」;数据范围 admin/editor 全部,其他人只看自己负责/跟进/创建的。
  * 日期口径:事项的「今天」按北京时间(date('now','+8 hours')),因为截止日 / 下次跟进都是人按本地日历填的。
  */
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import AdminShell from '../../layouts/AdminShell.astro';
 import { pageGuard } from '../../lib/guard';
 import { STATUS, FLOW, KINDS, PRIORITY, LOG_KINDS, INVOICE, SOURCES, money } from '../../lib/matters';
@@ -35,7 +36,7 @@ const WK = `date('now','+8 hours','-6 days','weekday 1')`, LWK = `date('now','+8
 const coSc = seeAll ? '1=1' : 'owner_uid=?', coB = seeAll ? [] : [uid];
 const weekNew = async (lo: string, hi: string | null) => (await first(
   `SELECT COUNT(DISTINCT lower(n)) n FROM (
-     SELECT name n FROM companies WHERE ${coSc} AND datetime(created_at,'+8 hours') >= ${lo}${hi ? ` AND datetime(created_at,'+8 hours') < ${hi}` : ''}
+     SELECT name n FROM companies WHERE ${coSc} AND (tags IS NULL OR tags NOT LIKE '%import:%') AND datetime(created_at,'+8 hours') >= ${lo}${hi ? ` AND datetime(created_at,'+8 hours') < ${hi}` : ''}
      UNION ALL SELECT m.company_name FROM matters m WHERE ${SC} AND m.company_name IS NOT NULL AND m.is_draft=0 AND datetime(m.created_at,'+8 hours') >= ${lo}${hi ? ` AND datetime(m.created_at,'+8 hours') < ${hi}` : ''})`, ...coB, ...B))?.n ?? 0;
 const kWeek = await weekNew(WK, null), kLastWeek = await weekNew(LWK, WK);
 const weekDelta = kLastWeek > 0 ? `${kWeek >= kLastWeek ? '+' : ''}${Math.round((kWeek - kLastWeek) / kLastWeek * 100)}% 较上周` : `上周 ${kLastWeek} 家,不算百分比`;
@@ -186,7 +187,7 @@ const data = { rows, users: users.map((u: any) => ({ id: u.id, name: uname(u) })
     </div>
   </dialog>
   <div id="toast" class="toast" hidden></div>
-  <script type="application/json" id="wbd" is:inline set:html={JSON.stringify(data).replace(/</g, '\\u003c')} />
+  <script type="application/json" id="wbd" is:inline set:html={ldJson(data)} />
 
   <style>
     .wb{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:1rem} @media (max-width:70rem){.wb{grid-template-columns:1fr}}

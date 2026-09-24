@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 /**
@@ -29,6 +30,7 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
+import { memo } from '../../../lib/memo';
 
 export const prerender = false;
 
@@ -42,7 +44,7 @@ const fRegion = pick('r');
 const fCat = pick('c');
 const fBoard = pick('b');
 const fPlat = pick('pf', 60);
-const page = Math.max(1, Math.min(400, Number(url.searchParams.get('p') ?? 1) || 1));
+const page = Math.max(1, Math.min(200, Number(url.searchParams.get('p') ?? 1) || 1));   // 与 lib/canon.ts 的 p 上限一致
 const PER = 60;
 
 let rows: any[] = [];
@@ -55,41 +57,41 @@ let dateRegion: any[] = [];
 let topBrands: any[] = [];
 let platShare: any[] = [];
 
+/* 09-24 C5(代码审计 P0-4):ecom_items 只有两千多行 —— 整表按固定顺序记 1 小时,筛选、计数、分组、分页全在内存里做。
+   原来每次渲染 8 条全表扫或分组计数(约 1.8 万行),而且随便换个筛选值就是新缓存键、再现算一遍。
+   ponytail: 每机房每小时整表读一次;表涨到几万行时改成本机脚本写固定表(安全架构 3.2 的 trends_snap)。 */
 if (db) {
   try {
-    const where: string[] = [];
-    const bind: any[] = [];
-    if (fRegion) { where.push('region = ?'); bind.push(fRegion); }
-    if (fCat) { where.push('category = ?'); bind.push(fCat); }
-    if (fBoard) { where.push('board = ?'); bind.push(fBoard); }
-    if (fPlat) { where.push('platform = ?'); bind.push(fPlat); }
-    const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
-    const c = await db.prepare(`SELECT COUNT(*) n FROM ecom_items ${w}`).bind(...bind).first<any>();
-    total = Number(c?.n ?? 0);
-    rows = ((await db.prepare(
+    const all = await memo('ecom-all', 3600, async () => ((await db.prepare(
       `SELECT report_date, region, platform, category, subcategory, board, rank_no, title, brand,
               price, price_note, sales, delta, rating, reviews, rank_change, shop, url
-         FROM ecom_items ${w}
-        ORDER BY region, platform, category, subcategory, board, rank_no
-        LIMIT ? OFFSET ?`).bind(...bind, PER, (page - 1) * PER).all<any>()).results ?? []) as any[];
-    regions = ((await db.prepare(
-      'SELECT region, COUNT(*) n FROM ecom_items GROUP BY region ORDER BY n DESC').all<any>()).results ?? []) as any[];
-    cats = ((await db.prepare(
-      'SELECT category, COUNT(*) n FROM ecom_items GROUP BY category ORDER BY n DESC').all<any>()).results ?? []) as any[];
-    plats = ((await db.prepare(
-      'SELECT platform, COUNT(*) n FROM ecom_items GROUP BY platform ORDER BY n DESC').all<any>()).results ?? []) as any[];
-    // 趋势图专用的 3 条聚合查询 —— 都套用上面同一份 where/bind,筛选器怎么选图就怎么变。
-    // 全是 GROUP BY + 索引列,不是相关子查询,行数上限就是 report_date × region/brand/platform 的组合数,量级很小。
-    dateRegion = ((await db.prepare(
-      `SELECT report_date, region, COUNT(*) n FROM ecom_items ${w}
-        GROUP BY report_date, region ORDER BY report_date, region`).bind(...bind).all<any>()).results ?? []) as any[];
-    topBrands = ((await db.prepare(
-      `SELECT brand, COUNT(*) n FROM ecom_items WHERE ${where.concat(["brand <> ''"]).join(' AND ')}
-        GROUP BY brand ORDER BY n DESC LIMIT 10`).bind(...bind).all<any>()).results ?? []) as any[];
-    platShare = ((await db.prepare(
-      `SELECT platform, COUNT(*) n FROM ecom_items ${w} GROUP BY platform ORDER BY n DESC`).bind(...bind).all<any>()).results ?? []) as any[];
-    const d = await db.prepare('SELECT MAX(report_date) d FROM ecom_items').first<any>();
-    reportDate = String(d?.d ?? '');
+         FROM ecom_items
+        ORDER BY region, platform, category, subcategory, board, rank_no`).all<any>()).results ?? []) as any[]);
+    const hit = all.filter((r) => (!fRegion || r.region === fRegion) && (!fCat || r.category === fCat)
+      && (!fBoard || r.board === fBoard) && (!fPlat || r.platform === fPlat));
+    /* 按某一列数个数,多的在前(同 GROUP BY … ORDER BY n DESC) */
+    const tally = (xs: any[], col: string) => {
+      const m = new Map<any, number>();
+      for (const r of xs) m.set(r[col], (m.get(r[col]) ?? 0) + 1);
+      return [...m.entries()].map(([v, n]) => ({ [col]: v, n })).sort((x, y) => y.n - x.n);
+    };
+    total = hit.length;
+    rows = hit.slice((page - 1) * PER, page * PER);
+    regions = tally(all, 'region');
+    cats = tally(all, 'category');
+    plats = tally(all, 'platform');
+    // 趋势图的 3 组聚合同样套用当前筛选,筛选器怎么选图就怎么变
+    const dr = new Map<string, { report_date: any; region: any; n: number }>();
+    for (const r of hit) {
+      const k = `${r.report_date}\u0000${r.region}`;
+      const o = dr.get(k) ?? { report_date: r.report_date, region: r.region, n: 0 };
+      o.n++; dr.set(k, o);
+    }
+    dateRegion = [...dr.values()].sort((x, y) => (String(x.report_date) < String(y.report_date) ? -1 : String(x.report_date) > String(y.report_date) ? 1
+      : String(x.region) < String(y.region) ? -1 : String(x.region) > String(y.region) ? 1 : 0));
+    topBrands = tally(hit.filter((r) => r.brand != null && r.brand !== ''), 'brand').slice(0, 10);
+    platShare = tally(hit, 'platform');
+    reportDate = String(all.reduce((m: string, r) => (String(r.report_date ?? '') > m ? String(r.report_date) : m), ''));
   } catch { rows = []; total = 0; }
 }
 
@@ -211,7 +213,7 @@ const indexable = shell.site?.is_live === 1 && !fRegion && !fCat && !fBoard && !
   indexable={indexable} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
 >
   <a class="ck-skip-link" href="#main">{tSkip}</a>
-  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
   <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
               siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
   <main id="main">

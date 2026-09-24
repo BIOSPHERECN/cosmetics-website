@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { t as uiT, type Locale } from '@cosmetic/core/i18n';
 /**
  * 创始人故事 —— GEO 诊断 P1 的一条:「about 页只有 200 字 → 2000 字创始人故事页」。
@@ -221,7 +222,7 @@ const desc = zh
   <SiteFooter locale={lang} path={path}
               site={{ ...(shell.staticSite ?? {}), name: site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />
-  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(jsonLd)} is:inline />
 </BaseLayout>
 
 <style>

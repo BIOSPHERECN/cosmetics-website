@@ -8,26 +8,39 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
+import { memo } from '../../../lib/memo';
+import { getCounts } from '../../../lib/counts';
+import MemberGate from '../../../components/MemberGate.astro';
+import { searchGate } from '../../../lib/member';
 export const prerender = false;
 const lang = Astro.params.lang ?? 'zh-cn'; const zh = lang.startsWith('zh');
 const db = (env as any).DB as D1Database | undefined; const tSkip = uiT(lang as any)('a11y.skip');
-const url = new URL(Astro.url); const fT = (url.searchParams.get('t') ?? '').slice(0, 12); const fQ = (url.searchParams.get('q') ?? '').trim().slice(0, 40);
-const PER = 60; const pg = Math.max(1, parseInt(url.searchParams.get('p') ?? '1') || 1);
-let rows: any[] = []; let counts: Record<string, number> = {};
+const url = new URL(Astro.url);
+const TIERS = ['confirmed', 'primary', 'candidate', 'research'];
+const fT0 = (url.searchParams.get('t') ?? '').slice(0, 12); const fT = TIERS.includes(fT0) ? fT0 : '';
+const fQ0 = (url.searchParams.get('q') ?? '').trim().slice(0, 40);
+/* 09-24 搜索计每日额度(安全架构 C2):未登录、爬虫、超额不搜,只出列表 + 登录/额度卡 */
+const sg = await searchGate(Astro, env, db, 'classics', fQ0);
+const fQ = sg && sg.state !== 'full' ? '' : fQ0;
+const PER = 60;
+/* 09-24:整库 986 方记 1 小时(与语种、档位、搜索词都无关)。档位计数、档位筛选、会员搜索全在内存里做 ——
+   上一版每个 ?t= ?q= ?p= 组合都现查一遍全表(随机参数即绕过缓存),再按档位分组计数一次。 */
+let all: any[] = [];
 if (db) {
   try {
-    const where: string[] = []; const bind: any[] = [];
-    if (fT) { where.push('tier = ?'); bind.push(fT); }
-    if (fQ) { where.push("(instr(name, ?) > 0 OR instr(book, ?) > 0 OR instr(purposes, ?) > 0 OR instr(composition, ?) > 0)"); bind.push(fQ, fQ, fQ, fQ); }
-    const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
-    rows = ((await db.prepare(`SELECT * FROM classics ${w} ORDER BY CASE tier WHEN 'confirmed' THEN 0 WHEN 'primary' THEN 1 WHEN 'candidate' THEN 2 ELSE 3 END, id`).bind(...bind).all<any>()).results ?? []) as any[];
-    for (const c of (((await db.prepare('SELECT tier, COUNT(*) n FROM classics GROUP BY tier').all<any>()).results ?? []) as any[])) counts[c.tier] = Number(c.n);
-  } catch { rows = []; }
+    all = await memo('classics-all', 3600, async () => ((await db.prepare(`SELECT * FROM classics ORDER BY CASE tier WHEN 'confirmed' THEN 0 WHEN 'primary' THEN 1 WHEN 'candidate' THEN 2 ELSE 3 END, id`).all<any>()).results ?? []) as any[]);
+  } catch { all = []; }
 }
-const total = Object.values(counts).reduce((a, b) => a + b, 0);
-let kg: Record<string, number> = {};
-if (db) { try { for (const r of (((await db.prepare("SELECT type, COUNT(*) n FROM kg_nodes WHERE origin = 'classic' GROUP BY type").all<any>()).results ?? []) as any[])) kg[r.type] = Number(r.n); } catch {} }
-const pages = Math.max(1, Math.ceil(rows.length / PER)); const shown = rows.slice((pg - 1) * PER, pg * PER);
+const counts: Record<string, number> = {};
+for (const r of all) counts[r.tier] = (counts[r.tier] ?? 0) + 1;
+const hasQ = (v: unknown) => String(v ?? '').includes(fQ);
+const rows = all.filter((r) => (!fT || r.tier === fT) && (!fQ || hasQ(r.name) || hasQ(r.book) || hasQ(r.purposes) || hasQ(r.composition)));
+const total = all.length;
+/* 图谱同源计数读静态计数文件的 graph_types(counts-refresh.py 写),不再 GROUP BY kg_nodes */
+const kg = ((await getCounts(db))?.graph_types ?? {}) as Record<string, number>;
+const pages = Math.max(1, Math.ceil(rows.length / PER));
+const pg = Math.min(pages, Math.max(1, parseInt(url.searchParams.get('p') ?? '1') || 1));
+const shown = rows.slice((pg - 1) * PER, pg * PER);
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const B = `/${lang}`; const path = `${B}/classics/`; const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
 const pq = (n: number) => `${path}?${fT ? 't=' + fT + '&' : ''}${fQ ? 'q=' + encodeURIComponent(fQ) + '&' : ''}p=${n}`;
@@ -36,13 +49,14 @@ const T = zh ? { eyebrow: '源头 · 原料', title: `古方库 · ${total.toLoc
              : { eyebrow: 'Source · botanicals', title: `Classical formula library · ${total.toLocaleString()}`, lede: 'External-use beauty formulas screened from 20,000+ classical texts: name, source, purpose, herbs (no dosages), indications, and our reading of the closest modern product type. Verified ones first; formulas with banned components are listed by name only, research use.', note: 'Historical records, not efficacy claims. Herbs listed without dosages; any reproduction must be re-assessed against the target market inventory and safety standard.', all: 'All', search: 'Search name / source / purpose / herb', go: 'Search', book: 'Source', purp: 'Purpose', form: 'Form', comp: 'Herbs (no dosage)', ind: 'Indication', modern: 'Closest modern product', note2: 'Note', toxic: 'Banned components', graph: 'View in knowledge graph', empty: 'No match.' };
 ---
 <BaseLayout locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
-  title={T.title} description={T.lede} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path} indexable={shell.site?.is_live === 1 && !fT && !fQ && pg === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
+  title={T.title} description={T.lede} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path} indexable={shell.site?.is_live === 1 && !fT && !fQ0 && pg === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
   <a class="ck-skip-link" href="#main">{tSkip}</a>
   <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
   <main id="main">
     <header class="hd"><p class="eyebrow">{T.eyebrow}</p><h1>{T.title}</h1><p class="lede">{T.lede}</p><p class="note">{T.note}</p></header>
     <p class="kg">{zh ? '知识图谱同源:' : 'Also in the knowledge graph:'} {(kg['古方'] ?? 0).toLocaleString()} {zh ? '条外用方' : 'external formulas'} · {(kg['古方(含禁用组分)'] ?? 0).toLocaleString()} {zh ? '条含禁用组分方' : 'with banned components'} · {(kg['药材'] ?? 0).toLocaleString()} {zh ? '味药材' : 'herbs'} · {(kg['典籍'] ?? 0).toLocaleString()} {zh ? '部典籍' : 'classical texts'} <a href={`${B}/graph/`}>{zh ? '打开图谱 →' : 'Open graph →'}</a></p>
-    <form class="box" method="get" action={path}>{fT && <input type="hidden" name="t" value={fT} />}<input type="search" name="q" value={fQ} placeholder={T.search} maxlength="40" /><button type="submit">{T.go}</button></form>
+    <form class="box" method="get" action={path}>{fT && <input type="hidden" name="t" value={fT} />}<input type="search" name="q" value={fQ0} placeholder={T.search} maxlength="40" /><button type="submit">{T.go}</button></form>
+    {sg && <MemberGate lang={lang} g={sg} next={`${path}?q=${encodeURIComponent(fQ0)}`} what={['古方检索结果', 'search results']} />}
     <nav class="tabs"><a class:list={['chip', { on: !fT }]} href={path}>{T.all} <i>{total}</i></a>{Object.entries(TIER).map(([k, v]) => <a class:list={['chip', { on: fT === k }]} href={`${path}?t=${k}`}>{zh ? v[0] : v[1]} <i>{counts[k] ?? 0}</i></a>)}</nav>
     {shown.length === 0 && <p class="lede">{T.empty}</p>}
     <ul class="cards">{shown.map((r) => (

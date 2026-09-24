@@ -28,6 +28,12 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
 import { searchHint } from '../../../lib/searchhint';
+import { memo } from '../../../lib/memo';
+import { getCounts } from '../../../lib/counts';
+import MemberGate from '../../../components/MemberGate.astro';
+import { searchGate } from '../../../lib/member';
+import { searchMemo, catalogHits, byIds, capText } from '../../../lib/search';
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 
 export const prerender = false;
 
@@ -39,8 +45,13 @@ const tSkip = uiT(lang as any)('a11y.skip');
 const db = (env as any).DB as D1Database | undefined;
 const url = new URL(Astro.url);
 const reg = String(Astro.params.reg ?? 'cn-nmpa-2021').toLowerCase();
-const q = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
-const page = Math.max(1, Math.min(200, Number(url.searchParams.get('p') ?? 1) || 1));
+const q0 = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
+/* 09-24 搜索计每日额度:未登录、爬虫、超额不查库,只出列表 + 登录/额度卡 */
+const sg = await searchGate(Astro, env, db, 'inci', q0);
+const q = sg && sg.state !== 'full' ? '' : q0;
+/* 09-24 安全架构 3.1:带词最多翻 10 页,目录最多翻 20 页(再往后请用检索);中间件按同一口径把越界的 ?p= 301 回来 */
+const PMAX = q ? 10 : 20;
+const page = Math.max(1, Math.min(PMAX, Number(url.searchParams.get('p') ?? 1) || 1));
 const PER = 50;
 
 /* 只有两种查询:带关键词和不带。都走索引列,不做相关子查询 ——
@@ -50,37 +61,43 @@ let total = 0;
 /* 目录元数据(名字、发布机构、官方链接、说明)存在 inci_registry 里,
    不写死在页面上 —— 十个国家的目录会随法规改版,内容归内容层管。 */
 let meta: any = null;
+const ROW = 'rowid AS id, no, name_zh, inci, alias, cas, pubchem_cid, max_rinse, max_leave, note';
 if (db) {
   try {
     meta = await db.prepare(
       'SELECT id, region, name_zh, name_en, issuer_zh, issuer_en, official_url, note_zh, note_en, status'
       + ' FROM inci_registry WHERE id = ?').bind(reg).first<any>();
-    if (q) {
-      const like = `%${q.toUpperCase()}%`;
-      const likeZh = `%${q}%`;
-      const c = await db.prepare(
-        `SELECT COUNT(*) n FROM inci_catalog WHERE registry = ? AND (inci_key LIKE ? OR name_zh LIKE ? OR no = ? OR cas = ?)`)
-        .bind(reg, like, likeZh, q, q).first<any>();
-      total = Number(c?.n ?? 0);
-      rows = ((await db.prepare(
-        `SELECT no, name_zh, inci, alias, cas, pubchem_cid, max_rinse, max_leave, note
-           FROM inci_catalog WHERE registry = ? AND (inci_key LIKE ? OR name_zh LIKE ? OR no = ? OR cas = ?)
-          ORDER BY no LIMIT ? OFFSET ?`)
-        .bind(reg, like, likeZh, q, q, PER, (page - 1) * PER).all<any>()).results ?? []) as any[];
-    } else {
-      const c = await db.prepare('SELECT COUNT(*) n FROM inci_catalog WHERE registry = ?').bind(reg).first<any>();
-      total = Number(c?.n ?? 0);
-      rows = ((await db.prepare(
+    /* 09-24 红队:不存在的目录两支都不走(与平台同页一致)。以前随便拼一个目录名 + 同一个词:额度只按词计一条,
+       命中表却按「目录+词」记,每换一个假目录就是一次没有区间框、目录过滤又把命中全筛掉的 FTS 整扫(常见词约 2–6 万行)。 */
+    if (q && meta) {
+      /* 09-24 C2(安全架构 3.1「会员搜索」):上一版一次搜索 = 全量 COUNT + 全量 ORDER BY no,常见词 2.2 万行。
+         现在命中表(最多 1,001 条,只带 rowid / 目录 / 序号 / 长度)由 lib/search.ts 取:FTS 按本目录的 rowid 区间翻、流式取到上限就停;
+         总数封顶显示「1000+」;排序、分页在内存里做,每页只按主键回表 50 行。命中表与每页各按「目录+词(+页)」记 1 小时。 */
+      const hits = await searchMemo(`inci:${reg}`, q, 0, () => catalogHits(db, q, reg));
+      total = hits.length;
+      const ids = [...hits].sort((a, b) => (a.no < b.no ? -1 : a.no > b.no ? 1 : 0))
+        .slice((page - 1) * PER, page * PER).map((h) => h.id);
+      rows = await searchMemo(`inci:${reg}`, q, page, () => byIds(db, `SELECT ${ROW} FROM inci_catalog WHERE rowid IN (%IDS%)`, ids));
+    } else if (meta) {
+      /* 09-24 D2:不带词的翻页是公司库读量第一名(3 小时 6,900 万行:每页先按 registry 取全目录再排序,eu-cosing 一次 3.6 万行)。
+         总数读 counts 缓存行;列表靠 0119 的 (registry, no) 索引只读 OFFSET+50 行,再按 目录×页 记 24 小时,17 个语种共用。
+         计数文件里没有这个目录(新目录还没跑 counts-refresh)时,只数到 20 页够用的 1,001 行,不整目录现数。 */
+      const cached = (await getCounts(db))?.registry?.[reg];
+      total = typeof cached === 'number' ? cached
+        : (((await db.prepare('SELECT rowid FROM inci_catalog WHERE registry = ? LIMIT 1001').bind(reg).all()).results ?? []).length);
+      rows = await memo(`inci-list:${reg}|${page}`, 86400, async () => ((await db.prepare(
         `SELECT no, name_zh, inci, alias, cas, pubchem_cid, max_rinse, max_leave, note
            FROM inci_catalog WHERE registry = ? ORDER BY no LIMIT ? OFFSET ?`)
-        .bind(reg, PER, (page - 1) * PER).all<any>()).results ?? []) as any[];
+        .bind(reg, PER, (page - 1) * PER).all<any>()).results ?? []) as any[]);
     }
   } catch { rows = []; total = 0; }
 }
 /* 中国目录独有「淋洗/驻留最高历史使用量」两列;欧盟等目录把功能、附录、限量写在备注里。
    两套表头共用一张表,靠这个开关切 —— 拿 '—' 占位会让人以为「有这一栏但没数据」。 */
 const isCN = reg.startsWith('cn-nmpa');
-const pages = Math.max(1, Math.ceil(total / PER));
+/* 页数封顶:带词 10 页、目录 20 页。目录更长时页码只给到 20,并提示用检索 */
+const pages = Math.min(PMAX, Math.max(1, Math.ceil(total / PER)));
+const more = !q && total > PMAX * PER;
 /* 页码窗口:当前页两侧各 3 个。全列出来在 180 页时是一面数字墙,只给两个箭头又翻不动。 */
 const win: number[] = [];
 for (let i = Math.max(1, page - 3); i <= Math.min(pages, page + 3); i++) win.push(i);
@@ -100,7 +117,8 @@ const T = zh ? {
   cols: isCN
     ? ['序号', '标准中文名称', 'INCI 名称 / 英文名称', 'CAS 号', '淋洗类最高历史使用量', '驻留类最高历史使用量', '备注']
     : ['编号', '化学名称 / 描述', 'INCI 名称', 'CAS 号', '功能 · 附录 · 限量'],
-  found: (n: number) => `共 ${n.toLocaleString()} 条`,
+  found: (n: number) => `共 ${q ? capText(n) : n.toLocaleString()} 条`,
+  more: `目录较长,这里只列前 ${PMAX} 页;要找具体原料,请用上面的检索。`,
   empty: '没有检索到。换个写法试试 —— 目录里的植物原料常写成「甘草(GLYCYRRHIZA GLABRA)根提取物」这种带拉丁学名的形式。',
   prev: '上一页', next: '下一页', first: '首页', last: '末页', jump: '跳到', go: '跳转',
   pageOf: (a: number, b: number) => `第 ${a} / ${b} 页`,
@@ -121,7 +139,8 @@ const T = zh ? {
   cols: isCN
     ? ['No.', 'Standard Chinese name', 'INCI / English name', 'CAS No.', 'Max use, rinse-off', 'Max use, leave-on', 'Note']
     : ['ID', 'Chemical name / description', 'INCI name', 'CAS No.', 'Function · Annex · Limit'],
-  found: (n: number) => `${n.toLocaleString()} entries`,
+  found: (n: number) => `${q ? capText(n) : n.toLocaleString()} entries`,
+  more: `Only the first ${PMAX} pages are listed; use the search box above to find a specific ingredient.`,
   empty: 'No match. Try another spelling — botanical entries are usually written with the Latin binomial in brackets.',
   prev: 'Prev', next: 'Next', first: 'First', last: 'Last', jump: 'Go to', go: 'Go',
   pageOf: (a: number, b: number) => `Page ${a} of ${b}`,
@@ -163,7 +182,7 @@ const ld = [
     license: 'https://www.nmpa.gov.cn/',
   },
 ];
-const indexable = shell.site?.is_live === 1 && !q && page === 1;
+const indexable = shell.site?.is_live === 1 && !q0 && page === 1;
 ---
 
 <BaseLayout
@@ -174,7 +193,7 @@ const indexable = shell.site?.is_live === 1 && !q && page === 1;
   indexable={indexable} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
 >
   <a class="ck-skip-link" href="#main">{tSkip}</a>
-  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
   <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
               siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
   <main id="main">
@@ -183,10 +202,11 @@ const indexable = shell.site?.is_live === 1 && !q && page === 1;
       <h1>{T.title}</h1>
       <p class="lede">{T.lede}</p>
       <form class="search" method="get" action={path}>
-        <input type="search" name="q" value={q} placeholder={T.ph} aria-label={T.ph} maxlength="60" />
+        <input type="search" name="q" value={q0} placeholder={T.ph} aria-label={T.ph} maxlength="60" />
         <button type="submit">{T.search}</button>
-        {q && <a class="clear" href={path}>{T.clear}</a>}
+        {q0 && <a class="clear" href={path}>{T.clear}</a>}
       </form>
+      {sg && <MemberGate lang={lang} g={sg} next={`${path}?q=${encodeURIComponent(q0)}`} what={['检索结果', 'search results']} />}
       {sHint && <p class="shint">{sHint}</p>}
     <p class="count">{T.found(total)}</p>
     </header>
@@ -249,6 +269,7 @@ const indexable = shell.site?.is_live === 1 && !q && page === 1;
       </nav>
     )}
 
+    {more && <p class="note">{T.more}</p>}
     <p class="note">{T.note}</p>
     <p class="ask">{T.ask}</p>
   </main>

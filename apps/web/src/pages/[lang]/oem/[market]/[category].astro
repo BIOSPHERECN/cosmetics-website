@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 import { OEM_MARKETS, OEM_CATEGORIES, OEM_CERTS } from '@cosmetic/core/content/oem.ts';
@@ -15,6 +16,7 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../../lib/shell';
+import InquiryFormLite from '@cosmetic/core/components/InquiryFormLite.astro';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'zh-cn';
@@ -61,7 +63,7 @@ const EN: Record<string, string> = {
   onfile: `{n} proven {category} formulations on file{formats}, plus {np} stock packaging options in the formats this category uses. Numbers are live counts from the formulation and packaging libraries on this site.`,
   formatsPrefix: ' (formats: {formats})',
   steps: 'Brief → base selection or new formulation → sample (usually {sd} days) → stability (40C accelerated) and preservative challenge (ISO 11930 / USP <51>) → packaging compatibility → dossier for {authority} → production on the certified lines → label review before shipment.',
-  halal: `{market} brands usually need halal-ready formulations: every ingredient's origin is checked and documented; the factory holds HALAL certification.`,
+  halal: `{market} brands usually need halal-ready formulations: every ingredient's origin is checked and documented; the factory holds HALAL certification (scope as stated on the certificate).`,
   faq1q: `Can ${brand} manufacture {category} products for a {adj} brand?`, faq1a: `Yes. {n} {category} formulations are on file, produced on {lines} automated lines under {certs}; the dossier is prepared for {authority}.`,
   faq2q: `Who files the product in {market}?`, faq2a: `{rp}`,
   faq3q: `What must the label carry in {market}?`, faq3a: `{labeling}`,
@@ -84,7 +86,7 @@ const ZH: Record<string, string> = {
   onfile: `成熟{category}配方 {n} 条{formats},该品类常用包材 {np} 款;数字是本站配方库与包材库的实时计数。`,
   formatsPrefix: '(剂型:{formats})',
   steps: '需求简报 → 选基底或新开配方 → 出样(通常 {sd} 天)→ 稳定性(40℃ 加速)与防腐挑战(ISO 11930 / USP <51>)→ 包材相容性 → {authority} 备案资料 → 认证产线量产 → 出货前标签复核。',
-  halal: `{market}品牌通常要清真就绪的配方:逐个原料核来源并留档;工厂持有 HALAL 认证。`,
+  halal: `{market}品牌通常要清真就绪的配方:逐个原料核来源并留档;工厂持有 HALAL 认证(覆盖范围以证书为准)。`,
   faq1q: `${brand} 能为{market}品牌代工{category}产品吗?`, faq1a: `能。库内 {n} 条{category}配方,在 {certs} 体系下的 {lines} 条自动化产线生产;备案资料按 {authority} 要求准备。`,
   faq2q: `在{market}谁来备案?`, faq2a: `{rp}`,
   faq3q: `{market}的标签要写什么?`, faq3a: `{labeling}`,
@@ -126,7 +128,7 @@ const ld = [
   title={title} description={lead.slice(0, 300)} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
   indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
   <a class="ck-skip-link" href="#main">{tSkip}</a>
-  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
   <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
   <main id="main">
     <p class="back"><a href={`${B}/oem/`}>{T.back}</a></p>
@@ -157,8 +159,10 @@ const ld = [
     <section class="faq"><h2>FAQ</h2>{faqs.map(([q, a]) => (<details><summary>{q}</summary><p>{a}</p></details>))}</section>
 
     {related.length > 0 && (<section class="rel"><h2>{fill(T.s4)}</h2><ul>{related.map((r: any) => (<li><a href={`${B}/answers/${r.slug}/`}>{relQ(r)}</a></li>))}</ul></section>)}
-    <p class="ask">{fill(T.ask)} <a href={`${B}/contact/`}>{T.inquiry}</a></p>
+    <p class="ask">{fill(T.ask)} <a href="#inquiry">{T.inquiry}</a></p>
   </main>
+  {/* 09-24 W7:开发信落地页就地收询盘(带 utm 进 source_path),不再只给一个跳联系页的链接 */}
+  <InquiryFormLite lang={lang} email={shell.email} source="oem" />
   <SiteFooter locale={lang as any} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} />
 </BaseLayout>
 

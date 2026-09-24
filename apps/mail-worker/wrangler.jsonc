@@ -6,6 +6,9 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
+  // 09-24 暴露面:收信走 Email Routing、汇总走 cron,没有调用方用 workers.dev → 关掉(与 cf_harden.py 同步;部署时别被默认值重新打开)
+  "workers_dev": false,
+  "preview_urls": false,
   "d1_databases": [
     { "binding": "DB", "database_name": "bohui-cms-v2", "database_id": "ea5b0da4-7f96-48bf-8fca-dc7193a9596d" }
   ],

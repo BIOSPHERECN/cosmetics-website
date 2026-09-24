@@ -1,4 +1,5 @@
 ---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 /**
@@ -85,7 +86,7 @@ const ld = [
   title={`${T.h1} | ${siteName}`} description={desc} siteName={siteName} siteUrl={origin} path={path}
   indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
   <a class="ck-skip-link" href="#main">{tSkip}</a>
-  <script type="application/ld+json" set:html={JSON.stringify(ld)} is:inline />
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
   <SiteHeader locale={lang as any} path={path} siteName={siteName} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
   <main id="main">
     <p class="back"><a href={`${B}/regulations/`}>{T.back}</a></p>

@@ -23,6 +23,7 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { loadFleet, vision, image, chat, paidFirst } from '../../../lib/fleet';
 import { overQuota, recordUse, tooMany, clientId, sweep } from '../../../lib/ratelimit';
+import { aiGate, getMember } from '../../../lib/member';
 
 export const prerender = false;
 
@@ -46,6 +47,9 @@ export const POST: APIRoute = async ({ request }) => {
      比肌肤检测更贵。没有这道闸,一个写错的爬虫就能把免费额度烧干。 */
   const who = clientId(request);
   if (await overQuota(db, 'ai.pack', who)) return tooMany('ai.pack');
+  /* 09-24 C10(代码审计 P1-4):只给会员用,并计每日额度 —— 不登录、只按 IP 限次时,换 IP 就能把模型免费额度烧干 */
+  const denied = await aiGate(request, env, db, 'ai.pack');
+  if (denied) return denied;
 
   try {
     await recordUse(db, 'ai.pack', who);
@@ -173,11 +177,14 @@ export const POST: APIRoute = async ({ request }) => {
         + (brief ? `Brand direction: ${brief}. ` : '')
         + 'photorealistic product packaging render, sharp focus, no watermark.';
       const prompt = renderPrompt.length > 40 ? renderPrompt : fallback;
+      /* 09-24 P1-2:出图单记下会员,进度与取图只回给本人(0127 加的列;没迁移时退回老写法,出图照常、只是只有员工能看) */
+      const mid = (await getMember(request, env, db))?.id ?? null;
       const r = await db
-        .prepare(`INSERT INTO pack_jobs (lang, fact_line, brief, prompt) VALUES (?,?,?,?) RETURNING id`)
-        .bind(body.lang ?? 'zh-cn', factLine.slice(0, 300), brief, prompt)
+        .prepare(`INSERT INTO pack_jobs (lang, fact_line, brief, prompt, member_id) VALUES (?,?,?,?,?) RETURNING id`)
+        .bind(body.lang ?? 'zh-cn', factLine.slice(0, 300), brief, prompt, mid)
         .first<{ id: number }>()
-        .catch(() => null);
+        .catch(() => db.prepare(`INSERT INTO pack_jobs (lang, fact_line, brief, prompt) VALUES (?,?,?,?) RETURNING id`)
+          .bind(body.lang ?? 'zh-cn', factLine.slice(0, 300), brief, prompt).first<{ id: number }>().catch(() => null));
       jobId = r?.id ?? null;
     }
 

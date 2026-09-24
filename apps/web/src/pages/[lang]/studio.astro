@@ -248,6 +248,8 @@ const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
           body: JSON.stringify({ input, lang, site: SITE_ID }),
         });
         const d = await r.json();
+        /* 09-24 C10:接口改为只给会员用 —— 没登录就带着回跳地址去登录页 */
+        if (d.need === 'login' && d.href) { location.href = d.href; return; }
         if (!d.ok) throw new Error(d.msg || '生成失败');
 
         const f = $('filters'); f.innerHTML = '';

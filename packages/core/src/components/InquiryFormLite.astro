@@ -18,24 +18,37 @@
 export interface Props {
   lang: string;
   email: string;
+  /** 来源标记,默认 contact;OEM 意图页传 oem(09-24 W7) */
+  source?: string;
 }
-const { lang, email } = Astro.props;
+const { lang, email, source = 'contact' } = Astro.props;
 /* Turnstile 的 site key 是公开值(会渲染进 HTML),放明文没问题;
    真正的开关是服务端的 TURNSTILE_SECRET。没配 key 就不渲染组件,
    服务端那边也会放行 —— 校验组件的配置问题不该挡住真实询盘。 */
 const siteKey = (import.meta.env.TURNSTILE_SITE_KEY as string | undefined)
   ?? '0x4AAAAAAEh9PTvpt4eaYV_q';
 const zh = String(lang).startsWith('zh');
+const INQUIRY_QS = (zh
+  ? [
+      '① 想做什么产品（品类、功效）？', '答:', '',
+      '② 卖到哪些国家、走什么渠道？', '答:', '',
+      '③ 首单大概多少量、计划什么时候上市？', '答:', '',
+      '④ 有没有参考产品或配方（可贴链接）？', '答:', '',
+      '⑤ 需要哪些认证或注册（比如 FDA、CPNP、HALAL）？', '答:',
+    ]
+  : [
+      '① What product do you want to make (category and benefits)?', 'A:', '',
+      '② Which countries and sales channels are you targeting?', 'A:', '',
+      '③ What is the approximate first-order volume and planned launch time?', 'A:', '',
+      '④ Do you have a reference product or formula (links are welcome)?', 'A:', '',
+      '⑤ Which certifications or registrations do you need (such as FDA, CPNP, or HALAL)?', 'A:',
+    ]).join('\n');
 const T = zh
   ? { h: '发起询盘', p: '填完这张表,方案与配方号会一起进入我们的跟单系统;我们在一个工作日内回复。',
-      name: '称呼', company: '公司', mail: '邮箱', country: '国家 / 地区', need: '需求',
-      cat: '想做什么品类', vol: '首批量级', pick: '请选择', wa: '不想等邮件?直接 WhatsApp',
-      ph: '例:想做一支敏感肌精华,卖欧盟与日本,首批 5000 支。已在选品台选了 SR-1101 与 AB-101。',
+      name: '称呼', mail: '邮箱', need: '需求', wa: '不想等邮件?直接 WhatsApp',
       submit: '发送询盘', or: '或直接邮件联系:', privacy: '仅用于回复你的询盘,不做他用,不外发。' }
   : { h: 'Start an inquiry', p: 'Send this form and your plan travels with it — formula and packaging codes included. We reply within one business day.',
-      name: 'Name', company: 'Company', mail: 'Email', country: 'Country / region', need: 'What you need',
-      cat: 'Product category', vol: 'First order volume', pick: 'Select', wa: 'Rather not wait for email? WhatsApp us',
-      ph: 'e.g. A serum for sensitive skin, for the EU and Japan, 5,000 units to start. Picked SR-1101 and AB-101 in the selector.',
+      name: 'Name', mail: 'Email', need: 'What you need', wa: 'Rather not wait for email? WhatsApp us',
       submit: 'Send inquiry', or: 'Or email us directly:', privacy: 'Used only to answer your inquiry. Not shared.' };
 ---
 
@@ -47,44 +60,16 @@ const T = zh
     <form class="f" id="iqf" action="/api/inquiry" method="post">
       <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
              style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
-      <input type="hidden" name="source" value="contact" />
+      <input type="hidden" name="source" value={source} />
+      <input type="hidden" name="sourcePath" id="iqsp" />
       <div class="g2">
         <label><span>{T.name}</span><input type="text" name="name" required autocomplete="name" /></label>
-        <label><span>{T.company}</span><input type="text" name="company" required autocomplete="organization" /></label>
-        <label><span>{T.mail}</span><input type="email" name="email" required autocomplete="email" /></label>
-        <label><span>{T.country}</span><input type="text" name="country" required autocomplete="country-name" /></label>
-        <label><span>WhatsApp</span><input type="tel" name="whatsapp" autocomplete="tel" inputmode="tel" placeholder="+62 812 3456 7890" maxlength="40" /></label>
-      </div>
-      <div class="row">
-        {/* 品类与数量级做成下拉而不是让人写在留言里:
-            报价前必问的就这两件,结构化之后跟单能筛、后台能统计
-            「哪类询盘最多」。选项用采购自己的说法,不用我们的内部分类。
-            两个都非必填 —— 每多一个必填项完成率就掉一截。 */}
-        <label><span>{T.cat}</span>
-          <select name="category">
-            <option value="">{T.pick}</option>
-            {(zh
-              ? ['护肤(精华/面霜/水乳)', '面膜', '洁面与卸妆', '防晒', '身体护理', '洗护发',
-                 '彩妆', '口腔护理', '儿童护肤', '香氛', '其他']
-              : ['Skincare (serum/cream/toner)', 'Sheet mask', 'Cleansing', 'Suncare',
-                 'Body care', 'Hair care', 'Colour cosmetics', 'Oral care', 'Kids skincare',
-                 'Fragrance', 'Other']
-            ).map((o) => <option value={o}>{o}</option>)}
-          </select></label>
-        <label><span>{T.vol}</span>
-          <select name="volume">
-            <option value="">{T.pick}</option>
-            {(zh
-              ? ['1,000 支以内', '1,000 – 5,000', '5,000 – 20,000', '20,000 – 100,000',
-                 '100,000 以上', '还不确定']
-              : ['Under 1,000', '1,000 – 5,000', '5,000 – 20,000', '20,000 – 100,000',
-                 'Over 100,000', 'Not sure yet']
-            ).map((o) => <option value={o}>{o}</option>)}
-          </select></label>
+        <label><span>{T.mail}</span><input type="email" name="email" autocomplete="email" /></label>
+        <label><span>{zh ? 'WhatsApp 或电话（邮箱或此项至少填一个）' : 'WhatsApp or phone (email or this field is required)'}</span><input type="tel" name="whatsapp" autocomplete="tel" inputmode="tel" placeholder="+62 812 3456 7890" maxlength="40" /></label>
       </div>
 
       <label class="full"><span>{T.need}</span>
-        <textarea name="message" rows="5" required id="iqmsg" placeholder={T.ph}></textarea></label>
+        <textarea name="message" rows="15" required id="iqmsg">{INQUIRY_QS}</textarea></label>
       <p class="act">
         {siteKey && <div class="cf-turnstile" data-sitekey={siteKey} data-size="flexible"></div>}
         <button class="btn" type="submit">{T.submit}</button>
@@ -141,6 +126,17 @@ const T = zh
     var fb = document.getElementById('iqfb');
     var ta = document.getElementById('iqmsg');
     var zh = document.documentElement.lang.indexOf('zh') === 0;
+    var email = f.elements.email;
+    var whatsapp = f.elements.whatsapp;
+    var validateContact = function () {
+      var missing = !email.value.trim() && !whatsapp.value.trim();
+      var msg = missing ? (zh ? '邮箱和 WhatsApp 或电话至少填写一个。' : 'Enter an email or a WhatsApp/phone number.') : '';
+      email.setCustomValidity(msg);
+      whatsapp.setCustomValidity(msg);
+      return !missing;
+    };
+    email.addEventListener('input', validateContact);
+    whatsapp.addEventListener('input', validateContact);
     var NL = String.fromCharCode(10, 10);
     try {
       var q = new URLSearchParams(location.search);
@@ -149,9 +145,13 @@ const T = zh
       if (q.get('pack')) bits.push((zh ? '包材 ' : 'Packaging ') + q.get('pack'));
       if (q.get('market')) bits.push((zh ? '目标市场 ' : 'Market ') + q.get('market'));
       if (q.get('claim')) bits.push((zh ? '诉求 ' : 'Claim ') + q.get('claim'));
-      if (ta && bits.length && !ta.value) ta.value = bits.join(' · ') + NL;
+      if (ta && bits.length) ta.value += NL + bits.join(' · ');
+      /* 来源页 + 只留 utm_* 参数:开发信落地页的 utm 要跟着询盘进库(source_path),其它查询串不留 */
+      var sp = document.getElementById('iqsp'), u = [];
+      q.forEach(function (v, k) { if (k.indexOf('utm_') === 0) u.push(k + '=' + encodeURIComponent(v)); });
+      if (sp) sp.value = (location.pathname + (u.length ? '?' + u.join('&') : '')).slice(0, 200);
       var h = sessionStorage.getItem('bh-chat-handoff');
-      if (ta && h && !ta.value) { ta.value = h; sessionStorage.removeItem('bh-chat-handoff'); }
+      if (ta && h) { ta.value += NL + h; sessionStorage.removeItem('bh-chat-handoff'); }
       if (q.get('sent') === '1' && fb) {
         fb.className = 'fb ok';
         fb.textContent = zh ? '已收到,我们会在一个工作日内回复。' : 'Received. We reply within one business day.';
@@ -159,6 +159,7 @@ const T = zh
     } catch (e) {}
     f.addEventListener('submit', function (e) {
       e.preventDefault();
+      if (!validateContact()) { f.reportValidity(); return; }
       var btn = f.querySelector('.btn');
       btn.disabled = true;
       if (fb) { fb.className = 'fb'; fb.textContent = zh ? '提交中…' : 'Sending…'; }

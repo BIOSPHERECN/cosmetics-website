@@ -1,0 +1,85 @@
+---
+/**
+ * 客户认同等级 —— BEAUTY2OEM 客户产品档案(b2o_profiles,0105)按认同七级分布与明细(2026-09-24 W3)。
+ * 七级定义照 SOP 执行版 03-v2 §4.1(lib/b2o.ts TRUST);同意 5 列来自 0111(DDL 客户侧 v2 §A0)。
+ * 只读视图:升级只由「记沟通」和硬信号驱动(03-v2 §4.2),这里不给手改按钮;点公司名进客户档案页(b2o-profile,C2)记沟通。
+ * 个人信息不上屏:contact / wechat / phone / email 四列不读(G13)。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { TRUST, custCode } from '../../lib/b2o';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const lvq = url.searchParams.get('lv') ?? '';
+const lv = /^[0-7]$/.test(lvq) ? Number(lvq) : null;
+
+type Row = { id: number; company: string | null; platforms: string | null; markets_now: string | null; cats_now: string | null; trust_level: number;
+  next_proof: string | null; status: string; brief_due_at: string | null; brief_sent_at: string | null; updated_at: string; contact_ref?: string | null; consent_at?: string | null; consent_xb_at?: string | null };
+let dist: { trust_level: number; n: number }[] = [], rows: Row[] = [], hasConsent = true, err = '';
+try {
+  dist = (await c.db.prepare(`SELECT trust_level, COUNT(*) n FROM b2o_profiles GROUP BY trust_level`).all<{ trust_level: number; n: number }>()).results;
+  const base = `id, company, platforms, markets_now, cats_now, trust_level, next_proof, status, brief_due_at, brief_sent_at, updated_at`;
+  const q = (cols: string) => c.db.prepare(`SELECT ${cols} FROM b2o_profiles ${lv !== null ? 'WHERE trust_level=?' : ''} ORDER BY trust_level DESC, updated_at DESC LIMIT 300`).bind(...(lv !== null ? [lv] : [])).all<Row>();
+  /* 0111 同意列没灌到这个库时退回老列,页面照样能看 */
+  try { rows = (await q(`${base}, contact_ref, consent_at, consent_xb_at`)).results; }
+  catch { hasConsent = false; rows = (await q(base)).results; }
+} catch (e) { err = String((e as Error)?.message ?? e).slice(0, 120); }
+
+const N = new Map(dist.map((d) => [d.trust_level, d.n]));
+const total = dist.reduce((a, d) => a + d.n, 0);
+const ST: Record<string, string> = { new: '新线索', lead: '新线索', needs_review: '待核实', profiled: '已建档', briefed: '已发简报', chosen: '已选方向', sampling: '打样中', quoting: '报价中', testing: '测试单', ordered: '已下单', repeat: '复购' };
+const d10 = (s: string | null) => (s ?? '').slice(0, 10);
+---
+
+<AdminShell title="客户认同等级" active="b2o-trust" email={c.sess.email} tenant={c.tenant}>
+  <h1>客户认同等级</h1>
+  <p class="lead">BEAUTY2OEM 客户产品档案按认同七级分布。每一级要证明的事写在卡片上;升级只看客户的原话和动作,不在这里手改。共 {total} 家。</p>
+
+  {err ? <div class="empty">档案表读不到(b2o_profiles,迁移 0105):{err}</div> : (
+    <>
+      <div class="cards lv">
+        {TRUST.map((t) => (
+          <a class:list={['card', { on: lv === t.lv }]} href={lv === t.lv ? '/bohui/b2o-trust/' : `/bohui/b2o-trust/?lv=${t.lv}`}>
+            <div class="k">{t.name}</div><div class="v">{N.get(t.lv) ?? 0}</div>
+            <div class="s">{t.mind}<br />下一步证明:{t.proof}</div>
+          </a>
+        ))}
+      </div>
+
+      {!hasConsent && <p class="note">同意 5 列(迁移 0111)还没灌到这个库,「同意」一栏暂不显示。</p>}
+      {lv !== null && <p class="dim">只看 {TRUST[lv].name} · <a href="/bohui/b2o-trust/">看全部</a></p>}
+
+      {rows.length === 0 ? <div class="empty">{lv !== null ? '这一级还没有客户。' : '还没有客户档案。'}</div> : (
+        <table>
+          <thead><tr><th>代号</th><th>公司</th><th>平台 · 市场</th><th>品类</th><th>认同级</th><th>下一步要证明</th><th>状态</th>{hasConsent && <th>同意</th>}<th>简报</th><th>更新</th></tr></thead>
+          <tbody>{rows.map((r) => (
+            <tr>
+              <td class="num">{custCode(r)}</td>
+              <td><a href={`/bohui/b2o-profile/?id=${r.id}`}>{r.company ?? '(未填公司名)'}</a></td>
+              <td>{[r.platforms, r.markets_now].filter(Boolean).join(' · ') || '—'}</td>
+              <td>{r.cats_now ?? '—'}</td>
+              <td><span class="pill">{TRUST[r.trust_level]?.name ?? `L${r.trust_level}`}</span></td>
+              <td>{r.next_proof || TRUST[r.trust_level]?.proof || '—'}</td>
+              <td>{ST[r.status] ?? r.status}</td>
+              {hasConsent && <td>{r.consent_at ? <span class="pill p-ok">已同意{r.consent_xb_at ? '·含出境' : ''}</span> : <span class="pill p-wait">未记录</span>}</td>}
+              <td>{r.brief_sent_at ? `已发 ${d10(r.brief_sent_at)}` : r.brief_due_at ? `应发 ${d10(r.brief_due_at)}` : '—'}</td>
+              <td class="dim">{d10(r.updated_at)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      )}
+      <p class="dim">联系人、微信、手机、邮箱不在后台显示(个人信息只留境内系统)。定级依据:SOP 执行版 03-v2 §4.1 / 04-v2 §五。</p>
+    </>
+  )}
+
+  <style>
+    .lv{grid-template-columns:repeat(auto-fill,minmax(10.5rem,1fr))}
+    .lv a.card{text-decoration:none;color:inherit} .lv a.card.on{outline:2px solid var(--ad-accent)}
+    .dim{color:var(--ad-faint);font-size:.75rem}
+    td{font-size:.875rem;vertical-align:top}
+  </style>
+</AdminShell>

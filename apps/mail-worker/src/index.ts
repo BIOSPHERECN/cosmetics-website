@@ -60,6 +60,14 @@ export default {
     if (u.pathname === '/' && req.method === 'GET' && !u.searchParams.has('op')) return new Response('bohui-mail ok');
     if (!env.CRON_KEY || key !== env.CRON_KEY) return json({ ok: false, msg: 'forbidden' }, 403);
     if (u.searchParams.get('op') === 'digest') return json(await digest(env));
+    /* 发信通道自测(09-23 W2):POST ?op=test-send&site=beauty2oem.com&to=inquiry@biosphere-ai.com。
+       收件人只准自家域名,主题固定带【内部测试】—— 这个口子发不了外信;对方域名的收信 Worker 入库即算通 */
+    if (u.searchParams.get('op') === 'test-send' && req.method === 'POST') {
+      const to = u.searchParams.get('to') ?? '';
+      if (!/^[^@\s]+@(biosphere-ai|beauty2oem)\.com$/i.test(to)) return json({ ok: false, msg: '只准发到自家域名' }, 400);
+      const r = await sendMail(env, { to: [to], site: u.searchParams.get('site'), subject: `【内部测试】发信通道自测 ${new Date().toISOString()}`, text: '内部互发测试,无需处理。' });
+      return json(r);
+    }
     if (u.pathname === '/ingest' && req.method === 'POST') {
       const raw = await req.arrayBuffer();
       if (!raw.byteLength) return json({ ok: false, msg: 'empty body' }, 400);
