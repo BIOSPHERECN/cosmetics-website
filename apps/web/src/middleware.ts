@@ -514,7 +514,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   /* v3(2026-09-07 上午):D1 额度耗尽期间,边缘把一批 404 与 503 缓存住了 ——
      修好之后访客拿到的仍是坏副本。推版本号是清掉它们唯一干净的办法。 */
   /* v4(2026-09-07 晚):sitemap 拆分、繁中上线、跨站兜底重写 —— 清掉全部旧副本 */
-  const CACHE_V = 'v83';   // 09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
+  const CACHE_V = 'v84';   // 09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。
