@@ -35,17 +35,33 @@ const json = (b: unknown, status = 200) =>
 /** 邮箱只做「长得像不像」的校验:严格的 RFC 正则会把合法地址误杀,得不偿失 */
 const looksEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s);
 
-/** 极简问答框:兼容新表单的圈号、中英文答案标记,也兼容旧的 `1.` 模板。 */
-function questionAnswers(message: string): Record<number, string> {
+/** 极简问答框:兼容 1–9 圈号、中英文答案标记,也兼容旧的 `1.` 模板。 */
+// SELF_TEST_BEGIN
+export function questionAnswers(message: string): Record<number, string> {
   const answers: Record<number, string> = {};
-  const numberOf = (mark: string) => '①②③④⑤'.indexOf(mark) + 1 || Number(mark.replace(/\D/g, ''));
-  const re = /(?:^|\n)\s*([①②③④⑤]|[1-5](?=[.、)]))[.、)]?[^\n]*\n\s*(?:答|A)\s*[:：][ \t]*([\s\S]*?)(?=\n\s*(?:[①②③④⑤]|[1-5](?=[.、)]))[.、)]?[^\n]*\n|$)/gi;
-  for (const match of message.replace(/\r/g, '').matchAll(re)) {
-    const answer = match[2].trim();
-    if (answer) answers[numberOf(match[1])] = answer.slice(0, 1000);
+  const circled = '①②③④⑤⑥⑦⑧⑨';
+  const lines = String(message ?? '').replace(/\r/g, '').split('\n');
+  /* 题号行下一行(可隔空行)是答案标记才算题目 —— 答案里的「1. serum」清单不能被当成新题吞掉 */
+  const isAns = (s = '') => /^(?:答|A)\s*[:：]/i.test(s.trim());
+  const nextLine = (i = 0) => { while (++i < lines.length && !lines[i].trim()); return lines[i]; };
+  let question = 0, collecting = false, buffer: string[] = [];
+  const save = () => {
+    const answer = buffer.join('\n').trim();
+    if (question && answer) answers[question] = answer.slice(0, 1000);
+    buffer = [];
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i], line = raw.trim();
+    const q = /^([①②③④⑤⑥⑦⑧⑨])|^(\d{1,2})[.、)]/.exec(line);
+    if (q && isAns(nextLine(i))) { save(); question = q[1] ? circled.indexOf(q[1]) + 1 : Number(q[2]); collecting = false; continue; }
+    const a = /^(?:答|A)\s*[:：]([\s\S]*)/i.exec(line);
+    if (a && question) { collecting = true; if (a[1].trim()) buffer.push(a[1].trim()); continue; }
+    if (collecting) buffer.push(raw);
   }
+  save();
   return answers;
 }
+// SELF_TEST_END
 
 /** 从域名认站点;认不出来退回请求里带的 site,再不行给集团站 */
 async function resolveSite(db: D1Database, host: string, hint: string): Promise<string> {
@@ -107,8 +123,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if ((f.website ?? '').trim()) spam += 5;
   const message = (f.message ?? '').trim();
   const answers = questionAnswers(message.slice(0, 8000));   // 请求体不限长,懒惰匹配 + 前瞻在超长正文上会吃 CPU,只解析前 8000 字
-  const category = (answers[1] ?? f.category ?? '').trim().slice(0, 40) || null;
-  const volume = (answers[3] ?? f.volume ?? '').trim().slice(0, 40) || null;
+  const category = (answers[3] ?? f.category ?? '').trim().slice(0, 40) || null;
+  const volume = (answers[8] ?? f.volume ?? '').trim().slice(0, 40) || null;
   if ((message.match(/https?:\/\//g) ?? []).length >= 3) spam += 3;
   if (!message && !(f.name ?? '').trim()) spam += 1;
 

@@ -24,6 +24,33 @@ const back = (request: Request, state: string) => {
   return new Response(null, { status: 303, headers: { Location: to.toString(), 'Cache-Control': 'no-store' } });
 };
 
+// SELF_TEST_BEGIN
+/* 题号行下一行(可隔空行)是「答:」才算题目 —— 客户答案里的「1、交期慢」「15.9 美元」不能被当成新题吞掉 */
+export function parseBriefAnswers(message: string): Record<number, string> {
+  const answers: Record<number, string> = {};
+  const lines = String(message ?? '').replace(/\r/g, '').split('\n');
+  const isAns = (s = '') => /^答\s*[:：]/.test(s.trim());
+  const nextLine = (i = 0) => { while (++i < lines.length && !lines[i].trim()); return lines[i]; };
+  let question = 0, collecting = false, buffer: string[] = [];
+  const save = () => {
+    const answer = buffer.join('\n').trim();
+    if (question && answer) answers[question] = answer.slice(0, 1000);
+    buffer = [];
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i], line = raw.trim();
+    const q = /^(\d{1,2})[.、)]/.exec(line);
+    if (q && isAns(nextLine(i))) { save(); question = Number(q[1]); collecting = false; continue; }
+    if (/^【[^】]+】$/.test(line)) { save(); question = 0; collecting = false; continue; }
+    const a = /^答\s*[:：]([\s\S]*)/.exec(line);
+    if (a && question) { collecting = true; if (a[1].trim()) buffer.push(a[1].trim()); continue; }
+    if (collecting) buffer.push(raw);
+  }
+  save();
+  return answers;
+}
+// SELF_TEST_END
+
 export const POST: APIRoute = async ({ request, locals }) => {
   const db = (env as any).DB as D1Database | undefined;
   if (!db) return back(request, 'down');
@@ -53,13 +80,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
      问答框按题号拆:只取「答:」后面真写了字的;链接自动提取给简报用。旧表单字段(store_url 等)仍兼容。 */
   const contact = g('contact', 60), wechat = g('wechat', 60), phone = g('phone', 40), email = g('email', 200);
   const notes = String(f['notes'] ?? '').replace(/\r/g, '').slice(0, 4000);
-  const ans: Record<number, string> = {};
-  for (const m of notes.matchAll(/(?:^|\n)\s*(\d)\.[^\n]*\n\s*答[::]?([\s\S]*?)(?=\n\s*\d\.|$)/g)) {
-    const a = m[2].trim(); if (a) ans[Number(m[1])] = a.slice(0, 1000);
-  }
-  const extra = Object.keys(ans).length ? '' : notes.replace(/^\s*\d\.[^\n]*$|^\s*答[::]?\s*$/gm, '').trim().slice(0, 1500);   // 没按格式写的整段保留
-  const urls = (notes.match(/https?:\/\/[^\s,,。]+/g) ?? []).slice(0, 6);
-  const store = g('store_url', 500) || urls[0] || '', heroes = g('hero_urls', 1500) || urls.slice(1).join('\n');
+  const ans = parseBriefAnswers(notes);
+  /* 没按格式写的整段保留:只删模板行(空「答:」、小标题、后面跟空「答:」的题目),客户自己写的编号清单留着 */
+  const nl = notes.split('\n'), emptyAns = (s = '') => /^答\s*[:：]\s*$/.test(s.trim());
+  const extra = Object.keys(ans).length ? '' : nl.filter((l, i) => { const t = l.trim(); return !(emptyAns(t) || /^【[^】]+】$/.test(t) || (/^\d{1,2}[.、)]/.test(t) && emptyAns(nl[i + 1]))); }).join('\n').trim().slice(0, 1500);
+  const mappedUrls = (Object.keys(ans).length ? [ans[2], ans[4]] : [extra]).filter(Boolean).flatMap((text) => text.match(/https?:\/\/[^\s,，。]+/g) ?? []).slice(0, 6);
+  const store = g('store_url', 500) || mappedUrls[0] || '', heroes = g('hero_urls', 1500) || mappedUrls.filter((url) => url !== store).join('\n');
   if (!contact || !(wechat || phone || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))) return back(request, 'bad');
 
   /* 09-24 W1:B4 v2 告知同意 —— 政策与跨境两项必勾,缺一拒收;留证写进 message 末行,不加迁移 */
@@ -71,12 +97,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (((store + heroes).match(/https?:\/\//g) ?? []).length > 8) spam += 2;
 
   const P = {
-    company: g('company', 120), own_brand: g('own_brand', 20), platforms: g('platforms', 200),
+    company: g('company', 120), own_brand: g('own_brand', 20), platforms: g('platforms', 200) || (ans[1] ?? '').slice(0, 200),
     markets_now: g('markets_now', 200) || (ans[1] ?? '').slice(0, 200), markets_next: g('markets_next', 200),
     cats_now: g('cats_now', 200) || (ans[3] ?? '').slice(0, 200), cats_next: g('cats_next', 200),
-    price_band: g('price_band', 60), best_sellers: g('best_sellers', 800), monthly_new: g('monthly_new', 20), mode: g('mode', 20),
-    traffic: g('traffic', 120), factory_pain: g('factory_pain', 1000), core_need: g('core_need', 1000) || [ans[4], extra].filter(Boolean).join('\n').slice(0, 1000),
-    decision_time: g('decision_time', 20) || (ans[5] ?? '').slice(0, 20), scale: g('scale', 30),
+    price_band: g('price_band', 60) || (ans[3] ?? '').slice(0, 60), best_sellers: g('best_sellers', 800), monthly_new: g('monthly_new', 20), mode: g('mode', 20),
+    traffic: g('traffic', 120), factory_pain: g('factory_pain', 1000), core_need: [g('core_need', 1000), ans[4], ans[5], ans[11], extra].filter(Boolean).join('\n').slice(0, 1000),
+    decision_time: g('decision_time', 20) || (ans[8] ?? '').slice(0, 20), scale: g('scale', 30) || (ans[9] ?? '').slice(0, 30),
   };
   const message = [
     `【BEAUTY2OEM 机会简报申请】`, `平台:${P.platforms || '-'} · 现在卖:${P.markets_now || '-'} · 准备进:${P.markets_next || '-'}`,

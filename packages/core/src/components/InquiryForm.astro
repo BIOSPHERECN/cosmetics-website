@@ -29,18 +29,26 @@ const action = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
 const zh = String(Astro.currentLocale ?? '').startsWith('zh') || /^\/zh(?:-|\/)/.test(Astro.url.pathname);
 const INQUIRY_QS = (zh
   ? [
-      '① 想做什么产品（品类、功效）？', '答:', '',
-      '② 卖到哪些国家、走什么渠道？', '答:', '',
-      '③ 首单大概多少量、计划什么时候上市？', '答:', '',
-      '④ 有没有参考产品或配方（可贴链接）？', '答:', '',
-      '⑤ 需要哪些认证或注册（比如 FDA、CPNP、HALAL）？', '答:',
+      '① 品牌与销售渠道是什么？', '答:', '',
+      '② 目标市场是哪些国家或地区？', '答:', '',
+      '③ 想做什么产品？有没有对标产品或链接？', '答:', '',
+      '④ 目标人群与主打卖点是什么？', '答:', '',
+      '⑤ 包装有什么想法（瓶型、容量、质感等）？', '答:', '',
+      '⑥ 有哪些合规需求（FDA/MoCRA、CPNP、HALAL 等）？', '答:', '',
+      '⑦ 计划什么时候上市？', '答:', '',
+      '⑧ 首单量与后续补货量大概是多少？', '答:', '',
+      '⑨ 预算区间是多少（选填）？', '答:',
     ]
   : [
-      '① What product do you want to make (category and benefits)?', 'A:', '',
-      '② Which countries and sales channels are you targeting?', 'A:', '',
-      '③ What is the approximate first-order volume and planned launch time?', 'A:', '',
-      '④ Do you have a reference product or formula (links are welcome)?', 'A:', '',
-      '⑤ Which certifications or registrations do you need (such as FDA, CPNP, or HALAL)?', 'A:',
+      '① What is your brand and where do you sell?', 'A:', '',
+      '② Which markets are you targeting?', 'A:', '',
+      '③ What product do you want to make, and do you have benchmark products or links?', 'A:', '',
+      '④ Who is the target customer, and what are the key selling points?', 'A:', '',
+      '⑤ What packaging do you have in mind (format, size, and finish)?', 'A:', '',
+      '⑥ What compliance support do you need (FDA/MoCRA, CPNP, HALAL, etc.)?', 'A:', '',
+      '⑦ When do you plan to launch?', 'A:', '',
+      '⑧ What are your expected first-order and replenishment volumes?', 'A:', '',
+      '⑨ What is your budget range (optional)?', 'A:',
     ]).join('\n');
 ---
 
