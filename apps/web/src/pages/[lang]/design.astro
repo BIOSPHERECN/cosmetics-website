@@ -1,0 +1,139 @@
+---
+/**
+ * AI 在线设计 —— 3D 瓶身预览 + 画布编辑器(上传 logo + 文字合成)。
+ *
+ * 设计功能不依赖实时 AI 出图,主路径是用户自己的产品图 + logo + 文字合成:
+ *   签页一:3D 瓶身预览 —— 选瓶型、换颜色、贴标签文字,360° 转着看。
+ *   签页二:画布编辑器 —— 上传产品图 + 上传 logo + 添加文字,导出 PNG 方案图。
+ * 底部:导出方案 + "用这版发询盘"按钮。
+ */
+import { t as uiT, type Locale } from '@cosmetic/core/i18n';
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import DesignEditor from '@cosmetic/core/components/DesignEditor.astro';
+import BottlePreview3D from '@cosmetic/core/components/BottlePreview3D.astro';
+import { pageShell } from '../../lib/shell';
+
+export const prerender = false;
+
+const lang = (Astro.params.lang ?? 'zh-cn') as Locale;
+const zh = lang.startsWith('zh');
+const db = (env as any).DB as D1Database | undefined;
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/design/`;
+
+const T = zh ? {
+  eyebrow: 'AI 在线设计',
+  title: '在线设计:3D 预览 + 画布编辑',
+  lead: '选瓶型、换颜色、贴标签,360° 转着看;或上传你的产品图,叠上 logo 和文字,导出方案图后一键发询盘。不依赖 AI 出图,你自己的素材就能合成。',
+  tab3d: '3D 瓶身预览',
+  tabCanvas: '画布编辑器',
+  exportHint: '在画布编辑器中导出 PNG 后,可直接带着设计图发询盘。',
+  cta: '用这版发询盘',
+  fine: '3D 预览为参数化模型,用于沟通瓶型与标签方向;画布合成为你自己的素材,导出图不保存到服务器。',
+} : {
+  eyebrow: 'AI Online Design',
+  title: 'Online Design: 3D Preview + Canvas Editor',
+  lead: 'Pick a bottle, switch colors, stick a label and spin 360; or upload your product photo, overlay logo and text, export the draft and send an inquiry. No AI rendering needed — your own assets do the work.',
+  tab3d: '3D Bottle Preview',
+  tabCanvas: 'Canvas Editor',
+  exportHint: 'Export a PNG from the canvas editor, then send an inquiry with your design attached.',
+  cta: 'Send an inquiry with this draft',
+  fine: '3D preview is a parametric model for aligning on bottle type and label direction. Canvas compositing uses your own assets; exported images are not stored on the server.',
+};
+---
+
+<BaseLayout
+  locale={lang}
+  school={shell.variant?.school ?? 'atelier'}
+  variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? 'biosphere-ai'}
+  title={T.title}
+  description={T.lead}
+  siteName={shell.site?.name ?? '帛卉'}
+  siteUrl={`https://${shell.site?.domain ?? 'biosphere-ai.com'}`}
+  path={path}
+  indexable={shell.site?.is_live === 1}
+  brandColor={shell.site?.brand_color}
+  theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{uiT(lang as any)('a11y.skip')}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+
+  <main id="main" class="ds dtc-wrap-wide">
+    <header class="ds-head">
+      <p class="dtc-eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="ds-lead">{T.lead}</p>
+    </header>
+
+    <!-- 签页切换 -->
+    <div class="ds-tabs" role="tablist">
+      <button type="button" class="ds-tab on" role="tab" aria-selected="true" data-tab="3d">{T.tab3d}</button>
+      <button type="button" class="ds-tab" role="tab" aria-selected="false" data-tab="canvas">{T.tabCanvas}</button>
+    </div>
+
+    <!-- 签页一:3D 瓶身预览 -->
+    <section class="ds-panel" data-panel="3d" role="tabpanel">
+      <BottlePreview3D locale={lang} />
+    </section>
+
+    <!-- 签页二:画布编辑器 -->
+    <section class="ds-panel" data-panel="canvas" role="tabpanel" hidden>
+      <DesignEditor locale={lang} source="design-page" />
+    </section>
+
+    <!-- 底部:导出提示 + 询盘按钮 -->
+    <div class="ds-foot">
+      <p class="ds-export-hint">{T.exportHint}</p>
+      <a class="dtc-btn primary" href={`/${lang}/contact/`}>{T.cta} →</a>
+      <p class="ds-fine">{T.fine}</p>
+    </div>
+  </main>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+
+  <script is:inline>
+    (function () {
+      var tabs = document.querySelectorAll('.ds-tab');
+      var panels = document.querySelectorAll('.ds-panel');
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          var name = tab.dataset.tab;
+          tabs.forEach(function (t) { t.classList.remove('on'); t.setAttribute('aria-selected', 'false'); });
+          tab.classList.add('on');
+          tab.setAttribute('aria-selected', 'true');
+          panels.forEach(function (p) { p.hidden = p.dataset.panel !== name; });
+        });
+      });
+    })();
+  </script>
+
+  <style>
+    .ds { padding-block: var(--dtc-py, 48px) calc(var(--dtc-py, 48px) * 1.5); }
+    .ds-head { text-align: left; max-width: 64ch; }
+    .ds-head h1 { margin: .5rem 0 0; font-size: var(--ck-h1); line-height: 1.15; text-wrap: balance; }
+    .ds-lead { margin: .75rem 0 0; color: var(--ck-ink-soft); line-height: 1.7; }
+
+    .ds-tabs { display: flex; gap: .5rem; margin-top: 1.5rem; border-bottom: 1px solid var(--ck-line); }
+    .ds-tab { padding: .625rem 1.125rem; border: 0; border-bottom: 2px solid transparent;
+      background: none; color: var(--ck-ink-soft); font: inherit; font-size: .875rem; cursor: pointer;
+      transition: color .15s ease, border-color .15s ease; }
+    .ds-tab:hover { color: var(--ck-ink); }
+    .ds-tab.on { color: var(--ck-accent); border-bottom-color: var(--ck-accent); font-weight: 600; }
+
+    .ds-panel { padding-top: 1.5rem; }
+    .ds-panel[hidden] { display: none !important; }
+
+    .ds-foot { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--ck-line);
+      display: grid; gap: .75rem; }
+    .ds-export-hint { margin: 0; font-size: .875rem; color: var(--ck-ink-soft); }
+    .ds-fine { margin: 0; font-size: .75rem; line-height: 1.7; color: var(--ck-ink-faint); }
+  </style>
+</BaseLayout>

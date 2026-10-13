@@ -40,8 +40,10 @@ export const POST: APIRoute = async ({ request }) => {
   };
   const autoSummary = (name: string, category: string, moq: string | null) => {
     const cat = CAT_ZH[category] ?? '美妆';
-    const moqPart = moq ? `,起订 ${moq}` : ',支持弹性起订';
-    return `${name}:帛卉化妆品(BIOSPHERE)${cat}线源厂 OEM/ODM 定制${moqPart},3–7 天快速打样,GMPC / ISO 22716 认证工厂直供,支持配方按品牌定位改良。`;
+    /* 2026-09-26: sampling wording set by the owner via the coordinator: marketing copy says「通常 3–7 天出样」(never a promise);
+       the terms page keeps SAMPLE_DAYS. No MOQ claim is invented when the product has no MOQ on file. */
+    const moqPart = moq ? `,起订 ${moq}` : '';
+    return `${name}:帛卉化妆品(BIOSPHERE)${cat}线源厂 OEM/ODM 定制${moqPart},通常 3–7 天出样,GMPC / ISO 22716 认证工厂直供,支持配方按品牌定位改良。`;
   };
 
   let b: any;

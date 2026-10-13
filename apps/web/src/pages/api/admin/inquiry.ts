@@ -13,10 +13,11 @@ export const PATCH: APIRoute = async ({ request }) => {
   if (c instanceof Response) return c;
   const { id, status } = (await request.json().catch(() => ({}))) as { id?: number; status?: string };
   if (!id || !status || !OK.has(status)) return json({ ok: false, msg: '参数不合法' }, 400);
-  const before = await c.db.prepare(`SELECT status FROM inquiries WHERE id=?`).bind(id)
+  /* 2026-09-26: every inquiry read/write is scoped to the caller's site, same as the list page (inquiries.astro). */
+  const before = await c.db.prepare(`SELECT status FROM inquiries WHERE id=? AND site_id=?`).bind(id, c.tenant.siteId)
     .first<{ status: string }>();
   if (!before) return json({ ok: false, msg: '询盘不存在' }, 404);
-  await c.db.prepare(`UPDATE inquiries SET status=? WHERE id=?`).bind(status, id).run();
+  await c.db.prepare(`UPDATE inquiries SET status=? WHERE id=? AND site_id=?`).bind(status, id, c.tenant.siteId).run();
   /* 状态变更进时间线:text 存机器码,展示层翻中文 —— 时间线不该被未来的改文案改历史 */
   await c.db.prepare(
     `INSERT INTO inquiry_notes (inquiry_id, user_id, kind, text) VALUES (?,?,'status',?)`
@@ -33,7 +34,7 @@ export const POST: APIRoute = async ({ request }) => {
   const body = (text ?? '').trim();
   if (!id || !body) return json({ ok: false, msg: '跟进内容不能为空' }, 400);
   if (body.length > 2000) return json({ ok: false, msg: '单条跟进最长 2000 字' }, 400);
-  const exists = await c.db.prepare(`SELECT id FROM inquiries WHERE id=?`).bind(id).first();
+  const exists = await c.db.prepare(`SELECT id FROM inquiries WHERE id=? AND site_id=?`).bind(id, c.tenant.siteId).first();
   if (!exists) return json({ ok: false, msg: '询盘不存在' }, 404);
   const r = await c.db.prepare(
     `INSERT INTO inquiry_notes (inquiry_id, user_id, kind, text) VALUES (?,?,'note',?) RETURNING id, created_at`

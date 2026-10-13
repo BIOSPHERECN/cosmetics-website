@@ -31,7 +31,6 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { PACK_SHELF } from '@cosmetic/core/generated/pack-shelf.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
-import { memo } from '../../../lib/memo';
 import { PACK_TYPE_LABEL, FMT_LABEL, label, packName, dualCapacity, materialFamily }
   from '../../../lib/catalog';
 import { pageShell } from '../../../lib/shell';
@@ -53,13 +52,10 @@ const raw = String(Astro.params.codes ?? '').replace(/\/+$/, '');
 const codes = raw.split('+').map((c) => c.trim().toUpperCase())
   .filter((c) => /^[A-Z]{2,4}-[A-Z0-9-]{1,20}$/.test(c)).slice(0, 4);
 
-/* 配方:100 行的小表,一次取回。比起旧版那四条无 LIMIT 的查询,这是唯一一条。 */
-const formulas = db
-  ? await memo('formulas-chain', 3600, async () => (((await db.prepare(   // 09-24 D2:记 1 小时
-      `SELECT code, category, format, benefits, moq, lead_days, markets, ai_summary
-         FROM formulas WHERE status IN ('sample','active') ORDER BY code`)
-      .all<any>().catch(() => ({ results: [] }))).results ?? []) as any[]))
-  : [];
+/* 2026-09-25: no formula is public (all rows are status='draft'; mature formulas are confidential and never
+   published), so the chain page no longer queries the formulas table at all. It used to scan the whole table
+   on every render (9,169 renders/day, 2.9M rows) to return an empty list. */
+const formulas: any[] = [];
 
 const packById = new Map(PACK_SHELF.map((p) => [p.code, p]));
 const fxById = new Map(formulas.map((f) => [f.code, f]));

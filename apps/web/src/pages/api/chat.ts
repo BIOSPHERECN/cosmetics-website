@@ -3,7 +3,7 @@ import { env } from 'cloudflare:workers';
 import { loadFleet, paidFirst } from '../../lib/fleet';
 import { chatInLanguage, replyLanguageFor, detectLanguage } from '../../lib/translate.ts';
 import { overQuota, recordUse, tooMany, clientId } from '../../lib/ratelimit';
-import { aiGate } from '../../lib/member';
+import { aiGate, getMember } from '../../lib/member';
 import { NO_FORMULA_RULE, leaksFormula, FORMULA_NOTICE_ZH, FORMULA_NOTICE_EN } from '../../lib/no-ai-formula';
 
 export const prerender = false;
@@ -25,11 +25,42 @@ export const POST: APIRoute = async ({ request }) => {
 
   const who = clientId(request);
   if (await overQuota(db, 'ai.chat', who)) return tooMany('ai.chat');
-  /* 09-24 C10(代码审计 P1-4):只给会员用,并计每日额度 —— 不登录、只按 IP 限次时,换 IP 就能把模型免费额度烧干 */
-  /* 客服多轮对话:当天用过就只算一条,不逐条扣;每小时轮次仍受上面的按 IP 上限 */
-  const denied = await aiGate(request, env, db, 'ai.chat', false);
-  if (denied) return denied;
+
+  /* 获客铁律:第一次接触零摩擦。
+     匿名访客(未登录)先按 IP 给 5 轮免费聊天(整窗口内);
+     超过免费轮次后,才引导登录 —— 登录后会员每天 20 条,与详情页共用配额。
+     这样既挡不住真客户的第一问,也不让脚本拿免费模型无限烧。
+     09-24 C10 的纯会员闸门在这里降级为「免费层之后」的升级引导。 */
+  let isMember = false;
+  try {
+    const me = await getMember(request, env, db);
+    if (me) {
+      isMember = true;
+      const denied = await aiGate(request, env, db, 'ai.chat', false);
+      if (denied) return denied;
+    }
+  } catch { /* 会员判定失败按匿名处理,不挡客 */ }
+
+  if (!isMember) {
+    /* 匿名:复用 ratelimit 的 overQuota(同一个 revisions 表、同一条 COUNT 查询模式),
+       只是配额键不同 —— 匿名用更紧的 5 次/小时,超了引导登录。
+       不新写 SQL,直接走已有的 overQuota 函数(C1 基线已批准)。 */
+    const anonOver = await overQuota(db, 'ai.chat.anon', who);
+    if (anonOver) {
+      const ref = (() => { try { return new URL(request.headers.get('referer') || '').pathname; } catch { return ''; } })();
+      const lang = /^\/([a-z]{2}(?:-[a-z]{2})?)\//.exec(ref ?? '')?.[1] ?? 'zh-cn';
+      const zh = lang.startsWith('zh');
+      return json({
+        ok: false, need: 'login',
+        msg: zh
+          ? `您已试用 5 次,登录后每天可继续提问 20 条(免费、无需密码)。`
+          : `You've used 5 free questions. Sign in to continue — free, no password needed (20/day).`,
+        href: `/${lang}/login/?next=${encodeURIComponent(ref || `/${lang}/`)}`,
+      }, 401);
+    }
+  }
   await recordUse(db, 'ai.chat', who);
+  if (!isMember) await recordUse(db, 'ai.chat.anon', who);
   if (!db) return json({ ok: false, msg: '数据源未就绪' }, 500);
 
   const body = (await request.json().catch(() => ({}))) as {

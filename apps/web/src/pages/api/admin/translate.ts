@@ -19,6 +19,7 @@ import { apiGuard, json } from '../../../lib/guard';
 import { loadFleet } from '../../../lib/fleet';
 import { translateJson, translateBatch, TARGETS } from '../../../lib/translate';
 import { env } from 'cloudflare:workers';
+import { invalidateNavSnap } from '../../../lib/snap';
 
 export const prerender = false;
 
@@ -129,6 +130,7 @@ export const POST: APIRoute = async ({ request }) => {
         ).bind(r.id, lang, got['0'] || r.nav_label, got['1'] || r.title, got['2'] ?? r.seo_desc).run();
         done.push({ kind: 'page', id: r.id, label: `页面 /${r.slug}` });
       }
+      if ((results ?? []).length) await invalidateNavSnap(c.db, site);   // translated nav labels must show without waiting for the snapshot TTL
     }
 
     /* ③ 版块正文 —— 量最大的一档 */

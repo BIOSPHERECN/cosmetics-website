@@ -79,4 +79,52 @@ ${rules.body.slice(0, 4000)}` : PROMPT;
     const res = await fetch(hook, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
     if (res.ok) await db.prepare("UPDATE inquiries SET notified_at = datetime('now') WHERE id = ?").bind(id).run();
   } catch { /* 通知失败留空 notified_at,后台能看出来 */ }
+
+  /* 2026-10-09 获客自动化:A/B 级询盘自动创建 CRM 商机(company + contact + deal + activity)。
+     与 /api/admin/crm op=convert 同一套去重逻辑:先按官网/公司名找已有 company,有就挂上,没有才建。
+     deal 也按 company + deal.name 去重,不建重复商机。 */
+  if (grade === 'A' || grade === 'B') {
+    try {
+      const coName = (row.company || row.name || '').trim().slice(0, 200);
+      const dealName = `${row.category || '询盘需求'}${row.volume ? ' · ' + row.volume : ''}`.slice(0, 200);
+      const host = (s: string) => s.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
+      /* 去重:按公司名(不区分大小写) */
+      let co = await db.prepare(`SELECT id FROM companies WHERE lower(name) = lower(`).bind(coName).first<{ id: number }>().catch(() => null);
+      let companyId: number;
+      if (co) {
+        companyId = co.id;
+      } else {
+        const ins = await db.prepare(
+          `INSERT INTO companies (name, country, channel, type, note, source, source_id) VALUES (?,?,?,?,?,?,?,?) RETURNING id`,
+        ).bind(coName, row.country || null, '官网表单', '品牌方',
+          `询盘 #${id}(${row.lang})${summary ? ' · ' + summary : ''}`.slice(0, 500),
+          'inquiry', id).first<{ id: number }>();
+        companyId = ins!.id;
+      }
+      /* 联系人(按邮箱去重) */
+      if (row.email) {
+        const existing = await db.prepare(`SELECT id FROM contacts WHERE company_id = ? AND email = ?`).bind(companyId, row.email).first().catch(() => null);
+        if (!existing) await db.prepare(
+          `INSERT INTO contacts (company_id, name, email, lang, whatsapp) VALUES (?,?,?,?,?)`,
+        ).bind(companyId, (row.name || '').slice(0, 120), row.email.slice(0, 200), row.lang, row.whatsapp || null).run();
+      }
+      /* 商机(按 company + deal name 去重) */
+      const existingDeal = await db.prepare(`SELECT id FROM deals WHERE company_id = ? AND lower(name) = lower(?)`).bind(companyId, dealName).first().catch(() => null);
+      if (!existingDeal) {
+        const dealIns = await db.prepare(
+          `INSERT INTO deals (company_id, name, stage, prob, currency) VALUES (?,?,'discover',10,'USD') RETURNING id`,
+        ).bind(companyId, dealName).first<{ id: number }>();
+        if (dealIns) {
+          /* 第一条活动:系统记录询盘来源 */
+          await db.prepare(
+            `INSERT INTO activities (company_id, deal_id, kind, text, trig) VALUES (?,?,?,?,?)`,
+          ).bind(companyId, dealIns.id, 'system',
+            `询盘 #${id} 自动入库 · AI 分级:${grade}${summary ? ' · ' + summary : ''}`.slice(0, 4000),
+            'ai-auto').run();
+        }
+      }
+      /* 标记询盘已自动转 CRM */
+      await db.prepare('UPDATE inquiries SET crm_company_id = ? WHERE id = ?').bind(companyId, id).run().catch(() => {});
+    } catch { /* CRM 自动创建失败不影响已入库的询盘 */ }
+  }
 }

@@ -300,13 +300,13 @@ export const BLOCKS: BlockDef[] = [
     sketch: '⊞',
     defaults: {
       title: '不是口号:六项能力,每项都有证据',
-      intro: '把项目交给一家工厂之前,先看它凭什么交付。下面每个数字都来自本站数据库,点进去可以逐条核对。',
+      intro: '预判落到生产:帛卉自有产线和成熟配方,加上公开市场与法规数据。',
       items: [
-        { label: '全球产品配方库', evidence: '{products} 款全成分真实产品 · {summaries} 条配方视角解读', note: '看别人怎么做:同类产品的成分结构、主打活性物、宣称边界,再决定你的产品怎么做。', href: '/decoder/', image: '' },
+        { label: '市场爆款情报', evidence: '{products} 款公开市场产品情报 · {summaries} 条配方视角解读', note: '从公开渠道收集,用于判断同类产品的成分结构、主打活性物与宣称边界。', href: '/decoder/', image: '' },
         { label: '在库配方基底', evidence: '{formulas} 条可直接打样的配方基底 · {classics} 条古方文献数字化', note: '不是从零研发:按品类、剂型、功效、目标市场匹配基底,改活性物与肤感,寄样评估。', href: '/formulas/', image: '' },
         { label: '工厂与产线', evidence: '{lines} 条自动化产线 · {certs}', note: '护肤 / 身体 / 洗护 / 防晒 / 彩妆 / 口腔;欢迎验厂,证书复印件与产线视频随时给。', href: '/about/', image: '' },
-        { label: '包材现货', evidence: '{packaging} 款现货包材型号', note: '瓶、罐、管、泵头、彩盒:先按剂型选结构,再谈定制。', href: '/packaging/', image: '' },
-        { label: '法规与合规', evidence: '{regs} 个市场准入要点 · {inci} 条原料目录', note: '印尼 BPOM、马来 NPRA、沙特 SFDA、美国 MoCRA、欧盟 CPNP:配方阶段先核限用与禁用,不做返工。', href: '/regulations/', image: '' },
+        { label: '包材款式库', evidence: '{packaging} 款包材可选', note: '瓶、罐、软管、泵头等款式库:先按剂型选结构,再确认供应与定制方案。', href: '/packaging/', image: '' },
+        { label: '法规与合规', evidence: '{regs} 个市场准入要点 · {inci} 条原料目录', note: '美国 FDA、欧盟 CPNP、英国 SCPN、加拿大 CNF 注册均已开户;印尼 BPOM、马来 NPRA、沙特 SFDA 等配方阶段先核限用与禁用。', href: '/regulations/', image: '' },
         { label: '目标市场落地', evidence: '{markets} 个市场 × {cats} 个品类代工页', note: '{marketNames}:每个市场的备案路径、责任方、标签要点与买手问答。', href: '/oem/', image: '' },
       ],
     },
@@ -331,7 +331,7 @@ export const BLOCKS: BlockDef[] = [
     sketch: '▬ ⊞',
     defaults: {
       title: '看到一个产品,就交给工厂做',
-      intro: '输入产品名:先在真实产品库找同款、拆全成分结构,再匹配在库基底、核目标市场法规,然后寄样。成本与起订按项目由工厂报,页面不估数。',
+      intro: '输入产品名:先在公开市场产品情报中找同款、拆全成分结构,再匹配在库基底、核目标市场法规,然后寄样。成本与起订按项目由工厂报,页面不估数。',
       steps: ['找同款', '拆全成分', '匹配在库基底', '寄样评估', '试产与大货'],
       sub: '最新入库的全球产品',
     },

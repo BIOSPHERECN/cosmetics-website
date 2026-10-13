@@ -44,6 +44,8 @@ export const QUOTA = {
   'ai.search': { limit: 30, windowMin: 60 },
   /* AI 客服:对话轮次多于共创,给到 30/小时;刷爆的引导走询盘,不是无限聊天 */
   'ai.chat': { limit: 30, windowMin: 60 },
+  /* 匿名访客的 AI 客服免费层:5 轮/小时,超了引导登录(获客铁律:首触零摩擦,但防脚本刷) */
+  'ai.chat.anon': { limit: 5, windowMin: 60 },
   /* 设计迭代(api/design/iterate):一次打文本模型 + 排一张图,12/小时(09-24 补登记,原代码按这个数写的) */
   'ai.design': { limit: 12, windowMin: 60 },
   /* 向量检索的**全站**日上限(不分 IP)。

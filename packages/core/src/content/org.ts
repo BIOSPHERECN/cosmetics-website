@@ -19,7 +19,7 @@ export const ORG = {
   city: 'Guangzhou',
   region: 'Guangdong',
   country: 'CN',
-  founded: undefined as string | undefined,   // 资料未给,不编
+  foundingDate: '2012-06-01',   // 营业执照(工商登记),对外成立年份统一从这里取
   /* 2026-09-07:CE 删掉。创始人原话「没CE」——
      前台的认证行当天就改了,但结构化数据这份漏了,
      等于我们一边跟人说没有,一边告诉机器我们有。
@@ -35,9 +35,11 @@ export const ORG = {
     noticeZh: '帛卉有 13,000+ 个经过稳定性测试的成熟配方,我们从中为你匹配现成配方。',
     noticeEn: 'BIOSPHERE holds 13,000+ mature formulas, all stability-tested. We match a proven one to your brief.',
   },
+  /* 2026-09-25:US FDA, EU CPNP, UK SCPN and Canada CNF accounts are open.
+     Wording is registration / listing / notification only, never certification: FDA does not certify cosmetics. */
   compliance: {
-    en: 'US FDA cosmetic facility registration; EU CPNP product notifications filed per product; third-party testing by SGS.',
-    zh: '美国 FDA 化妆品设施注册;欧盟 CPNP 按产品逐一通报;第三方检测由 SGS 出具。',
+    en: 'Accounts in place with US FDA (cosmetic facility registration), EU CPNP, UK SCPN and Canada CNF. Third-party testing by SGS.',
+    zh: '美国 FDA、欧盟 CPNP、英国 SCPN、加拿大 CNF 注册均已开户;第三方检测由 SGS 出具。',
   },
   figures: [
     { name: '全球生产基地总面积', nameEn: 'Manufacturing floor area', value: '20000', unit: 'MTK' },
@@ -87,7 +89,7 @@ export function orgJsonLd(base: string, siteName: string, locale: string, descri
        此前这里写过 2003 —— 抄自我们自己的阿里国际站店铺页(「since 2003」),
        而那个店铺已经没人维护、数字是错的。教训:**对外渠道不是真源**,
        哪怕是我们自己开的。同理阿里店的产线数(12)、面积(15,000㎡)也是旧数,以本站为准。 */
-    foundingDate: '2012-06-01',
+    foundingDate: ORG.foundingDate,
         contactPoint: [{
       '@type': 'ContactPoint',
       contactType: 'sales',

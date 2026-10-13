@@ -1,0 +1,990 @@
+---
+/**
+ * DesignEditor —— 在线设计画布编辑器
+ *
+ * 主路径:用户自己的产品图 + 上传 logo + 添加文字,浏览器端合成。
+ * 不依赖实时 AI 出图 —— 客户手里有实物照片,要的是在照片上摆 logo、
+ * 打品名、调位置,然后把合成稿发给工厂问价。
+ *
+ * Canvas 2D 渲染:产品图铺底,logo 和文字是可拖拽的浮层,
+ * 导出时把整张画布 toDataURL 成一张 PNG。
+ *
+ * 纯前端,无网络请求,无外部依赖。
+ */
+export interface Props {
+  /** 当前语言,'zh' 开头走中文,其余英文 */
+  locale?: string;
+  /** 来源标记,可选 */
+  source?: string;
+}
+const { locale = 'zh-cn', source = 'design' } = Astro.props as Props;
+const zh = locale.startsWith('zh');
+
+const T = zh
+  ? {
+      title: '画布编辑器',
+      eyebrow: '在线设计',
+      lead: '上传你的产品图,叠上 logo 和文字,导出方案图后一键发询盘。',
+      uploadProduct: '上传产品图',
+      uploadProductHint: '白底产品照效果最佳',
+      uploadLogo: '上传 Logo',
+      uploadLogoHint: 'PNG 透明底最佳',
+      cutoutToggle: '自动抠白底',
+      brandLabel: '品牌名',
+      brandPh: '例:BIOSPHERE',
+      sellingLabel: '卖点文字',
+      sellingPh: '例:Hydrating Serum 30ml',
+      fontSize: '字号',
+      textColor: '文字颜色',
+      addText: '添加文字',
+      deleteSel: '删除选中',
+      bringFront: '置顶',
+      sendBack: '置底',
+      resetCanvas: '清空画布',
+      exportBtn: '导出 PNG',
+      exportDone: '已导出',
+      canvasHint: '拖拽元素调整位置',
+      inquiryTitle: '用这版发询盘',
+      inquiryName: '你的名字',
+      inquiryMail: '邮箱(选填)',
+      inquiryWa: 'WhatsApp(选填)',
+      inquiryMsg: '补充说明',
+      inquirySubmit: '发送询盘',
+      privacy: '提交后由人工跟进,信息不公开。',
+      sentOk: '已收到,我们会尽快联系你。',
+      sentFail: '提交失败,请稍后重试或直接邮件联系。',
+    }
+  : {
+      title: 'Canvas Editor',
+      eyebrow: 'Online Design',
+      lead: 'Upload your product photo, overlay logo and text, export the draft and send an inquiry in one click.',
+      uploadProduct: 'Upload product image',
+      uploadProductHint: 'White-background photos work best',
+      uploadLogo: 'Upload Logo',
+      uploadLogoHint: 'PNG with transparency works best',
+      cutoutToggle: 'Auto remove white bg',
+      brandLabel: 'Brand name',
+      brandPh: 'e.g. BIOSPHERE',
+      sellingLabel: 'Selling point',
+      sellingPh: 'e.g. Hydrating Serum 30ml',
+      fontSize: 'Font size',
+      textColor: 'Text color',
+      addText: 'Add text',
+      deleteSel: 'Delete selected',
+      bringFront: 'Bring to front',
+      sendBack: 'Send to back',
+      resetCanvas: 'Clear canvas',
+      exportBtn: 'Export PNG',
+      exportDone: 'Exported',
+      canvasHint: 'Drag elements to adjust position',
+      inquiryTitle: 'Send an inquiry with this draft',
+      inquiryName: 'Your name',
+      inquiryMail: 'Email (optional)',
+      inquiryWa: 'WhatsApp (optional)',
+      inquiryMsg: 'Additional notes',
+      inquirySubmit: 'Send inquiry',
+      privacy: 'A human will follow up. Your information stays private.',
+      sentOk: 'Received. We will contact you shortly.',
+      sentFail: 'Submission failed. Please retry or email us directly.',
+    };
+---
+
+<section class="de" id="design-editor" aria-label={T.title} data-locale={locale} data-source={source}>
+  <div class="de-wrap">
+    <header class="de-head">
+      <p class="ck-eyebrow">{T.eyebrow}</p>
+      <h2>{T.title}</h2>
+      <p class="de-lead">{T.lead}</p>
+    </header>
+
+    <div class="de-layout">
+      <!-- 左侧工具栏 -->
+      <aside class="de-tools">
+        <!-- 产品图上传 -->
+        <div class="de-up" id="upProduct">
+          <span class="de-up-label">{T.uploadProduct}</span>
+          <span class="de-up-hint">{T.uploadProductHint}</span>
+          <input type="file" accept="image/*" class="de-file" id="fileProduct" hidden />
+        </div>
+
+        <!-- logo 上传 -->
+        <div class="de-up" id="upLogo">
+          <span class="de-up-label">{T.uploadLogo}</span>
+          <span class="de-up-hint">{T.uploadLogoHint}</span>
+          <label class="de-cutout">
+            <input type="checkbox" id="cutoutToggle" checked />
+            <span>{T.cutoutToggle}</span>
+          </label>
+          <input type="file" accept="image/*" class="de-file" id="fileLogo" hidden />
+        </div>
+
+        <!-- 文字输入 -->
+        <div class="de-text-tool">
+          <label class="de-field">
+            <span>{T.brandLabel}</span>
+            <input type="text" id="brandText" maxlength="60" placeholder={T.brandPh} />
+          </label>
+          <label class="de-field">
+            <span>{T.sellingLabel}</span>
+            <input type="text" id="sellingText" maxlength="120" placeholder={T.sellingPh} />
+          </label>
+          <div class="de-text-opts">
+            <label class="de-field-inline">
+              <span>{T.fontSize}</span>
+              <input type="range" id="fontSize" min="14" max="120" value="32" />
+              <output id="fontSizeVal">32</output>
+            </label>
+            <label class="de-field-inline">
+              <span>{T.textColor}</span>
+              <input type="color" id="textColor" value="#1a1a1a" />
+            </label>
+          </div>
+          <button type="button" class="de-btn de-btn-sm" id="addBrand">{T.addText} · {T.brandLabel}</button>
+          <button type="button" class="de-btn de-btn-sm" id="addSelling">{T.addText} · {T.sellingLabel}</button>
+        </div>
+
+        <!-- 画布操作 -->
+        <div class="de-actions">
+          <button type="button" class="de-btn de-btn-sm" id="deleteBtn">{T.deleteSel}</button>
+          <button type="button" class="de-btn de-btn-sm" id="frontBtn">{T.bringFront}</button>
+          <button type="button" class="de-btn de-btn-sm" id="backBtn">{T.sendBack}</button>
+          <button type="button" class="de-btn de-btn-sm de-btn-warn" id="resetBtn">{T.resetCanvas}</button>
+        </div>
+      </aside>
+
+      <!-- 中间画布区 -->
+      <div class="de-canvas-area">
+        <canvas id="deCanvas" width="800" height="600"></canvas>
+        <p class="de-canvas-hint">{T.canvasHint}</p>
+      </div>
+    </div>
+
+    <!-- 导出 + 询盘 -->
+    <div class="de-export-row">
+      <button type="button" class="de-btn de-btn-primary" id="exportBtn">{T.exportBtn}</button>
+      <div class="de-export-preview" id="exportPreview" hidden>
+        <img id="exportImg" alt={T.exportDone} />
+      </div>
+    </div>
+
+    <!-- 询盘表单 -->
+    <form class="de-inquiry" id="deInquiry">
+      <input type="hidden" name="source" value={source} />
+      <input type="hidden" name="sourcePath" id="deSrcPath" />
+      <input type="hidden" name="designImage" id="deDesignImg" />
+      <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="de-honeypot" />
+      <h3 class="de-inquiry-title">{T.inquiryTitle}</h3>
+      <div class="de-inquiry-fields">
+        <label class="de-field"><span>{T.inquiryName}</span>
+          <input type="text" name="name" required autocomplete="name" /></label>
+        <label class="de-field"><span>{T.inquiryMail}</span>
+          <input type="email" name="email" autocomplete="email" /></label>
+        <label class="de-field"><span>{T.inquiryWa}</span>
+          <input type="tel" name="whatsapp" autocomplete="tel" placeholder="+62 812 3456 7890" /></label>
+      </div>
+      <label class="de-field de-field-full"><span>{T.inquiryMsg}</span>
+        <textarea name="message" rows="3"></textarea></label>
+      <div class="de-inquiry-actions">
+        <button type="submit" class="de-btn de-btn-primary" id="deSubmit">{T.inquirySubmit}</button>
+        <span class="de-feedback" id="deFeedback" role="status" aria-live="polite"></span>
+      </div>
+      <p class="de-privacy">{T.privacy}</p>
+    </form>
+  </div>
+</section>
+
+<style>
+  .de { padding: 1rem 0 2rem; }
+  .de-wrap { max-width: 72rem; margin: 0 auto; }
+  .de-head { margin-bottom: 1.25rem; }
+  .de-head h2 { margin: .25rem 0 .375rem; font-size: var(--ck-h2, 1.5rem); }
+  .de-lead { margin: 0; color: var(--ck-ink-soft, #666); line-height: 1.6; font-size: .875rem; }
+
+  .de-layout { display: grid; grid-template-columns: minmax(0, 16rem) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+  @media (max-width: 48rem) { .de-layout { grid-template-columns: minmax(0, 1fr); } }
+
+  .de-tools { display: grid; gap: .875rem; padding: 1rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; background: var(--ck-surface, #fff); }
+  .de-up { display: grid; gap: .25rem; cursor: pointer; padding: .625rem; border: 1px dashed var(--ck-line, rgba(0,0,0,.15)); border-radius: 10px; transition: border-color .15s ease; }
+  .de-up:hover { border-color: var(--ck-accent, #1f4e79); }
+  .de-up-label { font-size: .8125rem; font-weight: 600; }
+  .de-up-hint { font-size: .75rem; color: var(--ck-ink-faint, #999); }
+  .de-cutout { display: flex; gap: .375rem; align-items: center; font-size: .75rem; color: var(--ck-ink-soft, #666); }
+  .de-cutout input { margin: 0; width: 1rem; height: 1rem; accent-color: var(--ck-accent, #1f4e79); }
+
+  .de-text-tool { display: grid; gap: .625rem; }
+  .de-field { display: grid; gap: .25rem; }
+  .de-field span { font-size: .75rem; color: var(--ck-ink-soft, #666); }
+  .de-field input, .de-field textarea { padding: .5rem .625rem; border: 1px solid var(--ck-line, rgba(0,0,0,.15)); border-radius: 8px; font: inherit; background: var(--ck-surface, #fff); color: inherit; }
+  .de-field-full { grid-column: 1 / -1; }
+  .de-text-opts { display: grid; gap: .5rem; }
+  .de-field-inline { display: flex; align-items: center; gap: .5rem; font-size: .75rem; }
+  .de-field-inline span { white-space: nowrap; color: var(--ck-ink-soft, #666); }
+  .de-field-inline input[type="range"] { flex: 1; }
+  .de-field-inline output { font-size: .75rem; min-width: 1.5em; text-align: right; }
+  .de-field-inline input[type="color"] { width: 1.75rem; height: 1.75rem; padding: 0; border: 1px solid var(--ck-line, rgba(0,0,0,.15)); border-radius: 6px; cursor: pointer; background: none; }
+
+  .de-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .375rem; }
+  .de-btn { display: inline-flex; align-items: center; justify-content: center; gap: .375rem; padding: .5rem .75rem;
+    border: 1px solid var(--ck-line, rgba(0,0,0,.15)); border-radius: 8px; background: var(--ck-surface, #fff);
+    color: inherit; font: inherit; font-size: .8125rem; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+  .de-btn:hover { border-color: var(--ck-accent, #1f4e79); }
+  .de-btn-sm { padding: .375rem .625rem; font-size: .75rem; }
+  .de-btn-primary { background: var(--ck-accent, #1f4e79); color: #fff; border-color: transparent; }
+  .de-btn-primary:hover { opacity: .88; }
+  .de-btn-warn { color: #a02b20; border-color: color-mix(in srgb, #a02b20 30%, transparent); }
+
+  .de-canvas-area { display: grid; gap: .5rem; place-items: center; }
+  #deCanvas { width: 100%; max-width: 100%; height: auto; aspect-ratio: 4 / 3; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 12px; background: #f7f7f7; cursor: grab; touch-action: none; }
+  #deCanvas:active { cursor: grabbing; }
+  .de-canvas-hint { margin: 0; font-size: .75rem; color: var(--ck-ink-faint, #999); text-align: center; }
+
+  .de-export-row { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; }
+  .de-export-preview img { max-height: 6rem; border-radius: 8px; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); }
+
+  .de-inquiry { margin-top: 1.5rem; padding: 1.25rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; background: var(--ck-surface-alt, #fafafa); display: grid; gap: .75rem; }
+  .de-inquiry-title { margin: 0 0 .25rem; font-size: 1.0625rem; }
+  .de-inquiry-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); gap: .625rem; }
+  .de-inquiry-actions { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+  .de-feedback { font-size: .8125rem; color: var(--ck-ink-soft, #666); }
+  .de-feedback.ok { color: #2a7d2a; }
+  .de-feedback.err { color: #a02b20; }
+  .de-privacy { margin: 0; font-size: .75rem; color: var(--ck-ink-faint, #999); }
+  .de-honeypot { position: absolute; left: -9999px; opacity: 0; pointer-events: none; }
+</style>
+
+<!-- Fabric.js (MIT) via CDN -->
+<script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js" defer is:inline></script>
+
+<style>
+  .de { padding: clamp(2rem, 4vw, 3.5rem) 0; }
+  .de [hidden] { display: none !important; }
+  .de-wrap { max-width: 72rem; margin: 0 auto; padding: 0 var(--ck-gutter, 1.25rem); }
+  .de-head { text-align: left; max-width: 64ch; }
+  .de-head h2 { margin: .5rem 0 0; font-size: var(--ck-h2); line-height: 1.2; text-wrap: balance; }
+  .de-head .lead { margin: .75rem 0 0; color: var(--ck-ink-soft); line-height: 1.7; font-size: .9375rem; }
+  .de-desktop { display: block; }
+  .de-mobile { display: none; }
+  @media (max-width: 52rem) {
+    .de-desktop { display: none; }
+    .de-mobile { display: block; }
+  }
+  .de-layout { display: grid; grid-template-columns: minmax(0, 18rem) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+  @media (max-width: 64rem) { .de-layout { grid-template-columns: minmax(0, 1fr); } }
+  .de-tools { display: grid; gap: .875rem; padding: 1.125rem; border: 1px solid var(--ck-line, #e4e6ea);
+              border-radius: 14px; background: var(--ck-surface, #fff); position: sticky; top: 5rem; }
+  @media (max-width: 64rem) { .de-tools { position: static; } }
+  .de-up { position: relative; display: grid; place-items: center; min-height: 5.5rem; cursor: pointer;
+           border: 1px dashed var(--ck-line-strong, #c8ccd4); border-radius: 10px;
+           background: var(--ck-surface-alt, #f5f5f7); color: var(--ck-ink-faint, #8a8a8a);
+           text-align: center; padding: .75rem; transition: border-color .2s ease, background .2s ease; }
+  .de-up:hover { border-color: var(--ck-accent, #4f7cff); }
+  .de-up.over { border-color: var(--ck-accent, #4f7cff); border-style: solid;
+                background: color-mix(in srgb, var(--ck-accent, #4f7cff) 8%, var(--ck-surface-alt, #f5f5f7)); }
+  .de-up-label { font-size: .875rem; font-weight: 600; color: var(--ck-ink, #1a1a1a); }
+  .de-up-hint { font-size: .75rem; color: var(--ck-ink-faint, #8a8a8a); }
+  .de-cutout { display: flex; align-items: center; gap: .375rem; font-size: .75rem; color: var(--ck-ink-soft, #555); }
+  .de-cutout input { margin: 0; accent-color: var(--ck-accent, #4f7cff); width: 1rem; height: 1rem; }
+  .de-text-tool { display: grid; gap: .625rem; }
+  .de-field { display: grid; gap: .3125rem; font-size: .8125rem; }
+  .de-field > span { color: var(--ck-ink-soft, #555); }
+  .de-field input, .de-field textarea {
+    font: inherit; font-size: .9375rem; padding: .5625rem .75rem; width: 100%;
+    border: 1px solid var(--ck-line-strong, #c8ccd4); border-radius: 8px;
+    background: var(--ck-surface, #fff); color: var(--ck-ink, #1a1a1a); }
+  .de-field input:focus, .de-field textarea:focus { outline: none; border-color: var(--ck-accent, #4f7cff);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ck-accent, #4f7cff) 16%, transparent); }
+  .de-text-opts { display: grid; grid-template-columns: 1fr 1fr; gap: .625rem; }
+  .de-field-inline { display: grid; gap: .25rem; font-size: .75rem; color: var(--ck-ink-soft, #555); align-items: center; }
+  .de-field-inline input[type=range] { width: 100%; accent-color: var(--ck-accent, #4f7cff); }
+  .de-field-inline input[type=color] { width: 100%; height: 1.75rem; border: 1px solid var(--ck-line-strong, #c8ccd4); border-radius: 6px; padding: 0; }
+  .de-field-inline output { font-size: .75rem; color: var(--ck-ink-faint, #8a8a8a); }
+  .de-btn { font: inherit; font-size: .9375rem; font-weight: 600; padding: .6875rem 1.25rem;
+            border: 1px solid var(--ck-line-strong, #c8ccd4); border-radius: var(--ck-cta-radius, 980px);
+            background: var(--ck-surface, #fff); color: var(--ck-ink, #1a1a1a); cursor: pointer; }
+  .de-btn:hover { border-color: var(--ck-accent, #4f7cff); color: var(--ck-accent, #4f7cff); }
+  .de-btn:disabled { opacity: .5; cursor: wait; }
+  .de-btn-sm { font-size: .8125rem; font-weight: 500; padding: .5rem .875rem; }
+  .de-btn-primary { border: 0; background: var(--ck-accent, #4f7cff); color: var(--ck-on-accent, #fff); }
+  .de-btn-primary:hover { background: color-mix(in srgb, var(--ck-accent, #4f7cff) 88%, #000); color: var(--ck-on-accent, #fff); }
+  .de-btn-warn { border-color: #c8ccd4; color: #a02b20; }
+  .de-btn-warn:hover { border-color: #a02b20; color: #a02b20; background: color-mix(in srgb, #a02b20 6%, transparent); }
+  .de-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .de-canvas-area { display: grid; place-items: center; gap: .5rem; padding: 1rem;
+                    border: 1px solid var(--ck-line, #e4e6ea); border-radius: 14px; background: var(--ck-surface, #fff); }
+  #deCanvas { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 12px rgb(0 0 0 / .08); }
+  .de-canvas-hint { font-size: .75rem; color: var(--ck-ink-faint, #8a8a8a); text-align: center; margin: 0; }
+  .de-export-row { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; margin-top: 1.25rem; }
+  .de-export-preview img { max-width: 16rem; max-height: 12rem; border-radius: 8px; border: 1px solid var(--ck-line, #e4e6ea); }
+  .de-inquiry { margin-top: 1.5rem; padding: 1.25rem; border: 1px solid var(--ck-line, #e4e6ea);
+                border-radius: 14px; background: var(--ck-surface-alt, #f5f5f7); display: grid; gap: .875rem; }
+  .de-inquiry-fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: .875rem; }
+  @media (max-width: 48rem) { .de-inquiry-fields { grid-template-columns: 1fr; } }
+  .de-field-full { grid-column: 1 / -1; }
+  .de-field-full textarea { resize: vertical; }
+  .de-inquiry-actions { display: flex; align-items: center; gap: .875rem; flex-wrap: wrap; }
+  .de-feedback { font-size: .8125rem; color: var(--ck-ink-soft, #555); }
+  .de-feedback.ok { color: #1D7A46; }
+  .de-feedback.err { color: #A02B20; }
+  .de-privacy { font-size: .75rem; color: var(--ck-ink-faint, #8a8a8a); margin: 0; }
+  .de-honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+  .de-sep { border: 0; border-top: 1px solid var(--ck-line, #e4e6ea); margin: .5rem 0; }
+  .de-mobile h3 { margin: 0 0 .375rem; font-size: var(--ck-h3); }
+  .de-mobile .lead { margin: 0 0 1.25rem; font-size: .875rem; color: var(--ck-ink-soft, #555); line-height: 1.6; }
+  .de-mform { display: grid; gap: .875rem; padding: 1.25rem; border: 1px solid var(--ck-line, #e4e6ea);
+              border-radius: 14px; background: var(--ck-surface, #fff); }
+  .de-mform .de-field-full { grid-column: 1 / -1; }
+  @media (prefers-reduced-motion: reduce) {
+    .de-up, .de-btn, #deCanvas { transition: none; }
+  }
+</style>
+
+<script is:inline define:vars={{ T }}>
+(() => {
+  const root = document.getElementById('design-editor');
+  if (!root) return;
+
+  const canvas = document.getElementById('deCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // 图层模型:bgImage 铺底,浮层可拖拽
+  let bgImage = null;
+  // layer: { type:'image'|'text', img?, text?, x, y, w, h, size, color }
+  let layers = [];
+  let selected = -1;
+  let dragging = false;
+  let dragOffset = { x: 0, y: 0 };
+
+  const fileProduct = document.getElementById('fileProduct');
+  const fileLogo = document.getElementById('fileLogo');
+  const upProduct = document.getElementById('upProduct');
+  const upLogo = document.getElementById('upLogo');
+  const cutoutToggle = document.getElementById('cutoutToggle');
+  const brandText = document.getElementById('brandText');
+  const sellingText = document.getElementById('sellingText');
+  const fontSize = document.getElementById('fontSize');
+  const fontSizeVal = document.getElementById('fontSizeVal');
+  const textColor = document.getElementById('textColor');
+  const addBrand = document.getElementById('addBrand');
+  const addSelling = document.getElementById('addSelling');
+  const deleteBtn = document.getElementById('deleteBtn');
+  const frontBtn = document.getElementById('frontBtn');
+  const backBtn = document.getElementById('backBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const exportPreview = document.getElementById('exportPreview');
+  const exportImg = document.getElementById('exportImg');
+  const deInquiry = document.getElementById('deInquiry');
+  const deSrcPath = document.getElementById('deSrcPath');
+  const deDesignImg = document.getElementById('deDesignImg');
+  const deFeedback = document.getElementById('deFeedback');
+
+  deSrcPath.value = location.pathname;
+
+  function render() {
+    ctx.fillStyle = '#f7f7f7';
+    ctx.fillRect(0, 0, W, H);
+    if (!bgImage && layers.length === 0) {
+      ctx.fillStyle = '#999';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(T.uploadProduct, W / 2, H / 2);
+      return;
+    }
+    if (bgImage) {
+      const s = Math.min(W / bgImage.width, H / bgImage.height);
+      const dw = bgImage.width * s, dh = bgImage.height * s;
+      ctx.drawImage(bgImage, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    }
+    layers.forEach((ly, i) => {
+      if (ly.type === 'image' && ly.img) {
+        ctx.drawImage(ly.img, ly.x, ly.y, ly.w, ly.h);
+      } else if (ly.type === 'text') {
+        ctx.font = ly.size + 'px sans-serif';
+        ctx.fillStyle = ly.color;
+        ctx.textBaseline = 'top';
+        ctx.fillText(ly.text || '', ly.x, ly.y);
+        ly.w = ctx.measureText(ly.text || '').width;
+        ly.h = ly.size;
+      }
+      if (i === selected) {
+        ctx.strokeStyle = '#1f4e79';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(ly.x - 4, ly.y - 4, ly.w + 8, ly.h + 8);
+        ctx.setLineDash([]);
+      }
+    });
+  }
+
+  function selectLayer(i) {
+    selected = i;
+    if (i >= 0 && layers[i].type === 'text') {
+      fontSize.value = layers[i].size;
+      fontSizeVal.textContent = layers[i].size;
+      textColor.value = layers[i].color;
+    }
+    render();
+  }
+
+  // 简单白底抠图:遍历像素,接近白色(各通道>240)的变透明
+  function cutoutWhite(img) {
+    const cv = document.createElement('canvas');
+    cv.width = img.width; cv.height = img.height;
+    const cx = cv.getContext('2d');
+    cx.drawImage(img, 0, 0);
+    const data = cx.getImageData(0, 0, cv.width, cv.height);
+    const d = data.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] > 240 && d[i+1] > 240 && d[i+2] > 240) d[i+3] = 0;
+    }
+    cx.putImageData(data, 0, 0);
+    const out = new Image();
+    out.src = cv.toDataURL('image/png');
+    return out;
+  }
+
+  // 产品图铺底
+  upProduct.addEventListener('click', () => fileProduct.click());
+  fileProduct.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => { bgImage = img; render(); };
+    img.src = URL.createObjectURL(file);
+  });
+
+  // logo 上传 → 作为 image 图层
+  upLogo.addEventListener('click', () => fileLogo.click());
+  fileLogo.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const img = new Image();
+    img.onload = () => {
+      const processed = cutoutToggle.checked ? cutoutWhite(img) : img;
+      const onLoad = () => {
+        const maxW = W * 0.25;
+        const s = Math.min(1, maxW / processed.width);
+        layers.push({ type: 'image', img: processed, x: W * 0.37, y: H * 0.3, w: processed.width * s, h: processed.height * s, size: 32, color: '#fff' });
+        selectLayer(layers.length - 1);
+      };
+      if (processed !== img) processed.onload = onLoad; else onLoad();
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  // 添加文字
+  function addTextLayer(text) {
+    if (!text) return;
+    layers.push({ type: 'text', text, x: W * 0.3, y: H * 0.5, w: 120, h: Number(fontSize.value), size: Number(fontSize.value), color: textColor.value });
+    selectLayer(layers.length - 1);
+  }
+  addBrand.addEventListener('click', () => addTextLayer(brandText.value));
+  addSelling.addEventListener('click', () => addTextLayer(sellingText.value));
+
+  // 字号/颜色实时更新选中文字层
+  fontSize.addEventListener('input', () => { fontSizeVal.textContent = fontSize.value; if (selected >= 0 && layers[selected].type === 'text') { layers[selected].size = Number(fontSize.value); render(); } });
+  textColor.addEventListener('input', () => { if (selected >= 0 && layers[selected].type === 'text') { layers[selected].color = textColor.value; render(); } });
+
+  // 画布操作
+  deleteBtn.addEventListener('click', () => { if (selected >= 0) { layers.splice(selected, 1); selected = -1; render(); } });
+  frontBtn.addEventListener('click', () => { if (selected >= 0 && selected < layers.length - 1) { const ly = layers.splice(selected, 1)[0]; layers.push(ly); selected = layers.length - 1; render(); } });
+  backBtn.addEventListener('click', () => { if (selected > 0) { const ly = layers.splice(selected, 1)[0]; layers.unshift(ly); selected = 0; render(); } });
+  resetBtn.addEventListener('click', () => { layers = []; bgImage = null; selected = -1; render(); });
+
+  // 导出 PNG
+  exportBtn.addEventListener('click', () => {
+    const prev = selected; selected = -1; render();
+    const dataUrl = canvas.toDataURL('image/png');
+    exportImg.src = dataUrl;
+    exportPreview.hidden = false;
+    deDesignImg.value = dataUrl;
+    selected = prev; render();
+  });
+
+  // 拖拽交互
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const sy = canvas.height / rect.height;
+    const cx = e.touches ? (e.touches[0] || e.changedTouches[0]).clientX : e.clientX;
+    const cy = e.touches ? (e.touches[0] || e.changedTouches[0]).clientY : e.clientY;
+    return { x: (cx - rect.left) * sx, y: (cy - rect.top) * sy };
+  }
+
+  function hitTest(x, y) {
+    for (let i = layers.length - 1; i >= 0; i--) {
+      const ly = layers[i];
+      if (x >= ly.x - 4 && x <= ly.x + ly.w + 4 && y >= ly.y - 4 && y <= ly.y + ly.h + 4) return i;
+    }
+    return -1;
+  }
+
+  function onDown(e) {
+    const p = getPos(e);
+    const i = hitTest(p.x, p.y);
+    if (i >= 0) { selectLayer(i); dragging = true; dragOffset = { x: p.x - layers[i].x, y: p.y - layers[i].y }; e.preventDefault(); }
+    else { selected = -1; render(); }
+  }
+  function onMove(e) { if (!dragging || selected < 0) return; const p = getPos(e); layers[selected].x = p.x - dragOffset.x; layers[selected].y = p.y - dragOffset.y; render(); e.preventDefault(); }
+  function onUp() { dragging = false; }
+
+  canvas.addEventListener('mousedown', onDown);
+ 
+  canvas.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+  canvas.addEventListener('touchstart', onDown, { passive: false });
+  canvas.addEventListener('touchmove', onMove, { passive: false });
+  canvas.addEventListener('touchend', onUp);
+
+  // 询盘提交
+  deInquiry.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fb = deFeedback;
+    fb.className = 'de-feedback';
+    fb.textContent = '';
+    const fd = new FormData(deInquiry);
+    try {
+      const res = await fetch('/api/inquiry', { method: 'POST', body: fd });
+      if (res.ok) {
+        fb.className = 'de-feedback ok';
+        fb.textContent = T.sentOk;
+        deInquiry.reset();
+      } else {
+        fb.className = 'de-feedback err';
+        fb.textContent = T.sentFail;
+      }
+    } catch {
+      fb.className = 'de-feedback err';
+      fb.textContent = T.sentFail;
+    }
+  });
+
+  render();
+})();
+</script>
+<script is:inline define:vars={{ T, bgColor, source }}>
+  (function () {
+    'use strict';
+
+    /* ==================== 基础工具 ==================== */
+    var $ = function (id) { return document.getElementById(id); };
+    var isZh = document.documentElement.lang.indexOf('zh') === 0;
+    var MOBILE_BP = '(max-width: 52rem)';
+
+    /* ==================== 白底抠图(阈值法) ====================
+       对白底产品照/logo:逐像素检查 RGB,接近白的设透明。
+       不跑模型,纯 canvas 像素操作,中等图秒级完成。 */
+    function cutoutWhiteBg(imgEl, threshold) {
+      threshold = threshold || 230;
+      var cv = document.createElement('canvas');
+      var ctx = cv.getContext('2d');
+      var maxSide = 1000;
+      var s = Math.min(1, maxSide / Math.max(imgEl.naturalWidth, imgEl.naturalHeight));
+      var w = Math.round(imgEl.naturalWidth * s);
+      var h = Math.round(imgEl.naturalHeight * s);
+      cv.width = w; cv.height = h;
+      ctx.drawImage(imgEl, 0, 0, w, h);
+      try {
+        var imgData = ctx.getImageData(0, 0, w, h);
+        var d = imgData.data;
+        for (var i = 0; i < d.length; i += 4) {
+          var r = d[i], g = d[i + 1], b = d[i + 2];
+          if (r > threshold && g > threshold && b > threshold) {
+            var avg = (r + g + b) / 3;
+            var over = (avg - threshold) / (255 - threshold);
+            d[i + 3] = Math.round(d[i + 3] * (1 - over));
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      } catch (e) {
+        console.warn('cutout failed', e);
+      }
+      return cv.toDataURL('image/png');
+    }
+
+    /* 文件 -> Image 元素 */
+    function fileToImage(file) {
+      return new Promise(function (resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function () {
+          var img = new Image();
+          img.onload = function () { resolve({ img: img, dataUrl: reader.result }); };
+          img.onerror = reject;
+          img.src = reader.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    /* ==================== Fabric.js 画布初始化 ==================== */
+    var canvas = null;
+    var fabricReady = false;
+
+    function initCanvas() {
+      if (fabricReady || typeof fabric === 'undefined') return;
+      fabricReady = true;
+
+      canvas = new fabric.Canvas('deCanvas', {
+        backgroundColor: bgColor,
+        preserveObjectStacking: true,
+        selection: true,
+      });
+
+      /* 自适应画布宽度:容器变窄时按比例缩放画布显示尺寸 */
+      function resizeCanvas() {
+        var canvasEl = document.getElementById('deCanvas');
+        var container = canvasEl.parentElement;
+        var cssW = container.clientWidth;
+        var ratio = cssW / canvasEl.width;
+        canvasEl.style.width = cssW + 'px';
+        canvasEl.style.height = (canvasEl.height * ratio) + 'px';
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      bindCanvasEvents();
+    }
+
+    /* ==================== 画布事件绑定 ==================== */
+    function bindCanvasEvents() {
+      document.addEventListener('keydown', function (e) {
+        if (!canvas || !canvas.getActiveObject()) return;
+        var tag = (e.target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea') return;
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          e.preventDefault();
+          deleteSelected();
+        }
+      });
+    }
+
+    function deleteSelected() {
+      if (!canvas) return;
+      var objs = canvas.getActiveObjects();
+      objs.forEach(function (o) { canvas.remove(o); });
+      canvas.discardActiveObject();
+      canvas.renderAll();
+    }
+
+    /* ==================== 图片上传到画布 ==================== */
+    function addImageToCanvas(dataUrl) {
+      if (!canvas) return;
+      fabric.Image.fromURL(dataUrl, function (img) {
+        var maxW = canvas.width * 0.4;
+        var scale = Math.min(1, maxW / Math.max(img.width, img.height));
+        img.scale(scale);
+        img.set({
+          left: canvas.width / 2,
+          top: canvas.height / 2,
+          originX: 'center',
+          originY: 'center',
+          cornerColor: '#4f7cff',
+          borderColor: '#4f7cff',
+          cornerSize: 10,
+          transparentCorners: false,
+        });
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+      }, { crossOrigin: 'anonymous' });
+    }
+
+    /* ==================== 文字叠加 ==================== */
+    function addTextToCanvas(text, opts) {
+      if (!canvas || !text.trim()) return;
+      opts = opts || {};
+      var fontSize = opts.fontSize || parseInt($('fontSize').value, 10) || 32;
+      var fill = opts.fill || $('textColor').value || '#1a1a1a';
+      var t = new fabric.Text(text.trim(), {
+        left: canvas.width / 2,
+        top: canvas.height / 2,
+        originX: 'center',
+        originY: 'center',
+        fontFamily: 'sans-serif',
+        fontSize: fontSize,
+        fill: fill,
+        cornerColor: '#4f7cff',
+        borderColor: '#4f7cff',
+        cornerSize: 10,
+        transparentCorners: false,
+        editable: false,
+      });
+      canvas.add(t);
+      canvas.setActiveObject(t);
+      canvas.renderAll();
+    }
+
+    /* ==================== 导出方案图 ==================== */
+    function exportDesign() {
+      if (!canvas) return null;
+      canvas.discardActiveObject();
+      canvas.renderAll();
+      var dataUrl = canvas.toDataURL({
+        format: 'png',
+        quality: 1.0,
+        multiplier: 2,
+      });
+      return dataUrl;
+    }
+
+    /* ==================== 拖放上传通用绑定 ==================== */
+    function bindDrop(zone, onFiles) {
+      ['dragenter', 'dragover'].forEach(function (ev) {
+        zone.addEventListener(ev, function (e) {
+          e.preventDefault(); e.stopPropagation();
+          zone.classList.add('over');
+        });
+      });
+      ['dragleave', 'drop'].forEach(function (ev) {
+        zone.addEventListener(ev, function (e) {
+          e.preventDefault(); e.stopPropagation();
+          zone.classList.remove('over');
+        });
+      });
+      zone.addEventListener('drop', function (e) {
+        var files = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : [];
+        if (files.length) onFiles(files);
+      });
+    }
+
+    /* ==================== 导出图缓存 ==================== */
+    var exportedImage = null;
+
+    /* ==================== 桌面端按钮绑定 ==================== */
+    function bindDesktop() {
+      /* 产品图上传:点选 + 拖放 */
+      var upProduct = $('upProduct');
+      var fileProduct = $('fileProduct');
+      upProduct.addEventListener('click', function () { fileProduct.click(); });
+      fileProduct.addEventListener('change', function () {
+        var f = (fileProduct.files || [])[0];
+        if (!f) return;
+        fileToImage(f).then(function (r) {
+          addImageToCanvas(r.dataUrl);
+        }).catch(function (e) { console.warn(e); });
+        fileProduct.value = '';
+      });
+      bindDrop(upProduct, function (files) {
+        if (files[0]) fileToImage(files[0]).then(function (r) { addImageToCanvas(r.dataUrl); });
+      });
+
+      /* logo 上传:点选 + 拖放 + 可选白底抠图 */
+      var upLogo = $('upLogo');
+      var fileLogo = $('fileLogo');
+      var cutoutToggle = $('cutoutToggle');
+      upLogo.addEventListener('click', function () { fileLogo.click(); });
+      fileLogo.addEventListener('change', function () {
+        var f = (fileLogo.files || [])[0];
+        if (!f) return;
+        fileToImage(f).then(function (r) {
+          if (cutoutToggle.checked) {
+            addImageToCanvas(cutoutWhiteBg(r.img));
+          } else {
+            addImageToCanvas(r.dataUrl);
+          }
+        }).catch(function (e) { console.warn(e); });
+        fileLogo.value = '';
+      });
+      bindDrop(upLogo, function (files) {
+        if (!files[0]) return;
+        fileToImage(files[0]).then(function (r) {
+          if (cutoutToggle.checked) {
+            addImageToCanvas(cutoutWhiteBg(r.img));
+          } else {
+            addImageToCanvas(r.dataUrl);
+          }
+        });
+      });
+
+      /* 文字 */
+      $('addBrand').addEventListener('click', function () {
+        var v = $('brandText').value;
+        if (v.trim()) addTextToCanvas(v, { fontSize: parseInt($('fontSize').value, 10) + 8 });
+      });
+      $('addSelling').addEventListener('click', function () {
+        var v = $('sellingText').value;
+        if (v.trim()) addTextToCanvas(v, { fontSize: parseInt($('fontSize').value, 10) });
+      });
+      $('fontSize').addEventListener('input', function () {
+        $('fontSizeVal').textContent = this.value;
+        var obj = canvas && canvas.getActiveObject();
+        if (obj && (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox')) {
+          obj.set('fontSize', parseInt(this.value, 10));
+          canvas.renderAll();
+        }
+      });
+      $('textColor').addEventListener('input', function () {
+        var obj = canvas && canvas.getActiveObject();
+        if (obj && (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox')) {
+          obj.set('fill', this.value);
+          canvas.renderAll();
+        }
+      });
+
+      /* 画布操作按钮 */
+      $('deleteBtn').addEventListener('click', deleteSelected);
+      $('frontBtn').addEventListener('click', function () {
+        if (!canvas) return;
+        var obj = canvas.getActiveObject();
+        if (obj) canvas.bringToFront(obj);
+      });
+      $('backBtn').addEventListener('click', function () {
+        if (!canvas) return;
+        var obj = canvas.getActiveObject();
+        if (obj) canvas.sendToBack(obj);
+      });
+      $('resetBtn').addEventListener('click', function () {
+        if (!canvas) return;
+        canvas.clear();
+        canvas.setBackgroundColor(bgColor, function () { canvas.renderAll(); });
+      });
+
+      /* 导出 */
+      $('exportBtn').addEventListener('click', function () {
+        var dataUrl = exportDesign();
+        if (!dataUrl) return;
+        var img = $('exportImg');
+        var prev = $('exportPreview');
+        img.src = dataUrl;
+        prev.hidden = false;
+        exportedImage = dataUrl;
+      });
+
+      /* 询盘表单提交:导出图 + 设计参数一起 POST */
+      var form = $('deInquiry');
+      var srcPath = $('deSrcPath');
+      if (srcPath) srcPath.value = location.pathname.slice(0, 200);
+      var feedback = $('deFeedback');
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var email = form.elements.email;
+        var wa = form.elements.whatsapp;
+        if (!email.value.trim() && !wa.value.trim()) {
+          email.setCustomValidity(isZh ? '\u90ae\u7bb1\u548c WhatsApp \u6216\u7535\u8bdd\u81f3\u5c11\u586b\u4e00\u4e2a\u3002' : 'Enter an email or WhatsApp/phone.');
+          form.reportValidity();
+          return;
+        } else {
+          email.setCustomValidity('');
+        }
+
+        var btn = $('deSubmit');
+        btn.disabled = true;
+        if (feedback) {
+          feedback.className = 'de-feedback';
+          feedback.textContent = T.inquirySending;
+        }
+
+        /* 先导出最新方案图(如果还没导出过) */
+        var designImg = exportedImage || exportDesign();
+        if (designImg) exportedImage = designImg;
+
+        /* 用 FormData:和全站 /api/inquiry 兼容 */
+        var fd = new FormData(form);
+        if (designImg) {
+          fd.append('designImage', designImg);
+        }
+        var brand = $('brandText').value;
+        var selling = $('sellingText').value;
+        var params = [];
+        if (brand) params.push((isZh ? '\u54c1\u724c\u540d: ' : 'Brand: ') + brand);
+        if (selling) params.push((isZh ? '\u5356\u70b9: ' : 'Selling: ') + selling);
+        if (params.length) {
+          var existingMsg = fd.get('message') || '';
+          fd.set('message', (existingMsg ? existingMsg + '\n' : '') + params.join('\n'));
+        }
+        fd.set('lang', isZh ? 'zh-cn' : 'en');
+
+        fetch('/api/inquiry', { method: 'POST', body: fd })
+          .then(function (r) {
+            if (feedback) {
+              feedback.className = 'de-feedback ' + (r.ok ? 'ok' : 'err');
+              feedback.textContent = r.ok ? T.inquiryOk : T.inquiryErr;
+            }
+            if (r.ok) form.reset();
+          })
+          .catch(function () {
+            if (feedback) {
+              feedback.className = 'de-feedback err';
+              feedback.textContent = T.inquiryErr;
+            }
+          })
+          .then(function () { btn.disabled = false; });
+      });
+    }
+
+    /* ==================== 移动端表单提交 ==================== */
+    function bindMobile() {
+      var form = $('deMForm');
+      var feedback = $('deMFeedback');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var email = form.elements.email;
+        var wa = form.elements.whatsapp;
+        if (!email.value.trim() && !wa.value.trim()) {
+          email.setCustomValidity(isZh ? '\u90ae\u7bb1\u548c WhatsApp \u6216\u7535\u8bdd\u81f3\u5c11\u586b\u4e00\u4e2a\u3002' : 'Enter an email or WhatsApp/phone.');
+          form.reportValidity();
+          return;
+        } else {
+          email.setCustomValidity('');
+        }
+
+        var btn = $('deMSubmit');
+        btn.disabled = true;
+        if (feedback) {
+          feedback.className = 'de-feedback';
+          feedback.textContent = T.inquirySending;
+        }
+
+        var fd = new FormData(form);
+        fd.set('lang', isZh ? 'zh-cn' : 'en');
+
+        fetch('/api/inquiry', { method: 'POST', body: fd })
+          .then(function (r) {
+            if (feedback) {
+              feedback.className = 'de-feedback ' + (r.ok ? 'ok' : 'err');
+              feedback.textContent = r.ok ? T.inquiryOk : T.inquiryErr;
+            }
+            if (r.ok) form.reset();
+          })
+          .catch(function () {
+            if (feedback) {
+              feedback.className = 'de-feedback err';
+              feedback.textContent = T.inquiryErr;
+            }
+          })
+          .then(function () { btn.disabled = false; });
+      });
+    }
+
+    /* ==================== 初始化 ==================== */
+    function start() {
+      function waitForFabric() {
+        if (typeof fabric !== 'undefined') {
+          initCanvas();
+          bindDesktop();
+        } else {
+          setTimeout(waitForFabric, 100);
+        }
+      }
+      waitForFabric();
+      bindMobile();
+
+      /* 页面其它地方拖图片进来,拦掉默认行为 */
+      ['dragover', 'drop'].forEach(function (ev) {
+        document.addEventListener(ev, function (e) {
+          if (e.target.closest && e.target.closest('.de-up')) return;
+          e.preventDefault();
+        });
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', start);
+    } else {
+      start();
+    }
+  })();
+</script>

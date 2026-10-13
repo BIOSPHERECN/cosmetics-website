@@ -12,7 +12,7 @@
 import { CAT_LABEL, formulaName } from '../lib/catalog';
 import { decoderPath } from '../lib/decoder';
 import { getCounts } from '../lib/counts';
-import { memo } from '../lib/memo';
+import { snap } from '../lib/snap';
 import { OEM_MARKETS, OEM_CATEGORIES } from '@cosmetic/core/content/oem.ts';
 import { ORG } from '@cosmetic/core/content/org.ts';
 import { getMember } from '../lib/member';
@@ -43,8 +43,8 @@ if (db) {
       if (op?.json) { try { opps = JSON.parse(op.json); opps.updated_at = op.updated_at; } catch { opps = null; } }
     }
     if (type === 'fx_latest') {
-      /* 09-24 R2:有图的行少,ORDER BY id DESC 要扫 14.8 万行才凑够 60 条 —— 记 1 小时 */
-      const raw = await memo('fx-latest', 3600, async () => ((await db.prepare(`SELECT id, brand, title, title_zh, country, img FROM market_products WHERE img <> '' AND inci IS NOT NULL AND length(inci) > 30 ORDER BY id DESC LIMIT 60`).all<any>()).results ?? []) as any[]);
+      /* 09-24 R2:有图的行少,ORDER BY id DESC 要扫 14.8 万行才凑够 60 条 —— 记 6 小时 */
+      const raw = await snap(db, 'fx-latest', 21600, async () => ((await db.prepare(`SELECT id, brand, title, title_zh, country, img FROM market_products WHERE img <> '' AND inci IS NOT NULL AND length(inci) > 30 ORDER BY id DESC LIMIT 60`).all<any>()).results ?? []) as any[]);
       const seen = new Set<string>();
       for (const r of raw) { const b = String(r.brand ?? '').toLowerCase(); if (seen.has(b)) continue; seen.add(b); latest.push(r); if (latest.length >= 6) break; }
     }

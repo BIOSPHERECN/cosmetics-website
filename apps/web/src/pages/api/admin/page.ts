@@ -9,6 +9,7 @@
 import type { APIRoute } from 'astro';
 import { apiGuard, json, logRevision } from '../../../lib/guard';
 import { snapPage, rollbackPage, putDraft, dropDraft } from '../../../lib/page-versions';
+import { invalidateNavSnap } from '../../../lib/snap';
 
 export const prerender = false;
 
@@ -23,6 +24,8 @@ export const POST: APIRoute = async ({ request }) => {
     const { page_id, meta, blocks, mode, action } = (await request.json()) as
       { page_id: number; meta: MetaRow[]; blocks: BlockRow[]; mode?: 'draft' | 'publish'; action?: 'rollback' | 'discard' };
     if (!page_id) return json({ ok: false, msg: '缺少 page_id' }, 400);
+    const page = await c.db.prepare(`SELECT site_id FROM pages WHERE id=?`).bind(page_id).first<{ site_id: string }>();
+    if (!page) return json({ ok: false, msg: '页面不存在' }, 404);
 
     /* A9 · 09-23:草稿 / 发布 / 撤销(WordPress 那套)。
        存草稿只进 page_versions,线上一个字不动;发布前先存整页快照,「撤销上一次改动」就是还原它。 */
@@ -30,6 +33,7 @@ export const POST: APIRoute = async ({ request }) => {
       const r = await rollbackPage(c.db, page_id);
       if (!r.ok) return json({ ok: false, msg: '没有可以撤销的改动了' }, 400);
       await logRevision(c.db, 'pages', page_id, null, null, { action: 'rollback', to: r.at, note: r.note }, c.sess.uid);
+      await invalidateNavSnap(c.db, page.site_id);
       return json({ ok: true, at: r.at, note: r.note });
     }
     if (action === 'discard') { await dropDraft(c.db, page_id); return json({ ok: true }); }
@@ -77,6 +81,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     await c.db.prepare(`UPDATE pages SET updated_at=datetime('now') WHERE id=?`).bind(page_id).run();
+    await invalidateNavSnap(c.db, page.site_id);
     await dropDraft(c.db, page_id);   // 发布了,草稿就用完了
     return json({ ok: true, meta: nMeta, blocks: nBlk, backup });
   } catch (e) {
@@ -94,6 +99,9 @@ export const PATCH: APIRoute = async ({ request }) => {
   if (status) { sets.push('status=?'); bind.push(status); }
   if (in_nav !== undefined) { sets.push('in_nav=?'); bind.push(in_nav ? 1 : 0); }
   if (!sets.length) return json({ ok: false, msg: '没有要改的字段' }, 400);
+  const page = await c.db.prepare(`SELECT site_id FROM pages WHERE id=?`).bind(id).first<{ site_id: string }>();
+  if (!page) return json({ ok: false, msg: '页面不存在' }, 404);
   await c.db.prepare(`UPDATE pages SET ${sets.join(',')}, updated_at=datetime('now') WHERE id=?`).bind(...bind, id).run();
+  await invalidateNavSnap(c.db, page.site_id);
   return json({ ok: true });
 };

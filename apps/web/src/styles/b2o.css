@@ -68,15 +68,26 @@ html[data-brand="beauty2oem"][data-theme="dark"]:not(#b2o-scope) {
 /* ── 基础 ─────────────────────────────────────────────────── */
 html[data-brand="beauty2oem"]:not(#b2o-scope) body {
   background: var(--b2o-bg); color: var(--b2o-ink); font-family: var(--b2o-font);
-  -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  -webkit-font-smoothing: antialiased; overflow-x: clip; /* 09-25 hidden 让 body 成滚动容器,页头 sticky 失效 */
 }
 html[data-brand="beauty2oem"]:not(#b2o-scope) :focus-visible { outline: 2px solid var(--b2o-green); outline-offset: 3px; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) main h1,
 html[data-brand="beauty2oem"]:not(#b2o-scope) main h2,
 html[data-brand="beauty2oem"]:not(#b2o-scope) main h3 { font-family: var(--b2o-font); letter-spacing: -.01em; line-height: 1.25; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-wrap { max-width: var(--ck-maxw); margin: 0 auto; padding-inline: var(--b2o-gutter); }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sec { padding-block: clamp(3.5rem, 7vw, 7rem); background: var(--b2o-bg); color: var(--b2o-ink); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sec { padding-block: clamp(2.5rem, 4.5vw, 4.5rem); background: var(--b2o-bg); color: var(--b2o-ink); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sec.alt { background: var(--b2o-bg-alt); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sec:not(.b2o-hero):not(.b2o-close) {
+  --b2o-bg: #ffffff; --b2o-bg-alt: #f5f5f7; --b2o-paper: #ffffff;
+  --b2o-ink: #1d1d1f; --b2o-ink-2: #424245; --b2o-muted: #6e6e73;
+  --b2o-line: rgb(0 0 0 / .08); --b2o-line-strong: rgb(0 0 0 / .16);
+  --b2o-beauty: #1d1d1f; --b2o-shell: rgb(0 0 0 / .035); --b2o-img-filter: none;
+  /* 09-25 审核员:浅底版块要用浅色模式的绿/红/阴影,暗色那套(#4cc38a 等)在白底上对比度不够 */
+  --b2o-green: #16794a; --b2o-green-soft: #e9f4ee; --b2o-on-green: #ffffff;
+  --b2o-red: #c43d33; --b2o-red-soft: #fbeceb;
+  --b2o-shadow: 0 1px 2px rgb(0 0 0 / .04), 0 12px 32px -8px rgb(0 0 0 / .10);
+  color: var(--b2o-ink); background: var(--b2o-bg);
+}
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: clamp(1.25rem, 2.4vw, 2.5rem); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-h1 { margin: 0; font-size: clamp(1.875rem, 1.2rem + 2.2vw, 2.5rem); line-height: 1.2; font-weight: 700; letter-spacing: -.02em; text-wrap: balance; }
 /* 首页标题 52px:定稿待拍板,只在宽屏首页用;内页守 40px */
@@ -127,15 +138,24 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ph.tall { aspect-ratio: 4 / 5
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ph.wide { aspect-ratio: 3 / 2; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ph.r20 { border-radius: var(--b2o-r); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ph img { display: block; width: 100%; height: 100%; object-fit: cover; filter: var(--b2o-img-filter); transition: transform 1.2s var(--b2o-ease); }
+/* 创始人图库的主体焦点：桌面产品保留中下部，人物保留脸部。 */
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-hero { object-position: 50% 62%; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-methodTrend,
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-methodJudge,
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-methodLaunch { object-position: 50% 55%; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-methodVerify { object-position: 50% 28%; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-deliveryGold,
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-deliveryPapaya,
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-deliveryCucumber { object-position: 50% 52%; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-cardPink,
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-cardTubes,
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-cardStarry,
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-cardFruit,
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-cardBotanical { object-position: 50% 50%; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-insightPool { object-position: 50% 28%; }
 @media (hover: hover) { html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bezel:hover .b2o-ph img { transform: scale(1.03); } }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tag { display: inline-block; font-size: .75rem; font-weight: 600; letter-spacing: .04em; padding: .2rem .65rem; border-radius: 980px; background: var(--b2o-paper); color: var(--b2o-ink-2); box-shadow: inset 0 0 0 1px var(--b2o-line-strong); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tag.accent { background: var(--b2o-green-soft); color: var(--b2o-green); box-shadow: none; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tag.red { background: var(--b2o-red-soft); color: var(--b2o-red); box-shadow: none; margin-top: .6rem; }
-/* 待补实拍:斜纹框,只放真实车间照片 */
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-todo { min-height: 9rem; border-radius: var(--b2o-r); display: grid; place-items: center; text-align: center; padding: 1.25rem; color: var(--b2o-muted); font-size: .875rem; line-height: 1.6;
-  background: repeating-linear-gradient(135deg, transparent 0 10px, var(--b2o-shell) 10px 20px); box-shadow: inset 0 0 0 1.5px var(--b2o-line-strong); }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-todo b { display: block; color: var(--b2o-ink); font-size: 1rem; margin-bottom: .25rem; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-todo .b2o-tag { display: table; margin: .6rem auto 0; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .redact { display: block; height: 7px; border-radius: 4px; background: var(--b2o-line-strong); width: var(--w, 70%); margin-top: .5rem; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--b2o-line-strong); vertical-align: middle; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .dot.ok { background: var(--b2o-green); box-shadow: none; }
@@ -146,19 +166,26 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-legend span { display: inline
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-legend .dot { width: 10px; height: 10px; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tscroll { overflow-x: auto; }
 
-/* ── 首屏 ─────────────────────────────────────────────────── */
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero { padding-block: clamp(2.5rem, 5vw, 5rem) clamp(3.5rem, 6vw, 6rem); }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-grid { align-items: center; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero-copy { grid-column: 1 / span 6; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero-copy .b2o-lede { max-width: 26em; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-promise { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 2.5rem; box-shadow: inset 0 1px 0 var(--b2o-line-strong); font-variant-numeric: tabular-nums; }
+/* ── 首屏:满屏主视觉 + 图下独立简报样张 ───────────────────── */
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero { position: relative; width: calc(100% - 2 * var(--b2o-gutter)); max-width: calc(var(--ck-maxw) - 2 * var(--b2o-gutter)); margin: clamp(.75rem, 1.5vw, 1.25rem) auto 0; border-radius: var(--b2o-r-lg); aspect-ratio: 2.8 / 1; min-height: 360px; padding-block: clamp(2rem, 4vw, 3.5rem); display: flex; align-items: center; overflow: hidden; isolation: isolate; background: #111315; color: #f5f5f7; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgb(8 11 13 / .9) 0%, rgb(8 11 13 / .7) 38%, rgb(8 11 13 / .25) 68%, rgb(8 11 13 / .08) 100%); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-img-heroFull { position: absolute; inset: 0; z-index: -2; display: block; width: 100%; height: 100%; object-fit: cover; object-position: 70% 45%; filter: none; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-wrap { width: 100%; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero-copy { max-width: 44rem; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero-copy .b2o-h1 { color: #fff; text-shadow: 0 2px 24px rgb(0 0 0 / .28); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero-copy .b2o-lede { max-width: 30em; color: #f5f5f7; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-btn-sec { color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .62); background: rgb(0 0 0 / .18); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-btn-sec:hover { background: rgb(255 255 255 / .12); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-position { max-width: 42rem; margin: 1.15rem 0 0; padding: .75rem 1rem; border-left: 3px solid #4cc38a; border-radius: 0 var(--b2o-r-in) var(--b2o-r-in) 0; background: rgb(0 0 0 / .42); color: #fff; font-size: .9375rem; line-height: 1.55; font-weight: 650; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sample { padding-block: clamp(1.5rem, 3vw, 2.5rem); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sample-row { display: grid; grid-template-columns: minmax(20rem, .8fr) minmax(0, 1.2fr); gap: clamp(1.5rem, 4vw, 4rem); align-items: center; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-promise { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 0; box-shadow: inset 0 1px 0 var(--b2o-line-strong); font-variant-numeric: tabular-nums; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-promise div { padding: 1.1rem 1rem 0 0; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-promise div + div { padding-left: 1rem; box-shadow: inset 1px 0 0 var(--b2o-line); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-promise b { display: block; font-size: clamp(1.5rem, 1rem + 1.4vw, 2.25rem); line-height: 1.1; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-promise b small { font-size: .5em; font-weight: 600; margin-left: .15em; color: var(--b2o-ink-2); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-promise span { font-size: .8125rem; color: var(--b2o-muted); white-space: nowrap; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero-visual { grid-column: 7 / span 6; position: relative; padding-bottom: 3.5rem; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sheet { position: absolute; left: -8%; bottom: 0; width: min(46%, 21rem); background: var(--b2o-paper); border-radius: var(--b2o-r); box-shadow: var(--b2o-shadow-hi), inset 0 0 0 1px var(--b2o-line); padding: 1.25rem 1.25rem 1rem; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sheet { position: static; width: auto; background: var(--b2o-paper); border-radius: var(--b2o-r); box-shadow: var(--b2o-shadow), inset 0 0 0 1px var(--b2o-line); padding: 1.25rem 1.25rem 1rem; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sheet h2 { margin: .4rem 0 .75rem; font-size: .9375rem; font-weight: 700; letter-spacing: 0; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sheet ol { list-style: none; margin: 0; padding: 0; counter-reset: s; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sheet li { counter-increment: s; display: grid; grid-template-columns: 1.75rem 1fr; gap: .25rem .5rem; padding: .5rem 0; box-shadow: inset 0 1px 0 var(--b2o-line); font-size: .875rem; }
@@ -167,6 +194,13 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sheet li i { grid-column: 2; 
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sheet .redact { all: unset; display: flex; gap: .4rem; align-items: center; margin-top: .6rem; font-size: .75rem; color: var(--b2o-muted); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sheet p.redact::before { content: ""; width: 18px; height: 8px; border-radius: 2px; background: var(--b2o-ink); opacity: .8; }
 
+/* ── 产品作品墙 ───────────────────────────────────────────── */
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-wall-columns { columns: 4; column-gap: 12px; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-wall-columns figure { break-inside: avoid; margin: 0 0 12px; border-radius: 14px; overflow: hidden; background: #fff; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-wall-columns img { display: block; width: 100%; height: auto; transition: transform .5s var(--b2o-ease); }
+@media (hover: hover) { html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-wall-columns figure:hover img { transform: scale(1.04); } }
+@media (max-width: 72rem) { html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-wall-columns { columns: 3; } }
+
 /* ── 读懂生意 ─────────────────────────────────────────────── */
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-read .fig { grid-column: 1 / span 7; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-read .txt { grid-column: 9 / span 4; align-self: center; }
@@ -174,6 +208,42 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-facts { margin: 2rem 0 0; dis
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-facts div { padding: .85rem 0; box-shadow: inset 0 1px 0 var(--b2o-line-strong); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-facts dt { font-size: .8125rem; color: var(--b2o-muted); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-facts dd { margin: 0; font-weight: 600; }
+
+/* ── 出海信任区 ─────────────────────────────────────── */
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export { padding-top: 0; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-card { min-width: 0; padding: 1.25rem; border-radius: var(--b2o-r); background: var(--b2o-paper); box-shadow: var(--b2o-shadow), inset 0 0 0 1px var(--b2o-line); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-card strong { display: block; color: var(--b2o-green); font-size: clamp(1.35rem, 2.5vw, 2rem); line-height: 1.1; letter-spacing: -.02em; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-card span { display: block; margin-top: .35rem; color: var(--b2o-ink); font-size: .875rem; font-weight: 700; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-card p { margin: .75rem 0 0; color: var(--b2o-muted); font-size: .8125rem; line-height: 1.6; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-creds { padding-block: clamp(1.75rem, 3vw, 3rem); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-creds .b2o-head { margin-bottom: 1.25rem; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-creds-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1rem; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cred { min-width: 0; padding: .75rem .75rem 1rem; border-radius: var(--b2o-r); background: var(--b2o-paper); box-shadow: var(--b2o-shadow), inset 0 0 0 1px var(--b2o-line); text-align: center; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cred .pic { display: grid; place-items: center; aspect-ratio: 1; overflow: hidden; border-radius: var(--b2o-r-in); background: #fff; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cred .pic img { display: block; width: 100%; height: 100%; object-fit: contain; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cred .pic.mark { background: var(--b2o-green-soft); color: var(--b2o-green); font-size: clamp(1.5rem, 1rem + 1.4vw, 2.25rem); font-weight: 800; letter-spacing: -.02em; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cred strong { display: block; margin-top: .75rem; color: var(--b2o-ink); font-size: clamp(1rem, .9rem + .4vw, 1.25rem); line-height: 1.2; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cred span { display: block; margin-top: .25rem; color: var(--b2o-green); font-size: .8125rem; font-weight: 700; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-creds .b2o-cta-row { margin-top: 1.5rem; }
+@media (max-width: 72rem) { html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-creds-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 40rem) {
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-creds-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .4rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cred { padding: .3rem .3rem .5rem; border-radius: var(--b2o-r-in); }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cred .pic { border-radius: 8px; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cred .pic.mark { font-size: .9375rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cred strong { margin-top: .35rem; font-size: .75rem; letter-spacing: -.01em; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cred span { font-size: .625rem; }
+}
+
+/* 帛卉车间实拍 */
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-factory-grid { display: grid; grid-template-columns: 7fr 2.5fr 2.5fr; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-real-photo { position: relative; min-width: 0; margin: 0; overflow: hidden; border-radius: var(--b2o-r); background: var(--b2o-shell); box-shadow: inset 0 0 0 1px var(--b2o-line); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-real-photo.is-lead { grid-row: 1 / span 2; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-real-photo > img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: cover; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-factory-grid .b2o-real-photo:not(.is-lead) { aspect-ratio: 4 / 3; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-real-photo > span { position: absolute; left: .75rem; bottom: .75rem; z-index: 1; padding: .28rem .55rem; border-radius: 999px; color: #fff; background: rgb(11 25 20 / .78); box-shadow: 0 2px 10px rgb(0 0 0 / .2); font-size: .75rem; font-weight: 700; line-height: 1; letter-spacing: .08em; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-deliver .b2o-real-photo > span { left: 1rem; bottom: 1rem; }
 
 /* ── 24 小时:通栏图带 + 浮层时间线 ───────────────────────── */
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-band .band-ph { aspect-ratio: 21 / 8; border-radius: var(--b2o-r-lg); }
@@ -189,13 +259,14 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tl p { margin: 0; font-size: 
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-band .note { margin: 1.5rem 0 0; padding-top: 1rem; box-shadow: inset 0 1px 0 var(--b2o-line); font-size: .875rem; color: var(--b2o-muted); }
 
 /* ── 方法:杂志目录行 ─────────────────────────────────────── */
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: clamp(1.25rem, 2.4vw, 2.5rem); padding: 2rem 0; box-shadow: inset 0 1px 0 var(--b2o-line-strong); align-items: start; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .no { grid-column: 1 / span 1; font-size: .875rem; font-weight: 700; color: var(--b2o-green); padding-top: .4rem; font-variant-numeric: tabular-nums; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .t { grid-column: 2 / span 3; margin: 0; font-size: clamp(1.375rem, 1rem + 1vw, 1.75rem); font-weight: 600; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .dsc { grid-column: 5 / span 4; margin: 0; color: var(--b2o-ink-2); line-height: 1.75; padding-top: .35rem; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .v { grid-column: 9 / span 4; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .v .b2o-ph { aspect-ratio: 16 / 9; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-viz { aspect-ratio: 16 / 9; border-radius: var(--b2o-r); background: var(--b2o-bg-alt); box-shadow: inset 0 0 0 1px var(--b2o-line); padding: 1.25rem; display: flex; flex-direction: column; justify-content: center; gap: .75rem; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(1.5rem, 4vw, 4rem); padding: clamp(1.5rem, 3vw, 2.5rem) 0; box-shadow: inset 0 1px 0 var(--b2o-line-strong); align-items: center; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .info { min-width: 0; display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); column-gap: .8rem; align-items: baseline; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .no { grid-column: 1; grid-row: 1; font-size: .875rem; font-weight: 700; color: var(--b2o-green); font-variant-numeric: tabular-nums; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .t { grid-column: 2; grid-row: 1; margin: 0; font-size: clamp(1.375rem, 1rem + 1vw, 1.75rem); font-weight: 600; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .dsc { grid-column: 2; grid-row: 2; margin: .35rem 0 0; color: var(--b2o-ink-2); line-height: 1.65; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .v { min-width: 0; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .v .b2o-ph { aspect-ratio: 4 / 3; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-viz { aspect-ratio: 21 / 8; border-radius: var(--b2o-r); background: var(--b2o-bg-alt); box-shadow: inset 0 0 0 1px var(--b2o-line); padding: 1rem; display: flex; flex-direction: column; justify-content: center; gap: .6rem; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-viz .debate { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-viz .debate div { background: var(--b2o-paper); border-radius: var(--b2o-r-in); padding: .75rem; box-shadow: inset 0 0 0 1px var(--b2o-line); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-viz .debate b { font-size: .8125rem; }
@@ -209,6 +280,7 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-dots .dot { justify-self: cen
 /* ── 机会卡样卡 + 台账预览 ────────────────────────────────── */
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-opp-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: clamp(1.25rem, 2.4vw, 2.5rem); align-items: start; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc { grid-column: 1 / span 6; background: var(--b2o-paper); border-radius: var(--b2o-r-lg); box-shadow: var(--b2o-shadow-hi), inset 0 0 0 1px var(--b2o-line); padding: clamp(1.25rem, 2.5vw, 2rem); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc .card-pic { aspect-ratio: 16 / 7; border-radius: var(--b2o-r); margin: calc(clamp(1.25rem, 2.5vw, 2rem) * -1) calc(clamp(1.25rem, 2.5vw, 2rem) * -1) 1.25rem; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc .tagrow { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc h3 { margin: 0 0 .75rem; font-size: 1.1875rem; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc .stage { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: .5rem; }
@@ -224,6 +296,7 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc .refill small { display: i
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc .foot { margin: 1rem 0 0; padding-top: 1rem; box-shadow: inset 0 1px 0 var(--b2o-line); font-size: .875rem; color: var(--b2o-muted); line-height: 1.7; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ledger-mini, html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc-side { grid-column: 8 / span 5; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc-side { display: grid; gap: 1.25rem; justify-items: start; align-self: start; padding-top: .5rem; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc-side .card-side-pic { width: 100%; aspect-ratio: 16 / 8; border-radius: var(--b2o-r); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc-side h3 { margin: 0; font-size: 1.0625rem; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc-side .stages { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(8, auto); gap: 4px; width: 100%; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc-side .stages li { font-size: .75rem; text-align: center; padding: .45rem .1rem; border-radius: 6px; background: var(--b2o-bg-alt); color: var(--b2o-muted); border-top: 3px solid var(--b2o-line-strong); white-space: nowrap; }
@@ -248,40 +321,17 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-phead-sec { padding-block: cl
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cards.is-page { padding-top: clamp(2.5rem, 5vw, 4.5rem); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cards.is-page .b2o-phead { margin-bottom: clamp(3.5rem, 7vw, 6rem); }
 
-/* ── 判断之后:图 + 图表 ───────────────────────────────────── */
+/* ── 判断之后:图 + 分项数字卡 ─────────────────────────────── */
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-deliver .b2o-grid { align-items: start; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-deliver .side { grid-column: 1 / span 5; display: grid; gap: 1.25rem; align-content: start; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-deliver .main { grid-column: 7 / span 6; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart { margin-top: 2rem; background: var(--b2o-paper); border-radius: var(--b2o-r-lg); box-shadow: var(--b2o-shadow), inset 0 0 0 1px var(--b2o-line); padding: clamp(1.25rem, 2.5vw, 2rem); }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart .chart-h { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart .chart-h h3 { margin: 0; font-size: 1rem; font-weight: 700; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart .chart-h span { font-size: .8125rem; color: var(--b2o-muted); }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars { --lab: 8rem; --valw: 6.5rem; position: relative; margin-top: 1.25rem; padding-bottom: 1.75rem; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .axis { position: absolute; left: var(--lab); right: var(--valw); top: 0; bottom: 1.75rem; pointer-events: none; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .axis i { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--b2o-line); }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .axis em { position: absolute; bottom: -1.5rem; transform: translateX(-50%); font-style: normal; font-size: .75rem; color: var(--b2o-muted); white-space: nowrap; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar { position: relative; display: grid; grid-template-columns: var(--lab) 1fr var(--valw); align-items: center; min-height: 48px; text-decoration: none; color: inherit; border-radius: 8px; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .l { font-size: .875rem; color: var(--b2o-ink-2); padding-right: .75rem; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .track { position: relative; height: 48px; display: flex; align-items: center; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .fill { height: 10px; border-radius: 0 4px 4px 0; background: var(--b2o-green); width: var(--v); transition: opacity .2s; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .val { font-size: .9375rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .val small { font-size: .75rem; font-weight: 500; color: var(--b2o-muted); margin-left: .2rem; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .tipn { position: absolute; left: 0; bottom: calc(100% - 6px); z-index: 2; max-width: 18rem; background: var(--b2o-ink); color: var(--b2o-bg); font-size: .8125rem; line-height: 1.5; padding: .5rem .75rem; border-radius: 10px; opacity: 0; transform: translateY(4px); pointer-events: none; transition: opacity .18s, transform .18s var(--b2o-ease); }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar:hover .tipn, html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar:focus-visible .tipn { opacity: 1; transform: none; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars:hover .bar:not(:hover) .fill { opacity: .35; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart details { margin-top: .75rem; font-size: .875rem; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart summary { cursor: pointer; color: var(--b2o-green); font-weight: 600; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart td, html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart th { padding: .45rem 0; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart td:last-child, html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart th:last-child { text-align: right; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .cap { background: var(--b2o-paper); border-radius: var(--b2o-r); box-shadow: inset 0 0 0 1px var(--b2o-line); padding: 1.25rem; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap h3 { margin: 0 0 .9rem; font-size: .9375rem; font-weight: 600; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap h3 b { font-size: 1.75rem; font-weight: 700; letter-spacing: -.02em; margin-right: .2rem; font-variant-numeric: tabular-nums; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .sq { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; max-width: 14rem; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .sq i { aspect-ratio: 1; border-radius: 4px; background: var(--b2o-green); }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .dt { display: grid; grid-template-columns: repeat(11, 1fr); gap: 5px; max-width: 16rem; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .dt i { aspect-ratio: 1; border-radius: 50%; background: color-mix(in srgb, var(--b2o-green) 78%, transparent); }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap p { margin: .9rem 0 0; font-size: .8125rem; color: var(--b2o-muted); line-height: 1.6; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 2rem; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card { min-width: 0; min-height: 10.5rem; display: flex; flex-direction: column; padding: 1.25rem; border-radius: var(--b2o-r); background: var(--b2o-paper); color: var(--b2o-ink); box-shadow: var(--b2o-shadow), inset 0 0 0 1px var(--b2o-line); text-decoration: none; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card strong { display: block; font-size: clamp(1.75rem, 4vw, 2.35rem); line-height: 1.05; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card strong span { display: block; margin-top: .45rem; font-size: .875rem; line-height: 1.35; letter-spacing: 0; color: var(--b2o-ink-2); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card p { margin: auto 0 0; padding-top: 1rem; font-size: .8125rem; line-height: 1.6; color: var(--b2o-muted); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card small { display: block; margin-top: .5rem; font-size: .75rem; font-weight: 600; color: var(--b2o-green); }
+html[data-brand="beauty2oem"]:not(#b2o-scope) a.b2o-number-card:hover { box-shadow: var(--b2o-shadow), inset 0 0 0 1.5px var(--b2o-green); }
 
 /* ── 交付页链路 ───────────────────────────────────────────── */
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chain .chain { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); position: relative; counter-reset: c; }
@@ -292,11 +342,11 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chain .chain li:last-child::b
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chain .chain b { display: block; font-size: 1.0625rem; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chain .chain span { display: block; margin-top: .3rem; font-size: .875rem; line-height: 1.6; color: var(--b2o-muted); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chain .pics { display: grid; grid-template-columns: 7fr 5fr; gap: clamp(1.25rem, 2.4vw, 2.5rem); margin-top: clamp(2.5rem, 5vw, 4rem); align-items: stretch; }
-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chain .pics .b2o-todo { min-height: 100%; }
 
 /* ── 收尾:深色图上 ───────────────────────────────────────── */
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-close { padding-top: clamp(3rem, 5vw, 5rem); }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-close .box { position: relative; border-radius: var(--b2o-r-lg); overflow: hidden; min-height: 30rem; display: flex; align-items: center; color: #f5f5f7; background: #1b1d22; }
+html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-close { --b2o-beauty: #f5f5f7; background: #111315; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-close .bg { position: absolute; inset: 0; aspect-ratio: auto; background: #1b1d22; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-close .bg img { object-position: 70% 88%; filter: none; }
 html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-close .box::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, rgb(14 16 20 / .9) 0%, rgb(14 16 20 / .55) 48%, rgb(14 16 20 / 0) 80%); }
@@ -420,6 +470,10 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-dock { display: none; }
   /* AI 客服入口挪进吸底条,右下角的圆钮让位,免得两层叠在一起 */
   html[data-brand="beauty2oem"]:not(#b2o-scope) body:has(.b2o-dock) #bh-chat-fab { display: none; }
   html[data-brand="beauty2oem"]:not(#b2o-scope) body:has(.b2o-dock) .ck-top { bottom: 5.5rem; }
+  /* 09-25 手机首屏只留一个主按钮:页头按钮让给吸底条;首屏大图在视口里时吸底条先收起 */
+  html[data-brand="beauty2oem"]:not(#b2o-scope) body:has(.b2o-dock) .hdr .cta { display: none; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-dock { transition: transform .25s var(--b2o-ease, ease); }
+  html.b2o-hero-in[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-dock { transform: translateY(110%); }
 }
 
 /* ── 洞察页 ───────────────────────────────────────────────── */
@@ -452,7 +506,7 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ins-rail .b2o-btn { width: 10
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-grid > *,
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-opp-grid > *,
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row > * { grid-column: 1 / -1 !important; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sec { padding-block: 2.25rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sec { padding-block: 1.5rem; }
   /* 手机首页压到 6000px 内:收起重复信息(事实四格、图带注释、首页图表旁的实验台图、页脚导航),产线与市场两块并排 */
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-facts,
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-band .note,
@@ -460,35 +514,51 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ins-rail .b2o-btn { width: 10
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-deliver:not(.is-page) .side-pic,
   html[data-brand="beauty2oem"]:not(#b2o-scope) footer.ft .b2o-fnav { display: none; }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-read .b2o-ph { aspect-ratio: 16 / 9; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero { padding-block: 1.75rem 2.5rem; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-promise { margin-top: 1.75rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero { display: block; aspect-ratio: auto; min-height: 0; padding-block: 0 1.25rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero::after { display: none; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-img-heroFull { position: static; height: auto; aspect-ratio: 2 / 1; object-position: 80% 50%; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-wrap { margin-top: 1rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-h1-hero { font-size: min(1.75rem, calc((100vw - 4.25rem) / 15.3)); line-height: 1.25; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-h1-hero .ln { white-space: nowrap; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-lede, html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-position { text-wrap: balance; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-lede { margin-top: .6rem; font-size: .9375rem; line-height: 1.6; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-cta-row { flex-wrap: nowrap; gap: .5rem; margin-top: 1rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-btn { min-height: 44px; padding-inline: 1rem; font-size: .875rem; white-space: nowrap; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-btn .ico { display: none; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sample-row { grid-template-columns: 1fr; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-promise { margin-top: 0; }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cta-row { margin-top: 1.5rem; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero-visual { padding-bottom: 0; margin-top: .5rem; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sheet { position: relative; left: auto; bottom: auto; width: auto; margin: -2.5rem 1rem 0; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sheet { margin: 0; }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sheet ol li:nth-child(n+3) { display: none; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-wall-columns { columns: 2; }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-read .txt { margin-top: .25rem; }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-facts { margin-top: 1.25rem; }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-band .band-ph { aspect-ratio: 16 / 9; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-band .panel { margin: -2.5rem .5rem 0; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-band .panel { width: auto; margin: -2.5rem .5rem 0; }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tl { grid-template-columns: 1fr; gap: 1rem; }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tl::before { left: 7px; right: auto; top: 8px; bottom: 8px; width: 2px; height: auto; background: var(--b2o-green); }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tl li { padding: 0 0 0 2rem; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row { padding: 1.25rem 0; gap: .35rem; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .no { padding-top: 0; }
-  /* 方法四行:手机上只留「早发现」的照片,其余三行的图示收起 */
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row:not(.r1) .v { display: none; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row.r1 .v { margin-top: .75rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-position { margin-top: .75rem; padding: .5rem .65rem; font-size: .75rem; line-height: 1.5; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export { padding-top: .5rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-card { padding: .9rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-factory-grid { grid-template-columns: 1fr 1fr; grid-template-rows: none; gap: .5rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-real-photo.is-lead { grid-row: auto; grid-column: 1 / -1; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-factory-grid .b2o-real-photo { aspect-ratio: 4 / 3; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-factory-grid .b2o-real-photo.is-lead { aspect-ratio: 16 / 10; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row { grid-template-columns: 1fr; padding: .85rem 0; gap: .65rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .info { grid-template-columns: 2rem minmax(0, 1fr); column-gap: .55rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .dsc { margin-top: .2rem; font-size: .9rem; line-height: 1.5; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .v { margin-top: 0; display: block; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .v .b2o-ph { aspect-ratio: 16 / 10; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .b2o-viz { aspect-ratio: 16 / 7; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-methodVerify,
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-insightPool { object-position: 50% 24%; }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-deliver .side .b2o-ph.tall { aspect-ratio: 16 / 9; }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-deliver .main { order: -1; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars { --lab: 5.75rem; --valw: 5.25rem; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .l { font-size: .8125rem; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .cap { padding: 1rem; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap h3 { font-size: .8125rem; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap h3 b { display: block; font-size: 1.5rem; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .sq i, html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .dt i { border-radius: 2px; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .sq, html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .dt { gap: 3px; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .dt i { border-radius: 50%; }
-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap p { display: none; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; margin-top: 1.5rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card { min-height: 9.5rem; padding: 1rem; }
+  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card strong { font-size: clamp(1.35rem, 7vw, 1.8rem); }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ledger-mini { display: none; }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc dl { grid-template-columns: 5rem 1fr; }
   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-phead .pic .b2o-ph.sq { aspect-ratio: 16 / 9; }

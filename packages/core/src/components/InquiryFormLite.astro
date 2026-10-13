@@ -149,6 +149,7 @@ const T = zh
     try {
       var q = new URLSearchParams(location.search);
       var bits = [];
+      if (q.get('about')) bits.push((zh ? '产品 ' : 'Product ') + q.get('about'));
       if (q.get('formula')) bits.push((zh ? '配方 ' : 'Formula ') + q.get('formula'));
       if (q.get('pack')) bits.push((zh ? '包材 ' : 'Packaging ') + q.get('pack'));
       if (q.get('market')) bits.push((zh ? '目标市场 ' : 'Market ') + q.get('market'));

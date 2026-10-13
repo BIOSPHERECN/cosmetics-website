@@ -20,7 +20,7 @@ import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { env } from 'cloudflare:workers';
 import { pageShell } from '../../../lib/shell';
 import { isLang, DEFAULT_LANG, type Lang } from '../../../lib/db';
-import { orgJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
+import { orgJsonLd, breadcrumbJsonLd, faqJsonLd } from '../../../lib/jsonld';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { readSession, readCookie, COOKIE } from '../../../lib/auth';
 
@@ -134,6 +134,17 @@ const jsonLd = [
       ...(product.moq ? { eligibleQuantity: { '@type': 'QuantitativeValue', description: product.moq } } : {}),
       url: `${base}${path}` },
   },
+  faqJsonLd([
+    { q: zh ? `${product.name} 的起订量是多少？` : `What is the MOQ for ${product.name}?`,
+      a: zh ? `${product.moq || '柔性起订量,按品类与包材议'}。具体数量请通过询盘确认,我们会在一个工作日内回复。`
+           : `${product.moq || 'Flexible MOQ, depending on category and packaging'}. Confirm your quantity via inquiry; we reply within one business day.` },
+    { q: zh ? `${product.name} 可以打样吗？多久能拿到样品？` : `Can I get a sample of ${product.name}? How long does sampling take?`,
+      a: zh ? `可以打样。打样周期通常 5–14 天(从需求确认到寄出)。样品是否收费视复杂度而定,询盘时说明。`
+           : `Yes, sampling is available. Typical lead time is 5–14 days from brief confirmation to dispatch. Sample fees depend on complexity; mention it in your inquiry.` },
+    { q: zh ? `这款产品有哪些认证支持？` : `What certifications are available for this product?`,
+      a: zh ? `工厂持有 GMPC、ISO 22716、HALAL 认证;出口支持 FDA 注册、CPNP 通报、东南亚备案。具体到本品的适用认证请询盘确认。`
+           : `The factory holds GMPC, ISO 22716, and HALAL certifications. Export compliance includes FDA registration, CPNP notification, and Southeast Asian market filings. Applicable certifications for this product are confirmed per inquiry.` },
+  ]),
 ].filter(Boolean) as Record<string, unknown>[];
 ---
 

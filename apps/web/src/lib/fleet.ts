@@ -502,49 +502,71 @@ export async function vision(
 }
 
 export async function image(env: FleetEnv, prompt: string, fleet?: Provider[], opts: RunOpts = {}): Promise<string[]> {
-  const p = (fleet ?? buildFleet(env)).find((x) => x.image);
-  if (!p) throw new Error('[fleet] 当前舰队无出图能力(需配置 Agnes)');
-  const t0 = Date.now();
-  /* ★ n 必须为 1 ★(2026-09-02 实测)
-     Agnes 出图接口对 n>1 直接 400:「n must be 1 when using text image queue」。
-     此前写死 n:2,于是**每一次出图都静默失败** —— 而调用方 catch 掉异常只
-     显示"没有图",没人知道是参数问题。要两张就并发调两次,一张失败另一张仍在。 */
-  const key = pickKey(p);
-  const once = async (): Promise<string[]> => {
-    const r = await fetch(endpoint(p.base, 'images/generations'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      // 商汤 U1.5 / U1 Fast(2026-09-18 接入,创始人:「商汤还有其他的模型,你也要接入」):同一 images/generations 形状,
-      // 但默认返回 b64_json 且默认打水印;U1 Fast 只认 2K 尺寸常量;拿 url(24h/1h 临时链接)由调用方转存 R2。
-      body: JSON.stringify(/sensenova/.test(p.base) || /^sensenova-/.test(p.model)
-        ? { model: p.model, prompt, n: 1, size: /u1-fast/.test(p.model) ? '2048x2048' : '1024x1024', response_format: 'url', watermark: false }
-        : { model: p.model, prompt, n: 1, size: '1024x1024' }),
-      signal: AbortSignal.timeout(/sensenova/.test(p.base) ? 180_000 : 120_000),
-    });
-    if (!r.ok) throw new Error(`[fleet] 出图失败 ${r.status}:${(await r.text()).slice(0, 160)}`);
-    const d = (await r.json()) as any;
-    return (d?.data ?? []).map((x: any) => x.url || (x.b64_json ? `data:image/png;base64,${x.b64_json}` : null)).filter(Boolean);
-  };
-  /* 只出一张,并对 429 退避重试一次 —— Agnes 的出图接口前面挂着 Cloudflare 限流
-     (实测并发两张必 429 / code 1015,连续调用也会撞上)。
-     一张稳过 > 两张常挂:客户要的是"看到方向",不是选美。 */
-  // 治理层:出图没有 tokens,只记 provider / 耗时 / 成败(2026-09-18)
-  try {
-    let urls: string[];
+  /* 遍历所有具备 image 能力的供应商分档降级 —— 与 chat()/vision() 一致。
+     此前只取第一家(find),Agnes 被 Worker 出口 IP 拦截(1015/429)时直接失败,
+     不会 fallback 到商汤。现在逐家试,一家失败就试下一家,全失败才抛错。 */
+  const providers = (fleet ?? buildFleet(env)).filter((x) => x.image);
+  if (!providers.length) throw new Error('[fleet] 当前舰队无出图能力(需配置 Agnes 或商汤)');
+  const tAll = Date.now();
+  const errs: string[] = [];
+
+  for (const p of providers) {
+    if (isDead(p.id)) { errs.push(`${p.id}:近5分钟已判死,跳过`); continue; }
+    const t0 = Date.now();
+    /* ★ n 必须为 1 ★(2026-09-02 实测)
+       Agnes 出图接口对 n>1 直接 400:「n must be 1 when using text image queue」。
+       此前写死 n:2,于是**每一次出图都静默失败** —— 而调用方 catch 掉异常只
+       显示"没有图",没人知道是参数问题。要两张就并发调两次,一张失败另一张仍在。 */
+    const key = pickKey(p);
+    const once = async (): Promise<string[]> => {
+      const r = await fetch(endpoint(p.base, 'images/generations'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        // 商汤 U1.5 / U1 Fast(2026-09-18 接入,创始人:「商汤还有其他的模型,你也要接入」):同一 images/generations 形状,
+        // 但默认返回 b64_json 且默认打水印;U1 Fast 只认 2K 尺寸常量;拿 url(24h/1h 临时链接)由调用方转存 R2。
+        body: JSON.stringify(/sensenova/.test(p.base) || /^sensenova-/.test(p.model)
+          ? { model: p.model, prompt, n: 1, size: /u1-fast/.test(p.model) ? '2048x2048' : '1024x1024', response_format: 'url', watermark: false }
+          : { model: p.model, prompt, n: 1, size: '1024x1024' }),
+        signal: AbortSignal.timeout(/sensenova/.test(p.base) ? 180_000 : 120_000),
+      });
+      if (!r.ok) throw new Error(`[fleet] 出图失败 ${p.id} ${r.status}:${(await r.text().catch(() => '')).slice(0, 160)}`);
+      const d = (await r.json()) as any;
+      return (d?.data ?? []).map((x: any) => x.url || (x.b64_json ? `data:image/png;base64,${x.b64_json}` : null)).filter(Boolean);
+    };
+    /* 只出一张,并对 429/1015 退避重试一次 —— Agnes 的出图接口前面挂着 Cloudflare 限流
+       (实测并发两张必 429 / code 1015,连续调用也会撞上)。
+       一张稳过 > 两张常挂:客户要的是"看到方向",不是选美。 */
+    // 治理层:出图没有 tokens,只记 provider / 耗时 / 成败(2026-09-18);返回的 url 里已无法再带 provider 名,故记在 logRun 里供查
     try {
-      urls = await once();
+      let urls: string[];
+      try {
+        urls = await once();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (!/429|1015/.test(msg)) {
+          errs.push(msg.slice(0, 80));
+          markDead(p.id, /429|1015|5\d{2}/.test(msg) ? 429 : 'abort');
+          continue;
+        }
+        // 退避 4 秒后重试本家一次;再失败就认输,换下一家
+        markDead(p.id, 429);
+        await new Promise((r) => setTimeout(r, 4000));
+        try {
+          urls = await once();
+        } catch (e2) {
+          const m2 = e2 instanceof Error ? e2.message : String(e2);
+          errs.push(`${p.id}:${m2.slice(0, 80)}`);
+          continue;
+        }
+      }
+      await logRun(env, opts, { provider: p, model: p.model, ms: Date.now() - t0, ok: true });
+      return urls;   // 成功即返回;调用方拿到的 string[] 不变,provider 名记在治理层 logRun 里
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (!/429|1015/.test(msg)) throw e;
-      await new Promise((r) => setTimeout(r, 4000));
-      urls = await once();
+      errs.push(`${p.id}:${e instanceof Error ? e.message.slice(0, 40) : '异常'}`);
     }
-    await logRun(env, opts, { provider: p, model: p.model, ms: Date.now() - t0, ok: true });
-    return urls;
-  } catch (e) {
-    await logRun(env, opts, { provider: p, model: p.model, ms: Date.now() - t0, ok: false, error: e instanceof Error ? e.message : String(e) });
-    throw e;
   }
+  await logRun(env, opts, { ms: Date.now() - tAll, ok: false, error: errs.join(' | ') });
+  throw new Error(`[fleet] 出图全部不可用 → ${errs.join(' | ')}`);
 }
 
 /**

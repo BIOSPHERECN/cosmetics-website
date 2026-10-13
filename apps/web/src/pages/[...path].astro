@@ -681,8 +681,10 @@ const ogImage = (() => {
         case 'statsband':
           return <StatsBand items={d.items ?? []} tone={d.tone} />;
         case 'procgrid':
+          /* 2026-09-25: /media/155 is a HALAL certificate issued to a different company (Bloomage), so it is never shown.
+             The company's own earlier certificates (152 GMPC, 153 ISO 22716, 158 AHF HALAL) stay on display by owner decision. */
           return <ProcGrid eyebrow={d.eyebrow} title={d.title ?? ''} intro={d.intro}
-                           items={d.items ?? []} cols={d.cols ?? 3} tone={d.tone} />;
+                           items={(d.items ?? []).filter((it: any) => !['/media/155'].includes(String(it?.image ?? '')))} cols={d.cols ?? 3} tone={d.tone} />;
         case 'answer':
           return <AnswerBlock question={d.question ?? ''} answer={d.answer ?? ''}
                               faqs={d.faqs ?? []} tone={d.tone} />;

@@ -37,24 +37,87 @@ export const TARGETS: Record<string, { name: string; hint: string }> = {
     '不用大陸用語(軟件/網絡/信息/質量/供應商報價單)。化粧品法規用台灣官方說法' +
     '(衛福部食藥署、化粧品產品登錄、特定用途化粧品),不要照搬大陸的「備案」「特證」。' +
     '語氣是工廠對品牌方的專業口吻,不用行銷誇飾詞。' },
-  en: { name: 'English', hint: 'International business English, plain and concrete. No marketing superlatives.' },
-  jp: { name: '日本語', hint: 'B2B 向けの敬体(です・ます)。カタカナ語は業界で通用するものだけ。' },
-  id: { name: 'Bahasa Indonesia', hint: 'Bahasa Indonesia baku untuk konteks B2B. Hindari bahasa gaul.' },
-  my: { name: 'Bahasa Melayu', hint: 'Bahasa Melayu baku Malaysia untuk konteks B2B. Bukan Bahasa Indonesia.' },
-  fr: { name: 'Français', hint: 'Français professionnel B2B, vouvoiement, sans superlatifs publicitaires.' },
-  /* 以下 11 语由 tools/locales.json 同步生成 —— 措辞提示是通用模板,
-     哪个语种译得不对味,把它挪到上面手写一份更细的提示即可。 */
-  kr: { name: '한국어', hint: 'Write in 한국어 (kr). B2B register, plain and concrete, no marketing superlatives.' },
-  de: { name: 'Deutsch', hint: 'Write in Deutsch (de). B2B register, plain and concrete, no marketing superlatives.' },
-  ru: { name: 'Русский', hint: 'Write in Русский (ru). B2B register, plain and concrete, no marketing superlatives.' },
-  th: { name: 'ไทย', hint: 'Write in ไทย (th). B2B register, plain and concrete, no marketing superlatives.' },
-  vn: { name: 'Tiếng Việt', hint: 'Write in Tiếng Việt (vn). B2B register, plain and concrete, no marketing superlatives.' },
-  ph: { name: 'Filipino', hint: 'Write in Filipino (ph). B2B register, plain and concrete, no marketing superlatives.' },
-  es: { name: 'Español', hint: 'Write in Español (es). B2B register, plain and concrete, no marketing superlatives.' },
-  pt: { name: 'Português', hint: 'Write in Português (pt). B2B register, plain and concrete, no marketing superlatives.' },
-  ar: { name: 'العربية', hint: 'Write in العربية (ar). B2B register, plain and concrete, no marketing superlatives. Right-to-left script; keep Latin brand names and certificate codes as-is.' },
-  tr: { name: 'Türkçe', hint: 'Write in Türkçe (tr). B2B register, plain and concrete, no marketing superlatives.' },
-  in: { name: 'हिन्दी', hint: 'Write in हिन्दी (in). B2B register, plain and concrete, no marketing superlatives.' },
+  en: { name: 'English', hint:
+    'International business English for cosmetics OEM/ODM. Use industry terms: ' +
+    'formulation, filling, batch, lead time, MOQ, sampling, active ingredient, INCI, ' +
+    'emulsification, filling line, stability test, challenge test, preservative system. ' +
+    'Plain and concrete, no marketing superlatives. Factory-to-brand tone.' },
+  jp: { name: '日本語', hint:
+    'B2B向けの敬体(です・ます)。化粧品OEM/ODM専門用語を使用:処方、充填、ロット、 ' +
+    '納期、最小発注数量、サンプル、有効成分、INCI、乳化、充填ライン、安定性試験、 ' +
+    '防腐システム。カタカナ語は業界で通用するもの(コスメティクス、フォーミュレーション、 ' +
+    'OEM、ODM)のみ使う。工場からブランドへの専門的口吻。' },
+  id: { name: 'Bahasa Indonesia', hint:
+    'Bahasa Indonesia baku untuk konteks B2B kosmetik OEM/ODM. ' +
+    'Gunakan istilah industri: formulasi, pengisian, batch, waktu pengiriman, ' +
+    'MOQ, sampel, bahan aktif, INCI, emulsifikasi, lini pengisian, uji stabilitas. ' +
+    'Hindari bahasa gaul. Nada profesional dari pabrik ke brand.' },
+  my: { name: 'Bahasa Melayu', hint:
+    'Bahasa Melayu baku Malaysia untuk konteks B2B kosmetik OEM/ODM. ' +
+    'Gunakan istilah industri: formulasi, pengisian, batch, tempoh penghantaran, ' +
+    'MOQ, sampel, bahan aktif, INCI, emulsifikasi, garis pengisian, ujian kestabilan. ' +
+    'Bukan Bahasa Indonesia. Nada profesional dari kilang ke brand.' },
+  fr: { name: 'Français', hint:
+    'Français professionnel B2B pour cosmétiques OEM/ODM. Vouvoiement. ' +
+    'Termes métier: formulation, remplissage, lot, délai, MOQ, échantillon, ' +
+    'ingrédient actif, INCI, émulsification, ligne de remplissage, test de stabilité. ' +
+    'Sans superlatifs publicitaires. Ton professionnel d\'usine vers marque.' },
+  kr: { name: '한국어', hint:
+    'B2B 화장품 OEM/ODM 분야의 한국어. 존댓말(하십시오체). ' +
+    '업계 전문 용어 사용: 배합, 충전, 로트, 납기, 최소 주문 수량, 샘플, ' +
+    '유효 성분, INCI, 유화, 충전 라인, 안정성 시험, 방부 시스템. ' +
+    '외래어는 업계에서 통용되는 것만 사용. 공장에서 브랜드로의 전문적 어조.' },
+  de: { name: 'Deutsch', hint:
+    'Deutsch für B2B Kosmetik OEM/ODM. Branchenbegriffe verwenden: Rezeptur, Abfüllung, ' +
+    'Charge, Lieferzeit, MOQ, Muster, Wirkstoff, INCI, Emulgierung, Abfülllinie, ' +
+    'Stabilitätstest, Konservierungssystem. Professionelle Sie-Form. ' +
+    'Keine Werbesuperlative. Ton Fabrik zu Marke.' },
+  ru: { name: 'Русский', hint:
+    'Русский для B2B косметики OEM/ODM. Используйте отраслевые термины: ' +
+    'формуляция, фасовка, партия, срок поставки, MOQ, образец, активный ингредиент, ' +
+    'INCI, эмульгирование, линия фасовки, тест на стабильность. ' +
+    'Без маркетинговых преувеличений. Профессиональный тон от фабрики к бренду.' },
+  th: { name: 'ไทย', hint:
+    'ภาษาไทยสำหรับ B2B เครื่องสำอาง OEM/ODM ใช้คำศัพท์อุตสาหกรรม: ' +
+    'สูตร, บรรจุ, ล็อต, ระยะเวลาผลิต, MOQ, ตัวอย่าง, สารออกฤทธิ์, INCI, ' +
+    'อิมัลชัน, สายบรรจุ, ทดสอบความเสถียร ไม่ใช้คำโฆษณาเกินจริง ' +
+    'น้ำเสียงจากโรงงานสู่แบรนด์อย่างมืออาชีพ' },
+  vn: { name: 'Tiếng Việt', hint:
+    'Tiếng Việt cho B2B mỹ phẩm OEM/ODM. Sử dụng thuật ngữ ngành: ' +
+    'công thức, chiết rót, lô, thời gian giao hàng, MOQ, mẫu, thành phần hoạt tính, ' +
+    'INCI, nhũ hóa, dây chuyền chiết rót, kiểm tra độ ổn định. ' +
+    'Không dùng văn phong quảng cáo phóng đại. Giọng chuyên nghiệp từ nhà máy đến thương hiệu.' },
+  ph: { name: 'Filipino', hint:
+    'Filipino para sa B2B kosmetiko OEM/ODM. Gamit ng mga terminong industriya: ' +
+    'formulation, pagpuno, batch, lead time, MOQ, sample, aktibong sangkap, INCI, ' +
+    'emulsification, linya ng pagpuno, stability test. ' +
+    'Walang mga labis na adverb. Propesyonal na tono mula pabrika patungo sa brand.' },
+  es: { name: 'Español', hint:
+    'Español profesional B2B para cosmética OEM/ODM. Vocabulario del sector: ' +
+    'formulación, envasado, lote, plazo de entrega, MOQ, muestra, ingrediente activo, ' +
+    'INCI, emulsificación, línea de envasado, prueba de estabilidad. ' +
+    'Sin superlativos publicitarios. Tono de fábrica a marca, tuteo formal.' },
+  pt: { name: 'Português', hint:
+    'Português profissional B2B para cosméticos OEM/ODM. Vocabulário do setor: ' +
+    'formulação, envase, lote, prazo de entrega, MOQ, amostra, ingrediente ativo, ' +
+    'INCI, emulsificação, linha de envase, teste de estabilidade. ' +
+    'Sem superlativos publicitários. Tom de fábrica para marca.' },
+  ar: { name: 'العربية', hint:
+    'العربية للسياق B2B لمستحضرات التجميل OEM/ODM. استخدم مصطلحات الصناعة: ' +
+    'صياغة، تعبئة، دفعة، مدة التسليم، الحد الأدنى للطلب، عينة، مكون نشط، INCI، ' +
+    'استحلاب، خط تعبئة، اختبار الثبات. كتابة من اليمين إلى اليسار؛ ' +
+    'أبقِ أسماء العلامات التجارية ورموز الشهادات اللاتينية كما هي. ' +
+    'بدون مبالغات تسويقية. نبرة احترافية من المصنع إلى العلامة التجارية.' },
+  tr: { name: 'Türkçe', hint:
+    'Türkçe B2B kozmetik OEM/ODM için. Sektör terimleri kullanın: ' +
+    'formülasyon, dolum, parti, teslim süresi, MOQ, numune, aktif bileşen, INCI, ' +
+    'emülsifikasyon, dolum hattı, stabilite testi. ' +
+    'Reklam abartmaları yok. Fabrikadan markaya profesyonel ton.' },
+  in: { name: 'हिन्दी', hint:
+    'B2B कॉस्मेटिक्स OEM/ODM के लिए हिन्दी। उद्योग शब्दावली का उपयोग करें: ' +
+    'निर्माण, भराई, बैच, डिलीवरी समय, MOQ, नमूना, सक्रिय घटक, INCI, ' +
+    'इमल्सीफिकेशन, भराई लाइन, स्थिरता परीक्षण। ' +
+    'विपणन अतिशयोक्तियाँ नहीं। फैक्ट्री से ब्रांड तक पेशेवर लहजा।' },
 };
 
 /**

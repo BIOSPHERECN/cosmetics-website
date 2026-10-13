@@ -89,5 +89,6 @@ TURNSTILE_SITE_KEY = "0x4AAAAAAEh9PTvpt4eaYV_q"
 # 绑定只能同账号。凭据用 `wrangler secret put` 注入,不写在本文件。
 
 # 09-24 C1:每 10 分钟跑一次 BEAUTY2OEM 第一期自动化(src/lib/b2o-auto.ts:简报兜底 + 第 3/7/14 天再触达 + jobs 心跳)。
+# 10-09 获客:整点跑一次云端客户挖掘(prospect-mine.ts:按 UTC 时区选市场 → fetch 榜单 → AI 抽品牌 → 写 D1)
 [triggers]
-crons = ["*/10 * * * *"]
+crons = ["*/10 * * * *", "0 * * * *", "0 2 * * *", "0 4 * * *", "0 6 * * *"]

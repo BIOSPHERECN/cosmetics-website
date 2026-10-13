@@ -466,7 +466,14 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   /* 规范化(09-24 安全架构 C1,参数登记表在 lib/canon.ts):页面路径补尾斜杠、只留登记过的参数、取值夹到范围内,
      不一致就 301 一次。301 落在 WAF 之后,跳过去的请求会再过一遍边缘规则(S1 / R2 的通配都带尾斜杠)。
      后台已登录的人不跳(草稿预览等参数只给他们用),本地与副本不跳。 */
-  if ((req.method === 'GET' || req.method === 'HEAD') && !staff && !dev && isPagePath(url0.pathname)) {
+  /* Post-deploy smoke probe: a request carrying the shared secret header skips canonical redirects and the edge cache.
+     Without the configured secret nobody matches. */
+  const probeSecret = String((cfEnv as any)?.PROBE_SECRET ?? '');
+  const probeHdr = req.headers.get('x-bohui-probe') ?? '';
+  let probeDiff = probeSecret.length === 0 || probeHdr.length !== probeSecret.length ? 1 : 0;
+  for (let i = 0; i < probeHdr.length && i < probeSecret.length; i++) probeDiff |= probeHdr.charCodeAt(i) ^ probeSecret.charCodeAt(i);
+  const probe = probeDiff === 0;
+  if ((req.method === 'GET' || req.method === 'HEAD') && !staff && !dev && !probe && isPagePath(url0.pathname)) {
     const to = canonical(url0.pathname, url0.search);
     if (to) return new Response(null, { status: 301, headers: { Location: to } });
   }
@@ -505,7 +512,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     (req.method === 'GET' || req.method === 'HEAD') &&
     !url0.pathname.startsWith('/api/') &&
     !url0.pathname.startsWith('/bohui/') &&
-    !noCache && !staff && !member;
+    !noCache && !staff && !member && !probe;
   const cache = (caches as any).default as Cache | undefined;
   /* 缓存键带版本号。2026-09-07:D1 日读额度耗尽期间,「数据源未就绪」那一页是以
      HTTP 200 渲染的,于是被原样缓存了一小时 —— 我用 ?cb= 验证时绕过了缓存,
@@ -514,7 +521,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   /* v3(2026-09-07 上午):D1 额度耗尽期间,边缘把一批 404 与 503 缓存住了 ——
      修好之后访客拿到的仍是坏副本。推版本号是清掉它们唯一干净的办法。 */
   /* v4(2026-09-07 晚):sitemap 拆分、繁中上线、跨站兜底重写 —— 清掉全部旧副本 */
-  const CACHE_V = 'v84';   // 09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
+  const CACHE_V = 'v91';   // 09-25 配方页撤下快照兜底(曾外泄 60 条旧配方的成本档/起订/交期),必须立刻生效;09-25 手机认证条改一行 4 个;恢复展示自家旧证书(GMPC/ISO/AHF HALAL,创始人定),别家公司的 HALAL(/media/155)仍不展示;09-25 beauty2oem 手机首屏压缩(图 2:1、标题两行、按钮并排)、页头按钮让给吸底条、首屏时吸底条收起、车间实拍两列、24 小时卡片不溢出(b2o.css 哈希变,+1);09-25 撤下过期/非本公司证书图(GMPC、ISO 22716 有效期到 2026-01-02,HALAL 一张是别家公司、AHF 到 2026-03-19);09-25 beauty2oem 手机端 banner 改图上字下、认证条横滑(b2o.css 哈希变,+1);09-25 beauty2oem banner 下加认证与注册条(GMPC/ISO/HALAL/FDA/CPNP/SCPN/CNF)、加车间实拍+厂牌、banner 换 Codex 出图(hero-lineup)、限宽 1800 圆角卡片、高度按 2.8:1、页头吸顶修复,改页脚说明;biosphere 合规卡改四地注册;09-25 beauty2oem 视觉重排改了 b2o.css(资源哈希变),旧缓存 HTML 会引用已下线的旧样式,必须 +1;09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。
