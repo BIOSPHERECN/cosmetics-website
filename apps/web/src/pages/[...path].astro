@@ -533,8 +533,15 @@ const ogImage = (() => {
       </section>
     )}
 
+    {/* BIOSPHERE-AI 首页:化繁为简 —— 把漏斗放在首屏,替代默认 hero */}
+    {site.id === 'biosphere-ai' && !slug && (
+      <Funnel locale={lang} />
+    )}
+
     {(collectionMode ? [] : bodyBlocks).map((b) => {
       const d = b.data as any;
+      /* 首页已渲染漏斗,跳过 CMS 里的 fx_hero(避免两个 hero 重复) */
+      if (b.type === 'fx_hero' && site.id === 'biosphere-ai' && !slug) return null;
       switch (b.type) {
         case 'hero':
           // demo 阶段:每站取一张占位实拍图证明图片管线通;真图入库后由 d.image 覆盖
