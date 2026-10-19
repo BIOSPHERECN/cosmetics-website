@@ -19,6 +19,7 @@ import ProcessSteps from '@cosmetic/core/components/ProcessSteps.astro';
 import EvidenceGrid from '@cosmetic/core/components/EvidenceGrid.astro';
 import ProductionBases from '@cosmetic/core/components/ProductionBases.astro';
 import NarrativeStages from '@cosmetic/core/components/NarrativeStages.astro';
+import Funnel from '@cosmetic/core/components/Funnel.astro';
 import BigBanner from '@cosmetic/core/components/BigBanner.astro';
 import MastheadNav from '@cosmetic/core/components/MastheadNav.astro';
 import StatementFooter from '@cosmetic/core/components/StatementFooter.astro';
@@ -697,6 +698,9 @@ const ogImage = (() => {
             ? <B2oBlock type={b.type} data={d} lang={lang} db={db} siteName={site!.name} email={fxEmail} whatsapp={contactWa} wechat={contactWx}
                         page={slug} pageTitle={bundle!.page.title} pageDesc={bundle!.page.seo_desc} />
             : <FactoryBlock type={b.type} data={d} lang={lang} db={db} siteName={site!.name} email={fxEmail} whatsapp={contactWa} wechat={contactWx} />;
+        case 'funnel':
+          /* 漏斗首页(3步交互式漏斗)—— 替换首页默认 hero,让访客 30 秒内进入方案生成流程 */
+          return <Funnel locale={lang} />;
         case 'signup':
           return <Signup title={d.title ?? ''} body={d.body} placeholder={d.placeholder ?? 'Email'}
                          button={d.button ?? 'OK'} note={d.note} siteId={site!.id} tone={d.tone} />;
