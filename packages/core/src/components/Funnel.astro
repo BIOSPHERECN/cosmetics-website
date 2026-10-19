@@ -341,23 +341,39 @@ const PACKAGING: Record<string, string[]> = {
         var cat = selections.category || 'skincare';
         var mkt = selections.market || 'sea';
 
-        // 填充基底
-        var basesEl = document.getElementById('result-bases');
-        var bases = BASES[cat] || BASES.skincare;
-        basesEl.innerHTML = bases.map(function (b) {
-          return '<div class="result-item"><strong>' + b.code + '</strong> ' + b.name + '<br><small>' + (zh ? '活性物：' : 'Actives: ') + b.actives + '</small></div>';
-        }).join('');
+        // 安全渲染(S6 闸门:禁用 innerHTML,全部走 textContent —— 数据来自静态 JSON,仍防注入)
+        function itemBox(text) {
+          var box = document.createElement('div');
+          box.className = 'result-item';
+          box.textContent = text;
+          return box;
+        }
+        function fill(id, makeNodes) {
+          var el = document.getElementById(id);
+          if (!el) return [];
+          el.textContent = '';
+          var nodes = makeNodes();
+          nodes.forEach(function (n) { el.appendChild(n); });
+          return nodes;
+        }
 
-        // 填充合规
-        var compEl = document.getElementById('result-compliance');
-        compEl.innerHTML = '<div class="result-item">' + (COMPLIANCE[mkt] || COMPLIANCE.sea) + '</div>';
+        // 填充基底(每项:编号 + 名称 + 活性物)
+        var bases = BASES[cat] || BASES.skincare;
+        fill('result-bases', function () {
+          return bases.map(function (b) {
+            return itemBox(b.code + '  ' + b.name + '  ·  ' + (zh ? '活性物：' : 'Actives: ') + b.actives);
+          });
+        });
+
+        // 填充合规(纯文本,无结构)
+        var compliance = COMPLIANCE[mkt] || COMPLIANCE.sea;
+        fill('result-compliance', function () { return [itemBox(compliance)]; });
 
         // 填充包材
-        var pkgEl = document.getElementById('result-packaging');
         var pkgs = PACKAGING[cat] || PACKAGING.skincare;
-        pkgEl.innerHTML = pkgs.map(function (p) {
-          return '<div class="result-item">' + p + '</div>';
-        }).join('');
+        fill('result-packaging', function () {
+          return pkgs.map(function (p) { return itemBox(p); });
+        });
 
         // 写入询盘表单的隐藏字段
         var msgField = document.querySelector('textarea[name="message"]');
