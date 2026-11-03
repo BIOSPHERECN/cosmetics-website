@@ -3,9 +3,9 @@
 // 纯函数,不联网、不碰库;退出码只给真失败。
 import assert from 'node:assert/strict';
 
-const W = 'F:/0cosmetic/cosmetic-sites/apps/web/src/lib/';
-const c = await import('file:///' + W + 'canon.ts');
-const a = await import('file:///' + W + 'auth.ts');
+const lib = new URL('../apps/web/src/lib/', import.meta.url);
+const c = await import(new URL('canon.ts', lib));
+const a = await import(new URL('auth.ts', lib));
 
 const can = (u) => { const x = new URL(u, 'https://biosphere-ai.com'); return c.canonical(x.pathname, x.search); };
 
@@ -79,5 +79,15 @@ assert.equal(await a.readSession(tok.slice(0, -2) + 'xx', 'S|member'), null);
 assert.equal(await a.readSession(await a.issueSession({ id: 1, email: 'x', role: 'member' }, 'k', 1), ''), null);
 assert.equal(a.timingSafeEqual('abc', 'abc'), true);
 assert.equal(a.timingSafeEqual('abc', 'abd'), false);
+
+// ⑦ RFQ 深链:product_id / category / market / about / intent 留在地址上。
+//    前四项写进服务端 HTML,必须进缓存键,不能和空白询盘共用一份边缘缓存。
+assert.equal(can('/en/rfq/?product_id=85&category=serum&market=ID&about=Night%20Cream&intent=sample'), null);
+assert.equal(can('/en/rfq?product_id=85&category=serum&market=ID&about=Night+Cream&intent=inquiry'), '/en/rfq/?product_id=85&category=serum&market=ID&about=Night+Cream&intent=inquiry');
+assert.equal(can('/en/rfq/?product_id=85&evil=1'), '/en/rfq/?product_id=85');
+assert.equal(can('/zh-cn/about/?product_id=85'), '/zh-cn/about/');
+assert.deepEqual(kp('/en/rfq/?product_id=85&category=serum&market=ID&about=Night%20Cream&intent=sample'), [['about', 'Night Cream'], ['category', 'serum'], ['market', 'ID'], ['product_id', '85']]);
+assert.deepEqual(kp('/en/rfq/'), []);
+assert.equal(unc('/en/rfq/?product_id=85&intent=sample'), false);
 
 console.log('canon.test.mjs:全部通过');
