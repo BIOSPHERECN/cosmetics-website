@@ -1,0 +1,162 @@
+---
+/**
+ * /{lang}/services/factory-quality/
+ *
+ * W5：这一页必须在 HTML 里看见工厂已持有的认证，或明确链回服务总页。
+ * 只重复全站已经写明的三项（GMPC、ISO 22716:2007、HALAL）。
+ * FDA / CPNP 是注册或通报，不写成认证。不写未核准的低起订量。
+ * 正文痛点 / 步骤 / FAQ 来自 solutions.ts，与服务总页同一段，不另编。
+ */
+import { env } from 'cloudflare:workers';
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { OEM_CERTS } from '@cosmetic/core/content/oem.ts';
+import { findSolution } from '@cosmetic/core/content/solutions.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const B = `/${lang}`;
+const path = `${B}/services/factory-quality/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const hub = `${B}/services/`;
+const sol = findSolution('factory-quality');
+if (!sol) return Astro.redirect(hub, 302);
+const copy = zh ? sol.zh : sol.en;
+const certLabel = (id: string, name: string) => (id === 'iso-22716' ? 'ISO 22716:2007' : name);
+
+const ld = [
+  {
+    '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: copy.faq.map(([q, a]) => ({
+      '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}${B}/` },
+      { '@type': 'ListItem', position: 2, name: zh ? '服务' : 'Services', item: `${origin}${hub}` },
+      { '@type': 'ListItem', position: 3, name: copy.title, item: `${origin}${path}` },
+    ],
+  },
+];
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? 'biosphere-ai'} title={copy.title} description={copy.tagline}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main" class="sq">
+    <p class="crumb">
+      <a href={`${B}/`}>{zh ? '首页' : 'Home'}</a>
+      <span aria-hidden="true"> / </span>
+      <a href={hub}>{zh ? '服务总页' : 'Services'}</a>
+      <span aria-hidden="true"> / </span>
+      <span aria-current="page">{copy.title}</span>
+    </p>
+    <header class="hd">
+      <h1>{copy.title}</h1>
+      <p class="tag">{copy.tagline}</p>
+      <p class="lede">{copy.lede}</p>
+    </header>
+
+    <section class="evidence" id="certs" aria-labelledby="certs-h">
+      <h2 id="certs-h">{zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}</h2>
+      <p>{zh
+        ? '按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。以证书原件为准。'
+        : 'Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications. Original certificates prevail.'}</p>
+      <ul class="certs">
+        {OEM_CERTS.map((c) => (
+          <li><a href={`${B}/oem/cert/${c.id}/`}>{certLabel(c.id, c.name)}</a></li>
+        ))}
+      </ul>
+      <p class="hub">
+        <a href={hub}>{zh ? '返回服务总页' : 'Back to the services hub'}</a>
+        <span aria-hidden="true"> · </span>
+        <a href={`${hub}#sv-certs-h`}>{zh ? '总页上的认证说明' : 'Certification note on the hub'}</a>
+        <span aria-hidden="true"> · </span>
+        <a href={`${hub}#factory-quality`}>{zh ? '总页上的这一段' : 'This section on the hub'}</a>
+      </p>
+    </section>
+
+    <section>
+      <h2>{zh ? '你现在大概卡在这几件事上' : 'What is probably holding you up'}</h2>
+      <dl class="pairs">
+        {copy.pains.map(([k, v]) => (<><dt>{k}</dt><dd>{v}</dd></>))}
+      </dl>
+    </section>
+
+    <section>
+      <h2>{zh ? '质检怎么走' : 'How inspection is run'}</h2>
+      <ol class="steps">
+        {copy.steps.map(([k, v]) => (<li><strong>{k}</strong> — {v}</li>))}
+      </ol>
+    </section>
+
+    <section>
+      <h2>{zh ? '先能核对的' : 'What you can check first'}</h2>
+      <ul class="proof">
+        {copy.proof.map(([k, v]) => (<li><strong>{k}</strong> — {v}</li>))}
+      </ul>
+      <p>{zh
+        ? '起订量与交期按品类与包材书面确认。本页不写未核准的低起订量。'
+        : 'MOQ and lead time are confirmed in writing per category and packaging. This page does not state an unapproved low MOQ.'}</p>
+    </section>
+
+    <section class="faq">
+      <h2>{zh ? '常见问题' : 'FAQ'}</h2>
+      {copy.faq.map(([q, a]) => (
+        <details>
+          <summary>{q}</summary>
+          <p>{a}</p>
+        </details>
+      ))}
+    </section>
+
+    <p class="cta">
+      <a class="btn" href={`${B}/rfq/`}>{zh ? '提交 RFQ / 申请样品' : 'Submit RFQ / request sample'}</a>
+      <a class="btn ghost" href={hub}>{zh ? '服务总页' : 'Services hub'}</a>
+    </p>
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
+</BaseLayout>
+
+<style>
+  .sq { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; display: grid; gap: 1.5rem; }
+  .crumb { margin: 0; font-size: .875rem; }
+  .crumb a { color: inherit; }
+  h1 { font-size: clamp(1.5rem, 2.4vw, 2rem); line-height: 1.25; margin: 0 0 .5rem; }
+  .tag { margin: 0 0 .75rem; color: var(--ck-accent, #333); }
+  .lede, .sq p { margin: 0; line-height: 1.7; }
+  h2 { font-size: 1.125rem; margin: 0 0 .75rem; }
+  .evidence { display: grid; gap: .75rem; padding: 1rem 1.1rem; border: 1px solid var(--ck-line, rgba(0,0,0,.14)); border-radius: 12px; }
+  .certs { display: flex; flex-wrap: wrap; gap: .75rem; list-style: none; padding: 0; margin: 0; }
+  .certs a, .hub a { text-decoration: underline; text-underline-offset: .15em; }
+  .pairs { display: grid; gap: .875rem; margin: 0; }
+  .pairs dt { font-weight: 650; }
+  .pairs dd { margin: .25rem 0 0; line-height: 1.65; color: var(--ck-ink-soft, #444); }
+  .steps, .proof { margin: 0; padding-left: 1.2rem; display: grid; gap: .6rem; line-height: 1.6; }
+  .faq details { border-top: 1px solid var(--ck-line, rgba(0,0,0,.12)); padding: .75rem 0; }
+  .faq summary { cursor: pointer; font-weight: 650; }
+  .faq p { margin: .5rem 0 0; line-height: 1.65; }
+  .cta { display: flex; flex-wrap: wrap; gap: .75rem; }
+  .btn { display: inline-flex; align-items: center; min-height: 44px; padding: .625rem 1.125rem; border-radius: 999px; background: var(--ck-accent, #333); color: var(--ck-on-accent, #fff); text-decoration: none; font-weight: 650; }
+  .btn.ghost { background: transparent; color: inherit; border: 1px solid var(--ck-line, rgba(0,0,0,.25)); }
+</style>
