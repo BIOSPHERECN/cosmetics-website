@@ -356,10 +356,10 @@ const CAT_LABEL: Record<string, Record<string, string>> = {
 const catLabel = (c: string) => (CAT_LABEL[lang] ?? CAT_LABEL.en)[c] ?? c;
 
 /* 顶部导航版:给「产品品类」挂品类下拉(有产品的品类才进菜单,空筛选没人点第二次)。
-   子项 slug 带查询串(products/?cat=x),SiteHeader 对含 ? 的 slug 走免尾斜杠直链。 */
+   子项 slug 带查询串(portfolio/?cat=x),SiteHeader 对含 ? 的 slug 走免尾斜杠直链。 */
 const navForHeader = (bundle?.nav ?? []).map((n: any) =>
-  n.slug === 'products' && !(n.children?.length) && catCounts.length
-    ? { ...n, children: catCounts.slice(0, 6).map((c) => ({ slug: `products/?cat=${encodeURIComponent(c.category)}`, label: catLabel(c.category) })) }
+  (n.slug === 'products' || n.slug === 'portfolio') && !(n.children?.length) && catCounts.length
+    ? { ...n, children: catCounts.slice(0, 6).map((c) => ({ slug: `portfolio/?cat=${encodeURIComponent(c.category)}`, label: catLabel(c.category) })) }
     : n);
 
 /* ── 产品集模式 ────────────────────────────────────────────
@@ -647,7 +647,7 @@ const ogImage = (() => {
               image={d.image} imageAlt={d.imageAlt}
               eyebrow={d.eyebrow} title={d.title} lead={d.lead}
               ctaPrimary={d.ctaPrimary} ctaHref={`/${lang}/contact/`}
-              ctaSecondary={d.ctaSecondary} ctaSecondaryHref={`/${lang}/products/`}
+              ctaSecondary={d.ctaSecondary} ctaSecondaryHref={`/${lang}/portfolio/`}
               height={d.height}
             />
           );
@@ -721,20 +721,20 @@ const ogImage = (() => {
            站点用哪一族由内容决定,不需要第二套路由或第二个应用。 */
         case 'slideshow':
           return <Slideshow slides={d.slides ?? []} eyebrow={d.eyebrow} title={d.title ?? ''}
-                            lead={d.lead} ctaText={d.ctaText} ctaHref={d.ctaHref ?? `/${lang}/products/`}
+                            lead={d.lead} ctaText={d.ctaText} ctaHref={d.ctaHref ?? `/${lang}/portfolio/`}
                             interval={d.interval ?? 6000} />;
         case 'centercta':
           return <CenterCta title={d.title ?? ''} body={d.body} ctaText={d.ctaText}
                             ctaHref={d.ctaHref ?? `/${lang}/skin/`} tone={d.tone} />;
         case 'bandimg':
           return <BandImage image={d.image} alt={d.alt} display={d.display} title={d.title ?? ''}
-                            ctaText={d.ctaText} ctaHref={d.ctaHref ?? `/${lang}/products/`} />;
+                            ctaText={d.ctaText} ctaHref={d.ctaHref ?? `/${lang}/portfolio/`} />;
         case 'shelf':
-          return <Shelf title={d.title ?? ''} moreText={d.moreText} moreHref={d.moreHref ?? `/${lang}/products/`}
+          return <Shelf title={d.title ?? ''} moreText={d.moreText} moreHref={d.moreHref ?? `/${lang}/portfolio/`}
                         items={d.items ?? []} tone={d.tone} />;
         case 'split':
           return <SplitFeature image={d.image} alt={d.alt} eyebrow={d.eyebrow} title={d.title ?? ''}
-                               body={d.body} ctaText={d.ctaText} ctaHref={d.ctaHref ?? `/${lang}/products/`}
+                               body={d.body} ctaText={d.ctaText} ctaHref={d.ctaHref ?? `/${lang}/portfolio/`}
                                flip={!!d.flip} tone={d.tone} />;
         case 'statement':
           return <Statement eyebrow={d.eyebrow} title={d.title ?? ''} body={d.body} tone={d.tone} />;
@@ -745,7 +745,7 @@ const ogImage = (() => {
         case 'storehero':
           return <StoreHero image={d.image} alt={d.alt} company={d.company ?? ''} tagline={d.tagline}
                             badges={d.badges ?? []} ctaText={d.ctaText} ctaHref={d.ctaHref ?? `/${lang}/contact/`}
-                            secondText={d.secondText} secondHref={d.secondHref ?? `/${lang}/products/`}
+                            secondText={d.secondText} secondHref={d.secondHref ?? `/${lang}/portfolio/`}
                             cardRight={!!d.cardRight} />;
         case 'statsband':
           return <StatsBand items={d.items ?? []} tone={d.tone} />;
@@ -781,12 +781,12 @@ const ogImage = (() => {
     {bundle!.page.template === 'products' && catCounts.length > 0 && (
       <nav class="catbar" aria-label={catLabel('all')}>
         <div class="ck-wrap">
-          <a class:list={['chip', { on: !catFilter }]} href={`/${lang}/products/`}>
+          <a class:list={['chip', { on: !catFilter }]} href={`/${lang}/portfolio/`}>
             {catLabel('all')}（{catCounts.reduce((a, c) => a + c.n, 0)}）
           </a>
           {catCounts.map((c) => (
             <a class:list={['chip', { on: catFilter === c.category }]}
-               href={`/${lang}/products/?cat=${c.category}`}>
+               href={`/${lang}/portfolio/?cat=${c.category}`}>
               {catLabel(c.category)}（{c.n}）
             </a>
           ))}
@@ -822,7 +822,7 @@ const ogImage = (() => {
           <p>{lang === 'zh-cn'
             ? `「${catLabel(catFilter)}」的在售清单整理中 —— 该品类可做,剂型能力见下方,或直接发起询盘。`
             : `The "${catLabel(catFilter)}" catalogue is being prepared — we do make this category. See the formats below, or start an inquiry.`}</p>
-          <a class="chip" href={`/${lang}/products/`}>{catLabel('all')}</a>
+          <a class="chip" href={`/${lang}/portfolio/`}>{catLabel('all')}</a>
         </div>
       </section>
     )}

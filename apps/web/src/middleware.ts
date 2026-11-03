@@ -263,7 +263,7 @@ const route = async (ctx: Parameters<Parameters<typeof defineMiddleware>[0]>[0],
     '/company.html': '/about/',
     '/brand-story.html': '/about/',          // 创始人已把「品牌故事」改名为「公司介绍」
     '/ai-center.html': '/skin/',             // AI 交互中心 → 肌肤检测
-    '/all-products.html': '/products/',
+    '/all-products.html': '/portfolio/',
     '/membership.html': '/contact/',         // 会员体系尚未在新站实现,先落到联系
     '/news.html': '/news/',                  // 资讯中心已重建(自动采集+AI改写)
     '/heritage/': '/rnd/',                   // 古方传承 → 研发页里的古方研究版块
