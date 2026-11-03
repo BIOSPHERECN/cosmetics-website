@@ -1,0 +1,87 @@
+{
+  "angle": "安全",
+  "tree": "eed4b9c719c81591854eb5ffed24c0544430dc2f",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-eed4b9c719c8.json",
+  "run_label": "review-ticket eed4b9c719c8 安全",
+  "reviewer": "claude",
+  "skills_loaded": ["claude-guard:guard-rules", "bohui-data-security-formula-confidentiality"],
+  "verdict": "过",
+  "checked": ["安全-①", "安全-②", "安全-③", "安全-④", "安全-⑤", "安全-⑥", "安全-⑦"],
+  "findings": [
+    {
+      "id": "S0",
+      "level": "低",
+      "file": "(审核流程)",
+      "claim": "技能 security-review 加载失败,未能按其流程执行",
+      "failure_scenario": "该技能加载时要跑 git diff origin/HEAD...,本工作区无合并基点报 fatal: no merge base;改为人工逐行审草稿给的安全.diff。",
+      "evidence": "Skill 调用返回 Shell command failed for pattern git diff origin/HEAD...;其余两个技能已加载。",
+      "fix": "审核部技能调用改用草稿 diff 路径,不依赖 origin/HEAD"
+    },
+    {
+      "id": "S1",
+      "level": "低",
+      "file": "apps/web/src/middleware.ts",
+      "line": 82,
+      "claim": "探针头比对先比长度,长度不一致直接置 1,会通过时序泄露密钥长度;逐字符比较部分是恒定时间的",
+      "failure_scenario": "攻击者多次发不同长度的 x-bohui-probe,理论上可从响应时间推出 PROBE_SECRET 长度;在 Workers 网络抖动下实际不可利用,且拿到长度也猜不出内容。",
+      "evidence": "diff 第 82-84 行:probeDiff = secret 为空或长度不等 ? 1 : 0,循环只跑 min(len) 次。",
+      "fix": "可选:密钥用 32 字节以上随机串即可,不必改代码"
+    },
+    {
+      "id": "S2",
+      "level": "低",
+      "file": "apps/web/src/middleware.ts",
+      "line": 80,
+      "claim": "PROBE_SECRET 目前在任何配置里都没设,以后若写进 wrangler.json 的 vars(明文)就会进公开仓 cosmetic-sites",
+      "failure_scenario": "有人为了省事把 PROBE_SECRET 写进 wrangler 配置 vars,推到公开仓后任何人拿到密钥,就能带头绕开 301 规范化和边缘缓存,每次请求都真渲染读 D1(变相刷读量)。",
+      "evidence": "Grep 搜 apps/web 下 PROBE_SECRET / x-bohui-probe,只有 middleware.ts 471-472 两处引用,没有配置文件设值;所以当前 probeSecret 为空,probeDiff 恒为 1,probe 恒为 false,线上没有影响。",
+      "fix": "只能用 wrangler secret put(先 source 公司 .env)设,不许进 vars;冒烟脚本从私有仓的 secret 读"
+    },
+    {
+      "id": "S3",
+      "level": "低",
+      "file": "apps/web/src/middleware.ts",
+      "line": 85,
+      "claim": "探针请求跳过 canonical 301,边缘 WAF 规则 S1/R2 靠 301 后带尾斜杠的二次匹配,持密钥的请求不会再过这一遍",
+      "failure_scenario": "只有持有密钥的人能用;密钥泄露时可以拿不带尾斜杠、带未登记参数的地址绕过 S1/R2 通配规则的二次检查,并且不进缓存直打 D1。",
+      "evidence": "middleware.ts 474-476 行注释写明 301 落在 WAF 之后、跳过去的请求再过边缘规则;probe 为真时这段被跳过;515 行 cacheable 加了 !probe,所以 618/657/680/687/696 行的读写缓存都不会碰到探针响应,不会污染缓存。",
+      "fix": "密钥按 S2 管好,并定期轮换;不必改代码"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "JEV",
+      "result": "成立但可接受",
+      "why": "Jev 在安全维度给 0.3、没有写原因。人工复核:新增 17 张 webp 都是 VP8 简单格式,文件头里没有 VP8X,所以放不下 EXIF/XMP/GPS 元数据;17 张全部逐张看过,都是 AI 生成的产品氛围图,里面没有配方、用量、内部编号、客户名、帛卉或工厂信息。middleware 的探针在密钥设置前恒为关闭,设置之后只放宽 301 和缓存两项,不影响鉴权(staff/member/后台 /bohui/ 与 /api/ 的逻辑没改)。剩下的只有 S1-S3 三条低风险。",
+      "mitigation": "PROBE_SECRET 只走 wrangler secret put,不进 vars 和公开仓,并定期轮换"
+    },
+    {
+      "ref": "LAYA",
+      "result": "不成立",
+      "why": "Laya 置信度只有 0.02,打分 noul 三项都是 1.0,partial=true,也没给原因,属于没有有效判断。人工复核安全 diff 后没有找到可以判拦的点:没有新依赖;绑定和账号没改;没有 SQL、set:html、JSON-LD 或跳转目标的变化(301 的 Location 仍由 canonical() 生成,没改);没有对外抓取;没有密钥原文。"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "安全",
+      "level": "低",
+      "item": "PROBE_SECRET 上线之后成为可以绕开缓存和规范化跳转的共享密钥",
+      "mitigation": "用 wrangler secret put 设值,只存在私有仓;冒烟脚本不在日志里打印它"
+    },
+    {
+      "cat": "费用",
+      "level": "低",
+      "item": "密钥泄露时,探针请求每次都会真渲染读 D1",
+      "mitigation": "D1 看门狗 Bohui-D1Budget 兜底;发现泄露立即轮换密钥"
+    }
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/eed4b9c719c8/安全.json",
+  "evidence_read": [
+    "F:/0cosmetic/tools-review/audit_v2/口径摘要.md",
+    "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-eed4b9c719c8.json",
+    "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-eed4b9c719c8/安全.diff",
+    "F:/0cosmetic/cosmetic-sites/apps/web/src/middleware.ts 第 18、450-475、476-575、618-697 行",
+    "F:/0cosmetic/cosmetic-sites/apps/web/public/b2o/img/vi/*.webp 17 张,已逐张目视 + 检查文件头 chunk"
+  ]
+}

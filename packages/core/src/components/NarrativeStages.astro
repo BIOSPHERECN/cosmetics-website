@@ -112,6 +112,7 @@ const stageNo = (i: number) => `${i + 1}.0`;
     padding-block: clamp(2.5rem, 5vw, 4rem);
   }
 
+
   /* 阶段之间的粗规则线 —— 分隔本身承载「这是一道工序交接」的意思 */
   .stage-rule {
     position: absolute;
@@ -135,7 +136,7 @@ const stageNo = (i: number) => `${i + 1}.0`;
   }
   .stage-no .n {
     font-family: var(--ck-font-head);
-    font-size: clamp(1.5rem, 1rem + 1.8vw, 2.25rem);
+    font-size: clamp(1.125rem, 0.95rem + 0.7vw, 1.5rem);   /* 全局审查:对齐 dtc-h2.sm */
     font-weight: var(--ck-weight-head);
     line-height: 1;
     letter-spacing: -0.02em;
@@ -270,6 +271,38 @@ const stageNo = (i: number) => `${i + 1}.0`;
       height: 2.5rem;
       justify-self: start;
       order: -1;
+    }
+  }
+
+  /* 宽屏三列卡阵(创始人 2026-08-31:「排布太浪费空间,3 个一行不是更清晰」)——
+     整行大留白的纵排叙事收成 2×3 卡阵,一屏看完六道;窄屏仍走纵排。
+     ★ 必须写在所有基础规则之后:同特异度后写者赢,写前面整段是死的。★ */
+  @media (min-width: 78rem) {
+    .nw-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--ck-gap);
+    }
+    .stage {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.625rem;
+      padding: 1.625rem 1.5rem 1.5rem;
+      background: var(--ck-surface);
+      border: var(--ck-border-w) solid var(--ck-line);
+      border-top: 3px solid var(--ck-accent);
+      border-radius: var(--ck-radius-lg);
+      box-shadow: var(--ck-shadow-card);
+    }
+    .stage-rule { display: none; }   /* 卡片边框已承担分隔,粗规则线退场 */
+    .stage-mark {
+      position: absolute;
+      top: 1.375rem;
+      inset-inline-end: 1.375rem;
+      width: 2.25rem;
+      height: 2.25rem;
+      opacity: 0.55;
+      justify-self: unset;
+      order: 0;
     }
   }
 </style>

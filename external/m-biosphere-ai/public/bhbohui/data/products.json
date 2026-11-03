@@ -1,0 +1,16 @@
+{
+  "items": [
+    { "id": 1, "name": "人参微光精华", "en": "Ginseng Glow Serum", "img": "images/medierba-prod-1.webp", "badge": "畅销", "desc": "" },
+    { "id": 2, "name": "灵芝修护面霜", "en": "Reishi Repair Cream", "img": "images/medierba-prod-2.webp", "badge": "", "desc": "" },
+    { "id": 3, "name": "积雪草舒缓水", "en": "Centella Soothing Water", "img": "images/medierba-prod-3.webp", "badge": "", "desc": "" },
+    { "id": 4, "name": "绿茶平衡洁面", "en": "Green Tea Balm Cleanser", "img": "images/medierba-prod-4.webp", "badge": "", "desc": "" },
+    { "id": 5, "name": "红参紧致眼霜", "en": "Red Ginseng Eye Patches", "img": "images/medierba-prod-5.webp", "badge": "", "desc": "" },
+    { "id": 6, "name": "发酵新生面膜", "en": "Fermented Renewal Mask", "img": "images/medierba-prod-6.webp", "badge": "新品", "desc": "" },
+    { "id": 7, "name": "烟酰胺控油精华", "en": "Niacinamide Control Oil", "img": "images/medierba-prod-7.webp", "badge": "", "desc": "" },
+    { "id": 8, "name": "新草本旅行套装", "en": "Herbal Essentials Set", "img": "images/medierba-prod-8.webp", "badge": "", "desc": "" },
+    { "id": 9, "name": "灵芝精华油", "en": "Reishi Glow Oil", "img": "images/medierba-prod-9.webp", "badge": "", "desc": "" },
+    { "id": 10, "name": "透明质酸保湿面霜", "en": "Cloud Dew Gel Cream", "img": "images/medierba-prod-10.webp", "badge": "", "desc": "" },
+    { "id": 11, "name": "本草唇膏笔", "en": "Herbal Lip Liner", "img": "images/medierba-prod-11.webp", "badge": "", "desc": "" },
+    { "id": 12, "name": "本草淡香水", "en": "Sunlit Vanilla Eau de Parfum", "img": "images/medierba-prod-12.webp", "badge": "限定", "desc": "" }
+  ]
+}

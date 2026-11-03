@@ -13,6 +13,14 @@ export default defineConfig({
   build: { format: 'directory' },
   // 根路径落到默认语言(静态输出下 Astro 生成 meta-refresh 页,零运行时)
   redirects: { '/': '/zh-cn/' },
+  vite: {
+    // cloudflare:workers 是 Cloudflare 运行时模块,静态构建时用 stub 替代
+    resolve: {
+      alias: {
+        'cloudflare:workers': new URL('./src/stubs/cloudflare-workers.ts', import.meta.url).pathname,
+      },
+    },
+  },
   integrations: [
     sitemap({
       i18n: {

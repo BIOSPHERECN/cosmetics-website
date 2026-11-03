@@ -1,0 +1,62 @@
+{
+ "angle": "成本",
+ "tree": "78d41e9fba9268994a34ced8c53cc999b6f73b2d",
+ "worker": "bohui-web",
+ "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-78d41e9fba92.json",
+ "run_label": "review-ticket 78d41e9fba92 成本",
+ "reviewer": "claude",
+ "skills_loaded": ["zero-r2-move", "karpathy-coder"],
+ "verdict": "过",
+ "checked": ["成本-①", "成本-②", "成本-③", "成本-④", "成本-⑤", "成本-⑥", "成本-⑦"],
+ "findings": [
+  {
+   "id": "C1",
+   "level": "低",
+   "file": "apps/web/src/middleware.ts",
+   "line": 524,
+   "claim": "CACHE_V v84→v85 使全站边缘缓存失效,费用灯红(公司库已超包含额度,每读一行都计费)的当天上线会有一次回源重建",
+   "failure_scenario": "部署后 1–2 小时内所有站点(不只 beauty2oem)首批请求全部回源渲染,GPTBot 占 74% 会把详情页重建读量放大;若重建集中在大表页,当小时读量可能比基线高数倍",
+   "evidence": "读了 middleware.ts 第 469–524 行;b2o.css 被 pages/[...path].astro 第 51 行引入,catch-all 覆盖全部站点,所以 CSS 哈希变影响所有站的缓存 HTML,+1 在正确性上是必须的,不可只清 b2o。量化:bohui-automation/local/logs/d1_budget.jsonl 显示上一次同类 v84 【零读】部署在 2026-09-24T13:29Z(deploy_override.log 第 8 行),公司库逐小时读量 13Z=115.9 万、14Z=180.4 万、15Z=118.5 万,尖峰只多约 60 万行,按超额单价约 0.0006 美元;基线每小时约 110–125 万行",
+   "fix": "不需改代码;上线后按 risks 盯 d1_budget.jsonl 公司库 last_hour"
+  },
+  {
+   "id": "C2",
+   "level": "低",
+   "file": "apps/web/src/middleware.ts",
+   "line": 471,
+   "claim": "探针头命中时跳过边缘缓存(cacheable 多了 !probe),请求每次都回源读 D1;PROBE_SECRET 一旦泄露,外部可用它绕过缓存放大读量",
+   "failure_scenario": "密钥进了日志/公开仓/冒烟脚本输出 → 攻击者带 x-bohui-probe 头批量刷详情页 → 每次都现渲染读 D1,红灯期读量直接计费。PROBE_SECRET 未设时 probeDiff 恒为 1,不生效",
+   "evidence": "diff 第 12–16、26 行:secret 为空时 probeDiff=1;命中时 cacheable=false,不写缓存也不读缓存。冒烟全表(设计-v2.1.md 第 751–764 行)约几十个页面,正常使用每次部署只多几十次回源,可忽略",
+   "fix": "secret 只进 wrangler secret 与本机冒烟脚本(私有仓),不进公开仓;可选:探针命中也走现有 bot/会员额度计数,留作后续"
+  }
+ ],
+ "addressed": [
+  {
+   "ref": "JEV",
+   "result": "成立但可接受",
+   "why": "Jev 判 block 但 cost 仅 0.08、reason 为空,成本面无具体指向;本角度核过:diff 无新增查询、无 R2/模型/KV/cron 改动,唯一成本面是 CACHE_V 失效(C1),有 v84 实测数据支撑尖峰很小",
+   "mitigation": "上线后 2 小时盯公司库 last_hour,超过 500 万行/小时即回查"
+  },
+  {
+   "ref": "LAYA",
+   "result": "成立但可接受",
+   "why": "Laya cost=0.99 最可能指 CACHE_V 全站失效,这一点成立(见 C1);但 +1 是修正确性必需(catch-all 共用 CSS 包,旧缓存 HTML 会引用已下线的哈希样式),且上一次 v84 同类部署实测尖峰约 60 万行、费用可忽略;conf 仅 0.06、partial=true",
+   "mitigation": "同上;另说明带【零读】且第一关新增查库 0,费用灯红灯放行路径由 ticket.py 第 91–93 行机械核验(budget.src=d1_budget·零读)"
+  }
+ ],
+ "risks": [
+  {
+   "cat": "费用",
+   "level": "中",
+   "item": "CACHE_V v85 全站缓存失效,红灯期(公司库已超包含额度 775 亿行)上线,回源读量直接计费",
+   "mitigation": "上线后 1–2 小时看 bohui-automation/local/logs/d1_budget.jsonl 公司库 last_hour:基线约 110–180 万行/小时,v84 实测尖峰约 +60 万;超过 500 万行/小时就查哪条路由在回源"
+  },
+  {
+   "cat": "费用",
+   "level": "低",
+   "item": "PROBE_SECRET 设了之后,带头请求绕过缓存;泄露即可被用来放大 D1 读量",
+   "mitigation": "secret 只放 wrangler secret 与私有仓冒烟脚本;冒烟脚本别打印头值;定期可轮换"
+  }
+ ],
+ "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/78d41e9fba92/成本.json"
+}

@@ -62,7 +62,7 @@ html[data-summer] {
   --ck-tracking-eyebrow: 0.16em;
 
   /* 留白大、圆角小(它整站 border-radius 只有 4px) */
-  --ck-section-py: clamp(4rem, 9vh, 7rem);
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
   --ck-gap: 1.5rem;
   --ck-radius: 4px;
   --ck-radius-lg: 4px;

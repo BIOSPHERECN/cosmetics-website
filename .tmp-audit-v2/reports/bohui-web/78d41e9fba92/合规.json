@@ -1,0 +1,80 @@
+{
+  "angle": "合规",
+  "tree": "78d41e9fba9268994a34ced8c53cc999b6f73b2d",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-78d41e9fba92.json",
+  "run_label": "review-ticket 78d41e9fba92 合规",
+  "reviewer": "claude",
+  "skills_loaded": ["bohui-legal-advertising-claims", "bohui-label-claims-review"],
+  "verdict": "存疑",
+  "checked": ["合规-①", "合规-②", "合规-③", "合规-④", "合规-⑤", "合规-⑥", "合规-⑦"],
+  "findings": [
+    {
+      "id": "C1",
+      "level": "中",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 48,
+      "claim": "新上前台的 17 张图(hero-full、wall-01~12、m1~m4)来源未证明是自有或已授权,文件名显示部分是他人 AI 出图或素材站下载件,只做了缩放转 webp 就原样上首页,可能触犯「原图不上前台」。",
+      "failure_scenario": "首页满屏大图 + 12 张作品墙用的是第三方出图原件(比如 wall-05/06 源文件名带 Midjourney 用户名前缀 urvi787_ 和 UUID;其余是素材站式英文长 slug 带 (1)/(3)/(6) 重复下载后缀)。原作者或平台认出来后投诉,beauty2oem 首页可能因为侵权被要求下图,赔偿走民事路径(不预测金额);按口径这也违反「抓来的原图不上前台」。",
+      "evidence": "读了 F:/0cosmetic/助手交付/beauty2oem-UI重做/视觉冲击-选图.json:wall-05 源为 E:/0Data/图片/化妆品/urvi787_show_a_yellow_colored_squeeze_tube_...png,wall-06 源为 urvi787_show_a_cucumber_colored_fliptop_squeeze_tube_...png,其他都是 E:/0Data/图片/防晒霜/ 下的 assortment-of-sunscreen-products-...(6).jpeg 这类文件名。F:/0cosmetic/tools/ai-dispatch/tasks/b2o-visual-impact.md 写的是「创始人原图,原图不许改」,只做 Pillow 转 webp。用 PIL 读 vi/*.webp,元数据只剩 loop/background,出处信息已丢。把图拼成缩略图目检:包装上的字都是乱码,没有可辨认的真实品牌 logo,也没看到 SPF/功效字样,判断是 AI 生成图。前例:_换图-说明.md 和 创始人图库-选图.json 显示,同一批源图早就以 fd/* 的形式上了线,这次是把曝光面扩大到首屏满屏加 12 张墙。缺的证据:E:/0Data/图片 这批图的出处和授权记录(是不是创始人自己出图 / 有没有商用许可)。",
+      "fix": "由创始人确认这批图是自己出图或有商用授权,并记进图库 README。确认之前,至少把 urvi787_* 两张(wall-05、wall-06)换成自有出图。代码不用改。"
+    },
+    {
+      "id": "C2",
+      "level": "低",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 42,
+      "claim": "首屏满屏人物图(hero-full)和方法区 m1~m4 都是 AI 生成的写实人物和产品图,图旁没有标注,只靠页脚一句「页面中的场景照片为 AI 生成的示意图」;作品墙倒是就地写了「效果图」。",
+      "failure_scenario": "访客在首屏看到写实模特涂防晒的大图,可能当成真实客户或产品实拍。按《人工智能生成合成内容标识办法》,发布方要不要在图旁就近显著标识还有解读空间(③存疑)。另外转成 webp 时隐式元数据标识已经丢了。",
+      "evidence": "diff 第 42 行 <img {...img('heroFull', true)} />,旁边没有文字说明;packages/core/src/components/SiteFooter.astro:125 有 b2o-aigen 的页脚声明(只在 cnOnly 时出现);作品墙在 diff 第 97~98 行写了「这些是效果图…不是已交付的客户产品」。",
+      "fix": "可选:首屏角落加一个小号「AI 效果图」角标,或者在 alt/figcaption 里注明。不改也不构成拦截。"
+    },
+    {
+      "id": "C3",
+      "level": "低",
+      "file": "apps/web/src/middleware.ts",
+      "line": 166,
+      "claim": "公开仓 cosmetic-sites 的 CACHE_V 注释又追加了一段中文内部变更记录(R11 类),这条注释里原本就留着内部口径和联系方式记录。",
+      "failure_scenario": "公开仓的读者能从注释里看到内部改版节奏和口径调整记录(比如「修正市场情报/包材/配方口径」)。这次新增的只有「09-25 beauty2oem 视觉重排…」一句,不含密钥、价格或工厂敏感信息,敏感度低。",
+      "evidence": "diff 第 166 行 CACHE_V 的注释新增了 09-25 这段话;新加的 probe 注释(第 141~142 行)是英文,只描述机制,没有写出 secret 的值。",
+      "fix": "以后把变更记录挪进私有仓的 CHANGELOG,注释只留版本号。这次不拦。"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "JEV",
+      "result": "不成立",
+      "why": "Jev 判了 block,但 reason 为空,置信度只有 0.01,compliance 分只有 0.07,给不出具体条款。合规角度我逐条人工查了红线词、商务数字、功效宣称、隐私、语种,都没有命中;只有图源授权存疑,已单列为 C1。"
+    },
+    {
+      "ref": "LAYA",
+      "result": "不成立",
+      "why": "Laya 判了 block,但 reason 为空,置信度 0.06,partial=true。它给的 compliance 1.0 没有对应任何文件行。人工复核 diff 97 行:没有医疗用语或功效宣称;作品墙明写「效果图…不是已交付的客户产品」,纠正了派活单里原本要写的「我们做出来的产品 / 按品牌方需求做出来的样子」这种虚假暗示;删掉了「广州工厂 · 灌装车间 待补实拍」占位框。图源问题已单列为 C1。"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "合规",
+      "level": "中",
+      "item": "首页 17 张图来源和授权没有记录,其中 2 张源文件名带第三方 Midjourney 用户名(urvi787_);曝光面从小框扩大到满屏加作品墙",
+      "mitigation": "创始人确认出处和授权,记进图库 README;确认前先换掉 wall-05、wall-06"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "写实 AI 人物图在首屏没有就近标识,只靠页脚声明",
+      "mitigation": "加「AI 效果图」角标(可选)"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "公开仓 middleware 注释继续累积中文内部变更记录",
+      "mitigation": "变更记录移到私有仓"
+    }
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/78d41e9fba92/合规.json",
+  "smoke_extra": [
+    "上线后打开 beauty2oem 首页,确认页脚能看到「页面中的场景照片为 AI 生成的示意图」(b2o-aigen)",
+    "确认作品墙标题是「包装与视觉方向参考」,副标题含「不是已交付的客户产品」"
+  ]
+}

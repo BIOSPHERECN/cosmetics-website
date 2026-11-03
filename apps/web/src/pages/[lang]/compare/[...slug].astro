@@ -1,0 +1,229 @@
+---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { t as uiT, type Locale } from '@cosmetic/core/i18n';
+/**
+ * 对比类内容 —— 「A 还是 B」这一类问题的答案页。
+ *
+ * 外部 GEO 诊断点名的五块空白之一。为什么单独做一套路由而不是塞进 /faq/:
+ *   采购问 AI 的问题大多是**二选一**,而 AI 回答这类问题时最爱整段引用对比表 ——
+ *   表格自带结构,它不用自己组织。一个问题一个地址,才可能被当成「这一题的答案页」
+ *   整页引用;塞在 FAQ 第十七条里,引用的只会是一句话。
+ *
+ * 一个文件同时出索引页与详情页(rest 参数):六道题不值得拆成两个路由,
+ * 而共用一份数据能保证索引上的判据和详情页的判据永远是同一句。
+ *
+ * 内容在 packages/core/src/content/compare.ts,那边写了取数与措辞纪律。
+ * 零 D1 查询。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { COMPARE_ZH, type CompareItem } from '@cosmetic/core/content/compare.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { orgJsonLd, faqJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const lang = (Astro.params.lang ?? 'zh-cn') as Locale;
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const site = shell.site;
+const origin = `https://${site?.domain ?? 'biosphere-ai.com'}`;
+const B = `/${lang}`;
+
+const raw = String(Astro.params.slug ?? '').replace(/\/+$/, '');
+const item: CompareItem | undefined = raw ? COMPARE_ZH.find((c) => c.slug === raw) : undefined;
+if (raw && !item) return new Response('Not found', { status: 404 });
+
+const path = raw ? `${B}/compare/${raw}/` : `${B}/compare/`;
+const L = zh
+  ? { eyebrow: '选型对比', idxTitle: '选 A 还是选 B', pick: '什么情况下选哪个', trap: '这一题上最常见的误区',
+      verdict: '一句话判据', table: '逐项对比', more: '相关页面', back: '全部对比',
+      lede: '采购真正纠结的从来不是「好不好」,是「这两个到底该选哪个」。一题一页,第一句就是判据。',
+      note: '数字全部来自我们自己的产线与库存。报价按询盘逐单出具,这一页不会出现一个假价。',
+      cta: '还是拿不准?把品类、目标市场、首批量级发给我们', ctaBtn: '发起询盘' }
+  : { eyebrow: 'Comparisons', idxTitle: 'A or B', pick: 'Which one, when', trap: 'Where people get it wrong',
+      verdict: 'Short answer', table: 'Side by side', more: 'Related', back: 'All comparisons',
+      lede: 'Buyers rarely ask which is better. They ask which one to pick. One question per page, answered in the first line.',
+      note: 'Every figure comes from our own lines and stock. Quotes are issued per enquiry.',
+      cta: 'Still unsure? Send us category, destination market and first-run volume', ctaBtn: 'Send an enquiry' };
+
+/* 索引页把六道题的判据一起出成 FAQPage;详情页只出这一题 ——
+   一页一个主张,AI 才知道该把哪一段挂到哪个问题上。 */
+const ldItems = (item ? [item] : COMPARE_ZH).map((c) => ({
+  q: c.q,
+  a: [c.verdict, ...c.pick.map((p) => `${p.when} → ${p.take}`)].join(' '),
+}));
+const crumbs = breadcrumbJsonLd(origin, lang, path, uiT(lang as any)('nav.home'),
+  item
+    ? [{ label: L.eyebrow, href: `${B}/compare/` }, { label: item.q, href: path }]
+    : [{ label: L.eyebrow, href: path }]);
+const jsonLd = [
+  orgJsonLd(origin, site?.name ?? 'BIOSPHERE', lang, L.lede),
+  faqJsonLd(ldItems),
+  crumbs,
+].filter(Boolean);
+
+const title = item ? item.q : (zh ? '选型对比 —— 代工模式、包材、产地、材质怎么选' : 'Comparisons — sourcing model, packaging, origin, material');
+const desc = item ? item.verdict : L.lede;
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={site?.variant ?? 'v1'}
+  brand={site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={title} description={desc}
+  siteName={site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={site?.is_live === 1} brandColor={site?.brand_color} theme={site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={site?.name ?? '帛卉'}
+              siteNameZh={site?.tagline ?? ''} nav={shell.nav} />
+
+  <main id="main">
+    {!item && (
+      <>
+        <header class="hd">
+          <p class="eyebrow">{L.eyebrow}</p>
+          <h1>{L.idxTitle}</h1>
+          <p class="lede">{L.lede}</p>
+          <p class="note">{L.note}</p>
+        </header>
+        <ul class="idx">
+          {COMPARE_ZH.map((c) => (
+            <li>
+              <a href={`${B}/compare/${c.slug}/`}>
+                <h2>{c.q}</h2>
+                <p>{c.verdict}</p>
+                <span class="go" aria-hidden="true">→</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
+
+    {item && (
+      <>
+        <header class="hd">
+          <p class="eyebrow"><a href={`${B}/compare/`}>{L.back}</a></p>
+          <h1>{item.q}</h1>
+          {/* 判据单独一块、加重 —— 这一段就是 AI 会摘走的那一段 */}
+          <p class="verdict"><b>{L.verdict}</b>{item.verdict}</p>
+        </header>
+
+        <section class="tbl">
+          <h2>{L.table}</h2>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr><th scope="col"></th>{item.cols.map((c) => <th scope="col">{c}</th>)}</tr>
+              </thead>
+              <tbody>
+                {item.rows.map((r) => (
+                  <tr>
+                    <th scope="row">{r.k}</th>
+                    <td>{r.a}</td>
+                    <td>{r.b}</td>
+                    {item.cols.length > 2 && <td>{r.c ?? '—'}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="pick">
+          <h2>{L.pick}</h2>
+          <ul>
+            {item.pick.map((p) => (
+              <li><span class="when">{p.when}</span><span class="take">{p.take}</span></li>
+            ))}
+          </ul>
+        </section>
+
+        <section class="trap">
+          <h2>{L.trap}</h2>
+          <ul>{item.trap.map((t) => <li>{t}</li>)}</ul>
+        </section>
+
+        <nav class="more" aria-label={L.more}>
+          <h2>{L.more}</h2>
+          <p>{item.links.map((l) => <a href={`${B}${l.href}`}>{l.label}</a>)}</p>
+        </nav>
+      </>
+    )}
+
+    <section class="cta">
+      <p>{L.cta}</p>
+      <a class="btn" href={`${B}/contact/`}>{L.ctaBtn}</a>
+    </section>
+  </main>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <script type="application/ld+json" set:html={ldJson(jsonLd)} is:inline />
+</BaseLayout>
+
+<style>
+  main { max-width: 62rem; margin: 0 auto; padding: clamp(2rem, 5vw, 4rem) clamp(1rem, 4vw, 3rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }
+  .hd { margin-bottom: clamp(2rem, 4vw, 3rem); }
+  .eyebrow { margin: 0 0 .75rem; font-size: .75rem; letter-spacing: .16em; text-transform: uppercase;
+             color: var(--ck-ink-faint); }
+  .eyebrow a { color: inherit; text-decoration: none; }
+  .eyebrow a:hover { color: var(--ck-accent); }
+  h1 { margin: 0 0 1rem; font-size: clamp(1.75rem, 3.6vw, 2.6rem); line-height: 1.2;
+       letter-spacing: -.02em; text-wrap: balance; }
+  .lede { margin: 0 0 .75rem; font-size: clamp(1rem, 1.6vw, 1.125rem); line-height: 1.75; color: var(--ck-ink-soft); }
+  .note { margin: 0; font-size: .875rem; line-height: 1.7; color: var(--ck-ink-faint); }
+  .verdict { margin: 0; font-size: 1.0625rem; line-height: 1.75; }
+  .verdict b { display: block; margin-bottom: .375rem; font-size: .6875rem; letter-spacing: .14em;
+               text-transform: uppercase; color: var(--ck-accent); }
+
+  .idx { list-style: none; margin: 0; padding: 0; display: grid; gap: .875rem; }
+  .idx a { display: block; position: relative; padding: clamp(1.125rem, 2.4vw, 1.625rem);
+           border: 1px solid var(--ck-line); border-radius: var(--ck-radius);
+           background: var(--ck-surface); text-decoration: none; color: inherit; }
+  .idx a:hover { border-color: var(--ck-accent); }
+  .idx h2 { margin: 0 0 .5rem; font-size: 1.0625rem; line-height: 1.45; padding-right: 2rem; }
+  .idx p { margin: 0; font-size: .875rem; line-height: 1.7; color: var(--ck-ink-soft); }
+  .idx .go { position: absolute; top: clamp(1.125rem, 2.4vw, 1.625rem); inset-inline-end: 1.25rem;
+             color: var(--ck-ink-faint); }
+
+  section { margin-top: clamp(2.25rem, 4.5vw, 3.5rem); }
+  section h2 { margin: 0 0 1rem; font-size: 1.0625rem; letter-spacing: -.01em; }
+
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+  th, td { padding: .75rem .875rem; text-align: start; vertical-align: top; line-height: 1.6;
+           border-bottom: 1px solid var(--ck-line); }
+  thead th { font-size: .8125rem; font-weight: 600; white-space: nowrap;
+             border-bottom: 2px solid var(--ck-ink); }
+  /* 首列贴住 —— 横向滚动时还看得见在比什么 */
+  tbody th { position: sticky; inset-inline-start: 0; background: var(--ck-surface);
+             font-weight: 500; color: var(--ck-ink-soft); white-space: nowrap; }
+  td { color: var(--ck-ink); }
+
+  .pick ul, .trap ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+  .pick li { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: baseline;
+             padding: .75rem .875rem; border-radius: var(--ck-radius); background: var(--ck-surface-alt); }
+  .pick .when { flex: 1 1 20rem; font-size: .875rem; line-height: 1.6; color: var(--ck-ink-soft); }
+  .pick .take { font-weight: 600; font-size: .9375rem; color: var(--ck-accent); }
+  .trap li { padding-inline-start: 1.125rem; position: relative; font-size: .875rem;
+             line-height: 1.75; color: var(--ck-ink-soft); }
+  .trap li::before { content: '✕'; position: absolute; inset-inline-start: 0; color: var(--ck-ink-faint); }
+
+  .more p { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; margin: 0; }
+  .more a { font-size: .875rem; color: var(--ck-ink-soft); }
+
+  .cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+         gap: 1rem; padding: clamp(1.25rem, 3vw, 2rem); border-radius: var(--ck-radius);
+         background: var(--ck-surface-alt); border: 1px solid var(--ck-line); }
+  .cta p { margin: 0; font-size: .9375rem; line-height: 1.6; color: var(--ck-ink-soft); }
+  .btn { flex: none; display: inline-flex; padding: .6875rem 1.5rem; border-radius: 999px;
+         background: var(--ck-accent); color: #fff; text-decoration: none; font-weight: 600; font-size: .9375rem; }
+</style>

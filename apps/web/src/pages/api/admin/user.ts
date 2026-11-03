@@ -7,7 +7,7 @@
  * 邀请令牌只存哈希,库被读走也换不出可用链接。
  */
 import type { APIRoute } from 'astro';
-import { apiGuard, json, requireAdmin, logRevision } from '../../../lib/guard';
+import { apiGuard, json, requireAdmin, logRevision, ROLES, LAB_ROLES } from '../../../lib/guard';
 import { hashPassword } from '../../../lib/auth';
 
 export const prerender = false;
@@ -29,22 +29,25 @@ export const POST: APIRoute = async ({ request }) => {
   if (c instanceof Response) return c;
   const deny = requireAdmin(c); if (deny) return deny;
 
-  const { email, display_name, role } = (await request.json().catch(() => ({}))) as any;
+  const { email, display_name, role, lab_role } = (await request.json().catch(() => ({}))) as any;
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ ok: false, msg: '邮箱格式不对' }, 400);
-  const r = (role === 'admin' ? 'admin' : 'editor');
+  const r = (ROLES as string[]).includes(role) ? role : 'editor';
+  /* 实验室角色(总工 / 配方师 / 打版员 / 业务 / 老板)与系统角色是两列:
+     系统角色管「能进哪些接口」,实验室角色管「配方页里看到多少」。建号时可一并带上,不合法就当没填 */
+  const lr = (LAB_ROLES as readonly string[]).includes(lab_role) ? lab_role : null;
 
   try {
     await ensureInvites(c.db);
     // 占位口令是一段随机值,谁都不知道 —— 账号只能通过邀请链接激活
     const { hash, salt } = await hashPassword(crypto.randomUUID() + crypto.randomUUID());
     const u = await c.db.prepare(
-      `INSERT INTO users (email, pass_hash, pass_salt, role, display_name) VALUES (?,?,?,?,?) RETURNING id`
-    ).bind(String(email).trim().toLowerCase(), hash, salt, r, display_name || null).first<{ id: number }>();
+      `INSERT INTO users (email, pass_hash, pass_salt, role, display_name, lab_role) VALUES (?,?,?,?,?,?) RETURNING id`
+    ).bind(String(email).trim().toLowerCase(), hash, salt, r, display_name || null, lr).first<{ id: number }>();
 
     const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
     await c.db.prepare(`INSERT INTO invites (token_hash, user_id, expires_at) VALUES (?,?,datetime('now','+1 day'))`)
       .bind(await sha256(token), u!.id).run();
-    await logRevision(c.db, 'users', u!.id, null, null, { email, role: r }, c.sess.uid);
+    await logRevision(c.db, 'users', u!.id, null, null, { email, role: r, lab_role: lr }, c.sess.uid);
     return json({ ok: true, id: u!.id, link: `/bohui/invite/?t=${token}` });
   } catch (e) {
     const m = e instanceof Error ? e.message : String(e);
@@ -55,23 +58,35 @@ export const POST: APIRoute = async ({ request }) => {
 export const PATCH: APIRoute = async ({ request }) => {
   const c = await apiGuard(request);
   if (c instanceof Response) return c;
-  const { id, role, password } = (await request.json().catch(() => ({}))) as any;
+  const { id, role, password, lab_role } = (await request.json().catch(() => ({}))) as any;
   if (!id) return json({ ok: false, msg: '缺少 id' }, 400);
 
   if (password !== undefined) {
     // 只能改自己的口令。要给别人重置,走邀请链接,不经手明文
     if (Number(id) !== c.sess.uid) return json({ ok: false, msg: '只能修改自己的口令;给别人重置请用邀请链接' }, 403);
-    if (String(password).length < 6) return json({ ok: false, msg: '口令至少 6 位' }, 400);
+    if (String(password).length < 10) return json({ ok: false, msg: '口令至少 10 位' }, 400);
     const { hash, salt } = await hashPassword(String(password));
     await c.db.prepare(`UPDATE users SET pass_hash=?, pass_salt=? WHERE id=?`).bind(hash, salt, id).run();
     return json({ ok: true });
   }
 
+  /* 实验室角色:null = 收回(非实验室成员)。和系统角色一样「不能改自己」——
+     否则总工能把自己提成老板、老板能把自己降成打版员再喊看不到,留痕就没意义了 */
+  if (lab_role !== undefined) {
+    const deny = requireAdmin(c); if (deny) return deny;
+    if (Number(id) === c.sess.uid) return json({ ok: false, msg: '不能改自己的实验室角色' }, 400);
+    if (lab_role !== null && !(LAB_ROLES as readonly string[]).includes(lab_role)) return json({ ok: false, msg: '实验室角色不合法' }, 400);
+    const before = await c.db.prepare(`SELECT lab_role FROM users WHERE id=?`).bind(id).first();
+    await c.db.prepare(`UPDATE users SET lab_role=? WHERE id=?`).bind(lab_role, id).run();
+    await logRevision(c.db, 'users', id, null, before, { lab_role }, c.sess.uid);
+    return json({ ok: true });
+  }
+
   const deny = requireAdmin(c); if (deny) return deny;
   if (Number(id) === c.sess.uid) return json({ ok: false, msg: '不能改自己的角色' }, 400);
-  if (role !== 'admin' && role !== 'editor') return json({ ok: false, msg: '角色不合法' }, 400);
+  if (!(ROLES as string[]).includes(role)) return json({ ok: false, msg: '角色不合法' }, 400);
   // 降级最后一个管理员会把后台锁死
-  if (role === 'editor') {
+  if (role !== 'admin') {
     const n = (await c.db.prepare(`SELECT COUNT(*) n FROM users WHERE role='admin'`).first<{ n: number }>())?.n ?? 0;
     if (n <= 1) return json({ ok: false, msg: '至少要保留一个管理员' }, 400);
   }

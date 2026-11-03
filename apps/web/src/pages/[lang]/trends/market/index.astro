@@ -1,0 +1,116 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/** 市场快照 —— 电商榜单每日抓取(tools/market/amazon_bestsellers.py → market_snapshots),一页看清「什么在卖、卖多少钱、谁在卖」。
+ *  创始人 2026-09-16:「最好可以生成一个图表展现,有销量走向数据分析」「以世界顶级营销公司的角度来分析系统,可以更多的开发海外客户」。
+ *  所以这一页不是榜单转贴:每个品类给三样 —— 前 10、价格带分布、品牌集中度;快照满 2 天后再给名次走向与新上榜。
+ *  数字全部来自快照表,页面不算任何「估计销量」;图表用 ECharts,数据以 JSON 注入,爬虫读得到表格文本。 */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../../lib/shell';
+import { memo } from '../../../../lib/memo';
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn'; const zh = lang.startsWith('zh');
+const db = (env as any).DB as D1Database | undefined; const tSkip = uiT(lang as any)('a11y.skip');
+const url = new URL(Astro.url); const fCat = (url.searchParams.get('c') ?? '').slice(0, 30);
+const CAT: Record<string, [string, string]> = { beauty: ['美妆总榜', 'Beauty overall'], 'skin-care': ['护肤', 'Skin care'], face: ['面部护肤', 'Facial skin care'], 'face-cleansers': ['洁面', 'Facial cleansers'], sunscreen: ['防晒', 'Sunscreen'], 'hair-care': ['洗护发', 'Hair care'], 'shampoo-conditioner': ['洗发水/护发素', 'Shampoo & conditioner'], 'hair-masks': ['发膜', 'Hair masks'], 'hair-oils': ['护发油', 'Hair oils'], scalp: ['头皮护理', 'Scalp'], makeup: ['彩妆总榜', 'Makeup'], 'makeup-face': ['底妆', 'Face makeup'], 'makeup-eyes': ['眼妆', 'Eye makeup'], 'makeup-lips': ['唇妆', 'Lip makeup'], 'lip-care': ['唇部护理', 'Lip care'] };
+let latest = ''; let days = 0; let rows: any[] = []; let prev: Record<string, number> = {};
+if (db) {
+  try {
+    /* 09-24 C5(代码审计 P0-4):这一页的数据与 ?c= 无关 —— 整包记 1 小时,随便带个 c 值不再每次现算
+       (按日期去重计数一次就是 1.16 万行,整页约 1.2 万行)。 */
+    ({ latest, days, rows, prev } = await memo('mkt-snap', 3600, async () => {
+      let latest = ''; let days = 0; let rows: any[] = []; const prev: Record<string, number> = {};
+      const m = await db.prepare("SELECT MAX(date) d, COUNT(DISTINCT date) n FROM market_snapshots WHERE platform = 'amazon-us'").first<any>();
+      latest = m?.d ?? ''; days = Number(m?.n ?? 0);
+      if (latest) {
+        rows = ((await db.prepare("SELECT s.cat, s.pid, s.rank, s.price, s.rating, s.reviews, p.title, p.brand, p.url, p.img FROM market_snapshots s JOIN market_products p ON p.platform = s.platform AND p.pid = s.pid WHERE s.platform = 'amazon-us' AND s.date = ? ORDER BY s.cat, s.rank").bind(latest).all<any>()).results ?? []) as any[];
+        /* 上一天名次,用来标「新上榜/上升」 —— 只有一天时为空 */
+        const pd = await db.prepare("SELECT MAX(date) d FROM market_snapshots WHERE platform = 'amazon-us' AND date < ?").bind(latest).first<any>();
+        if (pd?.d) for (const r of (((await db.prepare("SELECT cat, pid, rank FROM market_snapshots WHERE platform = 'amazon-us' AND date = ?").bind(pd.d).all<any>()).results ?? []) as any[])) prev[`${r.cat}|${r.pid}`] = Number(r.rank);
+      }
+      return { latest, days, rows, prev };
+    }));
+  } catch { rows = []; }
+}
+const cats = Object.keys(CAT).filter((c) => rows.some((r) => r.cat === c));
+const show = fCat && CAT[fCat] ? [fCat] : cats;
+const L = (c: string) => zh ? (CAT[c]?.[0] ?? c) : (CAT[c]?.[1] ?? c);
+const band = (p: number) => p < 10 ? '<$10' : p < 20 ? '$10–20' : p < 30 ? '$20–30' : p < 50 ? '$30–50' : '$50+';
+const BANDS = ['<$10', '$10–20', '$20–30', '$30–50', '$50+'];
+const stats = Object.fromEntries(show.map((c) => {
+  const rs = rows.filter((r) => r.cat === c && r.price != null);
+  const bands = BANDS.map((b) => rs.filter((r) => band(Number(r.price)) === b).length);
+  const brands: Record<string, number> = {}; for (const r of rows.filter((r) => r.cat === c)) if (r.brand) brands[r.brand] = (brands[r.brand] ?? 0) + 1;
+  const topBrands = Object.entries(brands).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const prices = rs.map((r) => Number(r.price)).sort((a, b) => a - b); const median = prices.length ? prices[Math.floor(prices.length / 2)] : 0;
+  const reviews = rows.filter((r) => r.cat === c).reduce((a, r) => a + Number(r.reviews || 0), 0);
+  const newIn = Object.keys(prev).length ? rows.filter((r) => r.cat === c && prev[`${c}|${r.pid}`] == null).length : null;
+  return [c, { bands, topBrands, median, reviews, newIn, n: rows.filter((r) => r.cat === c).length }];
+}));
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const B = `/${lang}`; const path = `${B}/trends/market/`; const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const T = zh ? { eyebrow: '市场 · 获客', title: `美国 Amazon 美妆榜单每天在卖什么?${cats.length} 个品类的价格带、品牌集中度与名次走向`, lede: `每天抓一次 Amazon 美区 Best Sellers 前 100(${cats.length} 个品类),只记名次、价格、评分、评论数;不估销量、不转评论。看三件事:什么价格带在走量、榜单被哪些品牌占着、谁在快速冲上来。`, kpi: ['最新快照', '快照天数', '品类', '产品数'], all: '全部品类', top: '前 10', price: '价格带分布(前 100)', brand: '品牌集中度(前 100 里占几席)', median: '中位价', reviews: '评论合计', newIn: '今日新上榜', rank: '名次', name: '产品', brandH: '品牌', priceH: '价格', rating: '评分', rev: '评论数', note: '来源:Amazon.com Best Sellers 公开榜单,每日 06:30(北京时间)抓取;名次与评论数为抓取时刻的公开值。走向图在快照满 2 天后出现。本页不构成任何销量估计。', ask: '想做榜上这一类产品?把目标价格带和市场发我们,回你可用配方与包材方案。', cta: '发起询盘', trend: '名次走向(近 14 天)', pending: '快照满 2 天后显示名次走向与新上榜。' }
+             : { eyebrow: 'Market · buyers', title: `What sells on Amazon US Beauty every day? Price bands, brand concentration and rank moves across ${cats.length} categories`, lede: `Amazon US Best Sellers top 100 in ${cats.length} categories, captured daily: rank, price, rating, review count only. No sales estimates, no review text. Three questions: which price band moves volume, which brands hold the list, who is climbing fast.`, kpi: ['Latest snapshot', 'Days captured', 'Categories', 'Products'], all: 'All categories', top: 'Top 10', price: 'Price band distribution (top 100)', brand: 'Brand concentration (seats in top 100)', median: 'Median price', reviews: 'Reviews total', newIn: 'New today', rank: 'Rank', name: 'Product', brandH: 'Brand', priceH: 'Price', rating: 'Rating', rev: 'Reviews', note: 'Source: Amazon.com Best Sellers public lists, captured daily 06:30 Beijing time; ranks and review counts are the public values at capture time. Rank trends appear after 2 days of snapshots. Nothing here is a sales estimate.', ask: 'Want to make a product in one of these categories? Send us the target price band and market; we reply with formula and packaging options.', cta: 'Send an inquiry', trend: 'Rank trend (14 days)', pending: 'Rank trends and new entries appear after two days of snapshots.' };
+const chartData = ldJson({ bands: BANDS, cats: show.map((c) => ({ key: c, label: L(c), bands: (stats as any)[c].bands, brands: (stats as any)[c].topBrands })) });
+---
+<BaseLayout locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.lede} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path} indexable={shell.site?.is_live === 1 && !fCat} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <header class="hd"><p class="eyebrow">{T.eyebrow}</p><h1>{T.title}</h1><p class="lede">{T.lede}</p></header>
+    <ul class="kpi"><li><b>{latest || '—'}</b><span>{T.kpi[0]}</span></li><li><b>{days}</b><span>{T.kpi[1]}</span></li><li><b>{cats.length}</b><span>{T.kpi[2]}</span></li><li><b>{new Set(rows.map((r) => r.pid)).size.toLocaleString()}</b><span>{T.kpi[3]}</span></li></ul>
+    <nav class="tabs"><a class:list={['chip', { on: !fCat }]} href={path}>{T.all}</a>{cats.map((c) => <a class:list={['chip', { on: fCat === c }]} href={`${path}?c=${c}`}>{L(c)}</a>)}</nav>
+    {days < 2 && <p class="note">{T.pending}</p>}
+    {show.map((c) => { const s = (stats as any)[c]; const top = rows.filter((r) => r.cat === c).slice(0, 10); return (
+      <section class="cat" id={c}>
+        <h2>{L(c)} <small>{T.median} ${s.median} · {T.reviews} {s.reviews.toLocaleString()}{s.newIn != null ? ` · ${T.newIn} ${s.newIn}` : ''}</small></h2>
+        <div class="grid">
+          <div class="tbl"><h3>{T.top}</h3><table><thead><tr><th>{T.rank}</th><th>{T.name}</th><th>{T.brandH}</th><th>{T.priceH}</th><th>{T.rating}</th><th>{T.rev}</th></tr></thead><tbody>
+            {top.map((r) => { const p = prev[`${c}|${r.pid}`]; const mv = Object.keys(prev).length ? (p == null ? 'new' : p > Number(r.rank) ? 'up' : p < Number(r.rank) ? 'down' : '') : ''; return (
+              <tr><td class="n">{r.rank}{mv && <i class={mv}>{mv === 'new' ? 'NEW' : mv === 'up' ? '▲' : '▼'}</i>}</td><td><a href={r.url} rel="nofollow noopener" target="_blank">{String(r.title || r.pid).slice(0, 90)}</a></td><td>{r.brand}</td><td class="n">{r.price != null ? `$${r.price}` : '—'}</td><td class="n">{r.rating ?? '—'}</td><td class="n">{r.reviews != null ? Number(r.reviews).toLocaleString() : '—'}</td></tr>); })}
+          </tbody></table></div>
+          <div class="charts"><h3>{T.price}</h3><div class="chart" data-chart="bands" data-cat={c}></div><h3>{T.brand}</h3><div class="chart" data-chart="brands" data-cat={c}></div></div>
+        </div>
+      </section>); })}
+    <p class="note">{T.note}</p>
+    <p class="ask">{T.ask} <a href={`${B}/contact/`}>{T.cta}</a></p>
+  </main>
+  <SiteFooter locale={lang} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} nav={shell.nav} />
+  <script id="market-data" type="application/json" set:html={chartData} is:inline />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.6.0/echarts.min.js" is:inline defer></script>
+  <script is:inline>
+    /* 图只画快照表里的数,不画估计值。ECharts 加载失败时表格照样可读。 */
+    addEventListener('load', () => {
+      try {
+        const d = JSON.parse(document.getElementById('market-data').textContent); if (!window.echarts) return;
+        const dark = matchMedia('(prefers-color-scheme: dark)').matches; const ink = dark ? '#e6ebe8' : '#1b2320';
+        document.querySelectorAll('.chart').forEach((el) => {
+          const cat = d.cats.find((x) => x.key === el.dataset.cat); if (!cat) return; const ch = echarts.init(el, null, { renderer: 'svg' });
+          if (el.dataset.chart === 'bands') ch.setOption({ grid: { left: 40, right: 12, top: 10, bottom: 28 }, xAxis: { type: 'category', data: d.bands, axisLabel: { color: ink } }, yAxis: { type: 'value', axisLabel: { color: ink }, splitLine: { lineStyle: { opacity: .2 } } }, series: [{ type: 'bar', data: cat.bands, itemStyle: { color: '#1f6b4a', borderRadius: [4, 4, 0, 0] }, label: { show: true, position: 'top', color: ink } }] });
+          else ch.setOption({ grid: { left: 110, right: 24, top: 6, bottom: 24 }, xAxis: { type: 'value', axisLabel: { color: ink }, splitLine: { lineStyle: { opacity: .2 } } }, yAxis: { type: 'category', data: cat.brands.map((b) => b[0]).reverse(), axisLabel: { color: ink } }, series: [{ type: 'bar', data: cat.brands.map((b) => b[1]).reverse(), itemStyle: { color: '#4e8f70', borderRadius: [0, 4, 4, 0] }, label: { show: true, position: 'right', color: ink } }] });
+          addEventListener('resize', () => ch.resize());
+        });
+      } catch (e) {}
+    });
+  </script>
+</BaseLayout>
+<style>
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .hd { max-width: 62rem; margin-bottom: 1rem; } .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0 0 .5rem; }
+  h1 { font-size: clamp(1.5rem, 3vw, 2.125rem); line-height: 1.25; margin: 0 0 .5rem; text-wrap: balance; } .lede { margin: 0; opacity: .8; line-height: 1.7; }
+  .kpi { list-style: none; padding: 0; margin: 1rem 0; display: flex; flex-wrap: wrap; gap: .75rem; } .kpi li { border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 10px; padding: .5rem .875rem; min-width: 8rem; } .kpi b { display: block; font-size: 1.25rem; font-variant-numeric: tabular-nums; } .kpi span { font-size: .75rem; opacity: .6; }
+  .tabs { display: flex; flex-wrap: wrap; gap: .375rem; margin: .5rem 0 1.5rem; } .chip { padding: .3rem .75rem; border-radius: 999px; border: 1px solid var(--ck-line, rgba(0,0,0,.14)); text-decoration: none; color: inherit; font-size: .8125rem; } .chip.on { background: var(--ck-accent, #7C4DA8); color: #fff; border-color: transparent; }
+  .cat { margin: 1.5rem 0 2.5rem; } .cat h2 { font-size: 1.25rem; margin: 0 0 .75rem; } .cat h2 small { font-weight: 400; font-size: .8125rem; opacity: .65; margin-left: .5rem; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 1.25rem; } @media (min-width: 64rem) { .grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
+  h3 { font-size: .9375rem; margin: .25rem 0 .5rem; opacity: .8; }
+  .tbl { overflow-x: auto; } table { width: 100%; border-collapse: collapse; font-size: .8125rem; } th, td { text-align: left; padding: .375rem .5rem; border-bottom: 1px solid var(--ck-line, rgba(0,0,0,.08)); vertical-align: top; } th { font-size: .75rem; opacity: .6; } td.n { font-variant-numeric: tabular-nums; white-space: nowrap; } td a { color: inherit; }
+  td i { font-style: normal; font-size: .625rem; margin-left: .25rem; } td i.up { color: #1f6b4a; } td i.down { color: #9b3b2e; } td i.new { color: #b8862b; }
+  .chart { width: 100%; height: 190px; }
+  .note { font-size: .8125rem; opacity: .65; line-height: 1.7; max-width: 62rem; } .ask { margin-top: 1.5rem; font-size: .9375rem; }
+  @media (min-width: 900px) { main { padding: 2rem 1.5rem 4rem; } }
+</style>

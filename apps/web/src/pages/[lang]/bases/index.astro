@@ -1,0 +1,201 @@
+---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 原料基地企业线索 —— 创始人 2026-09-11 交来的《草本原料基地.xlsx》:74 家企业 / 基地,三个组别,8 家首批优选。
+ *
+ * 与 /origin/ 的产区墙不是一回事:产区墙是**地理事实**(哪味原料主产在哪),这一页是**供应侧线索**(哪家企业在那儿做、
+ * 做到什么深度、有什么证、还有什么要核)。措辞上刻意分开:这里每一条都是「线索 · 持续核实」,不是「我们的基地」——
+ * 创始人的红线是不夸大合作数,签约前不能把人家写成自家基地。
+ *
+ * 字段照原表:组别 / 企业 · 基地 / 主营品种 / 产地 / 深加工能力 / 规模 · 认证 / 化妆品落地 / 核心优势 / 适配卖点 / 风险 · 待核实 / 首批优选。
+ * 主营品种能对上草本原料库的,直接挂过去。数据在 D1 `herb_bases`,原表存 data/bases/。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const url = new URL(Astro.url);
+const fGrp = (url.searchParams.get('g') ?? '').trim().slice(0, 20);
+const onlyPick = url.searchParams.get('pick') === '1';
+
+let rows: any[] = [];
+let herbs: { slug: string; name_zh: string }[] = [];
+if (db) {
+  try {
+    rows = ((await db.prepare('SELECT * FROM herb_bases ORDER BY id').all<any>()).results ?? []) as any[];
+    herbs = ((await db.prepare('SELECT slug, name_zh FROM ingredients WHERE status = \'published\'').all<any>()).results ?? []) as any[];
+  } catch { rows = []; }
+}
+const groups = [...new Set(rows.map((r) => String(r.grp)))];
+/* 品种 × 产区 单页(bases/[id].astro):同组共用组里最小 id 的地址 */
+const canonOf: Record<number, number> = {};
+for (const r of rows) { const k = `${r.crop}|${r.region}`; const m = rows.filter((x) => `${x.crop}|${x.region}` === k).map((x) => Number(x.id)); canonOf[r.id] = Math.min(...m); }
+const shown = rows.filter((r) => (!fGrp || r.grp === fGrp) && (!onlyPick || r.shortlist));
+const picks = rows.filter((r) => r.shortlist).length;
+/* 主营品种 → 草本原料库:按名字子串对(「重瓣红玫瑰」对上「玫瑰」,「绿茶/茶多酚」对上「绿茶」) */
+const herbLink = (crop: string) => {
+  const c = String(crop || '');
+  const hit = herbs.filter((h) => h.name_zh && c.includes(h.name_zh)).sort((a, b) => b.name_zh.length - a.name_zh.length)[0];
+  return hit ? { href: `/${lang}/ingredients/${hit.slug}/`, name: hit.name_zh } : null;
+};
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/bases/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const B = `/${lang}`;
+
+const T = zh ? {
+  eyebrow: '源头 · 原料',
+  title: `原料基地企业线索 · ${rows.length} 家`,
+  lede: '不是「优质产区」四个字,是一家一家的企业和基地:在哪、种什么、能加工到哪一步、有什么规模和认证、在化妆品上落过什么、优势是什么、还有什么要核。产区墙回答「哪味原料主产在哪」,这一页回答「找谁拿」。',
+  note: `线索 · 持续核实中。这里是供应侧的候选名单,不代表已签约合作;「首批优选」${picks} 家是下一步尽调的优先对象。产区地理见「原料溯源」。`,
+  all: '全部', pick: '首批优选', grp: '组别', crop: '主营品种', region: '产地', proc: '深加工能力', scale: '规模 · 认证', cos: '化妆品落地',
+  edge: '核心优势', sell: '适配卖点', risk: '风险 · 待核实', lookup: '看原料档案', pickBadge: '首批优选',
+  chainH: '这一页在链路上的位置',
+  chainNote: '① 源头·原料:产区墙给地理,这一页给企业,草本原料库给每味原料的机理与配伍,各国目录给它能不能进目的市场 —— 四个入口互相挂链接。',
+  links: [
+    { href: `${B}/origin/`, label: '原料溯源 · 91 个产区' }, { href: `${B}/ingredients/`, label: '草本原料库' },
+    { href: `${B}/inci/`, label: '各国原料目录' }, { href: `${B}/graph/`, label: '知识图谱' },
+  ],
+  ask: '要某味原料的基地对接与批次报告?告诉我们品种与目标市场,我们按线索表推进核实。',
+  empty: '数据整理中。',
+} : {
+  eyebrow: 'Source · botanicals',
+  title: `Botanical base leads · ${rows.length} suppliers`,
+  lede: 'Not "premium regions" but named companies and bases: where they are, what they grow, how far they process, their scale and certifications, what they have delivered for cosmetics, their edge and what still needs checking. The origin wall says where a botanical grows; this page says whom to ask.',
+  note: `Leads under ongoing verification. This is a sourcing shortlist, not a list of signed partners; the ${picks} "first-batch picks" are next in line for due diligence.`,
+  all: 'All', pick: 'First-batch picks', grp: 'Group', crop: 'Main crop', region: 'Region', proc: 'Processing depth', scale: 'Scale · certifications', cos: 'Cosmetic track record',
+  edge: 'Edge', sell: 'Fits claims', risk: 'Risks · to verify', lookup: 'Botanical file', pickBadge: 'First-batch pick',
+  chainH: 'Where this sits in the chain',
+  chainNote: 'Stage 1, source: the origin wall gives geography, this page gives companies, the botanical library gives mechanism and compatibility, the inventories say whether it can enter the target market.',
+  links: [
+    { href: `${B}/origin/`, label: 'Origins · 91 regions' }, { href: `${B}/ingredients/`, label: 'Botanical library' },
+    { href: `${B}/inci/`, label: 'Ingredient inventories' }, { href: `${B}/graph/`, label: 'Knowledge graph' },
+  ],
+  ask: 'Need a base contact and batch reports for a botanical? Tell us the crop and target market and we run the verification.',
+  empty: 'Data being compiled.',
+};
+const GRP_EN: Record<string, string> = { '精油/芳香': 'Essential oils & aromatics', '活性植提': 'Active botanical extracts', '发酵/多糖': 'Ferments & polysaccharides' };
+
+const ld = [
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}/${lang}/` },
+    { '@type': 'ListItem', position: 2, name: T.title, item: origin + path } ] },
+  { '@context': 'https://schema.org', '@type': 'ItemList', name: T.title, description: T.lede,
+    itemListElement: rows.slice(0, 80).map((r, i) => ({ '@type': 'ListItem', position: i + 1, name: `${r.name} · ${r.crop} · ${r.region}` })) },
+];
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1 && !fGrp && !onlyPick} brandColor={shell.site?.brand_color}
+  theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+      <p class="note">{T.note}</p>
+    </header>
+
+    <nav class="tabs" aria-label={T.grp}>
+      <a class:list={['chip', { on: !fGrp && !onlyPick }]} href={path}>{T.all} <i>{rows.length}</i></a>
+      {groups.map((g) => (
+        <a class:list={['chip', { on: fGrp === g }]} href={`${path}?g=${encodeURIComponent(g)}`}>{zh ? g : GRP_EN[g] ?? g} <i>{rows.filter((r) => r.grp === g).length}</i></a>
+      ))}
+      <a class:list={['chip', 'pickchip', { on: onlyPick }]} href={`${path}?pick=1`}>{T.pick} <i>{picks}</i></a>
+    </nav>
+
+    {shown.length === 0 && <p class="intro">{T.empty}</p>}
+    <ol class="cards">
+      {shown.map((r) => {
+        const hl = herbLink(r.crop);
+        return (
+          <li class="card" id={`b${r.id}`}>
+            <p class="who"><span class="no">#{r.id}</span> {zh ? r.grp : GRP_EN[r.grp] ?? r.grp}{r.shortlist && <b class="pk">{T.pickBadge}{zh && r.shortlist && r.shortlist !== '是' ? ` · ${r.shortlist}` : ''}</b>}</p>
+            <h2>{r.name}</h2>
+            <p class="law"><b>{zh ? <a href={`${B}/bases/${canonOf[r.id]}/`}>{r.crop} · {r.region}</a> : `${r.crop} · ${r.region}`}</b>{hl && <a class="reg" href={hl.href}>{T.lookup}: {hl.name}</a>}</p>
+            <dl>
+              {r.processing && (<><dt>{T.proc}</dt><dd>{r.processing}</dd></>)}
+              {r.scale && (<><dt>{T.scale}</dt><dd>{r.scale}</dd></>)}
+              {r.cosmetic && (<><dt>{T.cos}</dt><dd>{r.cosmetic}</dd></>)}
+              {r.edge && (<><dt>{T.edge}</dt><dd>{r.edge}</dd></>)}
+              {r.selling && (<><dt>{T.sell}</dt><dd>{r.selling}</dd></>)}
+              {r.risk && (<><dt>{T.risk}</dt><dd class="muted">{r.risk}</dd></>)}
+            </dl>
+          </li>
+        );
+      })}
+    </ol>
+
+    <section class="chain">
+      <h2>{T.chainH}</h2>
+      <p class="intro">{T.chainNote}</p>
+      <ul class="links">{T.links.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
+    </section>
+    <p class="ask">{T.ask} <a href={`${B}/contact/`}>{zh ? '发询盘' : 'Send an inquiry'}</a></p>
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  .law b a { color: inherit; text-decoration: underline; text-underline-offset: .2em; } .law b a:hover { color: var(--ck-accent, #7C4DA8); }
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .hd { display: grid; gap: .75rem; margin-bottom: 1.5rem; max-width: 62rem; }
+  .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: clamp(1.625rem, 3vw, 2.25rem); line-height: 1.24; margin: 0; text-wrap: balance; }
+  .lede { font-size: 1rem; line-height: 1.75; opacity: .85; margin: 0; }
+  .note { font-size: .875rem; line-height: 1.7; opacity: .62; margin: 0; border-left: 2px solid currentColor; padding-left: .75rem; }
+  .intro { margin: 0 0 1rem; font-size: .9375rem; line-height: 1.7; opacity: .72; max-width: 60rem; }
+  .tabs { display: flex; flex-wrap: wrap; gap: .375rem; margin: 0 0 1.5rem; }
+  .chip { min-height: 44px; display: inline-flex; align-items: center; gap: .375rem; padding: 0 .875rem; font-size: .9375rem;
+          border-radius: 999px; text-decoration: none; color: inherit; border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
+  .chip i { font-style: normal; font-size: .8125rem; opacity: .6; font-variant-numeric: tabular-nums; }
+  .chip.on { background: var(--ck-ink, #111); color: var(--ck-paper, #fff); }
+  .pickchip { border-style: dashed; }
+  .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; counter-reset: none; }
+  .card { padding: 1rem 1.125rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 12px; scroll-margin-top: 3.5rem;  /* 09-17 「太多空余」 */ }
+  .who { margin: 0; font-size: .8125rem; letter-spacing: .04em; opacity: .7; display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+  .no { font-variant-numeric: tabular-nums; opacity: .6; }
+  .pk { font-size: .75rem; padding: .0625rem .5rem; border-radius: 999px; background: var(--ck-ink, #111); color: var(--ck-paper, #fff); font-weight: 600; }
+  .card h2 { font-size: 1.125rem; margin: .125rem 0 .375rem; line-height: 1.35; }
+  .law { margin: 0 0 .75rem; font-size: .9375rem; line-height: 1.6; }
+  .reg { display: inline-block; margin-left: .5rem; font-size: .8125rem; padding: .0625rem .5rem; border-radius: 999px; border: 1px solid var(--ck-line, rgba(0,0,0,.18)); text-decoration: none; color: inherit; }
+  .card dl { margin: 0; display: grid; grid-template-columns: 1fr; gap: .25rem; }
+  .card dt { font-size: .8125rem; opacity: .55; }
+  .card dd { margin: 0 0 .5rem; font-size: .9375rem; line-height: 1.7; }
+  .card dd.muted { opacity: .65; font-size: .875rem; }
+  .chain { margin: 2.5rem 0 0; padding: 1.25rem; border-radius: 14px; border: 1px solid var(--ck-line, rgba(0,0,0,.14)); }
+  .chain h2 { font-size: 1.125rem; margin: 0 0 .375rem; }
+  .links { list-style: none; padding: 0; margin: .75rem 0 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .links a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 .875rem; font-size: .9375rem; border-radius: 10px;
+             text-decoration: none; color: inherit; border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
+  .ask { margin: 1.75rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
+  @media (min-width: 900px) {
+    main { padding: 2rem 1.5rem 4rem; }
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card dl { grid-template-columns: 7rem 1fr; gap: .25rem .875rem; align-items: baseline; }
+    .card dd { margin: 0 0 .375rem; }
+  }
+  @media (min-width: 1400px) { .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+</style>

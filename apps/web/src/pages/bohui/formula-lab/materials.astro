@@ -1,0 +1,350 @@
+---
+/**
+ * 配方实验室 · 原料库(2026-09-18 创始人:「还有要可以改配方的原料,多选原料和价格」「晚点资料就会导入」)。
+ *
+ * 列表在服务端直接查 lab_materials(q / status / page 走 URL,SQL 参数绑定,48/页);?export=1 把当前筛选结果整体导出 CSV。
+ * 改价 / 用量 / 供应商 / 牌号 / 备注:单元格点一下变输入框,失焦或回车整行 POST op=material_save;
+ * 新增 = 表首插空行;删除 = op=material_delete(status 变 off,不物理删)。
+ * 导入:浏览器端解析 CSV(UTF-8 / BOM / 引号内逗号),按表头猜字段并让人核对(创始人:「列名未知,导入器要能按表头猜列并让人核对」),
+ *      xlsx 不引第三方库,提示另存 CSV 或走 tools/lab/materials-import.py。价格只认导入或人工填,页面不编数(09-17:商务条款不许自己编)。
+ * lab 全角色可看;chief / formulator / boss 能改、新增、导入;purchasing / finance 只改价 / 供应商 / 备注并做两级确认
+ * (2026-09-18 12:5x 创始人:「价格由财务和采购确认,我们不可以瞎编」—— 只有财务已确认的价进配方成本当准数)。
+ */
+import LabShell from '../../../layouts/LabShell.astro';
+import { pageGuard } from '../../../lib/guard';
+import { canRecipe, canMaterial, canConfirmPrice, canCost, stripCost, PRICE_STATUS_ZH, type PriceStatus } from '../../../lib/formula-lab';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+const labRole = c.sess.lab_role ?? null;
+const writable = canMaterial(labRole);
+const full = canRecipe(labRole);                       // 新增 / 导入 / 停用 / 改名:总工、配方师、老板
+const priceOnly = writable && !full;                   // 采购 / 财务:单元格只开 单价 / 供应商 / 备注
+const canBuy = canConfirmPrice(labRole, 'purchasing');
+const canFin = canConfirmPrice(labRole, 'finance');
+const showCost = canCost(labRole);                    // 创始人 09-18 15:5x「原料成本不可以公开,只有技术研发部和财务、老板看到」:无价角色三列不渲染、导出不带、data-row 不留
+/* 价格状态胶囊:待确认(灰)/ 采购已确认(蓝)/ 财务已确认(绿);title 带确认人与时间 */
+const PS_CLS: Record<string, string> = { draft: 'p-wait', purchasing_confirmed: 'p-buy', finance_confirmed: 'p-ok' };
+const psOf = (r: any) => (r.price_status as PriceStatus) in PRICE_STATUS_ZH ? (r.price_status as PriceStatus) : 'draft';
+const psTitle = (r: any) => [r.price_confirmed_by && `采购确认:${r.price_confirmed_by} ${r.price_confirmed_at ?? ''}`, r.finance_confirmed_by && `财务确认:${r.finance_confirmed_by} ${r.finance_confirmed_at ?? ''}`].filter(Boolean).join('\n') || '还没人确认';
+
+const u = Astro.url.searchParams;
+const q = (u.get('q') ?? '').trim().slice(0, 80);
+const status = u.get('status') === 'off' ? 'off' : 'active';
+const page = Math.max(1, Number(u.get('page')) || 1);
+const PER = 48;
+
+/* 表还没建(迁移 0090 由主线应用)时页面不该 500,每句兜空 */
+const none = () => ({ results: [] as any[] });
+const where: string[] = ['status = ?'];
+const args: any[] = [status];
+if (q) { where.push('(name_zh LIKE ? OR trade_name LIKE ? OR inci LIKE ? OR supplier LIKE ? OR code LIKE ?)'); const like = `%${q}%`; args.push(like, like, like, like, like); }
+const W = `WHERE ${where.join(' AND ')}`;
+const COLS = 'id,code,name_zh,trade_name,inci,supplier,cas,function_zh,use_min,use_max,price,price_unit,price_at,moq,lead_days,origin,note,status,updated_at,price_status,price_confirmed_by,price_confirmed_at,finance_confirmed_by,finance_confirmed_at';
+
+if (u.get('export') === '1') {
+  /* ④ 导出:当前筛选结果全部(不分页),UTF-8 BOM 方便 Excel 直接打开;末三列是价格状态与两级确认人·时间(创始人 09-18「价格由财务和采购确认」) */
+  const { results } = await c.db.prepare(`SELECT ${COLS} FROM lab_materials ${W} ORDER BY name_zh LIMIT 5000`).bind(...args).all<any>().catch(none);
+  const H = ['编码', '原料名', '牌号', 'INCI', '供应商', 'CAS', '功能', '用量下限%', '用量上限%', ...(showCost ? ['单价', '单价单位', '报价日期'] : []), '起订', '交期天', '产地', '备注', '状态', ...(showCost ? ['价格状态', '采购确认', '财务确认'] : [])];
+  const K = ['code', 'name_zh', 'trade_name', 'inci', 'supplier', 'cas', 'function_zh', 'use_min', 'use_max', ...(showCost ? ['price', 'price_unit', 'price_at'] : []), 'moq', 'lead_days', 'origin', 'note', 'status'];
+  const cell = (v: any) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const who = (by: any, at: any) => (by ? `${by} ${at ?? ''}`.trim() : '');
+  const line = (r: any) => [...K.map((k) => r[k]), ...(showCost ? [PRICE_STATUS_ZH[psOf(r)], who(r.price_confirmed_by, r.price_confirmed_at), who(r.finance_confirmed_by, r.finance_confirmed_at)] : [])].map(cell).join(',');
+  return new Response('\uFEFF' + [H.join(','), ...results.map(line)].join('\r\n'), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="materials-${status}.csv"` } });
+}
+
+const { results: rows } = await c.db.prepare(`SELECT ${COLS} FROM lab_materials ${W} ORDER BY name_zh LIMIT ? OFFSET ?`)
+  .bind(...args, PER, (page - 1) * PER).all<any>().catch(none);
+const stat = await c.db.prepare(`SELECT COUNT(*) AS n, SUM(price IS NOT NULL) AS priced, SUM(price_status='finance_confirmed') AS fin FROM lab_materials ${W}`).bind(...args).first<{ n: number; priced: number; fin: number }>().catch(() => null);
+const total = stat?.n ?? 0, priced = stat?.priced ?? 0, fin = stat?.fin ?? 0;
+const pages = Math.max(1, Math.ceil(total / PER));
+const link = (p: number) => `?q=${encodeURIComponent(q)}&status=${status}&page=${p}`;
+const range = (r: any) => r.use_min == null && r.use_max == null ? '' : r.use_min != null && r.use_max != null ? `${r.use_min}–${r.use_max}` : r.use_min != null ? `≥${r.use_min}` : `≤${r.use_max}`;
+---
+
+<LabShell title="原料库" email={c.sess.email} tenant={c.tenant}>
+  <div class="lab" data-writable={writable ? '1' : ''} data-priceonly={priceOnly ? '1' : ''} data-buy={canBuy ? '1' : ''} data-fin={canFin ? '1' : ''}>
+    <aside class="lab-side">
+      <a class="btn pri new" href="/bohui/formula-lab/">+ 新建对话</a>
+      <a class="pitem on" href="/bohui/formula-lab/materials/"><b>原料库</b><span>名称 · INCI · 供应商 · 单价 · 用量范围</span></a>
+      <a class="wiki" href="/bohui/formulas/">配方库</a>
+      <a class="wiki" href="/bohui/formula-lab/wiki/">配方维基</a>
+    </aside>
+
+    <main class="lab-main">
+      <section class="pcard">
+        <form class="bar" method="get">
+          <input name="q" value={q} placeholder="搜原料名 / INCI / 供应商 / 牌号 / 编码" style="max-width:20rem" />
+          <select name="status"><option value="active" selected={status === 'active'}>在用</option><option value="off" selected={status === 'off'}>已停用</option></select>
+          <button class="btn pri" type="submit">筛选</button>
+          {q && <a class="btn" href={`/bohui/formula-lab/materials/?status=${status}`}>清空</a>}
+          <span class="soft stat">共 {total} 种{showCost && <> · 有价 {priced} 种 · 财务确认 {fin} 种 · 无价 {total - priced} 种</>}</span>
+          <span class="ops-r">
+            {full && <button class="btn pri" type="button" id="b-new">+ 新增原料</button>}
+            {full && <button class="btn" type="button" id="b-imp">导入 CSV/Excel</button>}
+            <a class="btn" href={`/bohui/formula-lab/materials/?q=${encodeURIComponent(q)}&status=${status}&export=1`}>导出 CSV</a>
+          </span>
+        </form>
+        {!writable && <p class="soft">你的角色只能查看;改价需要总工、配方师、老板、采购或财务账号,新增 / 导入需要总工、配方师或老板账号。</p>}
+        {priceOnly && <p class="soft">采购 / 财务账号:只能改单价、供应商、备注并做确认;改价后状态退回「待确认」,需采购确认后财务再确认(创始人:价格由财务和采购确认,不可以瞎编)。</p>}
+        <p class="soft" id="hint" hidden>单价、用量范围、供应商、牌号、备注:点单元格直接改,回车或点别处保存;删除只是停用,不物理删。价格只认导入或人工填,系统不编数;只有「财务已确认」的价进配方成本当准数。</p>
+
+        <table class="mat" id="mat">
+          <thead><tr>
+            <th style="width:6rem">编码</th><th>中文名</th><th style="width:8rem">牌号</th><th>INCI</th><th style="width:9rem">供应商</th>
+            <th style="width:6.5rem">用量范围 %</th>{showCost && <><th style="width:6rem" class="num">单价(元/kg)</th><th style="width:6rem">报价日期</th><th style="width:6.5rem">价格状态</th></>}<th style="width:8rem">备注</th><th style="width:4rem">状态</th><th style="width:9rem"></th>
+          </tr></thead>
+          <tbody id="rows">
+            {rows.length === 0 && <tr><td colspan="12" class="empty">{q ? '没有匹配的原料。' : '原料库还是空的,资料到了用「导入 CSV/Excel」灌进来。'}</td></tr>}
+            {rows.map((r: any) => (
+              <tr data-id={r.id} data-row={JSON.stringify(showCost ? r : stripCost(r))}>
+                <td><code>{r.code ?? ''}</code></td>
+                <td><b>{r.name_zh}</b>{r.function_zh && <span class="soft"> · {r.function_zh}</span>}</td>
+                <td class="ed" data-k="trade_name">{r.trade_name ?? ''}</td>
+                <td class="inci">{r.inci}</td>
+                <td class="ed" data-k="supplier">{r.supplier ?? ''}</td>
+                <td class="ed" data-k="range">{range(r)}</td>
+                {/* 财务已确认的价带锁;改价前 confirm「会退回待确认」(创始人 09-18「价格由财务和采购确认,我们不可以瞎编」) */}
+                {showCost && <>
+                <td class:list={['ed num', { none: r.price == null, locked: psOf(r) === 'finance_confirmed' }]} data-k="price" title={psOf(r) === 'finance_confirmed' ? '财务已确认价;改价会退回待确认' : undefined}>{r.price == null ? '—' : r.price}</td>
+                <td class="soft pa">{r.price_at ?? ''}</td>
+                <td class="ps"><span class:list={['pill', PS_CLS[psOf(r)]]} title={psTitle(r)}>{PRICE_STATUS_ZH[psOf(r)]}</span></td>
+                </>}
+                <td class="ed soft" data-k="note">{r.note ?? ''}</td>
+                <td><span class:list={['pill', r.status === 'active' ? 'p-ok' : 'p-wait']}>{r.status === 'active' ? '在用' : '停用'}</span></td>
+                <td class="acts">
+                  {canBuy && r.status === 'active' && r.price != null && psOf(r) === 'draft' && <button class="btn sm cf" data-level="purchasing" type="button">采购确认</button>}
+                  {canFin && r.status === 'active' && r.price != null && psOf(r) === 'purchasing_confirmed' && <button class="btn sm cf" data-level="finance" type="button">财务确认</button>}
+                  {full && r.status === 'active' && <button class="btn sm danger del" type="button">停用</button>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {pages > 1 && <div class="pager">
+          {page > 1 && <a href={link(page - 1)}>‹ 上一页</a>}<span>{page} / {pages}</span>{page < pages && <a href={link(page + 1)}>下一页 ›</a>}
+        </div>}
+      </section>
+    </main>
+  </div>
+
+  <dialog id="imp">
+    <h3>导入原料表</h3>
+    <p class="soft">选 CSV(UTF-8,Excel「另存为 CSV UTF-8」即可)。xlsx 不在浏览器里解析:请另存为 CSV,或用后台脚本 tools/lab/materials-import.py。表头会自动猜字段,请核对每列对应关系。</p>
+    <div class="row"><input type="file" id="imp-file" accept=".csv,.txt,.xlsx,.xls" style="width:auto" /><span class="soft" id="imp-msg"></span></div>
+    <div id="imp-map" hidden>
+      <table class="map"><thead><tr><th>表头</th><th>对应字段</th><th>前 5 行样例</th></tr></thead><tbody id="imp-cols"></tbody></table>
+      <div class="ops"><button class="btn" type="button" id="imp-close">取消</button><button class="btn pri" type="button" id="imp-go">导入</button></div>
+    </div>
+    <div id="imp-done" class="note info" hidden></div>
+  </dialog>
+  <div id="toast" class="toast" hidden></div>
+
+  <style>
+    :global(html){font-size:18px} :global(body){font-size:1rem}
+    .lab{display:grid;grid-template-columns:15rem minmax(0,1fr);gap:1rem;max-width:112.5rem;margin:0 auto;padding:1rem}
+    .lab-side{display:flex;flex-direction:column;gap:.625rem;min-width:0} .new{text-align:center}
+    .pitem{display:grid;gap:.125rem;padding:.5rem .625rem;border-radius:var(--ad-r-s);text-decoration:none;color:var(--ad-ink);font-size:.8125rem;border:1px solid transparent}
+    .pitem.on{background:var(--ad-accent-soft)} .pitem b{font-weight:600} .pitem>span{color:var(--ad-soft);font-size:.75rem}
+    .wiki{font-size:.75rem;color:var(--ad-faint);text-decoration:none;padding:.25rem .625rem} .wiki:hover{color:var(--ad-accent)}
+    .lab-main{display:flex;flex-direction:column;gap:1rem;min-width:0}
+    .pcard{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:var(--ad-r);padding:.875rem 1rem;min-width:0;box-shadow:var(--ad-shadow)}
+    .soft{font-size:.8125rem;color:var(--ad-soft)} .row{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+    .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:.625rem;flex-wrap:wrap} .bar input,.bar select{width:auto}
+    .stat{margin-left:.5rem} .ops-r{margin-left:auto;display:flex;gap:.5rem}
+    .btn.sm{padding:.25rem .625rem;font-size:.75rem}
+    table.mat{font-size:.8125rem;box-shadow:none} table.mat th,table.mat td{padding:.375rem .5rem;vertical-align:middle}
+    table.mat td.inci{font-size:.75rem;color:var(--ad-soft)} td.num{text-align:right} td.none{color:var(--ad-faint)}
+    td.locked::before{content:'🔒';font-size:.6875rem;margin-right:.25rem} .p-buy{background:#E3ECFA;color:#1F4E9E} td.acts{white-space:nowrap} td.acts .btn+.btn{margin-left:.25rem}
+    .lab[data-writable="1"] td.ed{cursor:text} .lab[data-writable="1"] td.ed:hover{background:var(--ad-sunk)}
+    td.ed input{width:100%;box-sizing:border-box;font-size:.8125rem;padding:.125rem .375rem}
+    tr.saved td{background:var(--ad-ok-soft);transition:background 1.5s} tr.new td{background:var(--ad-accent-soft)}
+    td.empty{text-align:center;color:var(--ad-soft);padding:2rem}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1rem;font-size:.8125rem;color:var(--ad-soft)}
+    dialog{border:0;border-radius:12px;padding:1.5rem;width:min(52rem,94vw);box-shadow:0 24px 64px -20px rgb(0 0 0/.4)} dialog::backdrop{background:rgb(0 0 0/.4)}
+    dialog h3{margin:0 0 .5rem;font-size:1rem} dialog>p{margin:0 0 .75rem}
+    table.map{font-size:.75rem;margin-top:.75rem;box-shadow:none} table.map td,table.map th{padding:.25rem .5rem} table.map select{width:auto;font-size:.75rem} table.map td.smp{color:var(--ad-soft);max-width:22rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ops{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.75rem}
+    .toast{position:fixed;right:1.25rem;bottom:1.25rem;background:#10131a;color:#fff;padding:.625rem 1rem;border-radius:7px;font-size:.8125rem;z-index:9} .toast.bad{background:#8A2018}
+    @media (max-width:60rem){.lab{grid-template-columns:1fr}}
+    [hidden]{display:none !important}
+  </style>
+
+  <script is:inline>
+    const $ = (id) => document.getElementById(id);
+    const toast = $('toast');
+    const say = (m, bad) => { toast.textContent = m; toast.className = 'toast' + (bad ? ' bad' : ''); toast.hidden = false; setTimeout(() => { toast.hidden = true; }, 4000); };
+    const post = (b) => fetch('/api/admin/formula-lab', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) })
+      .then((r) => r.json()).catch(() => ({ ok: false, msg: '网络错误,请重试' }));
+    const lab = document.querySelector('.lab');
+    const writable = lab.dataset.writable === '1', priceOnly = lab.dataset.priceonly === '1', canBuy = lab.dataset.buy === '1', canFin = lab.dataset.fin === '1';
+    const rows = $('rows');
+    if (writable && !priceOnly) $('hint').hidden = false;
+    // 价格状态(创始人 09-18「价格由财务和采购确认,我们不可以瞎编」):胶囊 + 锁 + 确认按钮,整行按 r 重画;与 SSR 同一口径
+    const PS_ZH = { draft: '待确认', purchasing_confirmed: '采购已确认', finance_confirmed: '财务已确认' }, PS_CLS = { draft: 'p-wait', purchasing_confirmed: 'p-buy', finance_confirmed: 'p-ok' };
+    const psOf = (r) => (r.price_status in PS_ZH ? r.price_status : 'draft');
+    const renderStatus = (tr, r) => {
+      const ps = psOf(r), pill = tr.querySelector('td.ps span'), pc = tr.querySelector('[data-k="price"]');
+      if (pill) { pill.className = 'pill ' + PS_CLS[ps]; pill.textContent = PS_ZH[ps]; pill.title = [r.price_confirmed_by && `采购确认:${r.price_confirmed_by} ${r.price_confirmed_at || ''}`, r.finance_confirmed_by && `财务确认:${r.finance_confirmed_by} ${r.finance_confirmed_at || ''}`].filter(Boolean).join('\n') || '还没人确认'; }
+      if (pc) { pc.classList.toggle('locked', ps === 'finance_confirmed'); pc.title = ps === 'finance_confirmed' ? '财务已确认价;改价会退回待确认' : ''; }
+      tr.querySelectorAll('button.cf').forEach((b) => b.remove());
+      const acts = tr.querySelector('td.acts'); if (!acts || r.status === 'off' || r.price == null) return;
+      const mk = (level, text) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn sm cf'; b.dataset.level = level; b.textContent = text; acts.prepend(b); };
+      if (canFin && ps === 'purchasing_confirmed') mk('finance', '财务确认');
+      if (canBuy && ps === 'draft') mk('purchasing', '采购确认');
+    };
+
+    // 「1-5」「≥0.5」「0.1~2%」→ [min,max];价格只认人填的数,不编
+    const parseRange = (s) => {
+      const m = String(s || '').replace(/%/g, '').match(/-?\d+(\.\d+)?/g) || [];
+      if (!m.length) return [null, null];
+      if (/^[\s≥>]/.test(s)) return [Number(m[0]), null];
+      if (/^[\s≤<]/.test(s)) return [null, Number(m[0])];
+      return m.length >= 2 ? [Number(m[0]), Number(m[1])] : [Number(m[0]), Number(m[0])];
+    };
+    const numOr = (s) => { const t = String(s ?? '').trim(); if (t === '' || t === '—') return null; const n = Number(t); return Number.isFinite(n) ? n : NaN; };
+    const rowData = (tr) => { try { return JSON.parse(tr.dataset.row || '{}'); } catch { return {}; } };
+    const rangeText = (r) => r.use_min == null && r.use_max == null ? '' : r.use_min != null && r.use_max != null ? `${r.use_min}–${r.use_max}` : r.use_min != null ? `≥${r.use_min}` : `≤${r.use_max}`;
+
+    // ② 整行保存(单元格改完 → material_save 整行 upsert)
+    const saveRow = async (tr) => {
+      const r = rowData(tr);
+      if (!r.name_zh || !r.inci) return say('中文名和 INCI 必填', true);
+      if (r.price != null && (Number.isNaN(r.price) || r.price < 0)) return say('单价要是数字', true);
+      const d = await post({ op: 'material_save', ...r });
+      if (!d.ok) return say(d.msg || '没存成', true);
+      if (d.id && !r.id) { r.id = d.id; tr.dataset.id = d.id; }
+      if (d.price_at) r.price_at = d.price_at;
+      if (d.price_status === 'draft') { r.price_status = 'draft'; r.price_confirmed_by = r.price_confirmed_at = r.finance_confirmed_by = r.finance_confirmed_at = null; }   // 接口:价真变了才退回待确认
+      renderStatus(tr, r);
+      tr.dataset.row = JSON.stringify(r);
+      tr.classList.remove('new'); tr.classList.add('saved'); setTimeout(() => tr.classList.remove('saved'), 1500);
+      const pa = tr.querySelector('td.pa'); if (pa) pa.textContent = r.price_at || '';
+      return true;
+    };
+    const render = (td, r) => {
+      const k = td.dataset.k;
+      td.textContent = k === 'range' ? rangeText(r) : k === 'price' ? (r.price == null ? '—' : String(r.price)) : (r[k] ?? '');
+      td.classList.toggle('none', k === 'price' && r.price == null);
+    };
+    const edit = (td) => {
+      if (!writable || td.querySelector('input')) return;
+      const tr = td.closest('tr'), r = rowData(tr), k = td.dataset.k;
+      if (priceOnly && !['price', 'supplier', 'note'].includes(k)) return say('采购 / 财务账号只能改单价、供应商、备注', true);
+      if (k === 'price' && psOf(r) === 'finance_confirmed' && !confirm('这条是财务已确认价,改价会退回「待确认」,需采购与财务重新确认。继续?')) return;
+      const inp = document.createElement('input');
+      inp.value = k === 'range' ? rangeText(r).replace('–', '-') : k === 'price' ? (r.price == null ? '' : r.price) : (r[k] ?? '');
+      inp.placeholder = { price: '元/kg', range: '如 1-5', supplier: '供应商', trade_name: '牌号', note: '备注', name_zh: '原料名', inci: 'INCI', code: '编码' }[k] || '';
+      td.textContent = ''; td.appendChild(inp); inp.focus(); inp.select();
+      let done = false;
+      const commit = async (cancel) => {
+        if (done) return; done = true;
+        if (!cancel) {
+          const v = inp.value.trim();
+          if (k === 'range') { const [a, b] = parseRange(v); r.use_min = a; r.use_max = b; }
+          else if (k === 'price') { const n = numOr(v); if (Number.isNaN(n)) { say('单价要是数字', true); done = false; return inp.focus(); } if (n !== r.price) r.price_at = new Date().toISOString().slice(0, 10); r.price = n; }   // 改价即记报价日期(接口不回写)
+          else r[k] = v || null;
+          tr.dataset.row = JSON.stringify(r);
+        }
+        render(td, r);
+        if (!cancel && r.name_zh && r.inci) await saveRow(tr);
+      };
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); commit(false); } if (e.key === 'Escape') commit(true); });
+      inp.addEventListener('blur', () => commit(false));
+    };
+    rows.addEventListener('click', async (e) => {
+      const td = e.target.closest('td.ed');
+      if (td) return edit(td);
+      const cf = e.target.closest('button.cf');
+      if (cf) {   // 采购确认 / 财务确认:POST op=material_confirm,成功按返回整行重画
+        const tr = cf.closest('tr'); cf.disabled = true;
+        const d = await post({ op: 'material_confirm', id: Number(tr.dataset.id), level: cf.dataset.level });
+        if (!d.ok) { cf.disabled = false; return say(d.msg || '没确认成', true); }
+        const r = { ...rowData(tr), ...(d.row || {}) }; tr.dataset.row = JSON.stringify(r); renderStatus(tr, r);
+        tr.classList.add('saved'); setTimeout(() => tr.classList.remove('saved'), 1500);
+        return say(cf.dataset.level === 'finance' ? '财务已确认,此价进配方成本当准数' : '采购已确认,等财务确认');
+      }
+      const del = e.target.closest('button.del');
+      if (del && confirm('停用这条原料?配方里已有的版本不受影响。')) {
+        const tr = del.closest('tr');
+        const d = await post({ op: 'material_delete', id: Number(tr.dataset.id) });
+        if (!d.ok) return say(d.msg || '没停成', true);
+        tr.remove(); say('已停用');
+      }
+    });
+
+    // 新增:表首插一行,中文名 / INCI / 编码也可点改,填齐自动保存
+    $('b-new')?.addEventListener('click', () => {
+      const tr = document.createElement('tr'); tr.className = 'new'; tr.dataset.row = JSON.stringify({ status: 'active' });
+      tr.innerHTML = '<td class="ed" data-k="code"></td><td class="ed" data-k="name_zh"></td><td class="ed" data-k="trade_name"></td><td class="ed" data-k="inci"></td><td class="ed" data-k="supplier"></td>'
+        + '<td class="ed" data-k="range"></td><td class="ed num none" data-k="price">—</td><td class="soft pa"></td><td class="ps"><span class="pill p-wait" title="还没人确认">待确认</span></td><td class="ed soft" data-k="note"></td><td><span class="pill p-ok">在用</span></td><td class="acts"></td>';
+      rows.querySelector('td.empty')?.closest('tr')?.remove();
+      rows.prepend(tr); edit(tr.querySelector('[data-k="name_zh"]'));
+    });
+
+    // ③ 导入:浏览器端 CSV 解析 + 表头猜字段 + 人核对
+    const FIELDS = [['', '(忽略)'], ['code', '编码'], ['name_zh', '中文名'], ['trade_name', '牌号'], ['inci', 'INCI'], ['supplier', '供应商'], ['cas', 'CAS'], ['function_zh', '功能/用途'],
+      ['use_range', '用量范围(一列)'], ['use_min', '用量下限'], ['use_max', '用量上限'], ['price', '单价'], ['price_unit', '单价单位'], ['price_at', '报价日期'], ['moq', '起订量'], ['lead_days', '交期(天)'], ['origin', '产地'], ['note', '备注']];
+    // 关键词表:与 tools/lab/materials-import.py 同一份口径,前端复刻;顺序即优先级
+    const GUESS = [
+      ['inci', /inci|成分|英文名/i], ['cas', /cas/i], ['trade_name', /牌号|商品名|trade|grade|型号/i], ['code', /编码|编号|代码|物料号|code|no\.?$|sku/i],
+      ['name_zh', /原料名|中文名|名称|品名|name/i], ['supplier', /供应商|厂家|厂商|生产商|供方|supplier|vendor|manufacturer/i],
+      ['moq', /起订|moq|最小/i], ['lead_days', /交期|货期|lead/i],
+      ['use_range', /用量范围|添加量|推荐用量|用量|usage|dosage/i], ['use_min', /下限|最低|min/i], ['use_max', /上限|最高|max/i],
+      ['price_unit', /单位|unit|币种|currency/i], ['price_at', /报价日期|报价时间|询价日期|日期|date/i], ['price', /单价|价格|报价|price|cost|元/i],
+      ['origin', /产地|origin|国家/i], ['function_zh', /功能|功效|用途|作用|function|purpose/i], ['note', /备注|说明|note|remark/i]];   // 与 tools/lab/materials-import.py HEADERS 同口径(契约对齐审 09-18)
+    const guess = (h) => (GUESS.find(([, re]) => re.test(h)) || [''])[0];
+    const parseCsv = (text) => {
+      const out = []; let row = [], cell = '', inQ = false;
+      text = text.replace(/^\uFEFF/, '');
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQ) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else inQ = false; } else cell += ch; }
+        else if (ch === '"') inQ = true;
+        else if (ch === ',' || ch === '\t') { row.push(cell); cell = ''; }
+        else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); if (row.some((x) => x.trim())) out.push(row); row = []; cell = ''; }
+        else cell += ch;
+      }
+      row.push(cell); if (row.some((x) => x.trim())) out.push(row);
+      return out;
+    };
+    const dlg = $('imp'); let table = [];
+    $('b-imp')?.addEventListener('click', () => { $('imp-file').value = ''; $('imp-map').hidden = true; $('imp-done').hidden = true; $('imp-msg').textContent = ''; dlg.showModal(); });
+    $('imp-close').addEventListener('click', () => dlg.close());
+    $('imp-file').addEventListener('change', async () => {
+      const f = $('imp-file').files[0]; if (!f) return;
+      if (/\.xlsx?$/i.test(f.name)) { $('imp-msg').textContent = 'Excel 请先「另存为 → CSV UTF-8」,或交给后台脚本 tools/lab/materials-import.py 导。'; return; }
+      table = parseCsv(await f.text());
+      if (table.length < 2) { $('imp-msg').textContent = '文件里没有数据行'; return; }
+      const head = table[0], body = table.slice(1);
+      $('imp-msg').textContent = `${body.length} 行 · ${head.length} 列`;
+      $('imp-cols').innerHTML = head.map((h, i) => `<tr><td>${h.replace(/</g, '&lt;')}</td><td><select data-i="${i}">${FIELDS.map(([k, z]) => `<option value="${k}"${k === guess(h) ? ' selected' : ''}>${z}</option>`).join('')}</select></td><td class="smp">${body.slice(0, 5).map((r) => (r[i] ?? '').replace(/</g, '&lt;')).join(' | ')}</td></tr>`).join('');
+      $('imp-go').textContent = `导入 ${body.length} 行`; $('imp-map').hidden = false;
+    });
+    $('imp-go').addEventListener('click', async () => {
+      const map = [...$('imp-cols').querySelectorAll('select')].map((s) => s.value);
+      if (!map.includes('name_zh') || !map.includes('inci')) return say('至少要指定「中文名」和「INCI」两列', true);
+      const recs = table.slice(1).map((r) => {
+        const o = {};
+        map.forEach((k, i) => { const v = (r[i] ?? '').trim(); if (!k || !v) return;
+          if (k === 'use_range') { const [a, b] = parseRange(v); o.use_min = a; o.use_max = b; }
+          else if (k === 'use_min' || k === 'use_max' || k === 'price' || k === 'lead_days') { const n = Number(v.replace(/[^\d.\-]/g, '')); if (Number.isFinite(n)) o[k] = n; }
+          else o[k] = v; });
+        return o;
+      }).filter((o) => o.name_zh && o.inci);
+      if (!recs.length) return say('没有一行同时有中文名和 INCI', true);
+      const go = $('imp-go'); go.disabled = true;
+      let added = 0, updated = 0, skipped = 0;
+      for (let i = 0; i < recs.length; i += 200) {
+        go.textContent = `导入中 ${Math.min(i + 200, recs.length)}/${recs.length}…`;
+        const d = await post({ op: 'material_import', mode: 'upsert', rows: recs.slice(i, i + 200) });
+        if (!d.ok) { say(d.msg || `第 ${i + 1} 行起没导成`, true); break; }
+        added += d.inserted ?? d.added ?? 0; updated += d.updated || 0; skipped += d.skipped || 0;   // 接口返 inserted(契约对齐审 09-18)
+      }
+      go.disabled = false; go.textContent = '导入';
+      $('imp-done').hidden = false; $('imp-done').textContent = `新增 ${added} · 更新 ${updated} · 跳过 ${skipped}(跳过的是缺中文名 / INCI 或重复的行)。关掉后刷新列表即可看到。`;
+      $('imp-close').textContent = '关闭并刷新'; $('imp-close').onclick = () => location.reload();
+    });
+  </script>
+</LabShell>

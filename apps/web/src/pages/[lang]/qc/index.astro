@@ -1,0 +1,223 @@
+---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 质检体系 —— 从来料到留样,36 个检验项,每项挂到具体方法与依据。
+ *
+ * 由来(创始人 2026-09-10 11:2x:「质检也建一套完整的体系」;以及更早
+ * 「每一瓶产品都有草本溯源与 AI 质量记录 —— 这个是不是也需要把我们的完整链路打通」)。
+ *
+ * 站上原来只有「质量与合规」一页,写的是**持有哪些证书**。证书回答「有没有资格做」,
+ * 而买手真正问的是「你怎么做的」:来料怎么验、过程卡哪几个点、成品测什么、
+ * 稳定性跑多久、留样留多长、出了问题怎么追回到那批原料和那片产区。
+ * 这一页把这条链写出来,前面做的原料溯源、产区、配方、包材才连得起来。
+ *
+ * **写方法与依据,不写我们没有的结论。**
+ * 判定口径给的是法规限值与行业通行做法(《化妆品安全技术规范》《化妆品生产质量管理规范》、
+ * ISO 22716 / 11930 / 21149 / 22717 / 18416、USP <51>、EU 1223/2009、GB/T 2828.1),
+ * 都是可核对的公开标准;具体某一批的实测值属于逐批报告,不在这里,也不该在这里。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const url = new URL(Astro.url);
+const fStage = (url.searchParams.get('s') ?? '').trim().slice(0, 12);
+
+let stages: any[] = [];
+let items: any[] = [];
+if (db) {
+  try {
+    stages = ((await db.prepare(
+      'SELECT id, name_zh, intro_zh FROM qc_stages ORDER BY sort_order').all<any>()).results ?? []) as any[];
+    items = (((fStage
+      ? await db.prepare('SELECT code, stage, name_zh, method_zh, spec_zh, sampling_zh, record_zh'
+                         + ' FROM qc_items WHERE stage = ? ORDER BY sort_order').bind(fStage).all<any>()
+      : await db.prepare('SELECT code, stage, name_zh, method_zh, spec_zh, sampling_zh, record_zh'
+                         + ' FROM qc_items ORDER BY sort_order').all<any>()).results) ?? []) as any[];
+  } catch { stages = []; items = []; }
+}
+const byStage = new Map<string, any[]>();
+for (const it of items) {
+  const k = String(it.stage);
+  if (!byStage.has(k)) byStage.set(k, []);
+  byStage.get(k)!.push(it);
+}
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/qc/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+
+const T = zh ? {
+  eyebrow: '质量体系',
+  title: '质检体系:从来料到留样',
+  lede: `${items.length} 个检验项,分 ${stages.length} 段:来料、过程、成品、稳定性与相容性、出货、留样与追溯。`
+      + '每一项写明方法与依据、判定口径、抽样与频次、落在哪份记录上 —— 客户验厂时对着这张表逐条问就行。',
+  note: '判定口径引用的是公开标准与法规限值(《化妆品安全技术规范》《化妆品生产质量管理规范》、'
+      + 'ISO 22716 / 11930 / 21149 / 22717 / 18416、USP <51>、EU 1223/2009、GB/T 2828.1 抽样),'
+      + '不是某一批的实测值;逐批实测数据随货以检验报告出具。目标市场不同,限值与强制项目随之不同,'
+      + '以最新官方文本为准。',
+  all: '全部环节',
+  method: '方法与依据', spec: '判定口径', sampling: '抽样与频次', record: '记录',
+  chain: '这条链的上游',
+  chainNote: '批号能往回查到原料批次与产区,是因为前面几段本来就在库里:',
+  lnkOrigin: '原料溯源 · 91 个国内主产区', lnkIng: '草本原料库 · 149 味',
+  lnkFormula: '配方库', lnkPack: '包材库', lnkReg: '各国原料目录检索', lnkComp: '各国备案索引',
+  ask: '要看某个品类的完整检验清单与随货文件?把品类与目标市场发给我们。', inquiry: '发起询盘',
+} : {
+  eyebrow: 'Quality system',
+  title: 'Quality control: from incoming goods to retained samples',
+  lede: `${items.length} control points across ${stages.length} stages — incoming, in-process, finished goods, stability and compatibility, outgoing, retention and traceability.`
+      + ' Each one states the method, the acceptance basis, the sampling plan and the record it lands in.',
+  note: 'Acceptance criteria cite public standards and regulatory limits (China Safety and Technical Standards for '
+      + 'Cosmetics and GMP rules, ISO 22716 / 11930 / 21149 / 22717 / 18416, USP <51>, EU 1223/2009, GB/T 2828.1 sampling), '
+      + 'not batch results; per-batch data is issued with the shipment. Limits and mandatory items differ by market — the latest official text prevails.',
+  all: 'All stages',
+  method: 'Method and basis', spec: 'Acceptance basis', sampling: 'Sampling and frequency', record: 'Record',
+  chain: 'Upstream of this chain',
+  chainNote: 'A batch number can be traced back to the ingredient lot and its source region because those layers are already in the library:',
+  lnkOrigin: 'Ingredient origins', lnkIng: 'Herbal ingredient library',
+  lnkFormula: 'Formulation library', lnkPack: 'Packaging library',
+  lnkReg: 'Ingredient inventories by market', lnkComp: 'Notification index',
+  lnkQual: 'Certifications and export documents',
+  vs: 'How this differs from the Quality and Compliance page: that one covers which certifications we hold and which documents a shipment needs; this one covers what each checkpoint actually tests, on what basis, at what sampling rate, and in which record.',
+  ask: 'Need the full control list and shipping documents for a category? Send us the category and target market.',
+  inquiry: 'Send an inquiry',
+};
+
+const ld = [
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}/${lang}/` },
+      { '@type': 'ListItem', position: 2, name: T.title, item: origin + path },
+    ],
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'HowTo',
+    name: T.title, description: T.lede,
+    step: stages.map((s, i) => ({
+      '@type': 'HowToStep', position: i + 1, name: s.name_zh, text: s.intro_zh,
+    })),
+  },
+];
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1 && !fStage} brandColor={shell.site?.brand_color}
+  theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+      <p class="note">{T.note}</p>
+    </header>
+
+    <nav class="tabs" aria-label={T.all}>
+      <a class:list={['chip', { on: !fStage }]} href={path}>{T.all}</a>
+      {stages.map((s) => (
+        <a class:list={['chip', { on: fStage === s.id }]} href={`${path}?s=${s.id}`}>{s.name_zh}</a>
+      ))}
+    </nav>
+
+    {stages.filter((s) => (byStage.get(s.id) ?? []).length).map((s) => (
+      <section class="stage">
+        <h2 id={s.id}>{s.name_zh}</h2>
+        <p class="intro">{s.intro_zh}</p>
+        <ol class="items">
+          {(byStage.get(s.id) ?? []).map((it) => (
+            <li class="qc">
+              <p class="code">{it.code}</p>
+              <h3>{it.name_zh}</h3>
+              <dl>
+                <dt>{T.method}</dt><dd>{it.method_zh}</dd>
+                <dt>{T.spec}</dt><dd>{it.spec_zh}</dd>
+                <dt>{T.sampling}</dt><dd>{it.sampling_zh}</dd>
+                <dt>{T.record}</dt><dd>{it.record_zh}</dd>
+              </dl>
+            </li>
+          ))}
+        </ol>
+      </section>
+    ))}
+
+    <section class="chain">
+      <h2>{T.chain}</h2>
+      <p class="intro">{T.chainNote}</p>
+      <p class="intro">{T.vs}</p>
+      <ul class="links">
+        <li><a href={`/${lang}/origin/`}>{T.lnkOrigin}</a></li>
+        <li><a href={`/${lang}/ingredients/`}>{T.lnkIng}</a></li>
+        <li><a href={`/${lang}/formulas/`}>{T.lnkFormula}</a></li>
+        <li><a href={`/${lang}/packaging/`}>{T.lnkPack}</a></li>
+        <li><a href={`/${lang}/inci/`}>{T.lnkReg}</a></li>
+        <li><a href={`/${lang}/compliance/`}>{T.lnkComp}</a></li>
+        <li><a href={`/${lang}/quality/`}>{T.lnkQual}</a></li>
+      </ul>
+    </section>
+
+    <p class="ask">{T.ask} <a href={`/${lang}/contact/`}>{T.inquiry}</a></p>
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .hd { display: grid; gap: .75rem; margin-bottom: 1.5rem; max-width: 62rem; }
+  .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: clamp(1.625rem, 3vw, 2.25rem); line-height: 1.24; margin: 0; text-wrap: balance; }
+  .lede { font-size: 1rem; line-height: 1.75; opacity: .85; margin: 0; }
+  .note { font-size: .875rem; line-height: 1.7; opacity: .62; margin: 0;
+          border-left: 2px solid currentColor; padding-left: .75rem; }
+  .tabs { display: flex; flex-wrap: wrap; gap: .375rem; margin: 0 0 1.5rem; }
+  .chip { min-height: 44px; display: inline-flex; align-items: center; padding: 0 .875rem;
+          font-size: .9375rem; border-radius: 999px; text-decoration: none; color: inherit;
+          border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
+  .chip.on { background: var(--ck-ink, #111); color: var(--ck-paper, #fff); }
+  .stage { margin: 0 0 2rem; }
+  .stage h2 { font-size: 1.25rem; margin: 0 0 .375rem; scroll-margin-top: 3.5rem;  /* 09-17 「太多空余」 */ }
+  .intro { margin: 0 0 1rem; font-size: .9375rem; line-height: 1.7; opacity: .72; max-width: 60rem; }
+  .items { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; }
+  .qc { padding: 1rem 1.125rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 12px; }
+  .code { margin: 0; font-size: .8125rem; letter-spacing: .06em; opacity: .55;
+          font-variant-numeric: tabular-nums; }
+  .qc h3 { font-size: 1.0625rem; margin: .125rem 0 .625rem; line-height: 1.4; }
+  .qc dl { margin: 0; display: grid; grid-template-columns: 1fr; gap: .25rem; }
+  .qc dt { font-size: .8125rem; opacity: .55; }
+  .qc dd { margin: 0 0 .5rem; font-size: .9375rem; line-height: 1.7; }
+  .chain { margin: 2.5rem 0 0; padding: 1.25rem; border-radius: 14px;
+           border: 1px solid var(--ck-line, rgba(0,0,0,.14)); }
+  .chain h2 { font-size: 1.125rem; margin: 0 0 .375rem; }
+  .links { list-style: none; padding: 0; margin: .75rem 0 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .links a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 .875rem;
+             font-size: .9375rem; border-radius: 10px; text-decoration: none; color: inherit;
+             border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
+  .ask { margin: 1.75rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
+  @media (min-width: 900px) {
+    main { padding: 2rem 1.5rem 4rem; }
+    .items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .qc dl { grid-template-columns: 7rem 1fr; gap: .25rem .875rem; align-items: baseline; }
+    .qc dd { margin: 0 0 .375rem; }
+  }
+</style>

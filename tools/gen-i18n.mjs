@@ -52,7 +52,7 @@ function dictOf(name) {
   }
   return d;
 }
-const HUMAN = { 'zh-cn': dictOf('zhCN'), en: dictOf('en'), ja: dictOf('ja'), id: dictOf('id'), ms: dictOf('ms'), fr: dictOf('fr') };
+const HUMAN = { 'zh-cn': dictOf('zhCN'), en: dictOf('en'), jp: dictOf('ja'), id: dictOf('id'), my: dictOf('ms'), fr: dictOf('fr') };
 const KEYS = Object.keys(HUMAN.en);
 console.log(`骨架词条 ${KEYS.length} 条;人工确认 ${Object.keys(HUMAN).length} 语`);
 

@@ -1,0 +1,140 @@
+{
+ "schema": "bohui-ticket/2",
+ "id": "RT-20260925-0438-prod-bohui-web-9993f1d8",
+ "kind": "prod",
+ "target": {
+  "worker": "bohui-web",
+  "command": "node F:/0cosmetic/cosmetic-sites/tools/set-probe-secret.mjs",
+  "account": "company"
+ },
+ "tree": "9993f1d8b8ac455d83773b3dc82b99b9c6f519822c5f0c9ac8c01dd5a4acf6f1",
+ "scope_sha256": "0992bcb2fccee20aef412c817ebb0a54f67f6f4ff384171c66337eb62de96cd8",
+ "gate_hash": "sha256:2206b0ee5a20f2762b99fca7d12fcb76ecde3e44ce2fe8d447a8e5ed3621d900",
+ "rules_hash": "sha256:7aa081a24470d292129570eb9b44f0dd5d9f906e8d5c47a3be4e94317f1ccbca",
+ "env_sha256": null,
+ "base": {
+  "ref": "refs/ship/prod-bohui-web",
+  "commit": null,
+  "tree": null,
+  "first_ship": true
+ },
+ "prev_ticket": null,
+ "diff": {
+  "file": "drafts/prod-bohui-web-9993f1d8b8ac/all.diff",
+  "sha256": "0b49292a0c2d1094e933e7ffc72506c33b7f6b376d2288c111bdc1d64d7fd6e0",
+  "files": 2,
+  "lines": 14
+ },
+ "note": "设冒烟探针 secret PROBE_SECRET:由 tools/set-probe-secret.mjs 从本机 .env 读值经 stdin 交给 wrangler,不进命令行和日志;配合 middleware x-bohui-probe 与 smoke.py(已批准),修上线冒烟因 ?kk= 被 301 的误报",
+ "tier": "L1",
+ "tier_reasons": [
+  "14 行"
+ ],
+ "gate1": {
+  "result": "过",
+  "block": 0,
+  "doubt": 0,
+  "exceptions": 0,
+  "seconds": 4.4
+ },
+ "budget": {
+  "level": "n/a"
+ },
+ "judges": {
+  "laya": {
+   "decision": "block",
+   "conf": 0.02,
+   "noul": {
+    "cost": 0.94,
+    "security": 0.94,
+    "compliance": 0.96
+   },
+   "correctness": 1.46,
+   "verdict": "存疑",
+   "status": "判了",
+   "seconds": 30,
+   "partial": false
+  },
+  "jev": {
+   "decision": "block",
+   "conf": 0.83,
+   "noul": {
+    "cost": 0.04,
+    "security": 0.57,
+    "compliance": 0.01
+   },
+   "correctness": 0.1,
+   "verdict": "拦",
+   "status": "判了",
+   "tokens_in": 1099,
+   "day_used": 5699,
+   "seconds": 25.2,
+   "call_ref": "ledger/jev_calls.jsonl@2026-09-25T04:17:05+08:00",
+   "request_id": null,
+   "partial": false
+  }
+ },
+ "reports": [
+  {
+   "angle": "综合",
+   "file": "reports/prod-bohui-web/9993f1d8b8ac/综合.json",
+   "sha256": "b53de21d83c8e52bd7e4f1eb2c13f254580501c7f84556c2871f91fd665768ee",
+   "verdict": "过",
+   "findings": 5,
+   "reviewer": "claude"
+  }
+ ],
+ "resolved": [],
+ "overrides": [],
+ "exceptions": [],
+ "risks": {
+  "费用": [
+   {
+    "level": "低",
+    "item": "带对 secret 的请求会绕过边缘缓存直接读 D1,值一旦泄露可以被用来放大读量。",
+    "mitigation": "盯 Bohui-D1Budget 日读线;怀疑泄露时改 .env 里的值,再过一次 ship_ops prod,smoke.py 会自动跟上。"
+   }
+  ],
+  "安全": [
+   {
+    "level": "中",
+    "item": "set-probe-secret.mjs 可以绕开闸门直接跑:在错误账号下会建出草稿 Worker「bohui-web」,在已 source 公司 .env 的环境下会无单改生产 secret(见综合-1)。",
+    "mitigation": "补 --name、cwd、账号守卫,或加进 hook 拦截名单;只通过 ship_ops.sh prod 执行。"
+   }
+  ],
+  "合规": [
+   "已查:R1–R11、RK7,未发现"
+  ],
+  "正确性": [
+   {
+    "level": "低",
+    "item": "secret put 会用当前版本新建一次部署;如果最新上传的版本还没部署,wrangler 会整体报错不改,需要先部署再重跑。回显成功不等于生效。",
+    "mitigation": "执行后查最终状态:wrangler secret list 能看到 PROBE_SECRET 这个名字,并且 ops.py 在 ship.jsonl 里记了 version_id;确认线上版本已经带 x-bohui-probe 中间件(本地 dist 已经含有)。"
+   }
+  ],
+  "回归": [
+   {
+    "level": "低",
+    "item": "smoke.py 也会给 beauty2oem.com 的 ?kk= URL 加探针头,但本单只给 bohui-web 设了 secret;如果 beauty2oem 由另一个 Worker 服务,那边 ?kk= 被 301 的误报还会在。",
+    "mitigation": "确认 beauty2oem.com 当前由哪个 Worker 服务;如果是 beauty2oem-web,另开 prod 单设同一个值。"
+   }
+  ]
+ },
+ "smoke_extra": [
+  "https://biosphere-ai.com/en/?kk=1(同上,期望 200)",
+  "https://biosphere-ai.com/zh-cn/?kk=1(smoke.py 自动带 x-bohui-probe,期望 200,不应再 301)"
+ ],
+ "verdict": "拦",
+ "why": [
+  "Jev 机审拦(置信 ≥0.8):需要一名审核员在 addressed 判「不成立」并且反驳员(refute-JEV.json)推翻"
+ ],
+ "issued_at": "2026-09-25T04:38:53+08:00",
+ "expires_at": "2026-09-26T04:38:53+08:00",
+ "followup_due": null,
+ "followup": [],
+ "incident": null,
+ "degraded": false,
+ "issuer": "audit_v2/ticket.py v2.1",
+ "basis": "a78ff916606d97f9316d2d81cb762b7c33dcd7beec453039323ad870625de9f5",
+ "content_sha256": "700094591bb372f18863b7aeff593e14efa53d392f2d440b1cb73a95f32117e6"
+}

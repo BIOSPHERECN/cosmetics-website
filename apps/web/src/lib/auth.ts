@@ -28,8 +28,9 @@ const b64u = (b: ArrayBuffer | Uint8Array) =>
 const unb64u = (s: string) =>
   Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 
-/** 常数时间比较 —— 长度不同直接判否,长度相同则全程比完再返回 */
-function timingSafeEqual(a: string, b: string): boolean {
+/** 常数时间比较 —— 长度不同直接判否,长度相同则全程比完再返回。
+ *  导出给 CRON_KEY 这类共享密钥的比较用(09-24 暴露面自查 L3:`!==` 按字节提前返回) */
+export function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
@@ -64,12 +65,13 @@ async function sign(payload: string, secret: string): Promise<string> {
   return b64u(await crypto.subtle.sign('HMAC', key, te.encode(payload)));
 }
 
-export async function issueSession(user: { id: number; email: string; role: string }, secret: string): Promise<string> {
+/** hours:后台会话默认 12 小时;网站会员 30 天、登录邮件里的魔法链接 30 分钟(lib/member.ts) */
+export async function issueSession(user: { id: number; email: string; role: string }, secret: string, hours = SESSION_HOURS): Promise<string> {
   const s: Session = {
     uid: user.id,
     email: user.email,
     role: user.role,
-    exp: Math.floor(Date.now() / 1000) + SESSION_HOURS * 3600,
+    exp: Math.floor(Date.now() / 1000) + Math.round(hours * 3600),
   };
   const body = b64u(te.encode(JSON.stringify(s)));
   return `${body}.${await sign(body, secret)}`;
@@ -77,7 +79,8 @@ export async function issueSession(user: { id: number; email: string; role: stri
 
 /** 校验会话。签名不符或已过期一律返回 null —— 调用方只需判空 */
 export async function readSession(token: string | undefined, secret: string): Promise<Session | null> {
-  if (!token || !token.includes('.')) return null;
+  /* 密钥为空一律不认(09-24 代码审计 P2-1):空密钥签出的会话谁都能伪造 */
+  if (!token || !secret || !token.includes('.')) return null;
   const [body, sig] = token.split('.');
   if (!timingSafeEqual(sig, await sign(body, secret))) return null;
   try {
@@ -86,6 +89,56 @@ export async function readSession(token: string | undefined, secret: string): Pr
   } catch {
     return null;
   }
+}
+
+/* ── 两步验证(TOTP,RFC 6238)────────────────────────────────
+ * 标准 30 秒窗 + SHA-1 + 6 位,和 Google Authenticator / Microsoft
+ * Authenticator / 1Password 全兼容。密钥 Base32 存库(它本身就是
+ * 「第二因素」,不是口令,无需再哈希 —— 哈希了就没法算码了)。
+ * 校验允许 ±1 个时间窗:手机时钟差半分钟不该把人挡在门外。 */
+const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+export function totpNewSecret(): string {
+  const raw = crypto.getRandomValues(new Uint8Array(20));
+  let bits = 0, val = 0, out = '';
+  for (const b of raw) {
+    val = (val << 8) | b; bits += 8;
+    while (bits >= 5) { out += B32[(val >>> (bits - 5)) & 31]; bits -= 5; }
+  }
+  if (bits > 0) out += B32[(val << (5 - bits)) & 31];
+  return out;
+}
+
+function b32decode(s: string): Uint8Array {
+  const clean = s.toUpperCase().replace(/[^A-Z2-7]/g, '');
+  const out: number[] = [];
+  let bits = 0, val = 0;
+  for (const ch of clean) {
+    val = (val << 5) | B32.indexOf(ch); bits += 5;
+    if (bits >= 8) { out.push((val >>> (bits - 8)) & 0xff); bits -= 8; }
+  }
+  return new Uint8Array(out);
+}
+
+async function totpAt(secret: string, counter: number): Promise<string> {
+  const key = await crypto.subtle.importKey('raw', b32decode(secret) as BufferSource,
+    { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+  const msg = new Uint8Array(8);
+  for (let i = 7; i >= 0; i--) { msg[i] = counter & 0xff; counter = Math.floor(counter / 256); }
+  const h = new Uint8Array(await crypto.subtle.sign('HMAC', key, msg as BufferSource));
+  const off = h[h.length - 1] & 0x0f;
+  const code = ((h[off] & 0x7f) << 24 | h[off + 1] << 16 | h[off + 2] << 8 | h[off + 3]) % 1_000_000;
+  return String(code).padStart(6, '0');
+}
+
+export async function totpVerify(secret: string, code: string): Promise<boolean> {
+  const c = code.replace(/\D/g, '');
+  if (c.length !== 6 || !secret) return false;
+  const now = Math.floor(Date.now() / 1000 / 30);
+  for (const w of [0, -1, 1]) {
+    if (timingSafeEqual(await totpAt(secret, now + w), c)) return true;
+  }
+  return false;
 }
 
 export const COOKIE = 'bohui_sess';

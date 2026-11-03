@@ -1,0 +1,21 @@
+{
+ "at": "2026-09-25T16:49:14+08:00",
+ "seconds": 132.3,
+ "red": 1,
+ "yellow": 0,
+ "unaudited": [],
+ "keys": [
+  "bohui-web 启用后部署 3 次",
+  "beauty2ai 启用后部署 0 次",
+  "beauty2oem-web 还没建",
+  "bohui-mail 启用后部署 0 次",
+  "bohui-gateway 启用后部署 0 次",
+  "bohui-news-cron 启用后部署 0 次",
+  "skin2oem 启用后部署 0 次",
+  "计划任务 42 个",
+  "Jev 今日 10,240/2,000,000 token",
+  "公司用量 Workers0 KV3,336 R236,161 Vectorize211,968",
+  "平台用量 Workers0 KV287,452 R2547,844 Vectorize4,961,280",
+  "GitHub 工作流 15 个"
+ ]
+}

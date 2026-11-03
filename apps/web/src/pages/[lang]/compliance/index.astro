@@ -1,0 +1,530 @@
+---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 东南亚六国化妆品通报账号门槛。
+ *
+ * 由来(2026-09-10 00:35,创始人转来一篇公众号整理并说「这也是非常重要的信息」)。
+ * 他是对的:「印尼 BPOM 备案要什么资质」正是买家会去问 AI 的问题,
+ * 而我们站上一个字都没有 —— 客户在这一步卡住,单子就停在那里,和配方好不好无关。
+ *
+ * 三条纪律:
+ *   1. **不转载**。那篇是别人的文章,这里的每一条都按官方源头重新核过,
+ *      用我们自己的话写,并逐条挂官方链接。抄一篇公众号发到自己站上,
+ *      既侵权,也经不起客户点开来源核对。
+ *   2. **划清我们能做什么**。账号是品牌方本地主体的事,我们代办不了,
+ *      也不该暗示能代办。工厂能给的是工厂侧资料(CFS、GMP、配方与安全评估、PIF),
+ *      把这条写在最显眼处,比含糊地说「协助出海」有用得多。
+ *   3. **法规会变**。每条都标注「以最新官方文本为准」并给出原文地址,
+ *      不写生效日期以外的时间承诺。越南 2025 年刚出 Circular 34/2025/TT-BYT,
+ *      就是活的例子。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/compliance/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+
+type Step = { do: string; doEn: string; at: string; atEn: string; url: string };
+type Row = {
+  cc: string; zhName: string; enName: string; sys: string; reg: string; regEn: string;
+  local: string; localEn: string; token: string; tokenTone: 'no' | 'opt' | 'yes';
+  docs: string[]; docsEn: string[]; src: string; note: string; noteEn: string;
+  steps: Step[];
+};
+
+/* 每国的办理路径。创始人 2026-09-10 00:44:「我们不代办,只是要有怎么样办的索引」——
+   所以这里给的是**顺序与入口**:先办哪一步、去哪个官方系统办、办出来是什么。
+   每个 url 都是当天核过的官方入口,不是二手转述。 */
+
+/* 六国。每一条的系统名、监管机构与硬件签章要求都按官方页核过,src 就是核的那一页。 */
+const ROWS: Row[] = [
+  {
+    cc: 'ID', zhName: '印尼', enName: 'Indonesia',
+    sys: 'BPOM Notifkos', reg: '印尼食品药品监督管理局 BPOM', regEn: 'BPOM, Indonesian Food and Drug Authority',
+    local: '必须印尼本地 PT 公司', localEn: 'Indonesian PT company required', token: '不需要', tokenTone: 'no',
+    docs: ['NIB 企业营业注册号(OSS 系统出具)', 'NPWP 企业税号',
+           'API-U 进口商识别号(进口化妆品必备)',
+           '技术负责人 PJT 备案 —— 须化工或药学相关学历', '仓库信息'],
+    docsEn: ['NIB business registration number (via OSS)', 'NPWP tax number',
+             'API-U importer identification number', 'PJT technical person in charge (chemistry/pharmacy background)',
+             'Warehouse details'],
+    src: 'https://notifkos.pom.go.id/',
+    steps: [
+      { do: '注册本地 PT 公司,拿 NIB 营业注册号', doEn: 'Set up the local PT and obtain the NIB',
+        at: 'OSS 在线单一提交系统', atEn: 'OSS Online Single Submission', url: 'https://oss.go.id/' },
+      { do: '办 NPWP 企业税号', doEn: 'Obtain the NPWP tax number',
+        at: '印尼税务总局 DJP', atEn: 'Directorate General of Taxes (DJP)', url: 'https://www.pajak.go.id/' },
+      { do: '申请 API-U 进口商识别号', doEn: 'Apply for the API-U importer identification number',
+        at: 'OSS 系统(与 NIB 同一入口)', atEn: 'OSS (same portal as the NIB)', url: 'https://oss.go.id/' },
+      { do: '指定并备案技术负责人 PJT(化工或药学学历)', doEn: 'Appoint and register the PJT',
+        at: 'BPOM Notifkos', atEn: 'BPOM Notifkos', url: 'https://notifkos.pom.go.id/' },
+      { do: '开通 Notifkos 账号,逐款提交产品通报', doEn: 'Open the Notifkos account and notify each product',
+        at: 'BPOM Notifkos', atEn: 'BPOM Notifkos', url: 'https://notifkos.pom.go.id/' },
+      { do: '办清真认证 —— 2026-10-17 起强制', doEn: 'Halal certification — mandatory from 17 Oct 2026',
+        at: 'BPJPH 清真产品保障机构', atEn: 'BPJPH halal certification agency', url: 'https://bpjph.halal.go.id/' },
+    ],
+    note: '账号周期通常是六国里最长的一档,出货前留足提前量。',
+    noteEn: 'Account set-up here is usually the longest of the six; start early.',
+  },
+  {
+    cc: 'TH', zhName: '泰国', enName: 'Thailand',
+    sys: 'Thai FDA cosmetic notification system', reg: '泰国食品药品监督管理局 Thai FDA', regEn: 'Thai FDA',
+    local: '必须泰国 DBD 注册法人', localEn: 'DBD-registered Thai entity required', token: '视申报方式而定', tokenTone: 'opt',
+    docs: ['DBD 公司注册证书 —— 经营范围要含化妆品进出口或批发销售',
+           '系统账号授权书(官方有模板)', '法人身份证件与个人资料收集同意书'],
+    docsEn: ['DBD company registration — scope must cover cosmetics import/wholesale',
+             'System account authorisation letter (official template)',
+             'Director ID and personal data consent form'],
+    src: 'https://en.fda.moph.go.th/our-services-new/submission-of-application-on-cosmetic-notification',
+    steps: [
+      { do: '注册泰国公司,经营范围含化妆品进出口/批发', doEn: 'Register the Thai company with cosmetics in scope',
+        at: '商业发展厅 DBD', atEn: 'Department of Business Development (DBD)', url: 'https://www.dbd.go.th/' },
+      { do: '办税务登记与 VAT', doEn: 'Tax and VAT registration',
+        at: '泰国税务局 Revenue Department', atEn: 'Thai Revenue Department', url: 'https://www.rd.go.th/' },
+      { do: '出具系统账号授权书(官方模板)', doEn: 'Issue the system authorisation letter (official template)',
+        at: 'Thai FDA 化妆品处', atEn: 'Thai FDA Cosmetic Control Group', url: 'https://cosmetic.fda.moph.go.th/' },
+      { do: '开通通报账号,逐款提交', doEn: 'Open the account and submit each notification',
+        at: 'Thai FDA 化妆品通报系统', atEn: 'Thai FDA cosmetic notification service', url: 'https://en.fda.moph.go.th/our-services-new/submission-of-application-on-cosmetic-notification' },
+    ],
+    note: '授权书有效期不宜给太长,到期要重出。',
+    noteEn: 'Keep the authorisation letter short-dated and renew on expiry.',
+  },
+  {
+    cc: 'MY', zhName: '马来西亚', enName: 'Malaysia',
+    sys: 'NPRA Quest3+', reg: '国家药品监管局 NPRA', regEn: 'NPRA, National Pharmaceutical Regulatory Agency',
+    local: '必须马来西亚本地公司(通报持有人 CNH)', localEn: 'Malaysian company required (the CNH)',
+    token: '强制专用 USB Token', tokenTone: 'yes',
+    docs: ['SSM 公司注册证明', 'LHDN 税务登记',
+           'MSC TrustGate 签发的 Quest3+ 专用 USB Token —— 银行 U 盾不能用',
+           '系统账号授权书'],
+    docsEn: ['SSM company registration', 'LHDN tax registration',
+             'Quest3+ USB token issued by MSC TrustGate — bank tokens do not work',
+             'System account authorisation letter'],
+    src: 'https://npra.gov.my/index.php/en/quest3-system-basic/register-usb-token',
+    steps: [
+      { do: '注册马来西亚公司', doEn: 'Register the Malaysian company',
+        at: '公司委员会 SSM', atEn: 'Companies Commission of Malaysia (SSM)', url: 'https://www.ssm.com.my/' },
+      { do: '办税务登记', doEn: 'Tax registration',
+        at: '内陆税收局 LHDN', atEn: 'Inland Revenue Board (LHDN)', url: 'https://www.hasil.gov.my/' },
+      { do: '购买 Quest3+ 专用 USB Token 并安装证书(银行 U 盾无效)',
+        doEn: 'Buy the Quest3+ USB token and install the certificate (bank tokens do not work)',
+        at: 'MSC TrustGate', atEn: 'MSC TrustGate', url: 'https://www.msctrustgate.com/mytrustid/enrollment?q=quest3plus' },
+      { do: '以 Token 登录 Quest3+,注册为通报持有人 CNH',
+        doEn: 'Log in to Quest3+ with the token and register as the CNH',
+        at: 'NPRA Quest3+', atEn: 'NPRA Quest3+', url: 'https://npra.gov.my/index.php/en/quest3-system-basic/register-usb-token' },
+      { do: '逐款提交通报,到期前续通报', doEn: 'Notify each product and renew before expiry',
+        at: 'NPRA 化妆品通报指南', atEn: 'NPRA cosmetic notification guideline', url: 'https://npra.gov.my/index.php/en/component/content/article/147-english/guidelines-cosmetic/1595-2-0-cosmetic-notification.html' },
+    ],
+    note: 'Token 有年费、要邮寄实体硬件;过期就提交不了任何通报,续期日期要进日历。',
+    noteEn: 'The token carries an annual fee and ships physically; once it expires nothing can be submitted.',
+  },
+  {
+    cc: 'VN', zhName: '越南', enName: 'Vietnam',
+    sys: 'National Single Window (NSW)', reg: '越南药品管理局 DAV', regEn: 'DAV, Drug Administration of Vietnam',
+    local: '必须越南本地注册企业', localEn: 'Vietnamese registered entity required', token: '提交需电子签', tokenTone: 'yes',
+    docs: ['越南企业营业执照', '税务登记文件',
+           '本地 CA 机构签发的企业级数字签名(与报税、海关可通用同一枚)'],
+    docsEn: ['Vietnamese business registration', 'Tax registration',
+             'Enterprise digital signature from a local CA (shared with tax and customs filings)'],
+    src: 'https://www.mondaq.com/healthcare/1649370/vietnam-updates-regulations-on-cosmetic-notification',
+    steps: [
+      { do: '注册越南企业并办税务登记', doEn: 'Register the Vietnamese entity and its tax registration',
+        at: '国家企业注册门户', atEn: 'National Business Registration Portal', url: 'https://dangkykinhdoanh.gov.vn/' },
+      { do: '向本地 CA 机构申请企业级数字签名(报税、海关、药监通用一枚)',
+        doEn: 'Obtain an enterprise digital signature from a local CA',
+        at: '越南公共服务门户', atEn: 'Vietnam National Public Service Portal', url: 'https://dichvucong.gov.vn/' },
+      { do: '在国家单一窗口开通账号', doEn: 'Open the account on the National Single Window',
+        at: '国家单一窗口 NSW', atEn: 'National Single Window', url: 'https://vnsw.gov.vn/' },
+      { do: '逐款提交通报,所有表单与附件需 U 盾签章',
+        doEn: 'Submit each notification; every form and attachment must be digitally signed',
+        at: '药品管理局 DAV', atEn: 'Drug Administration of Vietnam (DAV)', url: 'https://dav.gov.vn/' },
+    ],
+    note: '2025 年出了 Circular 34/2025/TT-BYT 修订化妆品管理与进口商责任,'
+        + '这一国的规则近两年动得最勤,报价前先确认当期口径。',
+    noteEn: 'Circular 34/2025/TT-BYT amended cosmetic management and importer duties — '
+          + 'this market has moved the most in the past two years.',
+  },
+  {
+    cc: 'PH', zhName: '菲律宾', enName: 'Philippines',
+    sys: 'FDA e-Notification / eServices Portal', reg: '菲律宾食品药品监督管理局 FDA', regEn: 'Philippine FDA',
+    local: '必须菲律宾本地经销商或进口商法人', localEn: 'Philippine distributor or importer entity required', token: '不需要', tokenTone: 'no',
+    docs: ['SEC 公司注册文件', 'BIR 税务登记证', '系统账号授权书',
+           '药剂师资质材料 —— 证件、税卡、学历与执业资格'],
+    docsEn: ['SEC company registration', 'BIR tax registration',
+             'System account authorisation letter',
+             'Licensed pharmacist credentials — ID, tax card, qualification'],
+    src: 'https://www.fda.gov.ph/wp-content/uploads/2021/03/Cosmetic-e-Notification-v.2.0-User-Manual-for-Applicants.pdf',
+    steps: [
+      { do: '注册菲律宾公司', doEn: 'Register the Philippine company',
+        at: '证券交易委员会 SEC', atEn: 'Securities and Exchange Commission (SEC)', url: 'https://www.sec.gov.ph/' },
+      { do: '办税务登记', doEn: 'Tax registration',
+        at: '国内税务局 BIR', atEn: 'Bureau of Internal Revenue (BIR)', url: 'https://www.bir.gov.ph/' },
+      { do: '聘请执业药剂师并备齐其资质文件', doEn: 'Engage a licensed pharmacist and assemble their credentials',
+        at: '菲律宾 FDA', atEn: 'Philippine FDA', url: 'https://www.fda.gov.ph/' },
+      { do: '申请经营许可 LTO(进口商/经销商)', doEn: 'Apply for the License to Operate',
+        at: 'FDA eServices', atEn: 'FDA eServices', url: 'https://eservices.fda.gov.ph/applications/license_to_operate' },
+      { do: '在 e-Notification 逐款提交', doEn: 'Notify each product via e-Notification',
+        at: 'FDA ePortal', atEn: 'FDA ePortal', url: 'https://eportal.fda.gov.ph/' },
+    ],
+    note: '药剂师是这一国的硬门槛,本地主体没有就走不通。',
+    noteEn: 'The licensed pharmacist is the hard gate here.',
+  },
+  {
+    cc: 'SG', zhName: '新加坡', enName: 'Singapore',
+    sys: 'HSA PRISM', reg: '卫生科学局 HSA', regEn: 'HSA, Health Sciences Authority',
+    local: '必须 ACRA 注册的本地公司', localEn: 'ACRA-registered Singapore entity required', token: '不需要', tokenTone: 'no',
+    docs: ['ACRA 本地公司注册', '指定本地责任人及其联络方式'],
+    docsEn: ['ACRA-registered local company', 'Designated local responsible person and contact details'],
+    src: 'https://www.hsa.gov.sg/cosmetic-products/cosmetic-product-notification/',
+    steps: [
+      { do: '注册新加坡本地公司', doEn: 'Incorporate the Singapore entity',
+        at: '会计与企业管理局 ACRA', atEn: 'ACRA', url: 'https://www.acra.gov.sg/' },
+      { do: '指定本地责任人并留联络方式', doEn: 'Designate the local responsible person',
+        at: 'HSA 化妆品通报说明', atEn: 'HSA cosmetic notification guidance', url: 'https://www.hsa.gov.sg/cosmetic-products/cosmetic-product-notification/' },
+      { do: '在 PRISM 开通账号并逐款提交', doEn: 'Open the PRISM account and notify each product',
+        at: 'HSA PRISM', atEn: 'HSA PRISM', url: 'https://www.hsa.gov.sg/e-services/prism/cosmetic-products-oral-dental-gums/' },
+    ],
+    note: '六国里门槛最轻的一档,但责任人仍要落到具体的人。',
+    noteEn: 'The lightest of the six, but a named responsible person is still required.',
+  },
+];
+
+const T = zh ? {
+  eyebrow: '出海合规',
+  title: '东南亚六国化妆品通报账号门槛',
+  lede: '东盟有统一的 ACD 化妆品指令,但六个国家的通报系统、账号资质与电子签要求差别很大,'
+      + '一套资料通用不了。共同点只有一条:**都不接受境外企业直接开户,必须绑定本地法人主体**。',
+  ours: '先说清楚我们能做什么、不能做什么',
+  oursBody: '账号是品牌方本地主体的事,工厂代办不了,也不该暗示能代办。'
+          + '我们能给的是工厂侧那一半 —— 而这一半恰恰是通报材料里最费时间的部分:',
+  oursList: [
+    '产品全成分表与配方说明(按目标国口径整理,不是把内部配方直接给出去)',
+    '安全评估所需的原料资料:INCI、CAS、供应商 COA、最高历史使用量依据',
+    '工厂资质:营业执照、生产许可、GMPC / ISO 22716 相关文件',
+    'CFS 自由销售证明的申请配合与产品清单',
+    '稳定性与相容性数据、微生物与理化检测报告',
+    'PIF 产品信息档案的工厂侧内容',
+  ],
+  theirs: '这几样只能品牌方的本地主体自己有,工厂给不了',
+  theirsList: [
+    '本地注册公司与税号', '进口商资质', '本地技术负责人或药剂师',
+    '硬件 USB Token(只有本地注册企业能申请)', '本地仓库与经销安排',
+  ],
+  tableH: '六国一览',
+  cols: ['国家', '系统', '本地法人', '硬件电子签', '核心资质'],
+  detailH: '逐国办理路径',
+  stepsH: '办理顺序与官方入口',
+  alertH: '印尼:2026 年 10 月 17 日起化妆品强制清真认证',
+  alertBody: '印尼清真产品保障机构 BPJPH 已公告,自 2026 年 10 月 17 日起,'
+           + '化妆品与药品、化工品等一并纳入强制清真认证范围,进口产品同样适用。'
+           + '按 BPJPH 当期口径,已取得认证的进口化妆品仅 7,558 款。'
+           + '发往印尼的货,认证周期要倒排进出货计划 —— 这不是背景资料,是硬期限。',
+  alertSrc: 'BPJPH 官方公告',
+  srcLabel: '官方来源',
+  pitH: '三个最常踩的坑',
+  pits: [
+    { t: '账号 ≠ 产品合规',
+      d: '账号只是登录系统的权限。每一款产品仍要单独提交配方、安全评估与标签,'
+       + '拿到通报编号才允许进口销售;通报之后监管仍会抽查 PIF 产品信息档案。' },
+    { t: '授权书范围写窄了要重出',
+      d: '授权书要写明代理人可做哪些事:账号注册、产品通报、对接监管、处理召回。'
+       + '范围写漏一项,到那一步就得重新出一份,来回公证认证又是几周。' },
+    { t: '换本地主体的代价被低估',
+      d: '更换本地责任人时,多数国家要求旧账号下的产品全部迁出或注销、'
+       + '在新账号下重新通报。周期与成本都不小 —— 本地伙伴要在出海前期就选定,'
+       + '不要先随便找一家把货发出去。' },
+  ],
+  planH: '排期上的两条经验',
+  plans: [
+    '账号与产品分两条线评估:先确认本地主体的资质可行,再推配方、标签与检测。'
+    + '账号办不下来,配方做得再好也进不去。',
+    '授权书、GMP、CFS 这类文件先做预审再正式出具。反复补件比一次做对慢得多,'
+    + '而补件的时间通常正好卡在货已经在路上的那几周。',
+  ],
+  note: '本页为公开监管信息的整理,按各国官方页面逐条核对并附来源,供出海排期参考。'
+      + '法规与系统会变(越南 2025 年就修订过一次),以最新官方文本为准,'
+      + '具体申报由品牌方与其本地责任人负责。帛卉不提供境外注册代办服务。',
+  cta: '需要哪一国的工厂侧资料清单?',
+  ctaBody: '把目标市场与产品品类告诉我们,回一份该国通报要用到的工厂侧文件清单,'
+         + '以及我们这边各项的出具周期。',
+  ctaBtn: '发起询盘',
+  yes: '强制', opt: '视方式而定', no: '不需要',
+} : {
+  eyebrow: 'Export compliance',
+  title: 'Cosmetic notification accounts across six ASEAN markets',
+  lede: 'ASEAN has a harmonised Cosmetic Directive, but the six notification systems, account '
+      + 'prerequisites and e-signature rules differ enough that one document set will not travel. '
+      + 'The one thing they share: **none of them lets a foreign company open the account directly — '
+      + 'a local legal entity is required.**',
+  ours: 'What a factory can and cannot do here',
+  oursBody: 'The account belongs to the brand owner’s local entity. A factory cannot open it and '
+          + 'should not imply otherwise. What we do supply is the factory half of the dossier — '
+          + 'usually the slowest half to assemble:',
+  oursList: [
+    'Full ingredient list and formulation statement, prepared to the destination market’s format',
+    'Raw-material data for safety assessment: INCI, CAS, supplier CoA, historical use levels',
+    'Factory credentials: business licence, production licence, GMPC / ISO 22716 documents',
+    'Support for Certificate of Free Sale applications and product lists',
+    'Stability, compatibility, microbiological and physicochemical test reports',
+    'The factory-side content of the Product Information File',
+  ],
+  theirs: 'Only the local entity can hold these',
+  theirsList: [
+    'Local company registration and tax number', 'Importer licence',
+    'Local technical person in charge or licensed pharmacist',
+    'Hardware USB token (issued only to locally registered companies)',
+    'Local warehousing and distribution arrangements',
+  ],
+  tableH: 'The six at a glance',
+  cols: ['Market', 'System', 'Local entity', 'Hardware e-signature', 'Core prerequisites'],
+  detailH: 'Market by market',
+  stepsH: 'Order of steps and official entry points',
+  alertH: 'Indonesia: halal certification becomes mandatory for cosmetics on 17 October 2026',
+  alertBody: 'BPJPH has announced that from 17 October 2026 cosmetics join medicines and chemical '
+           + 'products under mandatory halal certification, imported goods included. On BPJPH figures '
+           + 'only 7,558 imported cosmetic products are certified so far. Build the certification lead '
+           + 'time into any Indonesian shipping plan — this is a hard date, not background reading.',
+  alertSrc: 'BPJPH announcement',
+  srcLabel: 'Official source',
+  pitH: 'Three things that go wrong most often',
+  pits: [
+    { t: 'An account is not product compliance',
+      d: 'The account is only system access. Every product still needs its own formulation, safety '
+       + 'assessment and label submission before a notification number is issued, and the PIF stays '
+       + 'subject to inspection afterwards.' },
+    { t: 'A narrow authorisation letter has to be reissued',
+      d: 'State the full scope: account registration, product notification, dealing with the regulator, '
+       + 'handling recalls. Miss one and you re-notarise weeks later.' },
+    { t: 'Changing the local entity costs more than expected',
+      d: 'Most of these markets require products under the old account to be withdrawn and re-notified '
+       + 'under the new one. Choose the local partner before shipping, not after.' },
+  ],
+  planH: 'Two scheduling notes',
+  plans: [
+    'Assess the account and the product on separate tracks. Confirm the local entity is viable first; '
+    + 'a perfect formula cannot enter a market whose account never opened.',
+    'Pre-review authorisation letters, GMP and CFS documents before issuing them formally. '
+    + 'Rounds of corrections cost more time than getting it right once — and they land exactly '
+    + 'in the weeks when goods are already in transit.',
+  ],
+  note: 'A compilation of public regulatory information, checked line by line against each authority’s '
+      + 'own pages, with sources given. Rules and systems change (Vietnam amended its in 2025); the latest '
+      + 'official text prevails, and filing is the responsibility of the brand owner and its local '
+      + 'representative. BIOSPHERE does not provide overseas registration agency services.',
+  cta: 'Need the factory-side document list for a specific market?',
+  ctaBody: 'Tell us the destination and the product category and we will send the factory documents that '
+         + 'market’s notification needs, with our lead time for each.',
+  ctaBtn: 'Start an enquiry',
+  yes: 'Mandatory', opt: 'Depends on route', no: 'Not required',
+};
+
+const tokenLabel = (t: Row['tokenTone']) => (t === 'yes' ? T.yes : t === 'opt' ? T.opt : T.no);
+
+const ld = [
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}/${lang}/` },
+      { '@type': 'ListItem', position: 2, name: T.title, item: origin + path },
+    ],
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: ROWS.map((r) => ({
+      '@type': 'Question',
+      name: zh ? `${r.zhName}化妆品通报账号需要什么资质?` : `What does a cosmetic notification account require in ${r.enName}?`,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: zh
+          ? `${r.zhName}的通报系统是 ${r.sys},由${r.reg}主管。${r.local}。硬件电子签:${tokenLabel(r.tokenTone)}。`
+            + `核心资质:${r.docs.join('、')}。${r.note}以最新官方文本为准。`
+          : `${r.enName} uses ${r.sys}, administered by ${r.regEn}. ${r.localEn}. Hardware e-signature: `
+            + `${tokenLabel(r.tokenTone)}. Core prerequisites: ${r.docsEn.join('; ')}. ${r.noteEn} `
+            + 'The latest official text prevails.',
+      },
+    })),
+  },
+];
+const indexable = shell.site?.is_live === 1;
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.lede.replace(/\*\*/g, '')}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={indexable} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede" set:html={T.lede.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')} />
+    </header>
+
+    <aside class="alert">
+      <h2>{T.alertH}</h2>
+      <p>{T.alertBody}</p>
+      <p class="src"><a href="https://bpjph.halal.go.id/detail/bpjph-produk-kosmetik-wajib-bersertifikat-halal-pada-oktober-2026/"
+                        rel="nofollow noopener" target="_blank">{T.alertSrc} ↗</a></p>
+    </aside>
+
+    <section class="split">
+      <div class="box ours">
+        <h2>{T.ours}</h2>
+        <p>{T.oursBody}</p>
+        <ul>{T.oursList.map((x) => <li>{x}</li>)}</ul>
+      </div>
+      <div class="box theirs">
+        <h2>{T.theirs}</h2>
+        <ul>{T.theirsList.map((x) => <li>{x}</li>)}</ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>{T.tableH}</h2>
+      <div class="wrap">
+        <table>
+          <thead><tr>{T.cols.map((c) => <th scope="col">{c}</th>)}</tr></thead>
+          <tbody>
+            {ROWS.map((r) => (
+              <tr>
+                <th scope="row">{zh ? r.zhName : r.enName}</th>
+                <td>{r.sys}</td>
+                <td>{zh ? r.local : r.localEn}</td>
+                <td><span class:list={['tok', r.tokenTone]}>{tokenLabel(r.tokenTone)}</span></td>
+                <td class="docs">{(zh ? r.docs : r.docsEn).join(zh ? '、' : '; ')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>{T.detailH}</h2>
+      <div class="cards">
+        {ROWS.map((r) => (
+          <article class="card">
+            <p class="cc">{r.cc}</p>
+            <h3>{zh ? r.zhName : r.enName} · {r.sys}</h3>
+            <p class="reg">{zh ? r.reg : r.regEn}</p>
+            <ul>{(zh ? r.docs : r.docsEn).map((d) => <li>{d}</li>)}</ul>
+            <p class="note">{zh ? r.note : r.noteEn}</p>
+            <p class="steps-h">{T.stepsH}</p>
+            <ol class="steps">
+              {r.steps.map((st) => (
+                <li>
+                  <span class="what">{zh ? st.do : st.doEn}</span>
+                  <a class="at" href={st.url} rel="nofollow noopener" target="_blank">{zh ? st.at : st.atEn} ↗</a>
+                </li>
+              ))}
+            </ol>
+            <p class="src"><a href={r.src} rel="nofollow noopener" target="_blank">{T.srcLabel} ↗</a></p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section>
+      <h2>{T.pitH}</h2>
+      <div class="pits">
+        {T.pits.map((p) => (
+          <div class="pit"><h3>{p.t}</h3><p>{p.d}</p></div>
+        ))}
+      </div>
+    </section>
+
+    <section>
+      <h2>{T.planH}</h2>
+      <ol class="plans">{T.plans.map((x) => <li>{x}</li>)}</ol>
+    </section>
+
+    <section class="ask">
+      <h2>{T.cta}</h2>
+      <p>{T.ctaBody}</p>
+      <a class="btn" href={`/${lang}/contact/`}>{T.ctaBtn}</a>
+    </section>
+
+    <p class="disclaim">{T.note}</p>
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <style>
+    main { max-width: min(112.5rem, 100%); margin: 0 auto;
+           padding: 2.5rem var(--ck-gutter, 1.25rem) 4rem; }
+    .hd { max-width: 56rem; }
+    .eyebrow { font-size: max(0.75rem, 14px); letter-spacing: .14em; text-transform: uppercase;
+               color: var(--ck-ink-soft); margin: 0 0 .5rem; }
+    h1 { font-size: clamp(1.5rem, 3vw, 2.25rem); margin: 0 0 .75rem; text-wrap: balance; }
+    .lede { color: var(--ck-ink-soft); line-height: 1.8; margin: 0; }
+    section { margin: 3rem 0 0; }
+    h2 { font-size: clamp(1.125rem, 2vw, 1.5rem); margin: 0 0 1rem; }
+    h3 { font-size: 1rem; margin: 0 0 .5rem; }
+    ul, ol { margin: .5rem 0 0; padding-inline-start: 1.125rem; }
+    li { line-height: 1.8; margin: 0 0 .25rem; }
+    /* 「我们能做/不能做」并排:这一组是全页最该先被看到的,所以放在表格之前 */
+    .split { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); }
+    .box { border: var(--ck-border-w, 1px) solid var(--ck-line); border-radius: var(--ck-radius, 4px);
+           padding: 1.25rem 1.375rem; }
+    .box p { color: var(--ck-ink-soft); line-height: 1.8; margin: 0; }
+    .ours { background: color-mix(in oklab, var(--ck-accent, #444) 5%, transparent); }
+    .wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; min-width: 52rem; font-size: max(0.8125rem, 14px); }
+    th, td { text-align: left; padding: .625rem .75rem; vertical-align: top; line-height: 1.7;
+             border-bottom: 1px solid var(--ck-line); }
+    thead th { white-space: nowrap; font-weight: 600; }
+    tbody th { white-space: nowrap; font-weight: 600; }
+    .docs { color: var(--ck-ink-soft); }
+    .tok { display: inline-block; padding: .125rem .5rem; border-radius: 999px; white-space: nowrap;
+           font-size: max(0.75rem, 14px); border: 1px solid var(--ck-line); }
+    .tok.yes { border-color: currentColor; font-weight: 600; }
+    .tok.no { color: var(--ck-ink-soft); }
+    .cards { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+    .card { border: var(--ck-border-w, 1px) solid var(--ck-line); border-radius: var(--ck-radius, 4px);
+            padding: 1.25rem 1.375rem; }
+    .cc { font-size: max(0.75rem, 14px); letter-spacing: .14em; color: var(--ck-ink-soft); margin: 0 0 .375rem; }
+    .reg, .note, .src { color: var(--ck-ink-soft); line-height: 1.75; margin: .5rem 0 0;
+                        font-size: max(0.8125rem, 14px); }
+    .alert { border: 2px solid var(--ck-ink, #111); border-radius: var(--ck-radius, 4px);
+             padding: 1.25rem 1.375rem; margin: 2rem 0 0; max-width: 56rem; }
+    .alert h2 { font-size: 1.0625rem; margin: 0 0 .5rem; }
+    .alert p { color: var(--ck-ink-soft); line-height: 1.8; margin: 0; }
+    .steps-h { margin: 1rem 0 .25rem; font-size: max(0.75rem, 14px); letter-spacing: .1em;
+               text-transform: uppercase; color: var(--ck-ink-soft); }
+    /* 办理路径是这一页的主角:序号要明确,入口要能点。
+       创始人 2026-09-10:「我们不代办,只是要有怎么样办的索引」。 */
+    .steps { margin: 0; padding-inline-start: 1.25rem; }
+    .steps li { margin: 0 0 .5rem; line-height: 1.7; }
+    .steps .what { display: block; }
+    .steps .at { font-size: max(0.8125rem, 14px); color: var(--ck-ink-soft); }
+    .pits { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+    .pit { border-inline-start: 3px solid var(--ck-line); padding: 0 0 0 1rem; }
+    .pit p { color: var(--ck-ink-soft); line-height: 1.8; margin: 0; }
+    .plans { max-width: 56rem; color: var(--ck-ink-soft); }
+    .ask { border-top: 1px solid var(--ck-line); padding-top: 2rem; max-width: 56rem; }
+    .ask p { color: var(--ck-ink-soft); line-height: 1.8; }
+    .btn { display: inline-flex; align-items: center; min-height: 2.75rem; margin-top: 1rem;
+           padding: 0 1.5rem; border-radius: 999px; background: var(--ck-ink, #111);
+           color: var(--ck-paper, #fff); text-decoration: none; }
+    .disclaim { max-width: 56rem; margin: 2.5rem 0 0; font-size: max(0.8125rem, 14px);
+                line-height: 1.8; color: var(--ck-ink-soft); }
+  </style>
+</BaseLayout>

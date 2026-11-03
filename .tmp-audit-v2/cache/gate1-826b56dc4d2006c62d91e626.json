@@ -1,0 +1,65 @@
+{
+ "tree": "c03e18f62468817d772ef6ec17c12dce0ded255d",
+ "base_tree": "2d24696a5aff260e8ada57153ff225362df36e93",
+ "worker": "gate",
+ "mode": "gate",
+ "repo": "F:/0cosmetic/tools-review",
+ "rules_hash": "sha256:8ad32e1ca060f822deaa9f08b8504a24d9b5ca0bcdd5676a39854c249af17ef3",
+ "gate_hash": "sha256:1992cd6c1dcbb26e1bacb8ae5f8eb5d3284d55464a5afd11bd06442e20fe6b3f",
+ "files": 6,
+ "lines": 243,
+ "changes": [
+  [
+   "M",
+   "audit_v2/register_watch_task.ps1",
+   null
+  ],
+  [
+   "M",
+   "audit_v2/rules-v2-strict.yml",
+   null
+  ],
+  [
+   "M",
+   "audit_v2/sites.json",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/交付说明.md",
+   null
+  ],
+  [
+   "M",
+   "gate.sh",
+   null
+  ],
+  [
+   "D",
+   "gate.sh.bak-0924-zero",
+   null
+  ]
+ ],
+ "stats": {
+  "audit_v2/register_watch_task.ps1": 4,
+  "audit_v2/rules-v2-strict.yml": 4,
+  "audit_v2/sites.json": 3,
+  "audit_v2/交付说明.md": 96,
+  "gate.sh": 4,
+  "gate.sh.bak-0924-zero": 132
+ },
+ "binaries": [],
+ "block": [],
+ "doubt": [],
+ "exceptions": [],
+ "risks": [],
+ "seconds": {
+  "tree": 0.0,
+  "diff": 0.1,
+  "semgrep": 9.4,
+  "rules": 0.1,
+  "total": 9.6
+ },
+ "result": "过",
+ "hard": false
+}

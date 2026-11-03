@@ -1,0 +1,332 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 中国已使用化妆品原料检索 —— 8,965 条,可搜。
+ *
+ * 由来(2026-09-09,创始人:「护肤外面公开的成分有几万个配方,要深度搜索啊」):
+ * 我们自建的草本原料库只有 93 条,是一条条写出来的深度内容;
+ * 而《已使用化妆品原料目录(2021年版)》是国家药监局 2021 年第 62 号公告的附件,
+ * 8,972 条,收录在我国境内生产、销售的化妆品**已经用过**的全部原料。
+ *
+ * 为什么值得单独做一页,而不是塞进原料库:
+ *   1. 两者性质不同。原料库是我们的观点(配伍、稳定性、投料要点),
+ *      这份是**国家公告的客观收录**,一个字都不该由我们改写。混在一起会让客户
+ *      分不清哪句是法规、哪句是帛卉的说法。
+ *   2. 它解的是采购与法规同事最常问的一句:「这个原料在中国能不能用、能加多少」。
+ *      目录里的最高历史使用量,按公告说明八可直接作为
+ *      《化妆品安全评估报告(简化版)》的证据类型 —— 这是能省客户钱的信息。
+ *
+ * 刻意不做的事:
+ *   - **不给 8,965 条各开一个详情页**。每条只有名字和一个数字,
+ *     开出来就是八千多张薄页,对客户没用,对搜索是灌水。做成一页可搜的索引。
+ *   - **不加我们自己的解读**。想看解读的,页面把它链回草本原料库对应条目。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { searchHint } from '../../../lib/searchhint';
+import { memo } from '../../../lib/memo';
+import { getCounts } from '../../../lib/counts';
+import MemberGate from '../../../components/MemberGate.astro';
+import { searchGate } from '../../../lib/member';
+import { searchMemo, catalogHits, byIds, capText } from '../../../lib/search';
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+/* 检索索引只有中英两套字段;其他语种的访客要被明确告知,别让他搜空了以为我们没有 */
+const sHint = searchHint(lang);
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const url = new URL(Astro.url);
+const reg = String(Astro.params.reg ?? 'cn-nmpa-2021').toLowerCase();
+const q0 = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
+/* 09-24 搜索计每日额度:未登录、爬虫、超额不查库,只出列表 + 登录/额度卡 */
+const sg = await searchGate(Astro, env, db, 'inci', q0);
+const q = sg && sg.state !== 'full' ? '' : q0;
+/* 09-24 安全架构 3.1:带词最多翻 10 页,目录最多翻 20 页(再往后请用检索);中间件按同一口径把越界的 ?p= 301 回来 */
+const PMAX = q ? 10 : 20;
+const page = Math.max(1, Math.min(PMAX, Number(url.searchParams.get('p') ?? 1) || 1));
+const PER = 50;
+
+/* 只有两种查询:带关键词和不带。都走索引列,不做相关子查询 ——
+   3,716 行的相关子查询曾经被算成 392 万行读,那次把 D1 日额度烧穿过。 */
+let rows: any[] = [];
+let total = 0;
+/* 目录元数据(名字、发布机构、官方链接、说明)存在 inci_registry 里,
+   不写死在页面上 —— 十个国家的目录会随法规改版,内容归内容层管。 */
+let meta: any = null;
+const ROW = 'rowid AS id, no, name_zh, inci, alias, cas, pubchem_cid, max_rinse, max_leave, note';
+if (db) {
+  try {
+    meta = await db.prepare(
+      'SELECT id, region, name_zh, name_en, issuer_zh, issuer_en, official_url, note_zh, note_en, status'
+      + ' FROM inci_registry WHERE id = ?').bind(reg).first<any>();
+    /* 09-24 红队:不存在的目录两支都不走(与平台同页一致)。以前随便拼一个目录名 + 同一个词:额度只按词计一条,
+       命中表却按「目录+词」记,每换一个假目录就是一次没有区间框、目录过滤又把命中全筛掉的 FTS 整扫(常见词约 2–6 万行)。 */
+    if (q && meta) {
+      /* 09-24 C2(安全架构 3.1「会员搜索」):上一版一次搜索 = 全量 COUNT + 全量 ORDER BY no,常见词 2.2 万行。
+         现在命中表(最多 1,001 条,只带 rowid / 目录 / 序号 / 长度)由 lib/search.ts 取:FTS 按本目录的 rowid 区间翻、流式取到上限就停;
+         总数封顶显示「1000+」;排序、分页在内存里做,每页只按主键回表 50 行。命中表与每页各按「目录+词(+页)」记 1 小时。 */
+      const hits = await searchMemo(`inci:${reg}`, q, 0, () => catalogHits(db, q, reg));
+      total = hits.length;
+      const ids = [...hits].sort((a, b) => (a.no < b.no ? -1 : a.no > b.no ? 1 : 0))
+        .slice((page - 1) * PER, page * PER).map((h) => h.id);
+      rows = await searchMemo(`inci:${reg}`, q, page, () => byIds(db, `SELECT ${ROW} FROM inci_catalog WHERE rowid IN (%IDS%)`, ids));
+    } else if (meta) {
+      /* 09-24 D2:不带词的翻页是公司库读量第一名(3 小时 6,900 万行:每页先按 registry 取全目录再排序,eu-cosing 一次 3.6 万行)。
+         总数读 counts 缓存行;列表靠 0119 的 (registry, no) 索引只读 OFFSET+50 行,再按 目录×页 记 24 小时,17 个语种共用。
+         计数文件里没有这个目录(新目录还没跑 counts-refresh)时,只数到 20 页够用的 1,001 行,不整目录现数。 */
+      const cached = (await getCounts(db))?.registry?.[reg];
+      total = typeof cached === 'number' ? cached
+        : (((await db.prepare('SELECT rowid FROM inci_catalog WHERE registry = ? LIMIT 1001').bind(reg).all()).results ?? []).length);
+      rows = await memo(`inci-list:${reg}|${page}`, 86400, async () => ((await db.prepare(
+        `SELECT no, name_zh, inci, alias, cas, pubchem_cid, max_rinse, max_leave, note
+           FROM inci_catalog WHERE registry = ? ORDER BY no LIMIT ? OFFSET ?`)
+        .bind(reg, PER, (page - 1) * PER).all<any>()).results ?? []) as any[]);
+    }
+  } catch { rows = []; total = 0; }
+}
+/* 中国目录独有「淋洗/驻留最高历史使用量」两列;欧盟等目录把功能、附录、限量写在备注里。
+   两套表头共用一张表,靠这个开关切 —— 拿 '—' 占位会让人以为「有这一栏但没数据」。 */
+const isCN = reg.startsWith('cn-nmpa');
+/* 页数封顶:带词 10 页、目录 20 页。目录更长时页码只给到 20,并提示用检索 */
+const pages = Math.min(PMAX, Math.max(1, Math.ceil(total / PER)));
+const more = !q && total > PMAX * PER;
+/* 页码窗口:当前页两侧各 3 个。全列出来在 180 页时是一面数字墙,只给两个箭头又翻不动。 */
+const win: number[] = [];
+for (let i = Math.max(1, page - 3); i <= Math.min(pages, page + 3); i++) win.push(i);
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/inci/${reg}/`;
+const href = (p: number) => `${path}?${q ? `q=${encodeURIComponent(q)}&` : ''}p=${p}`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+
+const T = zh ? {
+  eyebrow: '法规工具',
+  title: meta ? String(meta.name_zh) : '原料目录检索',
+  lede: '《已使用化妆品原料目录(2021年版)》全量 8,965 条可检索,含标准中文名、INCI 名、CAS 号与最高历史使用量;CAS 号取自 PubChem,点开即是原始记录。目录里 2,104 条有 CAS —— 其余多为植物提取物等多组分原料,本就不存在单一 CAS 号,登记号随提取工艺与溶剂而变,以供应商 COA 标示为准。'
+      + '按国家药监局 2021 年第 62 号公告说明八,最高历史使用量可作为《化妆品安全评估报告(简化版)》的证据类型。',
+  ph: '输入中文名、INCI 名、CAS 号或目录序号',
+  search: '检索', clear: '清空',
+  cols: isCN
+    ? ['序号', '标准中文名称', 'INCI 名称 / 英文名称', 'CAS 号', '淋洗类最高历史使用量', '驻留类最高历史使用量', '备注']
+    : ['编号', '化学名称 / 描述', 'INCI 名称', 'CAS 号', '功能 · 附录 · 限量'],
+  found: (n: number) => `共 ${q ? capText(n) : n.toLocaleString()} 条`,
+  more: `目录较长,这里只列前 ${PMAX} 页;要找具体原料,请用上面的检索。`,
+  empty: '没有检索到。换个写法试试 —— 目录里的植物原料常写成「甘草(GLYCYRRHIZA GLABRA)根提取物」这种带拉丁学名的形式。',
+  prev: '上一页', next: '下一页', first: '首页', last: '末页', jump: '跳到', go: '跳转',
+  pageOf: (a: number, b: number) => `第 ${a} / ${b} 页`,
+  alias: '曾用名',
+  note: '本页数据逐字来自国家药监局 2021 年第 62 号公告附件《已使用化妆品原料目录(2021年版)》,'
+      + '帛卉不做增删改。目录共 8,972 条,本页收录 8,965 条(7 条在 PDF 文本抽取中丢失,正在补)。'
+      + '收录不等于准用:被列为禁用、限用或准用组分的原料,须按《化妆品安全技术规范》执行;'
+      + '最高历史使用量是历史收录值,不是法规限值。以最新官方文本为准。',
+  ask: '要确认某个原料在你的目标市场能不能用?把配方方向发给我们,法规同事会回。',
+} : {
+  eyebrow: 'Regulatory tool',
+  title: 'China cosmetic ingredient inventory search',
+  lede: 'All 8,965 searchable entries of the Inventory of Existing Cosmetic Ingredients in China (2021 edition), '
+      + 'with standard Chinese name, INCI name, CAS number and maximum historical use level. CAS numbers come from PubChem and link to the source record. 2,104 entries carry a CAS number; the rest are mostly multi-component botanical materials, which have no single CAS — the registry number varies with extraction process and solvent, so the supplier COA governs. Per note 8 of NMPA announcement '
+      + 'No. 62 of 2021, the maximum historical use level can serve as evidence in a simplified safety assessment report.',
+  ph: 'Chinese name, INCI name, CAS number or inventory number',
+  search: 'Search', clear: 'Clear',
+  cols: isCN
+    ? ['No.', 'Standard Chinese name', 'INCI / English name', 'CAS No.', 'Max use, rinse-off', 'Max use, leave-on', 'Note']
+    : ['ID', 'Chemical name / description', 'INCI name', 'CAS No.', 'Function · Annex · Limit'],
+  found: (n: number) => `${q ? capText(n) : n.toLocaleString()} entries`,
+  more: `Only the first ${PMAX} pages are listed; use the search box above to find a specific ingredient.`,
+  empty: 'No match. Try another spelling — botanical entries are usually written with the Latin binomial in brackets.',
+  prev: 'Prev', next: 'Next', first: 'First', last: 'Last', jump: 'Go to', go: 'Go',
+  pageOf: (a: number, b: number) => `Page ${a} of ${b}`,
+  alias: 'former name',
+  note: 'Reproduced verbatim from the annex to NMPA announcement No. 62 of 2021, the Inventory of Existing Cosmetic '
+      + 'Ingredients in China (2021 edition). BIOSPHERE adds nothing and changes nothing. The inventory holds 8,972 '
+      + 'entries; 8,965 are listed here (7 were lost in PDF text extraction and are being recovered). Listing is not '
+      + 'approval: ingredients classified as prohibited, restricted or permitted components follow the Safety and '
+      + 'Technical Standards for Cosmetics. The maximum historical use level is a recorded historical value, not a '
+      + 'regulatory limit. The latest official text prevails.',
+  ask: 'Need to confirm whether an ingredient is usable in your target market? Send us the formulation direction.',
+};
+
+/* 中国目录的导语与说明写的是它自己的事实(8,972 条、62 号公告),套到别的目录上就会出现
+   「Hotlist 共 8,972 条」这种错话。非中国目录一律改用 inci_registry 里那一段说明,
+   再补一句来源与「以官方文本为准」。 */
+if (!isCN && meta) {
+  const src = zh ? `来源:${meta.issuer_zh}。` : `Source: ${meta.issuer_en || meta.issuer_zh}. `;
+  (T as any).lede = (zh ? String(meta.note_zh || '') : String(meta.note_en || meta.note_zh || ''));
+  (T as any).note = src + (zh
+    ? '本页逐条转录官方清单,不做增删改;收录不等于准用,限值与条件以最新官方文本为准。'
+    : 'Reproduced from the official list without additions or changes. Listing is not approval; limits and conditions follow the latest official text.');
+}
+const ld = [
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}/${lang}/` },
+      { '@type': 'ListItem', position: 2, name: T.title, item: origin + path },
+    ],
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'Dataset',
+    name: T.title, description: T.lede, url: origin + path,
+    creator: { '@type': 'Organization', name: 'National Medical Products Administration' },
+    isBasedOn: 'https://english.nmpa.gov.cn/2021-04/30/c_655124.htm',
+    variableMeasured: zh ? ['标准中文名称', 'INCI 名称', '淋洗类最高历史使用量', '驻留类最高历史使用量']
+                         : ['Standard Chinese name', 'INCI name', 'Max historical use rinse-off', 'Max historical use leave-on'],
+    license: 'https://www.nmpa.gov.cn/',
+  },
+];
+const indexable = shell.site?.is_live === 1 && !q0 && page === 1;
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={indexable} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+      <form class="search" method="get" action={path}>
+        <input type="search" name="q" value={q0} placeholder={T.ph} aria-label={T.ph} maxlength="60" />
+        <button type="submit">{T.search}</button>
+        {q0 && <a class="clear" href={path}>{T.clear}</a>}
+      </form>
+      {sg && <MemberGate lang={lang} g={sg} next={`${path}?q=${encodeURIComponent(q0)}`} what={['检索结果', 'search results']} />}
+      {sHint && <p class="shint">{sHint}</p>}
+    <p class="count">{T.found(total)}</p>
+    </header>
+
+    {rows.length === 0 ? <p class="empty">{T.empty}</p> : (
+      <div class="wrap">
+        <table>
+          <thead>
+            <tr>{T.cols.map((c) => <th scope="col">{c}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr>
+                <td class="no">{r.no}</td>
+                <td>
+                  {r.name_zh}
+                  {r.alias && <span class="alias">{T.alias}:{r.alias}</span>}
+                </td>
+                <td class="inci">{r.inci || '—'}</td>
+                {/* CAS 号带上 PubChem 原始记录的链接 —— 客户能自己点开核对,
+                    这是 CAS 查询站的通行做法,也是我们敢把这一列放出来的前提。
+                    CAS 由 tools/cas-enrich.py 从 PubChem PUG REST 抓取,没抓到就留空,不猜。 */}
+                <td class="cas">{r.cas
+                  ? (r.pubchem_cid
+                      ? <a href={`https://pubchem.ncbi.nlm.nih.gov/compound/${r.pubchem_cid}`}
+                           target="_blank" rel="noopener nofollow">{r.cas}</a>
+                      : r.cas)
+                  : '—'}</td>
+                {isCN && <td class="num">{r.max_rinse ? `${r.max_rinse}%` : '—'}</td>}
+                {isCN && <td class="num">{r.max_leave ? `${r.max_leave}%` : '—'}</td>}
+                <td class="rem">{r.note || ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+    {/* 分页:一次给出一串页码,而不是只有上一页/下一页。
+        创始人 2026-09-10:「页码那要可以多选几个页面,而不是一个个的点,那样太累了,
+        还可以输入页码直接跳转」。180 页的目录靠「下一页」翻是不能用的。 */}
+    {pages > 1 && (
+      <nav class="pager" aria-label="pagination">
+        {page > 1 ? <a href={href(1)}>{T.first}</a> : <span class="off">{T.first}</span>}
+        {page > 1 ? <a href={href(page - 1)}>{T.prev}</a> : <span class="off">{T.prev}</span>}
+        <span class="nums">
+          {win.map((n) => (n === page
+            ? <b class="cur">{n}</b>
+            : <a href={href(n)}>{n}</a>))}
+        </span>
+        {page < pages ? <a href={href(page + 1)}>{T.next}</a> : <span class="off">{T.next}</span>}
+        {page < pages ? <a href={href(pages)}>{T.last}</a> : <span class="off">{T.last}</span>}
+        <form class="jump" method="get" action={path}>
+          {q && <input type="hidden" name="q" value={q} />}
+          <label for="jp">{T.jump}</label>
+          <input id="jp" name="p" type="number" min="1" max={pages} value={page} inputmode="numeric" />
+          <span class="tot">/ {pages}</span>
+          <button type="submit">{T.go}</button>
+        </form>
+      </nav>
+    )}
+
+    {more && <p class="note">{T.more}</p>}
+    <p class="note">{T.note}</p>
+    <p class="ask">{T.ask}</p>
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <style>
+  .shint { margin: .5rem 0 0; font-size: .875rem; line-height: 1.6; opacity: .75;
+           border-left: 2px solid currentColor; padding-left: .625rem; }
+    main { max-width: min(112.5rem, 100%); margin: 0 auto;
+           padding: 2.5rem var(--ck-gutter, 1.25rem) 4rem; }
+    .hd { max-width: 56rem; }
+    .cas { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .cas a { color: inherit; }
+    .eyebrow { font-size: .75rem; letter-spacing: .14em; text-transform: uppercase;
+               color: var(--ck-ink-soft); margin: 0 0 .5rem; }
+    h1 { font-size: clamp(1.5rem, 3vw, 2.25rem); margin: 0 0 .75rem; text-wrap: balance; }
+    .lede { color: var(--ck-ink-soft); line-height: 1.75; margin: 0 0 1.5rem; }
+    .search { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+    .search input { flex: 1 1 22rem; min-width: 0; padding: .625rem .875rem;
+                    border: 1px solid var(--ck-line, #ddd); border-radius: 999px;
+                    background: var(--ck-paper, #fff); color: inherit; font: inherit; }
+    .search button { padding: .625rem 1.5rem; border-radius: 999px; border: 0; cursor: pointer;
+                     background: var(--ck-ink, #111); color: var(--ck-paper, #fff); font: inherit; }
+    .search .clear { align-self: center; font-size: .9375rem; color: var(--ck-ink-soft); }
+    .count { margin: .875rem 0 0; font-size: .9375rem; color: var(--ck-ink-soft);
+             font-variant-numeric: tabular-nums; }
+    /* 宽表自己横向滚,页面本体不许左右滚 */
+    .wrap { overflow-x: auto; margin: 1.5rem 0 0; }
+    table { border-collapse: collapse; width: 100%; min-width: 54rem; font-size: .9375rem; }
+    th, td { text-align: left; padding: .5rem .75rem; border-bottom: 1px solid var(--ck-line, #eee);
+             vertical-align: top; line-height: 1.6; }
+    th { font-weight: 600; white-space: nowrap; position: sticky; top: 0;
+         background: var(--ck-paper, #fff); }
+    .no, .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .inci { font-size: .875rem; color: var(--ck-ink-soft); }
+    .rem { color: var(--ck-ink-soft); }
+    .alias { display: block; font-size: .8125rem; color: var(--ck-ink-soft); }
+    .empty { margin: 2rem 0; color: var(--ck-ink-soft); line-height: 1.75; }
+    .pager { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap;
+             margin: 1.5rem 0 0; font-size: .9375rem; }
+    .pager a, .pager .off, .pager .cur { min-height: 44px; min-width: 44px; display: inline-flex;
+             align-items: center; justify-content: center; padding: 0 .625rem; border-radius: 10px;
+             border: 1px solid var(--ck-line, rgba(0,0,0,.14)); text-decoration: none; color: inherit; }
+    .pager .cur { background: var(--ck-ink, #111); color: var(--ck-paper, #fff); font-weight: 600; }
+    .pager .nums { display: flex; gap: .375rem; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+    .jump { display: flex; gap: .375rem; align-items: center; margin-left: auto; }
+    .jump input { width: 5rem; min-height: 44px; padding: 0 .5rem; font-size: 1rem; text-align: center;
+             border-radius: 10px; border: 1px solid var(--ck-line, rgba(0,0,0,.18));
+             background: transparent; color: inherit; }
+    .jump button { min-height: 44px; padding: 0 1rem; font-size: .9375rem; border-radius: 10px;
+             cursor: pointer; border: 1px solid var(--ck-line, rgba(0,0,0,.18));
+             background: transparent; color: inherit; }
+    .jump .tot { color: var(--ck-ink-soft); font-variant-numeric: tabular-nums; }
+    .pager .off { color: var(--ck-ink-soft); opacity: .5; }
+    .pager .of { font-variant-numeric: tabular-nums; color: var(--ck-ink-soft); }
+    .note, .ask { max-width: 56rem; font-size: .875rem; line-height: 1.8;
+                  color: var(--ck-ink-soft); margin: 2rem 0 0; }
+  </style>
+</BaseLayout>

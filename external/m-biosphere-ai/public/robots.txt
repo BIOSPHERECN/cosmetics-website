@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /bhbohui
+Disallow: /bhbohui/
+Disallow: /api/
+Disallow: /temp/
+
+Sitemap: https://biosphere-ai.com/sitemap.xml

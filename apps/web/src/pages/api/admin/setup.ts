@@ -30,7 +30,7 @@ export const POST: APIRoute = async ({ request }) => {
     if (!email || !password) return json({ ok: false, msg: '请提供邮箱与口令' }, 400);
     // 6 位下限由创始人指定。短口令的爆破风险由登录限流兜底
     // (同 IP 15 分钟内失败 8 次即拒绝,见 auth.ts 的 tooManyAttempts)。
-    if (password.length < 6) return json({ ok: false, msg: '口令至少 6 位' }, 400);
+    if (password.length < 10) return json({ ok: false, msg: '口令至少 10 位' }, 400);
 
     const { hash, salt } = await hashPassword(password);
     await db

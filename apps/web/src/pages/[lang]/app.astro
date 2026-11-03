@@ -1,0 +1,229 @@
+---
+/**
+ * 帛卉AI 云端工作台 —— 桌面壳首页。
+ *
+ * 设计：
+ *   左侧垂直菜单（多工具）+ 右侧内容区（iframe/webview）
+ *   登录鉴权：未登录跳 /login
+ *   外部站（duck.ai / flat-ai / huggingchat）用 webview（Electron 专属，绕过 X-Frame-Options）
+ *   站内页面（/skin/ /pack/）用 iframe
+ *
+ * 创始人 2026-10-09:「桌面版，用户感觉不到是网页，实际都在云端 CF 上」
+ * 「多个出图的，是不是在左侧展现呢」→ 左侧垂直菜单，右侧内容区
+ */
+import { readSession, COOKIE } from '../../lib/auth';
+import { env } from 'cloudflare:workers';
+
+export const prerender = false;
+
+const lang = (Astro.params.lang ?? 'zh-cn') as string;
+const zh = lang.startsWith('zh');
+const path = `/${lang}/app/`;
+
+/* 登录鉴权：未登录跳登录页 */
+const token = Astro.cookies.get(COOKIE)?.value;
+const secret = String((env as any).SESSION_SECRET ?? (env as any).BOHUI_SESSION_SECRET ?? '');
+const session = token ? await readSession(token, secret) : null;
+if (!session) {
+  return Astro.redirect(`/${lang}/login?redirect=${encodeURIComponent(path)}`);
+}
+
+const T = zh ? {
+  title: '帛卉AI 工作台',
+  welcome: '欢迎',
+  logout: '退出',
+  menu: {
+    chat: 'AI 聊天',
+    image: 'AI 画图',
+    video: '视频生成',
+    skin: '肌肤检测',
+    pack: '包装设计',
+    skills: '技能库',
+    mining: '客户挖掘',
+    settings: '设置',
+  },
+  desktopOnly: '此工具需在帛卉AI 桌面端中打开',
+  openDesktop: '下载桌面端',
+} : {
+  title: 'BIOSPHERE AI Workbench',
+  welcome: 'Welcome',
+  logout: 'Sign out',
+  menu: {
+    chat: 'AI Chat',
+    image: 'AI Image',
+    video: 'Video Gen',
+    skin: 'Skin Analysis',
+    pack: 'Packaging Design',
+    skills: 'Skills',
+    mining: 'Prospect Mining',
+    settings: 'Settings',
+  },
+  desktopOnly: 'This tool requires the BIOSPHERE AI desktop app',
+  openDesktop: 'Download desktop app',
+};
+
+/* 工具列表：external = 外部站（需 webview），internal = 站内页面（用 iframe） */
+const TOOLS = [
+  { id: 'chat', label: T.menu.chat, url: 'https://huggingchat.com/', icon: '💬', external: true },
+  { id: 'image', label: T.menu.image, url: 'https://duck.ai/', icon: '🎨', external: true },
+  { id: 'video', label: T.menu.video, url: 'https://flat-ai.com/', icon: '🎬', external: true },
+  { id: 'skin', label: T.menu.skin, url: `/${lang}/skin/`, icon: '🔬', external: false },
+  { id: 'pack', label: T.menu.pack, url: `/${lang}/pack/`, icon: '📦', external: false },
+  { id: 'skills', label: T.menu.skills, url: '/api/skills', icon: '🧪', external: false },
+  { id: 'mining', label: T.menu.mining, url: `/${lang}/ai/`, icon: '⛏️', external: false },
+  { id: 'settings', label: T.menu.settings, url: '', icon: '⚙️', external: false },
+] as const;
+---
+<!doctype html>
+<html lang={zh ? 'zh-CN' : 'en'}>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{T.title}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; font-family: -apple-system, 'Microsoft YaHei', sans-serif; }
+    .app { display: flex; height: 100vh; }
+
+    /* 左侧垂直菜单 */
+    .sidebar {
+      width: 220px;
+      min-width: 220px;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar-header {
+      padding: 20px 16px 12px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #8b7ed8;
+      border-bottom: 1px solid #2a2a4a;
+    }
+    .sidebar-user {
+      padding: 8px 16px;
+      font-size: 12px;
+      color: #888;
+      border-bottom: 1px solid #2a2a4a;
+    }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.15s;
+      border-left: 3px solid transparent;
+    }
+    .menu-item:hover { background: #2a2a4a; }
+    .menu-item.active {
+      background: #2a2a4a;
+      border-left-color: #8b7ed8;
+      color: #fff;
+    }
+    .menu-item .icon { font-size: 18px; width: 24px; text-align: center; }
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 12px 16px;
+      border-top: 1px solid #2a2a4a;
+    }
+    .logout-btn {
+      width: 100%;
+      padding: 8px;
+      background: transparent;
+      border: 1px solid #444;
+      color: #aaa;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .logout-btn:hover { border-color: #8b7ed8; color: #fff; }
+
+    /* 右侧内容区 */
+    .content { flex: 1; position: relative; background: #fff; }
+    .content iframe, .content webview {
+      width: 100%; height: 100%; border: none; display: block;
+    }
+    .desktop-notice {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 16px; background: #f5f5f5; color: #333;
+    }
+    .desktop-notice p { font-size: 16px; }
+    .desktop-notice a {
+      padding: 10px 24px; background: #7c4da8; color: #fff;
+      border-radius: 8px; text-decoration: none; font-size: 15px;
+    }
+    /* 窗口拖拽区（Electron 无标题栏时用） */
+    .drag-region { -webkit-app-region: drag; height: 32px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav class="sidebar">
+      <div class="sidebar-header">帛卉AI</div>
+      <div class="sidebar-user">{T.welcome} · {session?.email ?? ''}</div>
+      {TOOLS.map((tool) => (
+        <div class="menu-item" data-tool={tool.id} data-url={tool.url} data-external={tool.external}>
+          <span class="icon">{tool.icon}</span>
+          <span>{tool.label}</span>
+        </div>
+      ))}
+      <div class="sidebar-footer">
+        <button class="logout-btn" id="logoutBtn">{T.logout}</button>
+      </div>
+    </nav>
+
+    <main class="content" id="content">
+      <!-- 初始加载第一个工具 -->
+    </main>
+  </div>
+
+  <script is:inline>
+    (function () {
+      const isElectron = !!(window.bohui && window.bohui.isElectron);
+      const content = document.getElementById('content');
+      const items = document.querySelectorAll('.menu-item');
+
+      function loadTool(tool) {
+        const url = tool.dataset.url;
+        const external = tool.dataset.external === 'true';
+        if (!url) { content.innerHTML = '<div class="desktop-notice"><p>设置页开发中</p></div>'; return; }
+
+        items.forEach(i => i.classList.remove('active'));
+        tool.classList.add('active');
+
+        if (external && !isElectron) {
+          content.innerHTML = '<div class="desktop-notice"><p>' +
+            '此工具需在帛卉AI 桌面端中打开' +
+            '</p><a href="' + url + '" target="_blank">在浏览器中打开</a></div>';
+          return;
+        }
+
+        if (external) {
+          content.innerHTML = '<webview src="' + url + '" style="width:100%;height:100%;border:none" ' +
+            'useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36" ' +
+            'allow="clipboard-read; clipboard-write" partition="persist:bohui-tools"></webview>';
+        } else {
+          content.innerHTML = '<iframe src="' + url + '" style="width:100%;height:100%;border:none"></iframe>';
+        }
+      }
+
+      items.forEach(item => item.addEventListener('click', () => loadTool(item)));
+
+      /* 默认加载第一个工具 */
+      if (items.length > 0) loadTool(items[0]);
+
+      /* 退出登录 */
+      document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+        await fetch('/api/member/logout', { method: 'POST' });
+        location.href = '/' + (navigator.language.startsWith('zh') ? 'zh-cn' : 'en') + '/login';
+      });
+    })();
+  </script>
+</body>
+</html>

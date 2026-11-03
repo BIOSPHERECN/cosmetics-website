@@ -18,7 +18,7 @@
  * 便于对照检查。
  */
 
-export type BlockFamily = 'b2b' | 'dtc' | 'shared';
+export type BlockFamily = 'b2b' | 'dtc' | 'shared' | 'factory';
 
 export interface BlockDef {
   /** 存进 blocks.type 的值 */
@@ -92,8 +92,10 @@ export const BLOCKS: BlockDef[] = [
     id: 'certs', name: '资质证书墙', family: 'b2b', renderer: 'CertWall',
     note: '证书编号与有效期可核验。出口目的地不同,需要的文件也不同。',
     sketch: '⊞',
-    defaults: { title: '资质与合规', note: '', items: [{ name: 'ISO 22716', code: '', note: '' }] },
-    labels: { title: '标题', note: '说明', items: '证书', name: '名称', code: '编号' },
+    /* 字段名必须和 CertWall 实际读的一致(label,不是 name)——
+       注册表的默认值同时是"给运营看的样例",写错了会把错误的字段名教给所有人。 */
+    defaults: { title: '资质与合规', note: '', items: [{ id: 'iso22716', label: 'ISO 22716', note: '化妆品良好生产规范' }] },
+    labels: { title: '标题', note: '说明', items: '证书', id: '标识', label: '证书名称', note: '说明' },
   },
   {
     id: 'evidence', name: '功效佐证', family: 'b2b', renderer: 'EvidenceGrid',
@@ -189,11 +191,211 @@ export const BLOCKS: BlockDef[] = [
     labels: { title: '标题', handle: '账号', tone: '底色', items: '图片', image: '图片', href: '链接' },
   },
   {
+    id: 'storehero', name: '工厂店招', family: 'dtc', renderer: 'StoreHero',
+    note: '厂区全景 + 公司全称 + 资质角标。工厂店的开场:三秒内回答「你是谁、多大、凭什么」。',
+    sketch: '▭◱',
+    defaults: {
+      image: '', alt: '', company: '公司全称', tagline: '一句能力概括。',
+      badges: [{ text: '已核验供应商', kind: 'verified' }, { text: '经营 12 年' }, { text: 'ISO 22716' }],
+      ctaText: '发起询盘', ctaHref: '/zh-cn/contact/', secondText: '看可做剂型', secondHref: '/zh-cn/products/',
+    },
+    labels: { image: '厂区全景图', alt: '图片说明', company: '公司全称', tagline: '一句话概括', badges: '资质角标', text: '文字', kind: '类型(verified 显绿勾 / 留空为普通)', ctaText: '主按钮', ctaHref: '主按钮链接', secondText: '次按钮', secondHref: '次按钮链接' },
+  },
+  {
+    id: 'statsband', name: '数字实力条', family: 'dtc', renderer: 'StatsBand',
+    note: '四五个硬数字横排。采购判断「这家够不够大」最快的入口,该紧跟店招。',
+    sketch: '▬▬▬▬',
+    defaults: {
+      tone: 'ink',
+      items: [
+        { value: '12', unit: '年', label: '专注化妆品制造' },
+        { value: '28,000', unit: '㎡', label: '厂房面积' },
+        { value: '16', unit: '条', label: '生产线' },
+        { value: '43', unit: '国', label: '出口市场' },
+      ],
+    },
+    labels: { tone: '底色(ink 深色 / paper 浅色)', items: '数据', value: '数值', unit: '单位', label: '说明' },
+  },
+  {
+    id: 'procgrid', name: '工艺图网格', family: 'dtc', renderer: 'ProcGrid',
+    note: '带标题条的小方图,3×2 排。阿里工厂店最标志性的一块 —— 采购看三秒就判断你有没有厂。',
+    sketch: '⊞⊞',
+    defaults: {
+      eyebrow: '', title: '生产实力', intro: '',
+      cols: 3,
+      items: [{ image: '', label: '乳化车间', note: '' }],
+    },
+    labels: { eyebrow: '眉标', title: '标题', intro: '导语', cols: '每行几张', items: '图', image: '图片', label: '图上标题', note: '第二行小字' },
+  },
+  {
+    id: 'formats', name: '可做剂型(询盘车)', family: 'b2b', renderer: 'ProductGrid',
+    note: '产品页的剂型网格。原来这份清单硬编码在页面代码里,结果英文访客看到的是整段中文 —— '
+        + '翻译管线只处理数据库内容,碰不到代码里的字符串。挪进来之后运营能改、翻译能跟。',
+    sketch: '⊞',
+    defaults: {
+      items: [{ id: 'serum', name: '精华液', summary: '一句说明', image: '', moq: '柔性起订量',
+                options: { 容量: ['30ml', '50ml'] } }],
+    },
+    labels: { items: '剂型', id: '标识(英文,询盘车用)', name: '剂型名', summary: '一句说明',
+              image: '图片', moq: '起订量说明', options: '可选规格' },
+  },
+  {
+    id: 'answer', name: '开头直答(GEO)', family: 'dtc', renderer: 'AnswerBlock',
+    note: 'AI 答案引擎优先抓「直接回答问题」的段落。一段 100–150 字、开门见山的回答会被整段引用,'
+        + '并在答案里带出品牌名;而一篇第三屏才说清能做什么的页面,模型提炼不出东西。'
+        + '附带的常见问题会同时写进 FAQPage 结构化数据。',
+    sketch: '？',
+    defaults: {
+      question: '访客最想问的那个问题',
+      answer: '第一句就给结论,不要铺垫。100–150 字。',
+      faqs: [{ q: '常见问题', a: '答案' }],
+      tone: 'paper',
+    },
+    labels: { question: '问题', answer: '直接回答(100–150 字)', faqs: '常见问题',
+              q: '问', a: '答', tone: '底色(paper / sand)' },
+  },
+  {
+    id: 'procribbon', name: '工序流程带', family: 'dtc', renderer: 'ProcRibbon',
+    note: '编号 + 连接线 + 小图的横向流程。工厂真正独有的信息是**顺序** —— 图网格表达不了顺序,只能表达「我们有这些」。',
+    sketch: '①—②—③',
+    defaults: {
+      eyebrow: 'PROCESS', title: '一批料要走的路', intro: '', tone: 'deep',
+      steps: [{ name: '称量配料', hand: '配料单 + 复核签字', image: '' }],
+    },
+    labels: { eyebrow: '眉标', title: '标题', intro: '导语', tone: '底色(deep 深墨绿 / paper / sand)', steps: '工序', name: '工序名', hand: '这一步交出什么', image: '小图' },
+  },
+  {
     id: 'signup', name: '订阅收口', family: 'dtc', renderer: 'Signup',
     note: '页面最后一块。留邮箱是最轻量的线索,会进后台的线索列表,来源标 newsletter。',
     sketch: '▬',
     defaults: { title: '订阅最新资讯', body: '一句说明。', placeholder: '邮箱地址', button: '订阅', note: '可随时退订。', tone: 'sand' },
     labels: { title: '标题', body: '说明', placeholder: '输入框提示', button: '按钮文字', note: '小字', tone: '底色' },
+  },
+
+  /* ── 工厂版首页(2026-09-21 创始人:「首页每一行都是一个模块可以添加删除,可以自行替换图片」)──
+     渲染器 FactoryBlock.astro。文案里可写占位符,渲染时从库填数:{products} {summaries} {formulas} {classics} {packaging}
+     {regs} {inci} {lines} {certs} {certs3} {markets} {cats} {marketNames} {site} {date};链接写 whatsapp 会换成本站 WhatsApp。 */
+  {
+    id: 'fx_hero', name: '巨大主张 + 找同款', family: 'factory', renderer: 'FactoryBlock/fx_hero', once: true,
+    note: '首屏:一句主张、一句导语、找同款搜索框、三条入口、一张整幅横幅(可换)。',
+    sketch: '≡ ▬ ⊞ ▭',
+    defaults: {
+      eyebrow: '广州化妆品 OEM / ODM 工厂 · {lines} 条自动化产线 · {certs3}',
+      title: '先找到值得做的产品,', sub: '再由我们把它做出来。',
+      lead: '从一个产品想法,到一批可以卖到目标市场的成品。找同款、拆全成分、匹配在库配方基底、寄样、合规资料、包装、试产、大货,由 {site} 的工厂团队完成;你的品牌与客户始终是你的。',
+      placeholder: '例:玻尿酸精华、SPF50 轻薄防晒、氨基酸洁面、烟酰胺身体乳', submit: '找同款',
+      items: [
+        { label: '找产品机会', note: '不知道下一款做什么?看今天的机会卡', href: '#opps' },
+        { label: '我有产品想法', note: '在库配方基底按品类 / 剂型 / 功效筛', href: '/formulas/' },
+        { label: '已有产品要代工', note: '发全成分表或样品,工厂直接出方案', href: 'whatsapp' },
+      ],
+      hint: '你只说目标。找同款、配方、包材、法规、打样、生产由工厂负责。',
+      image: '', imageAlt: '',
+    },
+    labels: { sub: '标题第二行', hint: '小字提示', submit: '搜索按钮文字', image: '横幅图(约 1500×600)' },
+  },
+  {
+    id: 'fx_six', name: '六项能力(数字读库)', family: 'factory', renderer: 'FactoryBlock/fx_six',
+    note: '每张卡:名称、证据行(数字用占位符自动填)、一句说明、链接、可选配图。',
+    sketch: '⊞',
+    defaults: {
+      title: '不是口号:六项能力,每项都有证据',
+      intro: '预判落到生产:帛卉自有产线和成熟配方,加上公开市场与法规数据。',
+      items: [
+        { label: '市场爆款情报', evidence: '{products} 款公开市场产品情报 · {summaries} 条配方视角解读', note: '从公开渠道收集,用于判断同类产品的成分结构、主打活性物与宣称边界。', href: '/decoder/', image: '' },
+        { label: '在库配方基底', evidence: '{formulas} 条可直接打样的配方基底 · {classics} 条古方文献数字化', note: '不是从零研发:按品类、剂型、功效、目标市场匹配基底,改活性物与肤感,寄样评估。', href: '/formulas/', image: '' },
+        { label: '工厂与产线', evidence: '{lines} 条自动化产线 · {certs}', note: '护肤 / 身体 / 洗护 / 防晒 / 彩妆 / 口腔;欢迎验厂,证书复印件与产线视频随时给。', href: '/about/', image: '' },
+        { label: '包材款式库', evidence: '{packaging} 款包材可选', note: '瓶、罐、软管、泵头等款式库:先按剂型选结构,再确认供应与定制方案。', href: '/packaging/', image: '' },
+        { label: '法规与合规', evidence: '{regs} 个市场准入要点 · {inci} 条原料目录', note: '美国 FDA、欧盟 CPNP、英国 SCPN、加拿大 CNF 注册均已开户;印尼 BPOM、马来 NPRA、沙特 SFDA 等配方阶段先核限用与禁用。', href: '/regulations/', image: '' },
+        { label: '目标市场落地', evidence: '{markets} 个市场 × {cats} 个品类代工页', note: '{marketNames}:每个市场的备案路径、责任方、标签要点与买手问答。', href: '/oem/', image: '' },
+      ],
+    },
+    labels: { evidence: '证据行(可用占位符)' },
+  },
+  {
+    id: 'fx_opps', name: '今天,什么产品值得做?', family: 'factory', renderer: 'FactoryBlock/fx_opps', once: true,
+    note: '六张机会卡由机会引擎每日生成(pulse opps),这里只改标题、导语、四个维度名与按钮字。',
+    sketch: '⊞',
+    defaults: {
+      title: '今天,什么产品值得做?',
+      intro: '按跨境爆款榜、同类产品库与目标市场法规每日生成 · 更新 {date} · 星级是相对定性,不是测算数字。',
+      empty: '机会卡每日生成;先看配方库或直接说你的处境。',
+      axes: ['市场需求', '竞争程度', '价格空间', '供应链可行性'], submit: '让工厂给方案',
+      moreText: '没有你要的?发一句话说你的处境,工厂按目标市场给方向', moreHref: 'whatsapp',
+    },
+    labels: { axes: '四个维度名', empty: '无卡片时的导语', submit: '卡片按钮文字', moreText: '底部链接文字', moreHref: '底部链接地址' },
+  },
+  {
+    id: 'fx_latest', name: '看到一个产品,就交给工厂做', family: 'factory', renderer: 'FactoryBlock/fx_latest', once: true,
+    note: '五步流程 + 最新入库的六款全球真产品图(自动取,有图的)。',
+    sketch: '▬ ⊞',
+    defaults: {
+      title: '看到一个产品,就交给工厂做',
+      intro: '输入产品名:先在公开市场产品情报中找同款、拆全成分结构,再匹配在库基底、核目标市场法规,然后寄样。成本与起订按项目由工厂报,页面不估数。',
+      steps: ['找同款', '拆全成分', '匹配在库基底', '寄样评估', '试产与大货'],
+      sub: '最新入库的全球产品',
+    },
+    labels: { sub: '产品图上方的小标题' },
+  },
+  {
+    id: 'fx_bases', name: '在库配方基底(按品类)', family: 'factory', renderer: 'FactoryBlock/fx_bases', once: true,
+    note: '九个品类各列三条真基底(自动读 formulas 表);这里配每个品类的缩略图。',
+    sketch: '⊞',
+    defaults: {
+      title: '在库配方基底:按品类看真产品',
+      intro: '每一条都有编号、剂型与功效标签,点编号看基底说明;寄样通常 5–14 天。这里列的是基底,不是你的最终配方 —— 活性物、肤感、香型按你的品牌改。',
+      countText: '{n} 条基底', moreText: '看全部',
+      items: [
+        { cat: 'skincare', image: '' }, { cat: 'body', image: '' }, { cat: 'makeup', image: '' }, { cat: 'oral', image: '' }, { cat: 'cleansing', image: '' },
+        { cat: 'suncare', image: '' }, { cat: 'haircare', image: '' }, { cat: 'kids', image: '' }, { cat: 'fragrance', image: '' },
+      ],
+    },
+    labels: { cat: '品类代码(skincare / body / makeup / oral / cleansing / suncare / haircare / kids / fragrance)', countText: '计数文案({n} 换成数字)', moreText: '看全部文字' },
+  },
+  {
+    id: 'fx_steps', name: '从需求到交付', family: 'factory', renderer: 'FactoryBlock/fx_steps',
+    note: '七步(或任意步)流程卡。数字不写,唯一可写「寄样通常 5–14 天」。',
+    sketch: '⊞',
+    defaults: {
+      title: '从需求到交付,一个项目里完成',
+      intro: '你不需要自己找配方师、包材厂、检测机构、报关行;每一步在同一个项目里,由同一个对接人跟到底。',
+      steps: [
+        { label: '需求', note: '品类 / 目标市场 / 首批数量 / 参考产品或全成分表' }, { label: '匹配基底', note: '从在库基底里选 2–3 条,定活性物与肤感方向' },
+        { label: '寄样', note: '通常 5–14 天;评估后修改再寄' }, { label: '合规资料', note: '目标市场备案 / 通报路径与责任方,标签与宣称核对' },
+        { label: '包装', note: '现货包材选型或定制,包装稿逐字核对' }, { label: '试产', note: '小批量走一遍产线,确认稳定性与灌装' }, { label: '大货与放行', note: '按 QC 项目检测,放行报告随货' },
+      ],
+    },
+  },
+  {
+    id: 'fx_contact', name: '开始一个项目(WhatsApp + 邮箱)', family: 'factory', renderer: 'FactoryBlock/fx_contact', once: true,
+    note: '收口:WhatsApp 按钮(号码读站点设置)+ 邮箱按钮。',
+    sketch: '▬',
+    defaults: { title: '开始一个项目', intro: '把你的全成分表、目标市场、首批数量发给我们,工厂两个工作日内回方案与寄样安排。', submit: 'WhatsApp 直接聊', mailText: '发邮件' },
+    labels: { submit: 'WhatsApp 按钮文字', mailText: '邮件按钮文字' },
+  },
+
+  /* ── BEAUTY2OEM 跨境卖家共创(2026-09-23 A7)── 渲染器同为 FactoryBlock.astro;数据读 b2o_* 三张表(db/migrations/0105_b2o.sql) */
+  {
+    id: 'fx_cards', name: '产品机会卡(三级保密)', family: 'factory', renderer: 'FactoryBlock/fx_cards', once: true,
+    note: '读 b2o_opp_cards 里 status=published 的卡。公开层给所有人;member_json 只给登录会员;strategic_json 前台永不显示。',
+    sketch: '⊞',
+    defaults: { title: '产品机会预判', intro: '只放趋势与判断过程;具体产品方向按你的店铺给。', empty: '首批机会卡正在复核,上线前先提交店铺,我们按你的店铺先看。', limit: 30,
+      lockText: '具体产品方向:提交店铺后按你的店铺给', lockHref: '/brief/', moreText: '提交店铺,拿机会简报', moreHref: '/brief/' },
+    labels: { limit: '最多显示几张', lockText: '未登录时卡片底部链接文字', lockHref: '该链接地址', empty: '没有卡时的导语' },
+  },
+  {
+    id: 'fx_ledger', name: '预判记录簿(对的错的都公开)', family: 'factory', renderer: 'FactoryBlock/fx_ledger', once: true,
+    note: '读 b2o_predictions 里 is_public=1 的记录,顶部自动统计成立 / 错了 / 待验证 / 商业命中。',
+    sketch: '≡',
+    defaults: { title: '预判记录', intro: '每条判断都写正方、反方、裁决和失效条件,30 / 60 / 90 天回填结果。', empty: '第一批预判正在写入。' },
+    labels: { empty: '没有记录时的说明' },
+  },
+  {
+    id: 'fx_brief', name: '提交店铺拿机会简报(表单)', family: 'factory', renderer: 'FactoryBlock/fx_brief', once: true,
+    note: '客户产品档案表单,提交写 b2o_profiles + inquiries(后台询盘列表可见)。表单字段固定,这里只改标题、导语、按钮与回执。',
+    sketch: '▭',
+    defaults: { title: '提交店铺,24 小时内拿《客户产品机会简报》', intro: '先搞懂你的生意,再说产品。', submit: '提交,24 小时内拿简报', okText: '', hint: '' },
+    labels: { okText: '提交成功回执(空=默认)', hint: '按钮旁小字' },
   },
 ];
 
@@ -201,6 +403,7 @@ export const BLOCK_BY_ID = new Map(BLOCKS.map((b) => [b.id, b]));
 export const blockName = (id: string) => BLOCK_BY_ID.get(id)?.name ?? id;
 
 export const FAMILY_NAME: Record<BlockFamily, string> = {
+  factory: '工厂版首页',
   shared: '通用',
   b2b: '代工站(B2B)',
   dtc: '品牌站(DTC)',

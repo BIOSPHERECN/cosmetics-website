@@ -1,0 +1,49 @@
+{
+ "angle": "成本+正确性",
+ "tree": "1751a8d56297c4110fcf406e61d04c6fc42543c1",
+ "worker": "gate",
+ "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-1751a8d56297.json",
+ "run_label": "review-ticket 1751a8d56297 成本+正确性",
+ "reviewer": "claude",
+ "skills_loaded": ["zero-r2-move", "karpathy-coder", "code-reviewer"],
+ "verdict": "过",
+ "checked": ["成本-①", "成本-②", "成本-③", "成本-④", "成本-⑤", "成本-⑥", "成本-⑦", "正确性-①", "正确性-②", "正确性-③", "正确性-④", "正确性-⑤", "正确性-⑥", "正确性-⑦"],
+ "findings": [
+  {
+   "id": "F1",
+   "level": "低",
+   "file": "audit_v2/ticket.py",
+   "line": 721,
+   "claim": "正则已认 deploy,但报错文案仍写「不是 ship/rollback/baseline」,没列 deploy/urgent/breakglass,排查时容易误导",
+   "failure_scenario": "reflog 被手动改成别的说明时,报错提示的合法前缀清单不全,值班人照文案去核对会以为 deploy 也不合法",
+   "evidence": "读 ticket.py 第 718-721 行:正则 ^(ship|deploy|rollback|baseline|urgent|breakglass),第 721 行 errs 文案仍是旧清单。只影响文案,不影响判定",
+   "fix": "下次改动顺手把文案改成「不是 ticket.py 写的 deploy/urgent/breakglass/rollback/baseline」"
+  }
+ ],
+ "addressed": [
+  {
+   "ref": "LAYA",
+   "result": "不成立",
+   "why": "Laya 置信度只有 0.07、reason 为空,给不出具体问题。人工核对:改动只在 verify 第 4 步的 reflog 前缀白名单里加 deploy;record(ticket.py 第 911 行)写 reflog 的格式是 f'{a.action} {w} {a.version}',ship_lib.sh 第 134 行 ACT=deploy/urgent,第 98-99 行 breakglass;rollback(第 990 行)、baseline(第 1017 行)、ref-reseal 最后一步(第 1036 行,写 baseline 前缀)都在白名单内。所以修之前正常 deploy 后下一次上线第 4 步必拦,修后放行,与 note 描述一致。收紧的另外两道(第 4 步基准 commit 相等、refs 与 ship.jsonl 最后成功快照相等)没动,放宽前缀不削弱防篡改:能手写 reflog 的人以前写 ship 前缀一样能过"
+  }
+ ],
+ "risks": [
+  {
+   "cat": "正确性",
+   "level": "低",
+   "item": "reflog 前缀只是弱信号,真正的防篡改靠基准 commit 和 ship.jsonl 快照两道核对;本次不变",
+   "mitigation": "上线后下一次任意 Worker 正常 ship.sh 上线,盯 verify 第 4 步不再出现「reflog 说明不是」报错;这次修复自身的上线后,再跑一次 gate 上线确认不被自己拦"
+  },
+  {
+   "cat": "费用",
+   "level": "低",
+   "item": "本机 Python 闸门脚本改一个正则,不碰 D1/R2/KV/模型/Actions,无计量费用",
+   "mitigation": "无需盯费用数"
+  }
+ ],
+ "smoke_extra": [
+  "本次上线成功后,再对任一 Worker 跑一次 ship.sh 到 verify 第 4 步,确认 deploy 前缀的 reflog 被放行",
+  "ticket.py verify 对 reflog 为 reseal-tmp 的情形仍应拦(reseal 中断时)"
+ ],
+ "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/gate/1751a8d56297/成本+正确性.json"
+}

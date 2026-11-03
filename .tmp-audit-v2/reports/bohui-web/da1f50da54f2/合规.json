@@ -1,0 +1,97 @@
+{
+  "angle": "合规",
+  "tree": "da1f50da54f22579923cefafe1258f1f54c232f2",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-da1f50da54f2.json",
+  "run_label": "review-ticket da1f50da54f2 合规",
+  "reviewer": "claude",
+  "skills_loaded": ["bohui-legal-advertising-claims", "bohui-label-claims-review"],
+  "verdict": "过",
+  "checked": ["合规-①", "合规-②", "合规-③", "合规-④", "合规-⑤", "合规-⑥", "合规-⑦"],
+  "findings": [
+    {
+      "id": "C1",
+      "level": "低",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 87,
+      "claim": "首屏新增定位条「多年海外市场经验 · 主要服务出海化妆品品牌」,以及「为什么找我们出海」区块,属于企业自身定性宣称,仓库内没有找到对应的书面口径出处",
+      "failure_scenario": "如果帛卉的客户结构实际以国内品牌为主,「主要服务出海化妆品品牌」就可能被认定为误导性商业宣传;在当前事实(营业执照 2012、印尼线下年销量)之下更可能成立,但缺创始人确认",
+      "evidence": "读了合规.diff 第 87 行、第 74-79 行;口径摘要和 project-bohui-facts-authority 只给出成立日期和产线数,没有「主要客户类型」的口径;成立年份由 ORG.foundingDate 2012-06-01 推出,与营业执照一致",
+      "fix": "请创始人确认「主要服务出海化妆品品牌」的说法,并补进工厂口径页;不阻塞本次上线"
+    },
+    {
+      "id": "C2",
+      "level": "低",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 66,
+      "claim": "新增「帛卉自有产线」和「10 万级 GMP 洁净车间」两句。「自有产线」不在「自有厂房/非租赁」禁用词里(厂房是租的,产线不是);「10 万级」在 skin2oem.ts:30 已有同样说法,HALAL 在 org.ts:29 的 certs 里。以上都有仓库内出处,但没有官方证书编号可以对照",
+      "failure_scenario": "如果以后有人把「自有产线」扩写成「自有工厂/自有厂房」,就会碰红线;本次 diff 反而删掉了原来的「广州自有工厂,欢迎验厂」(减少风险)",
+      "evidence": "Grep 结果:packages/core/src/content/skin2oem.ts:30「10 万级 洁净车间等级」;org.ts:29 certs ['GMPC','ISO 22716','HALAL'];shared.ts:268 已有「自有产线实拍」;合规.diff 第 232 行删掉「广州自有工厂」",
+      "fix": "不用改;以后改写时守住「产线」这个说法,不扩写成厂房或工厂所有权"
+    },
+    {
+      "id": "C3",
+      "level": "低",
+      "file": "_数据区表述-说明.md",
+      "line": 1,
+      "claim": "R11:公开仓 cosmetic-sites 根目录有两份中文内部改动说明(_数据区表述-说明.md、_首页出海定位-说明.md),目前没被 git 跟踪、也没被忽略,不在本次树里;B2oBlock.astro 新增的中文注释只在构建时的 frontmatter 里,不会输出到页面,但会进公开仓",
+      "failure_scenario": "下一次 git add -A 会把内部说明(包括口径和改动理由)推进公开仓",
+      "evidence": "git ls-files --error-unmatch 两份文件都没匹配到;git check-ignore 没有命中;合规.diff 第 63-64 行是中文口径注释",
+      "fix": "把这两份文件挪到私有仓或 tools-review,或者加进 .gitignore"
+    },
+    {
+      "id": "C4",
+      "level": "低",
+      "file": "tools/b2o-seed-pages.py",
+      "line": 31,
+      "claim": "种子脚本里还留着旧句「下面每个数字都来自帛卉的数据库,点进去可以逐条核对」。本次 fx_six 已经改成硬编码 deliveryIntro,不再渲染 d.intro,所以这句不会上页面,但口径已经分叉",
+      "failure_scenario": "以后如果恢复用 d.intro,或者别的区块读这个种子,已经撤掉的「可逐条核对」宣称就会重新出现",
+      "evidence": "Grep「逐条核对」命中 tools/b2o-seed-pages.py:31;合规.diff 第 241-242 行改为 deliveryTitle/deliveryIntro",
+      "fix": "下次动种子脚本时一起改掉"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "G1",
+      "result": "不成立",
+      "why": "从合规角度看,tools/ship.sh:16 是审核部路径变量加说明注释,不是写给审核员的放行指令,也不是对外文案,不涉及红线词或宣称。它是否构成注入由安全角度裁定"
+    },
+    {
+      "ref": "JEV",
+      "result": "成立但可接受",
+      "why": "Jev 判 block(conf 0.72,compliance 0.21),但 reason 为空,给不出具体条目。我逐行复核了合规 diff:没有红线词(集团旗号/印尼工厂/SueAI/参考站名/18,815/阿里国际站/小批量都没有命中),没有商务数字,没有医疗用语,成立年份与营业执照一致;包材在 B2oBlock 用的是货架口径 pack_shelf。剩下的只是 C1-C4 这些低风险项",
+      "mitigation": "C1 请创始人确认客户结构的说法;C3 把中文说明文件移出公开仓工作区"
+    },
+    {
+      "ref": "LAYA",
+      "result": "成立但可接受",
+      "why": "Laya 判 allow,但 conf 只有 0.04,且是 partial,不能当作放行依据。人工复核结论同上,没有高或中级别的合规问题",
+      "mitigation": "以人工逐条复核为准"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "「多年海外市场经验 · 主要服务出海化妆品品牌」缺工厂口径页出处",
+      "mitigation": "请创始人确认后写进口径页"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "14 张 fd/ 新图是 AI 生成的虚构产品图(抽看了 hero-beach-lineup、c-starry-premium、m4-launch-tropical-box:瓶身文字是乱码,没有可辨认的第三方品牌或水印),都放在示意位,不是抓来的原图;车间位仍标着「待补实拍」",
+      "mitigation": "访客可能把这些图当成帛卉的实物产品;以后在旁边加「示意图」字样更稳"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "公开仓根目录有未跟踪的中文内部说明文件(R11)",
+      "mitigation": "移出公开仓或加进 .gitignore"
+    }
+  ],
+  "smoke_extra": [
+    "beauty2oem 首页与 /delivery 页:确认没有出现「逐条核对」「包材现货」「真实产品库」",
+    "biosphere-ai 首页 JSON-LD 的 foundingDate 仍然是 2012-06-01"
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/da1f50da54f2/合规.json"
+}

@@ -4,14 +4,38 @@
     {
       "name": "style-lab",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "style-lab", "dev", "--port", "4321"],
+      "runtimeArgs": [
+        "--filter",
+        "style-lab",
+        "dev",
+        "--port",
+        "4321"
+      ],
       "port": 4321
     },
     {
       "name": "beauty2oem",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "beauty2oem", "dev", "--port", "4322"],
+      "runtimeArgs": [
+        "--filter",
+        "beauty2oem",
+        "dev",
+        "--port",
+        "4322"
+      ],
       "port": 4322
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@cosmetic/web",
+        "dev",
+        "--port",
+        "4399"
+      ],
+      "port": 4399
     }
   ]
 }

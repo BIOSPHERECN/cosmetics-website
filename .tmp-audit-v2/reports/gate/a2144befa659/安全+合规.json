@@ -1,0 +1,68 @@
+{
+ "angle": "安全+合规",
+ "tree": "a2144befa65967a390b671d4f358b148c7724780",
+ "worker": "gate",
+ "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-a2144befa659.json",
+ "run_label": "review-ticket a2144befa659 安全+合规",
+ "reviewer": "claude",
+ "skills_loaded": [
+  "claude-guard:guard-rules",
+  "bohui-data-security-formula-confidentiality",
+  "bohui-legal-advertising-claims",
+  "bohui-label-claims-review"
+ ],
+ "verdict": "存疑",
+ "checked": ["安全-①", "安全-②", "安全-③", "安全-④", "安全-⑤", "安全-⑥", "安全-⑦", "合规-①", "合规-②", "合规-③", "合规-④", "合规-⑤", "合规-⑥", "合规-⑦"],
+ "findings": [
+  {
+   "id": "S0",
+   "level": "低",
+   "file": "(审核流程)",
+   "claim": "security-review 技能未能加载:当前工作目录 F:/0cosmetic 不是 git 仓,技能拒绝运行;tools-review 仓内的 git 只读命令也被审核部 hook 拦下。本报告改为逐行人工审 diff,未用 git 核对基准内容。",
+   "failure_scenario": "若基准 b40d5554 与草稿描述不一致,本报告无法用 git 自证,只能依赖草稿给出的 diff 文件。",
+   "evidence": "Skill(security-review) 返回『需要在 git 仓内运行』;Bash 在 tools-review 跑 git status 被 PreToolUse hook 以『对 tools-review 仓的 git 写操作』为由拦截。"
+  },
+  {
+   "id": "S1",
+   "level": "中",
+   "file": "gate.sh",
+   "line": 87,
+   "claim": "草稿 note 写『主线 21:1x 的【零读】放行(gate.sh 数新增查库 + d1_budget.py --new-queries)一并报审』,但本单 all.diff 只有 4 个文件(register_watch_task.ps1、sites.json、交付说明.md、gate.sh.bak-0924-zero),没有 gate.sh,也没有 d1_budget.py(它在 bohui-automation 仓,根本不在 gate 的 scope 里)。【零读】改动实际不在本单审核范围内,签单后会被误记为『已审』。",
+   "failure_scenario": "工作区 gate.sh:87-90 已含【零读】逻辑(NEWQ 只数新增行里 .prepare( .all( .first( .run( .batch( 字面量)。本单签发后台账显示『零读已随 a2144bef 报审』,但没有任何审核员看过它的 diff。若某次上线把查库写成封装函数(如自写 d1q(...)/query(...))或把 .prepare 与 ( 拆行,NEWQ=0,说明里写【零读】即可在 D1 红灯时绕过费用关。",
+   "evidence": "读了 all.diff 的 4 个 diff --git 头(第 1/22/36/138 行);读了工作区 gate.sh 第 84-93 行(含【零读】注释与 --new-queries);sites.json 第 428-447 行 gate 的 scope 含 gate.sh 但本单无 gate.sh 变更,推断这段已在基准 b40d5554 里;bak 文件(即改前版本)第 90-97 行没有 NEWQ 逻辑,可作前后对照。",
+   "fix": "把 note 里『【零读】一并报审』删掉或改为『不在本单』;为 gate.sh 的【零读】段和 bohui-automation/local/d1_budget.py --new-queries 单独开审核单(成本+安全角度),重点审 NEWQ 计数能否被封装函数/换行绕过。"
+  },
+  {
+   "id": "C1",
+   "level": "低",
+   "file": "audit_v2/交付说明.md",
+   "claim": "红线词表去掉『自有工厂』与创始人 09-24 22:5x 更正一致(只禁『自有厂房』『非租赁』),但同一批改动的交付说明仍把『自有厂房/工厂』列为第一关红线,并把 beauty2oem 线上『广州自有工厂』写成『红:硬规则,破窗也不放』,与新口径矛盾。此文件不在我的 diff 内,仅作跨角度提示。",
+   "failure_scenario": "新人或其他站线照交付说明去改掉线上『广州自有工厂,欢迎验厂』,违背创始人『保持不动』『不要乱』的指示。",
+   "evidence": "all.diff 第 30-32 行(sites.json 删『自有工厂』)、第 53 行与第 102 行(交付说明仍写自有工厂为红线);memory/project-bohui-facts-authority.md 第 28-32 行(09-24 创始人更正);memory/feedback-no-group-branding.md 第 17 行为 08-31 旧口径,已被更正但未同步。",
+   "fix": "交付说明第 53、102 行改为只写『自有厂房/非租赁』并删掉『广州自有工厂』那条红项;feedback-no-group-branding.md 与口径摘要第 29 行同步新口径。归成本+正确性审核员或主线处理。"
+  }
+ ],
+ "addressed": [
+  {
+   "ref": "JEV",
+   "result": "成立但可接受",
+   "why": "Jev 判 block、conf 0.59、reason 为空,未给出可核对的具体问题。就本角度 diff(删除 gate.sh.bak-0924-zero,132 行全为删除)逐行看过:文件只含本机路径和闸门逻辑,无密钥、无 token、无内部经营数据,删除不引入执行路径;真正值得存疑的是 note 声称的【零读】改动不在 diff 里(见 S1),这可能是 Jev 低分的来源之一。",
+   "mitigation": "按 S1 把【零读】单独开单审;本单签发时 note 不得写『零读已审』。"
+  },
+  {
+   "ref": "LAYA",
+   "result": "成立但可接受",
+   "why": "Laya allow、conf 0.84、partial=true,安全/合规分 0.99。与本角度逐行结论一致:删除备份文件无安全或合规风险;partial 表示它只看到部分行,不能替代人工结论。",
+   "mitigation": "以本报告与成本+正确性报告为准,不单凭 Laya 放行。"
+  }
+ ],
+ "risks": [
+  {"cat": "安全", "level": "低", "item": "已查:被删的 gate.sh.bak-0924-zero 全文 132 行,无密钥/凭据/连接串,只有本机绝对路径(F:/0cosmetic/_venv、助手交付日志路径);tools-review 本地仓无远端(sites.json 第 429 行),不涉公开仓 R11。未发现问题。"},
+  {"cat": "安全", "level": "中", "item": "【零读】放行段不在本单 diff,NEWQ 字面量计数可被封装函数或换行绕过,未经审核即已在工作区 gate.sh 生效。", "mitigation": "单独开审核单;d1_budget.py 在 bohui-automation,需在那边另审。"},
+  {"cat": "合规", "level": "低", "item": "已查红线词、商务数字、功效宣称、隐私、抓取内容、多语种:本角度 diff 只是删除脚本备份,无对外文案,均未发现。红线词表去掉『自有工厂』有创始人 09-24 更正为据;交付说明仍写旧口径(见 C1)。", "mitigation": "同步交付说明与记忆文件口径。"},
+  {"cat": "回归", "level": "低", "item": "删除备份后,若要对照【零读】改前版本,只能从 git 历史取(基准 b40d5554 中仍有该文件),不影响运行;gate.sh 自身排除 *.bak*,删除不改变闸门行为。"},
+  {"cat": "费用", "level": "低", "item": "已查:本角度 diff 不含任何查库、R2、付费 API 调用。未发现。"},
+  {"cat": "正确性", "level": "低", "item": "已查:被删文件由各站 ship.sh source 的是 gate.sh 而非 .bak,删除不影响调用链(gate.sh 第 24/60/64 行均排除 .bak)。未发现。"}
+ ],
+ "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/gate/a2144befa659/安全+合规.json"
+}

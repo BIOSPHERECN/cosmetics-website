@@ -1,0 +1,171 @@
+{
+ "schema": "bohui-ticket/2",
+ "id": "RT-20260924-2333-gate-6d5d33b8",
+ "kind": "worker",
+ "target": {
+  "worker": "gate",
+  "repo": "F:/0cosmetic/tools-review",
+  "account": "none"
+ },
+ "tree": "6d5d33b84bde60937d51f4778f621567d9657fa4",
+ "scope_sha256": "efa2554b9e7bbbc7f00cf4e81d330e3a080eefdfc328590edd5ca39b367d5ea9",
+ "gate_hash": "sha256:65cc8f36d09e94c2d094ab7cc17fa65da794021f715c96eadd3230df2f914663",
+ "rules_hash": "sha256:7aa081a24470d292129570eb9b44f0dd5d9f906e8d5c47a3be4e94317f1ccbca",
+ "env_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+ "base": {
+  "ref": "refs/ship/gate",
+  "commit": "be5836b5f6b7abebdfbd8311249a1c4d21323c1b",
+  "tree": "c03e18f62468817d772ef6ec17c12dce0ded255d",
+  "first_ship": false
+ },
+ "prev_ticket": null,
+ "diff": {
+  "file": "drafts/gate-6d5d33b84bde/all.diff",
+  "sha256": "2b5dc1e288e447acf16a30628d1b09c7c22655ca0a05fbf4cc2329caa8851ccc",
+  "files": 2,
+  "lines": 27
+ },
+ "note": "v2 加【零读】:第一关在代码文件新增行里数查库写法(new_queries,含封装函数/换行 .prepare/大写 SQL,与 v1 同口径);费用灯红时说明带【零读】且 new_queries==0 才放行,部署前核验第 8 步同样判断;旧缓存没有该字段按不放行处理",
+ "tier": "L2",
+ "tier_reasons": [
+  "27 行,无敏感文件,第一关无存疑",
+  "改闸门至少 L2(安全、正确性两名审核员必审);只改数据表用 ship_ops.sh gate --data"
+ ],
+ "gate1": {
+  "result": "过",
+  "block": 0,
+  "doubt": 0,
+  "exceptions": 0,
+  "seconds": 9.6
+ },
+ "budget": {
+  "level": "n/a",
+  "src": "闸门自身不看 D1 灯",
+  "at": "2026-09-24T23:25:42+08:00",
+  "ok": true
+ },
+ "judges": {
+  "laya": {
+   "decision": "allow",
+   "conf": 0.0,
+   "noul": {
+    "cost": 0.99,
+    "security": 0.99,
+    "compliance": 0.98
+   },
+   "correctness": 1.34,
+   "verdict": "存疑",
+   "status": "判了",
+   "seconds": 38,
+   "partial": false
+  },
+  "jev": {
+   "decision": "allow",
+   "conf": 0.29,
+   "noul": {
+    "cost": 0.06,
+    "security": 0.06,
+    "compliance": 0.01
+   },
+   "correctness": 0.6,
+   "verdict": "存疑",
+   "status": "判了",
+   "tokens_in": 1869,
+   "day_used": 23063,
+   "seconds": 21.5,
+   "call_ref": "ledger/jev_calls.jsonl@2026-09-24T23:26:04+08:00",
+   "request_id": null,
+   "partial": false
+  }
+ },
+ "reports": [
+  {
+   "angle": "成本+正确性",
+   "file": "reports/gate/6d5d33b84bde/成本+正确性.json",
+   "sha256": "55f7a12a9a7a9a7e200691cb75b5ada7fe05cc3f1b184443c206262ddb1299f9",
+   "verdict": "过",
+   "findings": 2,
+   "reviewer": "claude"
+  },
+  {
+   "angle": "安全+合规",
+   "file": "reports/gate/6d5d33b84bde/安全+合规.json",
+   "sha256": "7ca59ce6ca4442ddf5cabc10521dd9e6900a4bc2dd2d7c36b50aa5431589f3a7",
+   "verdict": "过",
+   "findings": 2,
+   "reviewer": "claude"
+  }
+ ],
+ "resolved": [
+  {
+   "ref": "JEV",
+   "by": "成本+正确性",
+   "result": "成立但可接受",
+   "why": "Jev 判 allow,置信度 0.29,reason 为空,本身不带任何具体问题。人工复核后找到的实质问题是正则漏数(C1/C2),都会让判断偏向放行。但改动前红灯只靠说明里写【降读】【安全】【急修】这几个自由文本标记就能放行,完全不核验;【零读】额外要求第一关数出 0,比现有标记更严,不是放宽。"
+  },
+  {
+   "ref": "LAYA",
+   "by": "成本+正确性",
+   "result": "成立但可接受",
+   "why": "Laya 的 conf=0.0,各项分数都没有给理由,不能当证据。本角度独立核过:没有 D1/R2/模型/KV 调用,也没有定时任务,成本面是零;正确性方面有 C1/C2 两处漏数,理由同 JEV。"
+  }
+ ],
+ "overrides": [],
+ "exceptions": [],
+ "risks": {
+  "费用": [
+   {
+    "level": "中",
+    "item": "【零读】放行靠正则计数,只改已有 SQL 的 WHERE/JOIN/LIMIT 行时数不出来,红灯日可能放过加读量的改动",
+    "mitigation": "上线后盯 Bohui-D1Budget 的日读行数,以及 ship.jsonl 里 src 含「·零读」的条目,对每条都人工看一眼 diff"
+   },
+   {
+    "level": "低",
+    "item": "【零读】靠正则数查库,调用已有数据函数、改 CACHE_V、非白名单扩展名会漏数,红灯日可能误放行读量改动",
+    "mitigation": "说明口令本就是自报;两名审核员仍必审;可按 S1 fix 收紧"
+   }
+  ],
+  "安全": [
+   "已查:S1–S10、RK3/4/5/11/12,未发现"
+  ],
+  "合规": [
+   {
+    "level": "低",
+    "item": "新增中文注释只在本地私有仓 tools-review(无 remote),不进公开仓;未见集团旗号、自有厂房、印尼工厂、SueAI、18,815、阿里国际站、小批量、商务数字、功效宣称、个人信息",
+    "mitigation": "无需动作"
+   }
+  ],
+  "正确性": [
+   {
+    "level": "低",
+    "item": "gate_hash 随 gate1.py 改变,旧的 gate1 缓存键会全部失效,第一次跑全量重算(本机 semgrep 约 10 秒一次,不涉及云端费用)",
+    "mitigation": "无需处理"
+   }
+  ],
+  "回归": [
+   {
+    "level": "低",
+    "item": "check_files(ops 模式)的结果没有 new_queries 字段,按设计判为不放行(fail-closed)。这不是回归,只是【零读】对定时脚本不起作用",
+    "mitigation": "需要时再给 check_files 补计数"
+   }
+  ]
+ },
+ "smoke_extra": [
+  "本地:verify 在 T != tk.tree 时 g1=None → 第 8 步按不放行报错",
+  "本地:费用灯红 + 说明带【零读】+ 只改 .astro 文案 → prepare 显示「·零读」并放行",
+  "本地:费用灯红 + 说明带【零读】+ 新增一行 env.DB.prepare → prepare 返回 1"
+ ],
+ "verdict": "过",
+ "why": [
+  "三家合并:第一关过、审核员无未推翻的拦、存疑逐条回应"
+ ],
+ "issued_at": "2026-09-24T23:33:11+08:00",
+ "expires_at": "2026-09-25T23:33:11+08:00",
+ "followup_due": null,
+ "followup": [],
+ "incident": null,
+ "degraded": false,
+ "issuer": "audit_v2/ticket.py v2.1",
+ "basis": "fcf4946dc681e37d440e7756def7ecd20de3076707f6ebeb2d6d230c65bee8b5",
+ "content_sha256": "6920835e32f3849e0c468426b637fc0b6025d38174e3185d8d6477e7edd4a781"
+}

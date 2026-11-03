@@ -1,0 +1,98 @@
+diff --git a/apps/web/public/b2o/img/vi/hero-full.webp b/apps/web/public/b2o/img/vi/hero-full.webp
+new file mode 100644
+index 0000000..e446434
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/hero-full.webp differ
+diff --git a/apps/web/public/b2o/img/vi/m1.webp b/apps/web/public/b2o/img/vi/m1.webp
+new file mode 100644
+index 0000000..be843fd
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/m1.webp differ
+diff --git a/apps/web/public/b2o/img/vi/m2.webp b/apps/web/public/b2o/img/vi/m2.webp
+new file mode 100644
+index 0000000..2d9c32d
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/m2.webp differ
+diff --git a/apps/web/public/b2o/img/vi/m3.webp b/apps/web/public/b2o/img/vi/m3.webp
+new file mode 100644
+index 0000000..ef9e961
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/m3.webp differ
+diff --git a/apps/web/public/b2o/img/vi/m4.webp b/apps/web/public/b2o/img/vi/m4.webp
+new file mode 100644
+index 0000000..95d7fe1
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/m4.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-01.webp b/apps/web/public/b2o/img/vi/wall-01.webp
+new file mode 100644
+index 0000000..86aa0ae
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-01.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-02.webp b/apps/web/public/b2o/img/vi/wall-02.webp
+new file mode 100644
+index 0000000..6451596
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-02.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-03.webp b/apps/web/public/b2o/img/vi/wall-03.webp
+new file mode 100644
+index 0000000..b62db41
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-03.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-04.webp b/apps/web/public/b2o/img/vi/wall-04.webp
+new file mode 100644
+index 0000000..c75c088
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-04.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-05.webp b/apps/web/public/b2o/img/vi/wall-05.webp
+new file mode 100644
+index 0000000..20b20dc
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-05.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-06.webp b/apps/web/public/b2o/img/vi/wall-06.webp
+new file mode 100644
+index 0000000..041cea0
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-06.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-07.webp b/apps/web/public/b2o/img/vi/wall-07.webp
+new file mode 100644
+index 0000000..0a36983
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-07.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-08.webp b/apps/web/public/b2o/img/vi/wall-08.webp
+new file mode 100644
+index 0000000..b0c6b64
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-08.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-09.webp b/apps/web/public/b2o/img/vi/wall-09.webp
+new file mode 100644
+index 0000000..03ac636
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-09.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-10.webp b/apps/web/public/b2o/img/vi/wall-10.webp
+new file mode 100644
+index 0000000..7ea301b
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-10.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-11.webp b/apps/web/public/b2o/img/vi/wall-11.webp
+new file mode 100644
+index 0000000..ec6043b
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-11.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-12.webp b/apps/web/public/b2o/img/vi/wall-12.webp
+new file mode 100644
+index 0000000..c81ecce
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-12.webp differ
+diff --git a/apps/web/src/middleware.ts b/apps/web/src/middleware.ts
+index 98128d0..ac1ede9 100644
+--- a/apps/web/src/middleware.ts
++++ b/apps/web/src/middleware.ts
+@@ -466,7 +466,15 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+   /* 规范化(09-24 安全架构 C1,参数登记表在 lib/canon.ts):页面路径补尾斜杠、只留登记过的参数、取值夹到范围内,
+      不一致就 301 一次。301 落在 WAF 之后,跳过去的请求会再过一遍边缘规则(S1 / R2 的通配都带尾斜杠)。
+      后台已登录的人不跳(草稿预览等参数只给他们用),本地与副本不跳。 */
+-  if ((req.method === 'GET' || req.method === 'HEAD') && !staff && !dev && isPagePath(url0.pathname)) {
++  /* 09-25 自家冒烟探针:上线后冒烟要绕开边缘缓存看新版本(原来靠 ?kk=,C1 起会被 301 掉 → 冒烟 4/23 误报)。
++     请求头 x-bohui-probe 与 secret PROBE_SECRET 一致才算:不跳转、不读写缓存、现渲染一次。
++     secret 没配时谁都不算;外人带 ?kk= 照旧 301。 */
++  const probeSecret = String((cfEnv as any)?.PROBE_SECRET ?? '');
++  const probeHdr = req.headers.get('x-bohui-probe') ?? '';
++  let probeDiff = probeSecret.length === 0 || probeHdr.length !== probeSecret.length ? 1 : 0;
++  for (let i = 0; i < probeHdr.length && i < probeSecret.length; i++) probeDiff |= probeHdr.charCodeAt(i) ^ probeSecret.charCodeAt(i);
++  const probe = probeDiff === 0;
++  if ((req.method === 'GET' || req.method === 'HEAD') && !staff && !dev && !probe && isPagePath(url0.pathname)) {
+     const to = canonical(url0.pathname, url0.search);
+     if (to) return new Response(null, { status: 301, headers: { Location: to } });
+   }
+@@ -505,7 +513,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+     (req.method === 'GET' || req.method === 'HEAD') &&
+     !url0.pathname.startsWith('/api/') &&
+     !url0.pathname.startsWith('/bohui/') &&
+-    !noCache && !staff && !member;
++    !noCache && !staff && !member && !probe;
+   const cache = (caches as any).default as Cache | undefined;
+   /* 缓存键带版本号。2026-09-07:D1 日读额度耗尽期间,「数据源未就绪」那一页是以
+      HTTP 200 渲染的,于是被原样缓存了一小时 —— 我用 ?cb= 验证时绕过了缓存,

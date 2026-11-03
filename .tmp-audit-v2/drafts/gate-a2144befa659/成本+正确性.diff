@@ -1,0 +1,137 @@
+diff --git a/audit_v2/register_watch_task.ps1 b/audit_v2/register_watch_task.ps1
+index cadaa4d..efbd715 100644
+--- a/audit_v2/register_watch_task.ps1
++++ b/audit_v2/register_watch_task.ps1
+@@ -1,6 +1,6 @@
+ ﻿# 审核部 v2.1 · 注册每小时巡查计划任务 Bohui-AuditWatch(本线只写好,不执行;创始人或主线确认后手动跑一次)
+ # 用法(管理员 PowerShell):powershell -NoProfile -ExecutionPolicy Bypass -File F:\0cosmetic\tools-review\audit_v2\register_watch_task.ps1
+-# 做两件事:①注册任务:每小时第 47 分钟,wscript + run-hidden.vbs 调 watch.cmd(低优先级、单核),超时 5 分钟,不叠跑;
++# 做两件事:①注册任务:每小时第 47 分钟,wscript + run-hidden.vbs 调 watch.cmd(低优先级、单核),超时 10 分钟(本机只剩 7890 代理,网络抖时单次实测到过 6 分钟),不叠跑;
+ #          ②把这个任务登记进审核部的计划任务登记表(state/tasks.json),否则巡查会把它自己报成「没登记」。
+ $ErrorActionPreference = 'Stop'
+ $AV2 = 'F:\0cosmetic\tools-review\audit_v2'
+@@ -9,7 +9,7 @@ $act = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument ('//B "F:\0cosme
+ $start = (Get-Date).Date.AddHours((Get-Date).Hour).AddMinutes(47)
+ if ($start -lt (Get-Date)) { $start = $start.AddHours(1) }
+ $trg = New-ScheduledTaskTrigger -Once -At $start -RepetitionInterval (New-TimeSpan -Hours 1)
+-$set = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5) -MultipleInstances IgnoreNew -StartWhenAvailable
++$set = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -MultipleInstances IgnoreNew -StartWhenAvailable
+ $pri = New-ScheduledTaskPrincipal -UserId 'Administrator' -LogonType Interactive -RunLevel Limited
+ Register-ScheduledTask -TaskName 'Bohui-AuditWatch' -Action $act -Trigger $trg -Settings $set -Principal $pri `
+   -Description '审核部 v2.1 每小时巡查(部署对账/台账链/追审/闸门漂移/计划任务/Jev 账本/轻冒烟/GitHub 工作流/hook 自检),:47 跑' -Force | Out-Null
+diff --git a/audit_v2/sites.json b/audit_v2/sites.json
+index 02d05a0..ee20e6d 100644
+--- a/audit_v2/sites.json
++++ b/audit_v2/sites.json
+@@ -465,8 +465,7 @@
+    "双基地",
+    "SueAI",
+    "莱诺鸟",
+-   "自有厂房",
+-   "自有工厂"
++   "自有厂房"
+   ],
+   "platform": [
+    "帛卉",
+diff --git a/audit_v2/交付说明.md b/audit_v2/交付说明.md
+new file mode 100644
+index 0000000..d4fbbdd
+--- /dev/null
++++ b/audit_v2/交付说明.md
+@@ -0,0 +1,96 @@
++# 审核部 v2.1 · 交付说明(给创始人核对)
++
++2026-09-24 22:2x 写。依据创始人 19:1x 原话「审核部一定要上线」「JEV LAYA 一定要上线配合你!约束你」「直接上线,别问我!」:红队通过后**已直接启用**,没有等核对。
++本线没有部署网站、没有 push、没有读写 D1。详细设计见同目录 `设计-v2.1.md`,启用流水账见 `F:/0cosmetic/助手交付/审核部/审核部v2.1-启用记录-20260924.md`。
++
++---
++
++## 一、三道关
++
++| 关 | 查什么 | 什么时候跑 | 不过会怎样 |
++|---|---|---|---|
++| **第一关·机器初审**(gate1.py + semgrep) | ①烧钱写法:访客请求里现场 COUNT/GROUP BY/LIKE、R2 列目录或 copy/move、调付费模型或 API(按 paid_domains.txt);②密钥和凭据写进代码、public/ 下的备份和库文件;③红线:集团旗号、印尼工厂、自有厂房/工厂、SueAI、平台站出现工厂信息;④版心 112.5rem 被改、不带理由的 nosemgrep。只看**新增**的违例,老代码不翻旧账 | 每次 `astro build` 前自动跑(两站 astro.config.mjs 里的 bohui-gate1 集成);ship.sh 里再跑一次。热跑中位数 0.6 秒 | **构建失败,上不了线**。密钥、红线、R2 搬移这几条是硬规则,破窗也不放。起订量、交期这类数字只判「存疑」,交给第二关 |
++| **第二关·审核员复审**(审核单) | 成本、安全、合规、正确性四个角度审本次改动。三家共同判:**Laya**(本机免费,约 2 分钟)、**Jev**(TypeSafe,几秒)、**Claude 审核员**(review-ticket 工作流,按改动大小派 1–4 名)。签单时自动列出本批风险清单:费用、安全、合规、正确性、回归五类,某类没有问题也要写「已查什么、未发现」 | 每次上线前,`bash tools/ship.sh --note "…"` 自动跑。没有审核单就打印要跑的审核流程,退出「待审」;审完再跑同一条命令 | 三态:**过**才部署;**拦**不部署;**存疑**必须有 Claude 审核员逐条书面回应才放行。Jev 高置信判拦(≥0.8)时,还要再加一名反驳员拿证据推翻,否则拦 |
++| **第三关·上线后巡查** | 部署后立即:破缓存冒烟(`?kk=`),关键页 5xx 按规则自动回退。每小时:Cloudflare 真实部署记录和台账逐条对账(抓「没走审核就上线」)、台账链完整性、追审到期、闸门代码有没有未审改动、计划任务和脚本有没有未审改动、Jev 用量、零付费看门狗(Workers AI、R2、KV、Vectorize 用量推算,超 80% 黄、超 100% 或出现扣费红)、轻冒烟和红线词、GitHub 工作流漂移、hook 自检 | 部署后当场;计划任务 **Bohui-AuditWatch 每小时第 47 分钟**;每天的审核部日报多了「上线」一科(七个数) | 发现异常自动在 w8848/bohui-automation 开 Issue,红项用 Server酱立即推送,同时写 `助手交付/审核部/告警-日期.md` |
++
++## 二、审核单怎样绑定版本
++
++- 审核单记下的是**审核范围内所有文件的内容哈希**(git 树哈希,按内容算,不看修改时间)。审完之后改动一个字,哈希就变,旧单作废,部署被拦,必须重新审。
++- 部署时在三处各验一次:ship.sh、平台 deploy.sh 顶部、wrangler 构建步骤。构建前后树哈希都要等于单上的哈希,构建产物再封存一个哈希,防止构建完偷改产物。
++- 审核单还绑定:上次上线的基准版本、闸门自身版本、所属 Worker。有效期 24 小时(急修 2 小时);手改单子内容、台账对不上、把 A 站的单拿去 B 站用,都拦。
++
++## 三、紧急通道
++
++- **急修**(快,但不绕过审核):`bash tools/ship.sh --urgent --patch <补丁> --incident <事故号> --note "【急修】…"`。≤30 行、≤3 个文件;第一关照跑,1 名 Claude 快审员几分钟内判过就上;24 小时内必须补常规审核(追审),逾期该站的常规上线一律被拦。
++- **破窗**(闸门自己坏了、线上正在出事):`bash F:/0cosmetic/cosmetic-sites/tools/ship.sh --breakglass "理由"`(平台站换成 skin2oem 的 ship.sh)。理由至少 6 个字,写进 `ledger/breakglass.jsonl`,当场开红单并推送,24 小时内追审。密钥、红线等硬规则破窗也照拦;同一站 24 小时内第 2 次破窗标「需创始人」,第 3 次拒绝。
++
++## 四、部署后自动存版与回退
++
++- 每次部署成功,在站点仓库里提交一个本地快照 `refs/ship/<站名>`(不是分支,普通 push 带不走),同时写台账 `ledger/ship.jsonl`(版本号、审核单号、上线前的线上版本)。`git log refs/ship/<站名>` 就是完整上线历史。
++- 下一次只审「上次上线快照 → 现在」的新改动。
++- 一键回退:`bash tools/ship.sh --rollback --reason "…"`,秒级回到上一个审过的版本,不重新构建;被回退版本的审核单同时作废。注意回退只回代码,D1 迁移、secret、绑定不会跟着回,这类改动上线前会在风险清单里写明。
++
++## 五、约束主线(项目级 hook)
++
++`F:/0cosmetic`、`cosmetic-sites`、`skin2oem`、`bohui-automation` 四处 `.claude/settings.json` 都挂了 PreToolUse hook。凡是不经 ship.sh 的 `wrangler deploy`、`wrangler versions deploy`、直接跑 `deploy.sh`、改 secret、远程写 D1、改计划任务定义、改 settings 和闸门文件,一律拦下,拒绝理由里告诉该走哪条路。**本会话已实测**:`npx wrangler deploy --help` 和 `bash F:/不存在/deploy.sh` 都被拦(子代理同样受约束)。
++
++## 六、红队结果
++
++61/61 全部符合预期,用时 256 秒(`logs/redteam-20260924-215155.json`),在临时副本仓里跑,不碰真仓。覆盖:第一关 15 条(烧钱写法、密钥、红线、版心、误报样例);审核单签发与防篡改 12 条(改一个字、手改单子、过期、基准被挪、空壳报告);判官三态 4 条(Jev 额度用尽、Laya 低置信、Jev 机审拦要反驳员、判官缺席);上线封存与回退 9 条(产物被偷改、回退后旧单再用、跨站复用);急修/破窗/追审 9 条;巡查对账与冒烟回退 8 条;hook 4 组(该拒的 48 条命令全拒、该放的 24 条全放、单次 0.1 秒、报告只能写到指定文件)。
++真判官实跑:闸门自身交给 Laya 判「存疑」(置信 0.13),Jev 判「拦」(置信 0.87)。今天 Jev 共用 12,440 / 2,000,000 token。
++
++## 七、已启用的内容与时间
++
++| 项 | 时间 | 状态 |
++|---|---|---|
++| 闸门第一版批准(RT-20260924-2156-gate-d408c549,gate_hash 68c2d1d5d49d) | 09-24 21:56 | 已批准,只执行已批准副本 |
++| 上线基线登记(bohui-web、beauty2ai、skin2oem 副本、bohui-mail、bohui-gateway、bohui-news-cron) | 09-24 21:57–21:59 | 已登记 |
++| 四处 hook | 09-24 21:5x | 已生效(新会话;本会话已实测拦截) |
++| 两站 ship.sh 切到 v2、平台 deploy.sh 自查、两站构建集成第一关 | 09-24 20:28 起 | 下一次构建和上线生效 |
++| 总开关 `ENABLED` | 09-24 22:0x | 已建 |
++| 计划任务 **Bohui-AuditWatch**(每小时 :47) | **09-24 22:15** | 已注册;22:16 手动触发实跑:137.7 秒,红 1 黄 0,计划任务 42 个都在登记表里;下次 22:47 |
++| 计划任务登记表 | 09-24 21:14 / 22:15 | 41 个基线 + Bohui-AuditWatch |
++
++**紧急关闭办法**(出大问题时,由创始人本人操作;Claude 删不了,hook 会拦):
++1. 删掉 `F:\0cosmetic\tools-review\audit_v2\ENABLED` → 全部回到观察模式(只记录不拦),ship.sh 自动退回旧版 gate.sh;
++2. 连 hook 一起摘:手改上面四处 `.claude/settings.json`,删掉 hooks 段;
++3. 停巡查:管理员 PowerShell 执行 `Disable-ScheduledTask Bohui-AuditWatch`。
++
++## 八、巡查已发现的问题(立即报告)
++
++- **红:beauty2oem.com/zh-cn/ 线上写着「广州自有工厂」**(`cosmetic-sites/apps/web/src/components/B2oBlock.astro:322`),违反「厂房是租的,自有厂房/工厂禁用」。这是硬规则:这行不改,公司站下一次上线会被拦,破窗也不放。整改归帛卉站线 / beauty2oem 拆站线。
++- 黄:平台账号 R2 A 类操作本月 53.8 万次,推算月底 67 万(免费 100 万)。
++
++## 九、如实写:仍有风险的地方
++
++**设计上**
++- 同一台机器、同一个 Windows 用户下,Claude 能读写所有本地文件。台账链、哈希只能防手滑、留痕迹,挡不住蓄意伪造。兜底是每小时和 Cloudflare 真实部署记录对账,最迟 1 小时抓到未审上线。
++- 外部 AI 或人在自己终端直接跑 wrangler,hook 管不到,只能事后对账抓。根治要创始人在两个 Cloudflare 账号各建三把分权 token(只读 / 只给 ship 用的部署 / 审计日志只读),**还没建**。
++- Jev 是按量付费,是零付费铁令里唯一的特批例外:每天输入 200 万 token 硬上限(约 0.08 美元),超了按「存疑」转 Claude 审核员;付款失败就停用,不建议充值。
++- Laya 还没校准,只能判「过/存疑」,不能单独拦;要攒两周真实审核单、精确率到 0.8 才开放。
++
++**实现上**
++- **闸门自己也要追审**:第一版是「引导批准」(降级单),须在 **2026-09-25 21:56 前**由主线跑 `ticket.py followup --worker gate` 补 Claude 审核员;Jev 判的「拦」要审核员回应 + 反驳员推翻,推翻不了就整改。逾期巡查报红。
++- 本次注册 Bohui-AuditWatch 用的是工作副本的 `register_watch_task.ps1`,它和已批准版只差一处(任务超时 5 分钟 → 10 分钟),这处改动随上一条的闸门追审一起审(22:16 那次巡查没有把它报黄,工作副本的漂移目前只能靠追审把住)。
++- 实测发现:计划任务经 run-hidden.vbs 启动后立刻返回(不等巡查跑完),所以任务的超时和「不叠跑」设置实际不起作用。巡查单次 1–6.5 分钟(本机只剩 7890 代理,网络抖时慢),每小时一次不会叠;但巡查卡死不会被自动杀掉,只能靠日报「巡查心跳」报红发现。
++- 首次上线是大审:公司站约 3,300 行,一次性约 40 万 token 的 Claude 审核,只这一次。
++- 急修在真仓里 `pnpm install --offline` 没实测(红队用假构建走通了急修全流程)。
++- gitleaks 没装(下载要创始人同意),密钥由第一关 S1 规则兜底。
++- beauty2oem 拆站后的新 Worker(beauty2oem-web)还没建,它的构建配置生成脚本不一定带审核步骤;走 ship 流程时会补上,直接部署那一层要拆站线改。
++
++**红队上**
++- hook 在「子代理」「bypass 模式」「子目录新会话」三种情况下,本会话只实测了子代理(被拦);另两种要新开会话才能测。
++- 实际使用中已经遇到 hook 误报两类:只读命令(ls、cmp)碰到闸门副本路径也会被拦;在 audit_v2 目录下用 python 改一份普通 .md 被当成「跑工作副本代码」拦下。都不影响安全,只是要改用 Read/Edit 工具,等第二批按误报样例放宽。
++- 红队全部在临时副本仓里用假 wrangler 跑,真部署一次都没跑过(铁令不部署)。第一次真上线时要盯一下:审核单、快照、台账、冒烟是否都按预期落地。
++
++## 十、第二批计划(GitHub 自动化与网关)
++
++1. **网关**:本机 `cosmetic-sites/tools/gateway` 按计划任务脚本纳入审核(改脚本走 `ship_ops.sh task`);云端网关 Worker 已最小登记,补冒烟端点和专属规则——上游付费模型必须有每日硬上限,没有就拦。
++2. **bohui-automation(w8848 私有仓)**:pre-push 钩子跑第一关;工作流规则:`runs-on: macos/windows` 拦,cron 排整点或间隔 <30 分钟判存疑,第三方 Action 没钉 SHA 判存疑;`.github/workflows/` 和 `tools/` 的改动要有审核单才准推;云端审核部加 actionlint 和 zizmor(离线)。
++3. **云端查巡查心跳**:心跳已写进本机日报,云端判断代码要推到 w8848 才生效,等下一条能 push 的线。
++4. **公开仓 cosmetic-sites 的 pre-push 内容闸**:必须在解开推送锁之前上线(本地领先约 50 个提交、tools/ 与 data/ 下 500 多个文件,锁一解开会全推上去)。
++5. 计划任务运行时拦截:观察一周误报为 0 后,从「只报」切到「拦」。
++6. 平台 deploy.sh 不再每次上线都换 CACHE_V(每换一次全站缓存失效、D1 读量尖一次)。
++7. 两周真实数据后重新校准 Laya 与 Jev。
++
++**等创始人的只有两件**:建分权 token(上面第九节);装 gitleaks 的下载同意。其余第二批不等拍板,按顺序做。

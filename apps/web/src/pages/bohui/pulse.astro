@@ -1,0 +1,374 @@
+---
+/**
+ * 罗盘 —— 后台的运维与效果总览。
+ *
+ * 创始人 2026-09-07:
+ *   「后台的管理系统界面一定要美观,操作一定要便捷」
+ *   「还有访问量,SEO、GEO 效果等多维度的分析罗盘」
+ *   以及那句最该记住的:「为什么坏了呢?没人监控组件的健康?」
+ *
+ * 所以这一页先回答「现在什么是坏的」,再谈好看。
+ * 原来的仪表盘摆的是「站点/版块/配方/媒体」四个计数 ——
+ * 那是内容统计,不是运维视图,所以它不会告诉你资讯管线三天没干活了。
+ *
+ * 数据全部来自 pulse 表里的一行 JSON 快照(本机 tools/pulse-collect.py 采集)。
+ * 这样做有两个原因:
+ *   · 罗盘要读 Cloudflare 账号级分析 API,那把 token 权限是整个账号 ——
+ *     不能放进边缘上的 Worker;
+ *   · 后台开这一页只查一行,零聚合、零扫表(今天刚被一条 392 万行的查询教育过)。
+ *
+ * 判死判活的线写死在这里而不是让人自己看数字:
+ * 「资讯 3 天没更新」比「最后更新 09-04」更能让人立刻反应过来。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const row = await c.db.prepare(`SELECT json, updated_at FROM pulse WHERE k='latest'`)
+  .first<{ json: string; updated_at: string }>().catch(() => null);
+let P: any = null;
+try { P = row ? JSON.parse(row.json) : null; } catch { P = null; }
+
+const hoursSince = (s?: string | null) => {
+  if (!s) return Infinity;
+  const t = Date.parse(String(s).replace(' ', 'T') + (String(s).includes('Z') ? '' : 'Z'));
+  return Number.isFinite(t) ? (Date.now() - t) / 36e5 : Infinity;
+};
+const snapAge = hoursSince(row?.updated_at);
+
+const V: Record<string, number> = Object.fromEntries((P?.visitors ?? []).map((x: any) => [x.k, x.n]));
+const sum = (pre: string) => Object.entries(V).filter(([k]) => k.startsWith(pre))
+  .reduce((a, [, n]) => a + Number(n), 0);
+const human = Number(V.human ?? 0), ai = sum('ai:'), se = sum('se:'), bot = sum('bot:');
+const total = human + ai + se + bot;
+
+const newsAge = hoursSince(P?.content?.news_last);
+const fleetOk = (P?.fleet ?? []).filter((f: any) => f.ok).length;
+const fleetAll = (P?.fleet ?? []).length;
+const d1Reads = Number(P?.d1_total_reads ?? 0);
+const i18nGap = (P?.i18n_gap ?? []).reduce((a: number, x: any) => a + Number(x.n), 0);
+/* 有中文、没英文 —— 和上面那条不是一回事:上面查的是「译文等于原文」,
+   这条查的是「根本没译」。英文是这个外贸站的兜底语,缺一条就是外国访客看到一段中文。 */
+const enMissBlocks = Number(P?.en_missing?.blocks ?? 0);
+const enMissPages = Number(P?.en_missing?.pages ?? 0);
+const pendingImgs = Number(P?.content?.pending_imgs ?? 0);
+/* 向量检索 24 小时用量。全站日闸 500 —— 逼近上限时要么是有人在刷,
+   要么是选品台真的被用起来了,两种都得先知道。 */
+const kbQ = Number(P?.kb_query_24h ?? 0);
+
+/* 告警线。数字本身不会说话,得有人先说清「多少算不对」。 */
+const alerts: { level: 'red' | 'amber'; what: string; hint: string }[] = [];
+if (!P) alerts.push({ level: 'red', what: '还没有任何快照', hint: '在本机跑 python tools/pulse-collect.py' });
+else {
+  if (snapAge > 12) alerts.push({ level: 'amber', what: `快照已 ${Math.round(snapAge)} 小时没更新`, hint: '采集任务可能没在跑' });
+  if (newsAge > 48) alerts.push({ level: 'red', what: `资讯 ${Math.round(newsAge / 24)} 天没有新内容`, hint: '看 logs/news-cron.log 最后一行是 PASS 还是 FAIL' });
+  if (fleetAll && fleetOk < Math.ceil(fleetAll / 2)) alerts.push({ level: 'red', what: `模型舰队只剩 ${fleetOk}/${fleetAll} 家可用`, hint: '多为供应商额度耗尽,换档或等重置' });
+  if (d1Reads > 5_000_000) alerts.push({ level: 'amber', what: `D1 日读 ${(d1Reads / 1e6).toFixed(1)}M 行`, hint: '看下面「最贵的查询」,效率低于 0.001 的要改' });
+  if (i18nGap > 0) alerts.push({ level: 'amber', what: `${i18nGap} 条页面标题仍是英文原文`, hint: '跑 python tools/i18n-repair-titles.py' });
+  if (enMissBlocks + enMissPages > 0) alerts.push({
+    level: 'red',
+    what: `${enMissPages} 个页面、${enMissBlocks} 个版块有中文没英文`,
+    hint: '跑 node tools/backfill-en.mjs,再跑 node tools/translate-backfill.mjs',
+  });
+  if (kbQ >= 400) alerts.push({
+    level: kbQ >= 500 ? 'red' : 'amber',
+    what: `向量检索 24 小时用了 ${kbQ} 次(日闸 500)`,
+    hint: kbQ >= 500 ? '已触闸,选品台在走 SQL 降级 —— 先看是不是被脚本刷' : '接近上限,留意来源',
+  });
+  if (pendingImgs > 0) alerts.push({ level: 'amber', what: `${pendingImgs} 张图待审`, hint: '未审的图不会出现在前台' });
+  if (ai === 0 && total > 20) alerts.push({ level: 'amber', what: '七天内没有 AI 爬虫来访', hint: '检查 robots.txt 是否误拦,或站点还没被发现' });
+}
+
+const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
+const fmt = (n: number) => Number(n).toLocaleString();
+const WHO_LABEL: Record<string, string> = {
+  'ai:openai': 'OpenAI', 'ai:anthropic': 'Anthropic', 'ai:perplexity': 'Perplexity',
+  'ai:google': 'Google AI', 'ai:other': '其他 AI', 'se:google': 'Google 搜索',
+  'se:bing': 'Bing', 'se:cn': '国内搜索', 'bot:other': '其他爬虫',
+  /* 2026-09-10 新增:浏览器 UA 却不带 accept-language 的无头抓取,之前混在「真人」里 */
+  'bot:headless': '无头抓取(伪装浏览器)', human: '真人',
+  /* 2026-09-11 GEO:AI 回答用户时实时来取页面 = 被引用 */
+  'cite:openai': 'ChatGPT 引用取回', 'cite:perplexity': 'Perplexity 引用取回', 'cite:anthropic': 'Claude 引用取回',
+};
+const REF_LABEL: Record<string, string> = { 'ref:chatgpt': 'ChatGPT', 'ref:perplexity': 'Perplexity', 'ref:claude': 'Claude', 'ref:gemini': 'Gemini', 'ref:bing': 'Bing/Copilot', 'ref:google': 'Google', 'ref:baidu': '百度', 'ref:other': '其他站' };
+/* 被引频率:本周 vs 上周。创始人 2026-09-11 转来的 GEO 打法第四步:「盯住被引频率,每周固定监控一次,
+   被竞品挤掉就回第二、三步改内容」。这里把三个直接读数摆在一起:被引取回、被引带来的真人、AI 抓取。 */
+const G = P?.geo ?? {}; const Gn = G.now ?? {}; const Gp = G.prev ?? {};
+const tot = (arr: any[]) => (arr ?? []).reduce((a: number, x: any) => a + Number(x.n), 0);
+const citeNow = tot(Gn.cite_by), citePrev = tot(Gp.cite_by);
+const refNow = tot(Gn.ref_by), refPrev = tot(Gp.ref_by);
+const crawlNow = tot(Gn.crawl_by), crawlPrev = tot(Gp.crawl_by);
+const prevMap = (arr: any[]) => Object.fromEntries((arr ?? []).map((x: any) => [x.k, Number(x.n)]));
+const citePrevBy = prevMap(Gp.cite_paths);
+const delta = (a: number, b: number) => b === 0 ? (a > 0 ? '新' : '—') : `${a >= b ? '+' : ''}${a - b}`;
+/* 每周手工对照清单:在 ChatGPT / Perplexity 里搜这些词,记下是否引用我们、引的是哪一页 */
+const GEO_QUERIES = ['帛卉化妆品 OEM', 'BIOSPHERE cosmetics OEM Guangzhou', '草本化妆品代工厂 广州', 'herbal skincare contract manufacturer China', '印尼 BPOM 化妆品 备案 流程', 'EU cosmetic regulation 2026 responsible person', '化妆品 包材 真空瓶 起订量', 'private label herbal shampoo manufacturer'];
+---
+
+<AdminShell title="罗盘" active="pulse" email={c.sess.email} tenant={c.tenant}>
+  <header class="hd">
+    <div>
+      <h1>罗盘</h1>
+      <p class="sub">
+        {row ? `快照 ${row.updated_at} UTC` : '尚无快照'}
+        {P && <> · 访问统计取最近 7 天 · 用量取最近 24 小时</>}
+      </p>
+    </div>
+    <code class="cmd">python tools/pulse-collect.py</code>
+  </header>
+
+  {/* ① 先回答「什么是坏的」—— 这一块空着才是好消息 */}
+  <section class={`alerts ${alerts.length ? '' : 'clean'}`}>
+    {alerts.length === 0 ? (
+      <p class="ok">✓ 没有触发任何告警线</p>
+    ) : alerts.map((a) => (
+      <div class={`al ${a.level}`}>
+        <b>{a.what}</b>
+        <span>{a.hint}</span>
+      </div>
+    ))}
+  </section>
+
+  {P && (
+    <>
+      {/* ② 谁在看这个站 —— 人和机器分开,这是 GEO 效果的直接读数 */}
+      <section class="panel">
+        <h2>谁在看 <span class="n">{fmt(total)} 次访问 · 7 天</span></h2>
+        <p class="note">
+          用 Analytics Engine 打点,不是 JS 信标 —— AI 爬虫不执行 JS,
+          用信标类工具统计 GEO 效果等于拿体温计量血压。
+        </p>
+        <div class="bars">
+          {[['真人', human, 'h'], ['AI 答案引擎', ai, 'a'], ['搜索引擎', se, 's'], ['其他爬虫', bot, 'b']]
+            .map(([label, n, cls]) => (
+              <div class="bar">
+                <div class="bl"><span>{label}</span><b>{fmt(Number(n))}</b><i>{pct(Number(n))}%</i></div>
+                <div class="track"><span class={`fill ${cls}`} style={`width:${pct(Number(n))}%`}></span></div>
+              </div>
+            ))}
+        </div>
+        <div class="chips">
+          {(P.visitors ?? []).map((x: any) => (
+            <span class={`chip ${String(x.k).startsWith('ai:') ? 'ai' : ''}`}>
+              {WHO_LABEL[x.k] ?? x.k}<b>{fmt(x.n)}</b>
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* ②b 被引频率(GEO)—— 本周 vs 上周 */}
+      <section class="panel">
+        <h2>被引频率(GEO) <span class="n">本周 vs 上周</span></h2>
+        <p class="note">
+          「被引取回」= ChatGPT / Perplexity / Claude 在回答某个用户时实时来取这一页(UA 为 *-User),这是页面正被引用的直接证据;
+          「AI 带来的真人」= 从 chatgpt.com、perplexity.ai 等答案页点链接进来的真人;「AI 抓取」= GPTBot 等常规抓取,只说明被看见。
+          打点从 2026-09-11 晚起区分这三类,之前的周次读数为 0 属正常。
+        </p>
+        <div class="chips">
+          <span class={`chip ${citeNow >= citePrev ? 'ai' : ''}`}>被引取回 <b>{fmt(citeNow)}</b><i>{delta(citeNow, citePrev)}</i></span>
+          {Gn.cite_real != null && <span class="chip ai" title="去掉伪装 ChatGPT-User 去探 /.env、/.aws 的扫描器后,真正落在内容页上的被引取回">去噪后真被引 <b>{fmt(Gn.cite_real)}</b><i>{delta(Number(Gn.cite_real), Number(Gp.cite_real ?? 0))}</i></span>}
+          <span class={`chip ${refNow >= refPrev ? 'ai' : ''}`}>AI 带来的真人 <b>{fmt(refNow)}</b><i>{delta(refNow, refPrev)}</i></span>
+          <span class="chip">AI 抓取 <b>{fmt(crawlNow)}</b><i>{delta(crawlNow, crawlPrev)}</i></span>
+          {(Gn.cite_by ?? []).map((x: any) => <span class="chip">{WHO_LABEL[x.k] ?? x.k}<b>{fmt(x.n)}</b></span>)}
+          {(Gn.ref_by ?? []).map((x: any) => <span class="chip">{REF_LABEL[x.k] ?? x.k} 来路<b>{fmt(x.n)}</b></span>)}
+        </div>
+        <div class="grid2">
+          <div>
+            <h3>被引用的页(本周 · 与上周比)</h3>
+            <table class="t"><tbody>
+              {(Gn.cite_paths ?? []).length === 0
+                ? <tr><td class="dim">本周还没有被引取回记录 —— 先看下面「AI 抓了哪些页」,被抓到才有资格被引。</td></tr>
+                : (Gn.cite_paths ?? []).map((x: any) => (<tr><td class="p">{x.k}</td><td class="num">{fmt(x.n)}</td><td class="num dim">{delta(Number(x.n), citePrevBy[x.k] ?? 0)}</td></tr>))}
+            </tbody></table>
+          </div>
+          <div>
+            <h3>AI 答案页点进来的落地页</h3>
+            <table class="t"><tbody>
+              {(Gn.ref_paths ?? []).length === 0
+                ? <tr><td class="dim">本周暂无</td></tr>
+                : (Gn.ref_paths ?? []).map((x: any) => (<tr><td class="p">{x.k}</td><td class="dim">{REF_LABEL[x.r] ?? x.r}</td><td class="num">{fmt(x.n)}</td></tr>))}
+            </tbody></table>
+            <h3>AI 抓取按版块</h3>
+            <div class="chips">{(Gn.crawl_sections ?? []).slice(0, 12).map((x: any) => <span class="chip">{x.k}<b>{fmt(x.n)}</b></span>)}</div>
+          </div>
+        </div>
+        <h3>每周一次手工对照(打点看不到 AI 回答里到底引没引)</h3>
+        <p class="note">在 ChatGPT、Perplexity、Google AI 概览里各搜一遍下面这些词,记下「有没有引用我们、引的是哪一页」;Google Search Console 里看「AI 概览展示次数」。
+          被引的页把共同点(首段直答、问题式标题、表格与数字)复制到其它页。</p>
+        <div class="chips">{GEO_QUERIES.map((q) => <span class="chip">{q}</span>)}</div>
+      </section>
+
+      <div class="grid2">
+        {/* ③ AI 爬虫抓了哪些页 —— 被引用概率最高的就是这些 */}
+        <section class="panel">
+          <h2>AI 爬虫抓了哪些页</h2>
+          <p class="note">这几页是被 AI 答案引擎引用概率最高的。空着说明还没被发现。</p>
+          <table class="t">
+            <tbody>
+              {(P.ai_paths ?? []).length === 0
+                ? <tr><td class="dim">暂无</td></tr>
+                : (P.ai_paths ?? []).map((x: any) => (
+                    <tr><td class="p">{x.k}</td><td class="num">{fmt(x.n)}</td></tr>))}
+            </tbody>
+          </table>
+        </section>
+
+        <section class="panel">
+          <h2>访问最多的页</h2>
+          <table class="t">
+            <tbody>
+              {(P.paths ?? []).slice(0, 12).map((x: any) => (
+                <tr><td class="p">{x.k}</td><td class="num">{fmt(x.n)}</td></tr>))}
+            </tbody>
+          </table>
+        </section>
+
+        <section class="panel">
+          <h2>语种分布</h2>
+          <div class="chips">
+            {(P.langs ?? []).map((x: any) => (<span class="chip">{x.k}<b>{fmt(x.n)}</b></span>))}
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>来访国家</h2>
+          <div class="chips">
+            {(P.countries ?? []).map((x: any) => (<span class="chip">{x.k}<b>{fmt(x.n)}</b></span>))}
+          </div>
+        </section>
+      </div>
+
+      {/* ④ 内容存量与新鲜度 */}
+      <section class="panel">
+        <h2>内容</h2>
+        <div class="cards">
+          {[
+            ['包材库', P.content?.packaging, '款'],
+            ['配方库', P.content?.formulas, '支'],
+            ['原料库', P.content?.ingredients, '条'],
+            ['已发布资讯', P.content?.news_pub, '条'],
+            ['询盘总数', P.content?.inquiries, '条'],
+            ['近 30 天询盘', P.content?.inq30, '条'],
+          ].map(([k, v, u]) => (
+            <div class="card"><div class="k">{k}</div><div class="v">{fmt(Number(v ?? 0))}</div><div class="u">{u}</div></div>
+          ))}
+        </div>
+        <p class="note">
+          资讯最后更新:{P.content?.news_last ?? '—'}
+          {Number.isFinite(newsAge) && <> · {newsAge < 48 ? '正常' : `已 ${Math.round(newsAge / 24)} 天`}</>}
+        </p>
+      </section>
+
+      <div class="grid2">
+        {/* ⑤ 模型舰队 —— 今天就是它挂了导致资讯停摆三天 */}
+        <section class="panel">
+          <h2>模型舰队 <span class="n">{fleetOk}/{fleetAll} 可用</span></h2>
+          <table class="t">
+            <tbody>
+              {(P.fleet ?? []).map((f: any) => (
+                <tr>
+                  <td class="s">{f.ok ? '✓' : '✗'}</td>
+                  <td class="p">{f.id}</td>
+                  <td class="num">{f.ms}ms</td>
+                  <td class="dim">{f.note}</td>
+                </tr>))}
+            </tbody>
+          </table>
+        </section>
+
+        {/* ⑥ 最贵的查询 —— 效率列是今天那场事故的教训 */}
+        <section class="panel">
+          <h2>D1 最贵的查询 <span class="n">日读 {fmt(d1Reads)} 行</span></h2>
+          <p class="note">
+            效率 = 返回行数 ÷ 读取行数。低于 0.001 的基本都是全表扫或相关子查询 ——
+            今天有一条单次读 392 万行(表只有 3,716 行)。
+          </p>
+          <table class="t">
+            <tbody>
+              {(P.d1_top ?? []).map((q: any) => (
+                <tr>
+                  <td class="num">{fmt(Math.round(q.rows))}</td>
+                  <td class="num dim">×{q.runs}</td>
+                  <td class={`num ${q.eff < 0.001 ? 'warn' : ''}`}>{Number(q.eff).toFixed(5)}</td>
+                  <td class="q">{q.q}</td>
+                </tr>))}
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </>
+  )}
+
+  <style>
+    .hd { display: flex; align-items: flex-start; justify-content: space-between;
+          gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    h1 { font-size: 1.375rem; margin: 0 0 .25rem; letter-spacing: -.015em; }
+    .sub { margin: 0; font-size: .8125rem; color: #6b7280; }
+    .cmd { font-size: .75rem; background: #f3f4f6; border: 1px solid #e5e7eb;
+           border-radius: 8px; padding: .375rem .625rem; color: #374151; }
+
+    .alerts { display: grid; gap: .5rem; margin-bottom: 1.5rem; }
+    .alerts.clean .ok { margin: 0; font-size: .875rem; color: #047857;
+                        background: #ecfdf5; border: 1px solid #a7f3d0;
+                        border-radius: 10px; padding: .75rem 1rem; }
+    .al { display: flex; gap: .75rem; align-items: baseline; flex-wrap: wrap;
+          border-radius: 10px; padding: .75rem 1rem; font-size: .875rem;
+          border: 1px solid; }
+    .al.red { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .al.amber { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+    .al span { color: #6b7280; font-size: .8125rem; }
+
+    .panel { border: 1px solid #e5e7eb; border-radius: 14px; padding: 1.125rem 1.25rem;
+             background: #fff; margin-bottom: 1.25rem; }
+    .panel h2 { font-size: .9375rem; margin: 0 0 .5rem; display: flex;
+                align-items: baseline; gap: .625rem; }
+    .panel h2 .n { font-size: .75rem; color: #6b7280; font-weight: 400; }
+    .note { font-size: .75rem; color: #6b7280; line-height: 1.65; margin: 0 0 .875rem; }
+
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(21rem, 1fr)); gap: 1.25rem; }
+    .grid2 .panel { margin-bottom: 0; }
+
+    .bars { display: grid; gap: .625rem; margin-bottom: 1rem; }
+    .bl { display: flex; align-items: baseline; gap: .5rem; font-size: .8125rem; margin-bottom: .25rem; }
+    .bl span { min-width: 6.5rem; color: #374151; }
+    .bl b { font-variant-numeric: tabular-nums; }
+    .bl i { color: #9ca3af; font-style: normal; font-size: .75rem; }
+    .track { height: 7px; background: #f3f4f6; border-radius: 999px; overflow: hidden; }
+    .fill { display: block; height: 100%; border-radius: 999px; }
+    .fill.h { background: #2563eb; } .fill.a { background: #7c3aed; }
+    .fill.s { background: #059669; } .fill.b { background: #9ca3af; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: .375rem; }
+    .chip { font-size: .75rem; border: 1px solid #e5e7eb; border-radius: 999px;
+            padding: .25rem .625rem; color: #4b5563; display: inline-flex; gap: .375rem; }
+    .chip b { font-variant-numeric: tabular-nums; color: #111827; }
+    .chip i { font-style: normal; font-size: .75rem; color: #6b7280; margin-left: .25rem; }
+    .panel h3 { font-size: .8125rem; font-weight: 600; margin: 1rem 0 .5rem; color: #374151; }
+    .chip.ai { border-color: #ddd6fe; background: #f5f3ff; color: #5b21b6; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; }
+    .card { border: 1px solid #f3f4f6; border-radius: 10px; padding: .75rem .875rem; }
+    .card .k { font-size: .75rem; color: #6b7280; }
+    .card .v { font-size: 1.375rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+    .card .u { font-size: .75rem; color: #9ca3af; }
+
+    .t { width: 100%; border-collapse: collapse; font-size: .8125rem; }
+    .t td { padding: .3125rem .5rem .3125rem 0; border-bottom: 1px solid #f9fafb;
+            vertical-align: top; }
+    .t .p { color: #374151; word-break: break-all; }
+    .t .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .t .num.warn { color: #b91c1c; font-weight: 600; }
+    .t .dim { color: #9ca3af; font-size: .75rem; }
+    .t .s { width: 1.25rem; }
+    .t .q { color: #6b7280; font-size: .75rem; font-family: ui-monospace, monospace;
+            word-break: break-all; }
+
+    @media (max-width: 48rem) {
+      .grid2 { grid-template-columns: 1fr; }
+      .cmd { display: none; }
+    }
+  </style>
+</AdminShell>

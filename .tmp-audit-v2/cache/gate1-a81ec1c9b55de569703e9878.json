@@ -1,0 +1,310 @@
+{
+ "tree": "ce42a9d90ce460dc9f005a81fa520ee90d05af6e",
+ "base_tree": "e1affd8a583fcc87179ac8e9076149e77eb3beae",
+ "worker": "bohui-web",
+ "mode": "build",
+ "repo": "F:/0cosmetic/cosmetic-sites",
+ "rules_hash": "sha256:c990edbc92a714f8993383c7e432aebfe419c3dfb3adf6c6b07a140ba92276c4",
+ "gate_hash": "sha256:7ff5add83e4d7b82dc042d35c46895973d354b75c9d7493bf5097335d9ac7923",
+ "files": 18,
+ "lines": 1316,
+ "changes": [
+  [
+   "A",
+   "apps/web/public/b2o/img/01-hero-shelf.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/02-seller-desk.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/03-lab-bench.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/05-packaging.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/06-qc-crop.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/07-warehouse.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/08-botanical.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/09-market-hand.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/10-dark-close.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/11-notebook.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/12-vials-top.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/src/components/B2oBlock.astro",
+   null
+  ],
+  [
+   "A",
+   "apps/web/src/data/site-counts.json",
+   null
+  ],
+  [
+   "M",
+   "apps/web/src/pages/[...path].astro",
+   null
+  ],
+  [
+   "M",
+   "apps/web/src/pages/[lang]/insights.astro",
+   null
+  ],
+  [
+   "A",
+   "apps/web/src/styles/b2o.css",
+   null
+  ],
+  [
+   "M",
+   "packages/core/src/components/SiteFooter.astro",
+   null
+  ],
+  [
+   "M",
+   "packages/core/src/components/SiteHeader.astro",
+   null
+  ]
+ ],
+ "stats": {
+  "apps/web/public/b2o/img/01-hero-shelf.webp": 0,
+  "apps/web/public/b2o/img/02-seller-desk.webp": 0,
+  "apps/web/public/b2o/img/03-lab-bench.webp": 0,
+  "apps/web/public/b2o/img/05-packaging.webp": 0,
+  "apps/web/public/b2o/img/06-qc-crop.webp": 0,
+  "apps/web/public/b2o/img/07-warehouse.webp": 0,
+  "apps/web/public/b2o/img/08-botanical.webp": 0,
+  "apps/web/public/b2o/img/09-market-hand.webp": 0,
+  "apps/web/public/b2o/img/10-dark-close.webp": 0,
+  "apps/web/public/b2o/img/11-notebook.webp": 0,
+  "apps/web/public/b2o/img/12-vials-top.webp": 0,
+  "apps/web/src/components/B2oBlock.astro": 505,
+  "apps/web/src/data/site-counts.json": 194,
+  "apps/web/src/pages/[...path].astro": 14,
+  "apps/web/src/pages/[lang]/insights.astro": 58,
+  "apps/web/src/styles/b2o.css": 513,
+  "packages/core/src/components/SiteFooter.astro": 21,
+  "packages/core/src/components/SiteHeader.astro": 11
+ },
+ "binaries": [
+  "apps/web/public/b2o/img/01-hero-shelf.webp",
+  "apps/web/public/b2o/img/02-seller-desk.webp",
+  "apps/web/public/b2o/img/03-lab-bench.webp",
+  "apps/web/public/b2o/img/05-packaging.webp",
+  "apps/web/public/b2o/img/06-qc-crop.webp",
+  "apps/web/public/b2o/img/07-warehouse.webp",
+  "apps/web/public/b2o/img/08-botanical.webp",
+  "apps/web/public/b2o/img/09-market-hand.webp",
+  "apps/web/public/b2o/img/10-dark-close.webp",
+  "apps/web/public/b2o/img/11-notebook.webp",
+  "apps/web/public/b2o/img/12-vials-top.webp"
+ ],
+ "block": [
+  {
+   "rule": "R2",
+   "id": "R2-owned-factory",
+   "line": 322,
+   "text": "<p>{ORG.certs.join('、')} 认证，广州自有工厂，欢迎验厂。</p>",
+   "level": "block",
+   "cat": "合规",
+   "strict": true,
+   "file": "apps/web/src/components/B2oBlock.astro"
+  }
+ ],
+ "doubt": [
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 34,
+   "text": ".replace(/(\\d)\\s*[–—]\\s*(\\d)/g, '$1 至 $2')",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ],
+   "file": "apps/web/src/components/B2oBlock.astro"
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 36,
+   "text": ".replace(/([一-鿿」》）\\)])\\s*,\\s*/g, '$1，')",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ],
+   "file": "apps/web/src/components/B2oBlock.astro"
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 37,
+   "text": ".replace(/,\\s*([一-鿿「《])/g, '，$1')",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ],
+   "file": "apps/web/src/components/B2oBlock.astro"
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 38,
+   "text": ".replace(/([一-鿿」》）\\)])\\s*:\\s*/g, '$1：')",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ],
+   "file": "apps/web/src/components/B2oBlock.astro"
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 39,
+   "text": ".replace(/([一-鿿」》）\\)])\\s*;\\s*/g, '$1；');",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ],
+   "file": "apps/web/src/components/B2oBlock.astro"
+  },
+  {
+   "rule": "K2",
+   "id": "K2-nav-cache",
+   "file": "packages/core/src/components/SiteFooter.astro",
+   "line": 0,
+   "text": "改导航没 bump CACHE_V",
+   "level": "doubt",
+   "cat": "正确性",
+   "files": [
+    "packages/core/src/components/SiteFooter.astro",
+    "packages/core/src/components/SiteHeader.astro"
+   ]
+  }
+ ],
+ "exceptions": [],
+ "risks": [
+  {
+   "rule": "K3",
+   "cat": "回归",
+   "level": "高",
+   "item": "改了 catch-all 路由 apps/web/src/pages/[...path].astro",
+   "mitigation": "catch-all 会把渲染异常吞成 404,上线后 wrangler tail 看异常"
+  },
+  {
+   "rule": "RK6",
+   "cat": "费用",
+   "level": "中",
+   "item": "访客路径新增 SQL apps/web/src/components/B2oBlock.astro:63",
+   "mitigation": "按「查询先量行数」估读行数,上线后看 d1 insights"
+  },
+  {
+   "rule": "RK6",
+   "cat": "费用",
+   "level": "中",
+   "item": "访客路径新增 SQL apps/web/src/components/B2oBlock.astro:69",
+   "mitigation": "按「查询先量行数」估读行数,上线后看 d1 insights"
+  },
+  {
+   "rule": "RK7",
+   "cat": "合规",
+   "level": "中",
+   "item": "对外文案/页面变了 apps/web/src/components/B2oBlock.astro",
+   "mitigation": "合规审核员看语种与页面"
+  },
+  {
+   "rule": "RK7",
+   "cat": "合规",
+   "level": "中",
+   "item": "对外文案/页面变了 apps/web/src/pages/[...path].astro",
+   "mitigation": "合规审核员看语种与页面"
+  },
+  {
+   "rule": "RK7",
+   "cat": "合规",
+   "level": "中",
+   "item": "对外文案/页面变了 apps/web/src/pages/[lang]/insights.astro",
+   "mitigation": "合规审核员看语种与页面"
+  },
+  {
+   "rule": "RK7",
+   "cat": "合规",
+   "level": "中",
+   "item": "对外文案/页面变了 packages/core/src/components/SiteFooter.astro",
+   "mitigation": "合规审核员看语种与页面"
+  },
+  {
+   "rule": "RK7",
+   "cat": "合规",
+   "level": "中",
+   "item": "对外文案/页面变了 packages/core/src/components/SiteHeader.astro",
+   "mitigation": "合规审核员看语种与页面"
+  },
+  {
+   "cat": "合规",
+   "level": "中",
+   "rule": "R11",
+   "item": "apps/web/src/styles/b2o.css /* BEAUTY 的颜色创始人未定:改这一处全站生效。候选:石墨 #1d1d1f(默认)/ 墨蓝 #1f4e79 / 暗金 #8a6a2e */",
+   "mitigation": ""
+  },
+  {
+   "cat": "合规",
+   "level": "中",
+   "rule": "R11",
+   "item": "apps/web/src/styles/b2o.css /* 首页标题 52px:定稿待拍板,只在宽屏首页用;内页守 40px */",
+   "mitigation": ""
+  }
+ ],
+ "seconds": {
+  "tree": 0.9,
+  "diff": 0.1,
+  "semgrep": 11.5,
+  "rules": 8.7,
+  "total": 23.9
+ },
+ "result": "拦",
+ "hard": true
+}

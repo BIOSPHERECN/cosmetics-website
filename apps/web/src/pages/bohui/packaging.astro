@@ -1,0 +1,248 @@
+---
+/**
+ * 包材入库台 —— 拖一批图进来,填几个字段,直接进包材库。
+ *
+ * 创始人 2026-09-09:「后台管理上传更新的功能你也需要跟上优化,
+ * 我们要开始转移给其他的人来上传」「后台你要跟上优化啊」。
+ *
+ * 原来的流程断在中间:媒体库能传图,但传完之后要有人去别处把它挂到包材上,
+ * 而那一步只有我会做 —— 交不出去的流程等于没有流程。
+ * 这一页把「传图」和「入库」并成一次操作。
+ *
+ * 给非技术同事用,所以四件事必须做到(其余都可以砍):
+ *   ① **每一张的成败都写在它自己那一行**。上一版失败只进控制台,
+ *      人看不到哪张没成,以为都传上去了。
+ *   ② **编码冲突要拦住**。默认不覆盖已有编码,勾了才覆盖 ——
+ *      静默覆盖会把别人刚录的冲掉,而且没人知道。
+ *   ③ **批量填**。二十张图逐个选类型没人受得了,所以有「套用到全部」。
+ *   ④ **说清楚什么时候能在前台看到**。货架读的是构建期快照,
+ *      新款要重建快照才出现 —— 不写清楚,人会以为传失败了又传一遍。
+ *
+ * 编码从文件名推:`TL-A101.jpg` → `TL-A101`。整理好文件名再拖进来,
+ * 比在页面上逐个敲快得多。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { PACK_TYPE_LABEL, PACK_GROUP, packGroup } from '../../lib/catalog';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+/* 类型下拉按大类分组 —— 三十多个类型平铺成一列,人只会在里面乱翻 */
+const groups = new Map<string, { v: string; label: string }[]>();
+for (const [v, pair] of Object.entries(PACK_TYPE_LABEL)) {
+  const g = packGroup(v);
+  if (!groups.has(g)) groups.set(g, []);
+  groups.get(g)!.push({ v, label: pair[0] });
+}
+const groupName = (g: string) => (PACK_GROUP as any)[g]?.[0] ?? g;
+
+const stat = await c.db.prepare(
+  `SELECT COUNT(*) n,
+          SUM(CASE WHEN status='draft' THEN 1 ELSE 0 END) draft
+     FROM packaging`,
+).first<{ n: number; draft: number }>().catch(() => null);
+---
+
+<AdminShell title="包材入库" active="suppliers" email={c.sess.email} tenant={c.tenant}>
+  <header class="hd">
+    <div>
+      <h1>包材入库</h1>
+      <p class="sub">
+        拖一批图进来 → 核对编码与类型 → 提交。图先传 R2,传成了才写库。
+        {stat && <> 现有 {stat.n.toLocaleString('en-US')} 款,其中已下架 {stat.draft ?? 0} 款。</>}
+      </p>
+    </div>
+  </header>
+
+  <section class="tips">
+    <b>上传之前先看这三条</b>
+    <ol>
+      <li><b>文件名就是编码。</b>整理成 <code>TL-A101.jpg</code> 这样再拖进来,页面会自动填好编码,不用逐个敲。
+        编码规则:2–4 位大写字母 + 短横 + 数字或字母。</li>
+      <li><b>只传拿得出手的实拍。</b>白底、看得清瓶型。没有图的款不要建 ——
+        货架上一张「实拍整理中」的占位卡,比少一款伤得多。</li>
+      <li><b>提交完不会立刻出现在前台。</b>货架读的是构建期快照,要重建快照并发布才看得到。
+        提交成功后这一页会把命令写出来,交给技术执行。</li>
+    </ol>
+  </section>
+
+  <div id="drop" class="drop">
+    <p><b>把图片拖到这里</b></p>
+    <p>或 <label class="lnk">选择文件<input id="pick" type="file" accept="image/webp,image/jpeg,image/png" multiple hidden /></label>,支持 JPG / PNG / WebP,单张 8MB 以内</p>
+  </div>
+
+  <div id="bulkbar" class="bulk" hidden>
+    <span>批量套用:</span>
+    <select id="bType"><option value="">类型…</option>
+      {[...groups.entries()].map(([g, items]) => (
+        <optgroup label={groupName(g)}>
+          {items.map((o) => <option value={o.v}>{o.label}</option>)}
+        </optgroup>
+      ))}
+    </select>
+    <input id="bMat" placeholder="材质,如 PET" />
+    <input id="bSup" placeholder="供应商简称" />
+    <button type="button" id="applyAll">套用到全部</button>
+    <label class="ck"><input type="checkbox" id="overwrite" /> 覆盖同编码</label>
+    <span class="grow"></span>
+    <button type="button" id="submit" class="primary">提交入库</button>
+    <button type="button" id="clear">清空</button>
+  </div>
+
+  <table id="tbl" class="t" hidden>
+    <thead>
+      <tr><th>图</th><th>编码</th><th>类型</th><th>材质</th><th>容量</th><th>口径</th><th>来源链接</th><th>状态</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <p id="after" class="after" hidden></p>
+</AdminShell>
+
+<script is:inline define:vars={{ TYPES: Object.fromEntries(Object.entries(PACK_TYPE_LABEL).map(([v, p]) => [v, p[0]])) }}>
+  (() => {
+    const $ = (id) => document.getElementById(id);
+    const rows = $('rows'), tbl = $('tbl'), bar = $('bulkbar'), after = $('after');
+    const items = [];
+
+    const codeFromName = (name) =>
+      name.replace(/\.[^.]+$/, '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '-').replace(/-+/g, '-');
+
+    function addFiles(files) {
+      for (const f of files) {
+        if (!/^image\/(webp|jpeg|png)$/.test(f.type)) continue;
+        const it = { file: f, code: codeFromName(f.name), el: null };
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td><img class="th" alt=""></td>' +
+          '<td><input class="c code" size="12"></td>' +
+          '<td><select class="c type"></select></td>' +
+          '<td><input class="c mat" size="10"></td>' +
+          '<td><input class="c cap" size="10" placeholder="30ml"></td>' +
+          '<td><input class="c neck" size="8" placeholder="24牙"></td>' +
+          '<td><input class="c src" size="14" placeholder="1688 链接"></td>' +
+          '<td class="st">待提交</td>';
+        const sel = tr.querySelector('.type');
+        sel.appendChild(new Option('类型…', ''));
+        for (const [v, label] of Object.entries(TYPES)) sel.appendChild(new Option(label, v));
+        tr.querySelector('.code').value = it.code;
+        tr.querySelector('img').src = URL.createObjectURL(f);
+        rows.appendChild(tr);
+        it.el = tr;
+        items.push(it);
+      }
+      tbl.hidden = bar.hidden = items.length === 0;
+    }
+
+    $('pick').addEventListener('change', (e) => addFiles(e.target.files));
+    const drop = $('drop');
+    ['dragenter', 'dragover'].forEach((t) =>
+      drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach((t) =>
+      drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+    drop.addEventListener('drop', (e) => addFiles(e.dataTransfer.files));
+
+    $('applyAll').addEventListener('click', () => {
+      const t = $('bType').value, m = $('bMat').value.trim(), s = $('bSup').value.trim();
+      for (const it of items) {
+        if (t) it.el.querySelector('.type').value = t;
+        if (m) it.el.querySelector('.mat').value = m;
+        if (s) it.el.dataset.sup = s;
+      }
+    });
+
+    $('clear').addEventListener('click', () => {
+      rows.innerHTML = ''; items.length = 0; tbl.hidden = bar.hidden = true; after.hidden = true;
+    });
+
+    $('submit').addEventListener('click', async () => {
+      const btn = $('submit'); btn.disabled = true;
+      const overwrite = $('overwrite').checked ? '1' : '';
+      const sup = $('bSup').value.trim();
+      let ok = 0, bad = 0;
+      for (const it of items) {
+        const tr = it.el, st = tr.querySelector('.st');
+        if (st.dataset.done === '1') continue;      // 重试时跳过已成功的
+        st.textContent = '上传中…'; st.className = 'st busy';
+        const fd = new FormData();
+        fd.append('file', it.file);
+        fd.append('code', tr.querySelector('.code').value.trim());
+        fd.append('type', tr.querySelector('.type').value);
+        fd.append('material', tr.querySelector('.mat').value.trim());
+        fd.append('capacity', tr.querySelector('.cap').value.trim());
+        fd.append('neck_size', tr.querySelector('.neck').value.trim());
+        fd.append('source_url', tr.querySelector('.src').value.trim());
+        fd.append('supplier_ref', tr.dataset.sup || sup);
+        if (overwrite) fd.append('overwrite', '1');
+        try {
+          const r = await fetch('/api/admin/pack-add', { method: 'POST', body: fd });
+          const d = await r.json();
+          if (d.ok) {
+            st.textContent = d.replaced ? '已覆盖' : '已入库';
+            st.className = 'st ok'; st.dataset.done = '1'; ok++;
+          } else {
+            /* 失败原因写在这一行上,不是笼统一句「部分失败」 */
+            st.textContent = d.error || ('HTTP ' + r.status);
+            st.className = 'st err'; bad++;
+          }
+        } catch (e) {
+          st.textContent = '网络错误:' + String(e).slice(0, 60);
+          st.className = 'st err'; bad++;
+        }
+      }
+      btn.disabled = false;
+      after.hidden = false;
+      after.innerHTML = '本批成功 <b>' + ok + '</b> 条,失败 <b>' + bad + '</b> 条。'
+        + (bad ? '失败的那几行写着原因,改完再点一次「提交入库」,已成功的会自动跳过。' : '')
+        + (ok ? '<br>新款要重建货架快照并发布之后才会出现在前台,把这两条命令交给技术:'
+              + '<code>python tools/pack-shelf-snapshot.py</code>'
+              + '<code>python tools/chain-counts.py --write</code>' : '');
+    });
+  })();
+</script>
+
+<style>
+  .hd { margin-bottom: 1rem; }
+  .hd h1 { margin: 0 0 .25rem; font-size: 1.25rem; }
+  .sub { margin: 0; font-size: .8125rem; color: var(--ad-ink-soft, #667); }
+
+  .tips { margin: 0 0 1rem; padding: .875rem 1rem; border-radius: 10px;
+          background: var(--ad-panel, #f7f8fa); border: 1px solid var(--ad-line, #e3e6eb); }
+  .tips b { font-size: .8125rem; }
+  .tips ol { margin: .5rem 0 0; padding-left: 1.125rem; display: grid; gap: .375rem; }
+  .tips li { font-size: .8125rem; line-height: 1.65; }
+  .tips code { background: #fff; padding: .0625rem .3125rem; border-radius: 4px; }
+
+  .drop { border: 2px dashed var(--ad-line, #d8dce3); border-radius: 10px;
+          background: var(--ad-panel, #f7f8fa); padding: 1.5rem; text-align: center; }
+  .drop.over { border-color: var(--ad-accent, #2f6feb); background: #eef4fa; }
+  .drop p { margin: .1875rem 0; font-size: .875rem; }
+  .lnk { color: var(--ad-accent, #2f6feb); cursor: pointer; text-decoration: underline; }
+
+  .bulk { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 1rem 0 .75rem; }
+  .bulk select, .bulk input { min-height: 32px; padding: .25rem .5rem; font: inherit; font-size: .8125rem;
+                              border: 1px solid var(--ad-line, #d8dce3); border-radius: 6px; background: #fff; }
+  .bulk button { min-height: 32px; padding: 0 .875rem; font: inherit; font-size: .8125rem; cursor: pointer;
+                 border: 1px solid var(--ad-line, #d8dce3); border-radius: 6px; background: #fff; }
+  .bulk button.primary { background: var(--ad-accent, #2f6feb); border-color: var(--ad-accent, #2f6feb); color: #fff; font-weight: 600; }
+  .bulk .ck { font-size: .8125rem; display: inline-flex; align-items: center; gap: .3125rem; }
+  .bulk .grow { flex: 1; }
+
+  .t { width: 100%; border-collapse: collapse; font-size: .8125rem; }
+  .t th, .t td { padding: .375rem .5rem; text-align: left; border-bottom: 1px solid var(--ad-line, #eceff3); }
+  .t th { font-size: .75rem; color: var(--ad-ink-soft, #667); font-weight: 600; }
+  .th { width: 44px; height: 44px; object-fit: contain; background: #fff; border: 1px solid var(--ad-line, #eceff3); border-radius: 6px; }
+  .c { width: 100%; min-height: 28px; padding: .1875rem .375rem; font: inherit; font-size: .8125rem;
+       border: 1px solid var(--ad-line, #d8dce3); border-radius: 5px; background: #fff; }
+  .st { white-space: nowrap; font-size: .75rem; color: var(--ad-ink-soft, #667); }
+  .st.busy { color: #b26a00; }
+  .st.ok { color: #1a7f37; font-weight: 600; }
+  .st.err { color: #c1121f; white-space: normal; max-width: 16rem; }
+
+  .after { margin-top: 1rem; padding: .75rem 1rem; border-radius: 8px; background: #f0f6ff;
+           border: 1px solid #cfe0ff; font-size: .8125rem; line-height: 1.7; }
+  .after code { display: inline-block; margin: .25rem .375rem 0 0; background: #fff;
+                padding: .125rem .375rem; border-radius: 4px; }
+</style>

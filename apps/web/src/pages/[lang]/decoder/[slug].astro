@@ -1,0 +1,274 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 成分解读 · 产品页 —— 结构照 INCIDecoder(创始人 2026-09-17 18:3x:「他们的信息好像更全,是需要学习的,
+ * 我们是不是也可以变成这样」「这些其实也是可以对外的」):
+ *   ① 概览:全成分按标签顺序,一个成分一枚胶囊,颜色按 ingredient_facts.rating 绿/黄/红,没有行就灰;
+ *   ② 亮点:tags 反推「无酒精 / 无香精 …」;关键成分按功能分组;其余列「其他成分」;
+ *   ③ 速览表:成分 / 作用 / 刺激·致痘 / 评级;
+ *   ④ 逐成分解读;⑤ 同品类相关产品;⑥ 来源与免责。
+ *
+ * URL:/[lang]/decoder/<id>-<slug>/,只按前缀 id 取行,slug 不校验,错了 301 到正确的。
+ * ingredient_facts 由 D 任务建表与灌数;这里只读、一次 IN (?) 取齐,表还没建或缺行时全部兜成灰 / 「暂无解读」。
+ */
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { memo } from '../../../lib/memo';
+import { decoderPath, decoderSlug, splitInci, factKey, marketLabel, TAG_LABEL, displayTitle, ingredientPath, catLabel as catName, cleanTitle } from '../../../lib/decoder';
+import MemberGate from '../../../components/MemberGate.astro';
+import { pageGate, paywallLd } from '../../../lib/member';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const raw = String(Astro.params.slug ?? '');
+const id = parseInt(raw, 10);
+if (!Number.isFinite(id) || id <= 0 || !db) return new Response(null, { status: 404 });
+
+const many = async <T,>(sql: string, ...b: unknown[]): Promise<T[]> => {
+  try { return ((await db.prepare(sql).bind(...b).all<T>()).results ?? []) as T[]; } catch { return []; }
+};
+const p = await db.prepare(`SELECT id, platform, country, brand, title, title_zh, title_en, cat, cat_zh, url, inci, inci_zh, claims, size, last_seen, summary_zh, summary_en
+                              FROM market_products WHERE id = ? AND inci IS NOT NULL AND length(inci) > 30`).bind(id).first<any>().catch(() => null);
+if (!p) return new Response(null, { status: 404 });
+const path = decoderPath(lang, p.id, p.brand, p.title);
+if (raw !== `${p.id}-${decoderSlug(p.brand, p.title)}`) return Astro.redirect(path, 301);
+/* 会员限额(2026-09-23 创始人:「配方列表可以看,但是点击就开启注册会员」):未登录只出标题/品牌 + 登录入口,四段解读正文不输出 */
+const g = await pageGate(Astro, env, db, `dec:${p.id}`);
+const full = g.state === 'bot' || g.state === 'full';
+
+/* 全成分:英文切好做键;中文列表条数对得上才按位配对,对不上就只用英文 */
+const names = splitInci(p.inci).slice(0, 120);
+const namesZh = splitInci(p.inci_zh);
+const zhAt = (i: number) => (namesZh.length === names.length ? namesZh[i] : '');
+const keys = [...new Set(names.map(factKey))];
+type Fact = { inci_key: string; name_zh: string | null; functions: string | null; functions_zh: string | null; what_zh: string | null; what_en: string | null;
+              irritancy: number | null; comedogenic: number | null; rating: string | null; tags: string | null };
+const facts = new Map<string, Fact>();
+/* 预览版(未登录 / 超额)不出解读,不查 facts(09-24 安全架构 C3) */
+for (const f of !full ? [] : await many<Fact>(`SELECT inci_key, name_zh, functions, functions_zh, what_zh, what_en, irritancy, /* 致痘分只出有文献出处的(09-24 W1:公司库 118 条带 comedogenic_src) */ CASE WHEN comedogenic_src <> '' THEN comedogenic END AS comedogenic, rating, tags FROM ingredient_facts WHERE inci_key IN (${keys.map(() => '?').join(',')})`, ...keys))
+  facts.set(f.inci_key, f);
+/* 原料公开页(草本原料库 149 条):有就跳过去,没有就锚到本页解读段 */
+const ingSlug = new Map<string, string>();
+for (const g of await memo('ing-slugs', 3600, () => many<{ slug: string; inci: string }>(`SELECT slug, inci FROM ingredients WHERE status = 'published'`))) ingSlug.set(factKey(g.inci ?? ''), g.slug);
+
+const rows = names.map((n, i) => {
+  const k = factKey(n); const f = facts.get(k) ?? null;
+  let tags: string[] = []; try { tags = f?.tags ? JSON.parse(f.tags) : []; } catch { tags = []; }
+  const fn = zh ? (f?.functions_zh || f?.functions) : (f?.functions || f?.functions_zh);
+  return { i, n, k, zh: zh ? (f?.name_zh || zhAt(i)) : '', f, tags, fn: fn ?? '', rating: f?.rating ?? 'none',
+           what: zh ? (f?.what_zh || f?.what_en) : (f?.what_en || f?.what_zh), anchor: `i-${i}`,
+           /* 成分胶囊一律跳原料页 v2(创始人 09-17:「那么多这种资源库,都要抓回来,图文的方式展示」);旧 149 条仍走它们的 slug */
+           href: ingSlug.has(k) ? `/${lang}/ingredients/${ingSlug.get(k)}/` : ingredientPath(lang, k) };
+});
+const covered = rows.filter((r) => r.f).length;
+/* 亮点:含 X 只要命中就写;「无 X」得有把握 —— 解读覆盖不到八成时不替产品作无某成分的断言 */
+// ponytail: 0.8 覆盖率阈值是经验值,facts 灌满后可改成要求全覆盖
+const present = new Set(rows.flatMap((r) => r.tags));
+const FREE = ['alcohol', 'fragrance', 'paraben', 'silicone', 'sulfate', 'mineral-oil', 'essential-oil', 'formaldehyde-releaser'];
+const freeOf = covered / Math.max(1, rows.length) >= 0.8 ? FREE.filter((t) => !present.has(t)) : [];
+const contains = [...present].filter((t) => TAG_LABEL[t]);
+const keyRows = rows.filter((r) => r.f && r.fn).slice(0, 8);
+const groups = new Map<string, typeof rows>();
+for (const r of keyRows) { const g = r.fn.split(/[,,、/]/)[0].trim(); if (!groups.has(g)) groups.set(g, []); groups.get(g)!.push(r); }
+const keySet = new Set(keyRows.map((r) => r.i));
+const others = rows.filter((r) => !keySet.has(r.i));
+
+const catKey = p.cat_zh || p.cat;
+/* 09-24 C3(代码审计 P0-2):这条原来每个产品现算一次,是公司库读量第一的查询(24 小时 88 亿行,平均每次 4.1 万行)——
+   规划器挑了按时间排的 idx_mp_seen_ok 再逐行过滤类目,冷门类目要扫几万行。现在:
+   ① INDEXED BY idx_mp_related(0109:类目, 国家, 时间)只读 7 行;② 按「类目 × 国家」记 24 小时(mpf 快照 118 格,每机房每天至多 118 条);
+   ③ 多取 1 条,在内存里去掉当前产品,同类目的产品共用一份。 */
+const related = catKey ? (await memo(`dec-rel:${catKey}|${p.country ?? ''}`, 86400, () => many<any>(
+  `SELECT id, brand, title, title_zh, country FROM market_products INDEXED BY idx_mp_related WHERE COALESCE(cat_zh, cat) = ? AND country IS ? AND inci IS NOT NULL AND length(inci) > 30 ORDER BY last_seen DESC, id DESC LIMIT 7`,
+  catKey, p.country ?? null))).filter((r: any) => r.id !== p.id).slice(0, 6) : [];
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const title = cleanTitle(zh ? (p.title_zh || p.title) : (p.title_en || p.title));   // 电商标题动辄两百字,<title> 里截 70
+const market = marketLabel(p.country, zh);
+const catLabel = catName(zh ? (p.cat_zh || p.cat) : (p.cat || p.cat_zh), zh);
+
+const T = zh ? {
+  home: '首页', lib: '成分解读', overview: '全成分概览', overviewSub: '按标签顺序;颜色是帛卉内部评级:绿 常规、黄 限用或需留意、红 禁用或高风险、灰 暂无解读。',
+  hl: '亮点', free: '无', has: '含', keyH: '关键成分', otherH: '其他成分',
+  skim: '速览表', th: ['成分', '作用', '刺激 · 致痘', '评级'], comHidden: '致痘评级只显示有公开文献出处的成分,其余显示「—」。', rating: { green: '绿', yellow: '黄', red: '红', none: '—' } as Record<string, string>,
+  explained: '逐成分解读', none: '暂无解读', related: '同品类相关产品', n: '个成分',
+  src: (d: string) => `来源:产品标签公开全成分,采集于 ${d};评级为帛卉内部口径,非监管结论。`, link: '产品页面', ask: '想做这一类产品?发起询盘', claims: '宣称',
+  lede: (n: number) => `${p.brand ? p.brand + ' ' : ''}${title} 的标签共列出 ${n} 个成分${full ? `,已解读 ${covered} 个` : ''}。逐条看每个成分做什么、刺激与致痘倾向、在各国目录里的状态。`,
+} : {
+  home: 'Home', lib: 'Ingredient decoder', overview: 'Ingredients overview', overviewSub: 'Label order. Colour is our internal rating: green routine, yellow restricted or worth a look, red prohibited or high-risk, grey not yet decoded.',
+  hl: 'Highlights', free: 'Free of', has: 'Contains', keyH: 'Key ingredients', otherH: 'Other ingredients',
+  skim: 'Skim through', th: ['Ingredient', 'What it does', 'Irritancy · Comedogenic', 'Rating'], comHidden: 'Comedogenic ratings are shown only where a published source exists; others show "—".', rating: { green: 'Green', yellow: 'Yellow', red: 'Red', none: '—' } as Record<string, string>,
+  explained: 'Ingredients explained', none: 'Not decoded yet', related: 'Related products in this category', n: 'ingredients',
+  src: (d: string) => `Source: full ingredient list published on the product label, collected ${d}. Ratings are our internal reading, not a regulatory conclusion.`, link: 'Product page', ask: 'Want to build one like this? Send an enquiry', claims: 'Claims',
+  lede: (n: number) => `${p.brand ? p.brand + ' ' : ''}${title} lists ${n} ingredients on its label${full ? `, ${covered} decoded` : ''}. See what each one does, its irritancy and comedogenic tendency, and its status in national inventories.`,
+};
+const tagLabel = (t: string) => TAG_LABEL[t]?.[zh ? 0 : 1] ?? t;
+
+const ld = [
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: T.home, item: `${origin}/${lang}/` },
+    { '@type': 'ListItem', position: 2, name: T.lib, item: `${origin}/${lang}/decoder/` },
+    { '@type': 'ListItem', position: 3, name: title, item: origin + path } ] },
+  { '@context': 'https://schema.org', '@type': 'Product', name: title, url: origin + path,
+    ...(p.brand ? { brand: { '@type': 'Brand', name: p.brand } } : {}), ...(catLabel ? { category: catLabel } : {}),
+    description: T.lede(rows.length).slice(0, 300),
+    additionalProperty: [{ '@type': 'PropertyValue', name: 'INCI', value: names.join(', ').slice(0, 2000) }] },
+];
+/* 预览版只留面包屑:Product 里带着全成分,真人拿不到的东西 JSON-LD 里也不给 */
+const ldOut = [...(full ? ld : ld.slice(0, 1)), paywallLd(origin + path, title)];
+---
+
+<BaseLayout
+  locale={lang as any} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={`${displayTitle(p.brand, String(title))} · ${T.lib}`} description={T.lede(rows.length).slice(0, 160)}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main" class="dec">
+    <nav class="bc"><a href={`/${lang}/`}>{T.home}</a> · <a href={`/${lang}/decoder/`}>{T.lib}</a> · <span>{p.brand}</span></nav>
+    <header class="hd">
+      <p class="tags"><span>{market}</span>{catLabel && <span>{catLabel}</span>}{p.size && <span>{p.size}</span>}</p>
+      <h1>{p.brand && <b>{p.brand}</b>} {displayTitle(null, p.brand && String(title).toLowerCase().startsWith(p.brand.toLowerCase()) ? String(title).slice(p.brand.length).replace(/^[\s:|·,-]+/, '') : String(title), 120)}</h1>
+      {zh && p.title_zh && <p class="en">{p.title}</p>}
+      <p class="lede">{T.lede(rows.length)}</p>
+      <MemberGate lang={lang} g={g} next={path} />
+    </header>
+
+    {full && <div class="paywalled">
+    <section class="sec" id="overview">
+      <h2>{T.overview}</h2>
+      <p class="sub">{T.overviewSub}</p>
+      {/* GPT 设计包原则「INCI 顺序 ≠ 精确浓度」(2026-09-18 任务 I ④):标签顺序只代表顺序 */}
+      <p class="sub">{zh ? '成分按标签标示顺序排列,顺序只代表标签顺序,不代表精确含量。' : 'Ingredients are listed in label order; the order reflects the label only, not exact concentrations.'}</p>
+      <ol class="caps">{rows.map((r) => (
+        <li><a class={`cap ${r.rating}`} href={r.href} title={r.zh || r.fn || undefined}>{r.n}{r.zh && <i>{r.zh}</i>}</a></li>))}</ol>
+    </section>
+
+    <section class="sec" id="highlights">
+      <h2>{T.hl}</h2>
+      {(freeOf.length > 0 || contains.length > 0) && (
+        <p class="hl">
+          {freeOf.map((t) => <span class="ok">{T.free} {tagLabel(t)}</span>)}
+          {contains.map((t) => <span class="warn">{T.has} {tagLabel(t)}</span>)}
+        </p>)}
+      {/* 创始人 09-17 23:0x 底线:「抓取的全页面,需要 AI 撰写,不可以抄他们的」——采来的 claims 只留后台,前台只出我们自己写的 summary */}
+      {(zh ? p.summary_zh : (p.summary_en || p.summary_zh)) && <p class="claims"><b>{zh ? '配方视角' : 'Formulation view'}</b> {zh ? p.summary_zh : (p.summary_en || p.summary_zh)}</p>}
+      {groups.size > 0 && (<>
+        <h3>{T.keyH}</h3>
+        <dl class="kv">{[...groups.entries()].map(([g, rs]) => (<><dt>{g}</dt><dd>{rs.map((r) => <a href={`#${r.anchor}`}>{r.n}</a>)}</dd></>))}</dl>
+      </>)}
+      <h3>{T.otherH}</h3>
+      <p class="others">{others.map((r) => <a href={`#${r.anchor}`}>{r.n}</a>)}</p>
+    </section>
+
+    <section class="sec" id="skim">
+      <h2>{T.skim}</h2>
+      <table class="skim">
+        <thead><tr>{T.th.map((h) => <th>{h}</th>)}</tr></thead>
+        <tbody>{rows.map((r) => (
+          <tr>
+            <td><a href={`#${r.anchor}`}>{r.n}</a>{r.zh && <small>{r.zh}</small>}</td>
+            <td>{r.fn || <span class="dim">{T.none}</span>}</td>
+            <td class="num">{r.f && r.f.irritancy != null ? String(r.f.irritancy) : '—'} · {r.f && r.f.comedogenic != null ? String(r.f.comedogenic) : '—'}</td>
+            <td><span class={`dot ${r.rating}`}></span>{T.rating[r.rating] ?? '—'}</td>
+          </tr>))}</tbody>
+      </table>
+      <p class="sub">{T.comHidden}</p>
+    </section>
+
+    <section class="sec" id="explained">
+      <h2>{T.explained}</h2>
+      <dl class="exp">{rows.map((r) => (<>
+        <dt id={r.anchor}><span class={`dot ${r.rating}`}></span>{r.n}{r.zh && <small>{r.zh}</small>}</dt>
+        <dd>{r.what || r.fn || <span class="dim">{T.none}</span>}</dd>
+      </>))}</dl>
+    </section>
+    </div>}
+
+    {related.length > 0 && (
+      <section class="sec" id="related">
+        <h2>{T.related}</h2>
+        <ul class="rel">{related.map((r: any) => (
+          <li><a href={decoderPath(lang, r.id, r.brand, r.title)}><b>{r.brand}</b> {zh ? (r.title_zh || r.title) : r.title}</a></li>))}</ul>
+      </section>
+    )}
+
+    <section class="sec end">
+      <p class="fine">{T.src(String(p.last_seen ?? '').slice(0, 10))}
+        {p.url && <> · <a href={p.url} rel="nofollow noopener" target="_blank">{T.link}</a></>}</p>
+      <a class="btn" href={`/${lang}/contact/?ref=decoder-${p.id}`}>{T.ask}</a>
+    </section>
+  </main>
+  <SiteFooter locale={lang as any} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <script type="application/ld+json" set:html={ldJson(ldOut)} is:inline />
+
+  <style>
+    .dec { max-width: min(112.5rem, 100%); margin: 0 auto; padding: 1.5rem var(--ck-gutter, 1.25rem) 3rem; }
+    .bc { font-size: .75rem; color: var(--ck-ink-soft); margin-bottom: 1.5rem; }
+    .bc a { color: inherit; text-decoration: none; }
+    .hd { max-width: 60rem; margin-bottom: 1.5rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: .375rem; margin: 0 0 .625rem; }
+    .tags span { font-size: .6875rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ck-accent); }
+    h1 { font-size: clamp(1.5rem, 1.2rem + 1.4vw, 2.25rem); font-weight: 600; letter-spacing: -.02em; line-height: 1.2; margin: 0 0 .375rem; text-wrap: balance; }
+    h1 b { color: var(--ck-accent); }
+    .en { font-size: .875rem; color: var(--ck-ink-soft); margin: 0 0 .5rem; }
+    .lede { font-size: .9375rem; line-height: 1.7; color: var(--ck-ink-soft); margin: 0; }
+    .sec { padding: 1.5rem 0; border-top: 1px solid var(--dtc-line, rgb(0 0 0/.08)); }
+    h2 { font-size: 1.25rem; font-weight: 650; letter-spacing: -.015em; margin: 0 0 .375rem; }
+    h3 { font-size: .875rem; margin: 1rem 0 .375rem; color: var(--ck-ink-soft); text-transform: uppercase; letter-spacing: .08em; }
+    .sub { font-size: .8125rem; color: var(--ck-ink-soft); margin: 0 0 .875rem; }
+    /* 评级四色:绿常规 / 黄留意 / 红禁限 / 灰未解读。用左边一条色边而不是整枚上色,名字仍可读 */
+    .caps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .375rem; counter-reset: c; }
+    .cap { display: inline-flex; align-items: baseline; gap: .375rem; padding: .25rem .625rem; border-radius: 980px; font-size: .8125rem; text-decoration: none; color: var(--ck-ink);
+           border: 1px solid var(--dtc-line, rgb(0 0 0/.12)); border-left-width: 4px; }
+    .cap i { font-style: normal; font-size: .6875rem; color: var(--ck-ink-soft); }
+    .cap:hover { border-color: var(--ck-accent); }
+    .green, .dot.green { border-left-color: #2e9e5b; } .yellow, .dot.yellow { border-left-color: #e0a300; }
+    .red, .dot.red { border-left-color: #d3382a; } .none, .dot.none { border-left-color: rgb(0 0 0/.18); }
+    .dot { display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; margin-right: .375rem; border-left: 0; }
+    .dot.green { background: #2e9e5b; } .dot.yellow { background: #e0a300; } .dot.red { background: #d3382a; } .dot.none { background: rgb(0 0 0/.18); }
+    .hl { display: flex; flex-wrap: wrap; gap: .375rem; margin: .5rem 0 0; }
+    .hl span { font-size: .75rem; padding: .25rem .625rem; border-radius: 980px; background: var(--dtc-sand, #f5f4f2); }
+    .hl .ok { color: #1f7a45; } .hl .warn { color: #9a4a00; }
+    .claims { font-size: .8125rem; color: var(--ck-ink-soft); margin: .75rem 0 0; line-height: 1.6; }
+    .kv { display: grid; grid-template-columns: 10rem 1fr; gap: .25rem .75rem; margin: 0; font-size: .875rem; }
+    .kv dt { color: var(--ck-ink-soft); } .kv dd { margin: 0; display: flex; flex-wrap: wrap; gap: .25rem .625rem; }
+    .kv a, .others a { color: var(--ck-ink); text-decoration: none; border-bottom: 1px dotted var(--ck-ink-soft); }
+    .others { margin: 0; font-size: .8125rem; display: flex; flex-wrap: wrap; gap: .25rem .625rem; }
+    .skim { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    .skim th { text-align: left; font-size: .6875rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ck-ink-soft); padding: .375rem .5rem; border-bottom: 1px solid var(--dtc-line, rgb(0 0 0/.12)); }
+    .skim td { padding: .5rem; border-bottom: 1px solid var(--dtc-line, rgb(0 0 0/.06)); vertical-align: top; line-height: 1.5; }
+    .skim td a { color: inherit; text-decoration: none; } .skim td a:hover { color: var(--ck-accent); }
+    .skim small, .exp small { display: block; font-size: .6875rem; color: var(--ck-ink-soft); }
+    .skim .num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .dim { color: var(--ck-ink-soft); opacity: .7; }
+    .exp { margin: 0; display: grid; grid-template-columns: 16rem 1fr; gap: 0 1rem; font-size: .875rem; }
+    .exp dt { padding: .625rem 0; border-top: 1px solid var(--dtc-line, rgb(0 0 0/.06)); font-weight: 550; scroll-margin-top: 5rem; }
+    .exp dd { margin: 0; padding: .625rem 0; border-top: 1px solid var(--dtc-line, rgb(0 0 0/.06)); line-height: 1.65; color: var(--ck-ink-soft); }
+    .exp dt:first-of-type, .exp dd:first-of-type { border-top: 0; }
+    .rel { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+    .rel a { display: block; padding: .625rem .75rem; border: 1px solid var(--dtc-line, rgb(0 0 0/.08)); border-radius: 8px; font-size: .8125rem; line-height: 1.4; text-decoration: none; color: var(--ck-ink); }
+    .rel a:hover { border-color: var(--ck-accent); } .rel b { color: var(--ck-accent); }
+    .fine { font-size: .75rem; color: var(--ck-ink-soft); line-height: 1.7; margin: 0 0 .875rem; }
+    .fine a { color: inherit; }
+    .btn { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 1.375rem; border-radius: 980px; text-decoration: none; font-size: .875rem; font-weight: 600;
+           background: var(--ck-accent); color: var(--ck-on-accent); }
+    @media (max-width: 40rem) { .kv, .exp { grid-template-columns: 1fr; } .exp dd { border-top: 0; padding-top: 0; } .skim th:nth-child(3), .skim td:nth-child(3) { display: none; } }
+  </style>
+</BaseLayout>

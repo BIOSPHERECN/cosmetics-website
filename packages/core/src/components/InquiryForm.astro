@@ -3,11 +3,12 @@
  * 落地页内嵌询盘表单 —— PDF 定案第 7 屏。
  * 原文:「姓名/公司/邮箱/国家/需求,提交即进系统询盘池」。
  *
- * ★ 当前实现与最终目标的差距,写在这里免得日后忘记:
- *   PDF 要的「进系统询盘池」需要服务端接收,而本站是纯静态、零后端。
- *   现阶段 method="post" action="mailto:" —— 浏览器把表单内容作为邮件正文发出,
- *   零 JS、零第三方表单服务(接第三方会违反零外链纪律)、字段结构与最终 API 完全一致。
- *   后台(Directus)落地后,只需把 action 换成一条 POST 路由,本组件其余一行不动。
+ * ★ 2026-09-04:action 从 mailto: 换成 /api/inquiry。
+ *   mailto 表单在桌面端会弹出访客自己的邮件客户端,在手机上**多半什么都不发生** ——
+ *   客户填完点提交、看不到任何回执就走了。inquiries 表建好却一行数据都没有,
+ *   后台看起来像「没人询盘」,其实是根本没收到。这是全站最贵的一个洞。
+ *   字段名与 /api/inquiry 对齐(name/company/email/country/message),
+ *   零 JS 时走浏览器原生 POST,有 JS 时用 fetch 就地给回执,两条路都通。
  *
  * ★ 表单本身零 JS:用原生 required / type=email 做校验,浏览器自带提示,还自带多语言。
  */
@@ -25,6 +26,30 @@ export interface Props {
 
 const { title, intro, labels, email, subject } = Astro.props;
 const action = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+const zh = String(Astro.currentLocale ?? '').startsWith('zh') || /^\/zh(?:-|\/)/.test(Astro.url.pathname);
+const INQUIRY_QS = (zh
+  ? [
+      '① 品牌与销售渠道是什么？', '答:', '',
+      '② 目标市场是哪些国家或地区？', '答:', '',
+      '③ 想做什么产品？有没有对标产品或链接？', '答:', '',
+      '④ 目标人群与主打卖点是什么？', '答:', '',
+      '⑤ 包装有什么想法（瓶型、容量、质感等）？', '答:', '',
+      '⑥ 有哪些合规需求（FDA/MoCRA、CPNP、HALAL 等）？', '答:', '',
+      '⑦ 计划什么时候上市？', '答:', '',
+      '⑧ 首单量与后续补货量大概是多少？', '答:', '',
+      '⑨ 预算区间是多少（选填）？', '答:',
+    ]
+  : [
+      '① What is your brand and where do you sell?', 'A:', '',
+      '② Which markets are you targeting?', 'A:', '',
+      '③ What product do you want to make, and do you have benchmark products or links?', 'A:', '',
+      '④ Who is the target customer, and what are the key selling points?', 'A:', '',
+      '⑤ What packaging do you have in mind (format, size, and finish)?', 'A:', '',
+      '⑥ What compliance support do you need (FDA/MoCRA, CPNP, HALAL, etc.)?', 'A:', '',
+      '⑦ When do you plan to launch?', 'A:', '',
+      '⑧ What are your expected first-order and replenishment volumes?', 'A:', '',
+      '⑨ What is your budget range (optional)?', 'A:',
+    ]).join('\n');
 ---
 
 <section class="fm ck-section" id="inquiry" aria-label={title}>
@@ -35,39 +60,107 @@ const action = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
       <p class="note">{labels.privacyNote}</p>
     </div>
 
-    <form class="form" action={action} method="post" enctype="text/plain">
+    <form class="form" id="inqform" action="/api/inquiry" method="post">
+      {/* 蜜罐:真人看不见,机器人会填。名字取 website 而不是 company ——
+          company 是真实字段,拿它当蜜罐会把「填了公司名的正常客户」全判成机器人。 */}
+      <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
+             style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+      <input type="hidden" name="source" value="form" />
       <div class="row">
         <label class="field">
           <span class="lab">{labels.name}</span>
-          <input class="in" type="text" name={labels.name} required autocomplete="name" />
+          <input class="in" type="text" name="name" required autocomplete="name" />
         </label>
-        <label class="field">
-          <span class="lab">{labels.company}</span>
-          <input class="in" type="text" name={labels.company} required autocomplete="organization" />
-        </label>
-      </div>
-      <div class="row">
         <label class="field">
           <span class="lab">{labels.email}</span>
-          <input class="in" type="email" name={labels.email} required autocomplete="email" />
-        </label>
-        <label class="field">
-          <span class="lab">{labels.country}</span>
-          <input class="in" type="text" name={labels.country} required autocomplete="country-name" />
+          <input class="in" type="email" name="email" autocomplete="email" />
         </label>
       </div>
       <label class="field">
+        <span class="lab">{zh ? 'WhatsApp 或电话（邮箱或此项至少填一个）' : 'WhatsApp or phone (email or this field is required)'}</span>
+        <input class="in" type="tel" name="whatsapp" autocomplete="tel" inputmode="tel" placeholder="+62 812 3456 7890" maxlength="40" />
+      </label>
+      <label class="field">
         <span class="lab">{labels.need}</span>
-        <textarea class="in ta" name={labels.need} rows="5" required></textarea>
+        <textarea class="in ta" name="message" rows="15" required data-prefill-need>{INQUIRY_QS}</textarea>
+        {/* AI 客服「转人工」的交接:对话摘要经 sessionStorage 带进来,预填后即清,
+            不进 URL(隐私纪律:个人内容不进查询串)。只填空表单,不覆盖人已写的字。
+            选品链路带过来的组合(配方号/包材号/市场/诉求)走查询串,那是产品信息不是隐私。 */}
+        <script is:inline>
+          try {
+            const ta = document.querySelector('textarea[data-prefill-need]');
+            const s = sessionStorage.getItem('bh-chat-handoff');
+            if (ta && s) { ta.value += String.fromCharCode(10, 10) + s; sessionStorage.removeItem('bh-chat-handoff'); }
+            const q = new URLSearchParams(location.search);
+            const bits = [];
+            if (q.get('formula')) bits.push('配方 ' + q.get('formula'));
+            if (q.get('pack')) bits.push('包材 ' + q.get('pack'));
+            if (q.get('market')) bits.push('目标市场 ' + q.get('market'));
+            if (q.get('claim')) bits.push('诉求 ' + q.get('claim'));
+            if (ta && bits.length) ta.value += String.fromCharCode(10, 10) + bits.join(' · ');
+          } catch {}
+        </script>
       </label>
       <p class="act">
         <button class="submit" type="submit">{labels.submit}</button>
+        <span class="fb" id="inqfb" role="status" aria-live="polite"></span>
       </p>
     </form>
+
+    {/* 提交回执:B2B 客户填完最怕「不知道有没有发出去」。
+        有 JS 就地给回执,没 JS 走原生 POST(接口会 302 回来带 ?sent=1)。 */}
+    <script is:inline>
+      (function () {
+        const f = document.getElementById('inqform');
+        if (!f) return;
+        const fb = document.getElementById('inqfb');
+        const zh = document.documentElement.lang.indexOf('zh') === 0;
+        const email = f.elements.email;
+        const whatsapp = f.elements.whatsapp;
+        const validateContact = () => {
+          const missing = !email.value.trim() && !whatsapp.value.trim();
+          const msg = missing ? (zh ? '邮箱和 WhatsApp 或电话至少填写一个。' : 'Enter an email or a WhatsApp/phone number.') : '';
+          email.setCustomValidity(msg);
+          whatsapp.setCustomValidity(msg);
+          return !missing;
+        };
+        email.addEventListener('input', validateContact);
+        whatsapp.addEventListener('input', validateContact);
+        if (new URLSearchParams(location.search).get('sent') === '1' && fb) {
+          fb.textContent = zh ? '已收到,我们会尽快回复。' : 'Received. We will get back to you shortly.';
+          fb.className = 'fb ok';
+        }
+        f.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!validateContact()) { f.reportValidity(); return; }
+          const btn = f.querySelector('.submit');
+          btn.disabled = true;
+          if (fb) { fb.className = 'fb'; fb.textContent = zh ? '提交中…' : 'Sending…'; }
+          try {
+            const r = await fetch('/api/inquiry', { method: 'POST', body: new FormData(f) });
+            const ok = r.ok;
+            if (fb) {
+              fb.className = 'fb ' + (ok ? 'ok' : 'err');
+              fb.textContent = ok
+                ? (zh ? '已收到,我们会尽快回复。' : 'Received. We will get back to you shortly.')
+                : (zh ? '提交失败,请改用邮件联系我们。' : 'Could not send — please email us instead.');
+            }
+            if (ok) f.reset();
+          } catch {
+            if (fb) { fb.className = 'fb err'; fb.textContent = zh ? '网络异常,请稍后重试。' : 'Network error, please retry.'; }
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      })();
+    </script>
   </div>
 </section>
 
 <style>
+  .fb { margin-left: .75rem; font-size: var(--ck-small); color: var(--ck-ink-soft); }
+  .fb.ok { color: #1D7A46; }
+  .fb.err { color: #A02B20; }
   .fm {
     background: var(--ck-surface-alt);
     border-top: var(--ck-border-w) solid var(--ck-line);
@@ -99,7 +192,7 @@ const action = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
   }
   .field { display: grid; gap: 0.4375rem; }
   .lab {
-    font-size: 0.6875rem;
+    font-size: max(0.6875rem, 14px);
     font-weight: 700;
     letter-spacing: var(--ck-tracking-eyebrow);
     text-transform: var(--ck-eyebrow-transform);

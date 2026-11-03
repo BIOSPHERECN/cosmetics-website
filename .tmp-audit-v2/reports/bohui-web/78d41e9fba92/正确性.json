@@ -1,0 +1,71 @@
+{
+  "angle": "正确性",
+  "tree": "78d41e9fba9268994a34ced8c53cc999b6f73b2d",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-78d41e9fba92.json",
+  "run_label": "review-ticket 78d41e9fba92 正确性",
+  "reviewer": "claude",
+  "skills_loaded": ["code-reviewer", "karpathy-coder"],
+  "verdict": "过",
+  "checked": ["正确性-①", "正确性-②", "正确性-③", "正确性-④", "正确性-⑤", "正确性-⑥", "正确性-⑦"],
+  "findings": [
+    {
+      "id": "C1",
+      "level": "中",
+      "file": "apps/web/src/styles/b2o.css",
+      "line": 80,
+      "claim": "新加的 .b2o-sec:not(.b2o-hero):not(.b2o-close) 规则写了 background: var(--b2o-bg),权重 (1,4,1) 高于第 79 行 .b2o-sec.alt 的 (1,3,1),且排在后面,所有 alt 版块的浅灰底 #f5f5f7 被盖成纯白,版块交替底色消失",
+      "failure_scenario": "beauty2oem 首页新作品墙(class=\"b2o-sec alt b2o-wall\")以及 b2o-read / b2o-method / b2o-ledger、洞察页 b2o-ins-body 这些 alt 版块,浅色和暗色模式下都渲染成 #ffffff,和相邻白底版块连成一片;作者显式给作品墙加了 alt,说明本意是要灰底",
+      "evidence": "读了 b2o.css 第 78-91 行:第 79 行 .b2o-sec.alt{background:var(--b2o-bg-alt)},第 80-90 行新规则末尾 background:var(--b2o-bg);grep B2oBlock.astro 有 5 处 class 含 \"b2o-sec alt\"。纯视觉,不影响功能与读库",
+      "fix": "新规则里去掉 background 一行(令牌已改,第 78/79 行自会取到浅色 --b2o-bg / --b2o-bg-alt),或补一条 .b2o-sec.alt:not(.b2o-hero):not(.b2o-close){background:var(--b2o-bg-alt)}"
+    },
+    {
+      "id": "C2",
+      "level": "低",
+      "file": "apps/web/src/styles/b2o.css",
+      "line": 80,
+      "claim": "浅底规则只覆盖 --b2o-*,没覆盖 --ck-* 与 --b2o-shadow-hi;--ck-* 在 html 上由 var(--b2o-*) 求值后继承,暗色模式下版块内共用组件(FactoryBlock 的 --ck-line / --ck-accent)仍拿暗色值",
+      "failure_scenario": "访客系统为暗色时:b2o-bform / fx_cards 等版块底变白,FactoryBlock 边框取 rgb(255 255 255/.2) 在白底上几乎看不见,--ck-accent=#4cc38a 的按钮/标签配白字对比度偏低;.b2o-band .panel、.b2o-oc 用 --b2o-shadow-hi 仍是暗色那套 .6 黑影,白底上显得很重。浅色模式不受影响",
+      "evidence": "b2o.css 第 11-39 行 --ck-bg: var(--b2o-bg) 等定义在 html 上;第 41-66 行暗色覆盖;FactoryBlock.astro 第 320-369 行共 23 处 var(--ck-line/--ck-accent);B2oBlock.astro 第 266、425 行 FactoryBlock 位于 b2o-sec 内。未实机截图,属推断",
+      "fix": "在同一规则里补 --ck-line / --ck-accent / --ck-accent-soft / --ck-on-accent 与 --b2o-shadow-hi 的浅色值,或整块重新声明 --ck-*: var(--b2o-*)"
+    },
+    {
+      "id": "C3",
+      "level": "低",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 241,
+      "claim": "方法区四张图换成 m1-m4 后,class 变为 b2o-img-m1..m4,原来为 methodTrend/Judge/Verify/Launch 调好的 object-position(b2o.css 第 143-146、518 行)不再命中,成为死规则;IMG 表里 method* 四项也不再被引用",
+      "failure_scenario": "m3(戴草帽女子)原来有 object-position:50% 28% 保头部,现在按默认 50% 50% 居中裁到 4:3 / 16:10,人物头部可能被裁掉;死规则留在 CSS 里误导后人",
+      "evidence": "diff 第 238-244 行替换 img key;img() 生成 class `b2o-img-${k}`(B2oBlock.astro 第 87-90 行);grep b2o.css 仅剩 methodTrend 等选择器",
+      "fix": "把第 143-146、518 行选择器改名为 .b2o-img-m1..m4,并删除 IMG 表中不再使用的 method* 四项"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "JEV",
+      "result": "成立但可接受",
+      "why": "Jev 正确性 0.8、conf 0.01,未给理由。人工核对:middleware 探针逻辑作用域正确(probe 与 cacheable 同在 onRequest 顶层,第 471-476/515 行),PROBE_SECRET 未设时 probeDiff 恒为 1,行为与旧版完全一致;B2oBlock 新 key 全部在 IMG 表中,17 张 webp 文件均存在于 public/b2o/img/vi/;#b2o-sample 锚点仍在。唯一实质问题是 C1-C3 视觉回归,不影响功能",
+      "mitigation": "上线后人工看一眼 beauty2oem 首页浅色/暗色两种模式;C1 下一版修"
+    },
+    {
+      "ref": "LAYA",
+      "result": "成立但可接受",
+      "why": "Laya correctness 1.32、conf 0.06,partial,未给理由。本角度复核未发现渲染异常、路由或迁移问题;成本/安全/合规分量不在本角度,由对应审核员回应",
+      "mitigation": "同 JEV;冒烟加首页与作品墙图片 URL"
+    }
+  ],
+  "risks": [
+    { "cat": "回归", "level": "中", "item": "浅底规则让所有 beauty2oem 版块(不只首页,含洞察页、简报表单页)强制浅色,alt 灰底失效,暗色模式下出现白版块夹在暗色页头页脚之间", "mitigation": "冒烟看首页、/zh-cn/insights/、简报页;C1/C2 下一版修" },
+    { "cat": "回归", "level": "低", "item": "middleware 改动面小:仅新增 probe 分支,secret 未配置时恒为 false,不改变重定向与缓存判定", "mitigation": "冒烟全表照跑(RK2)" },
+    { "cat": "费用", "level": "中", "item": "CACHE_V v84→v85 全站缓存失效,理由成立(CSS 哈希变,旧 HTML 引用失效样式)", "mitigation": "成本角度审;上线后盯 1-2 小时 D1 读量" }
+  ],
+  "smoke_extra": [
+    "https://beauty2oem.com/",
+    "https://beauty2oem.com/zh-cn/",
+    "https://beauty2oem.com/zh-cn/insights/",
+    "https://beauty2oem.com/b2o/img/vi/hero-full.webp",
+    "https://beauty2oem.com/b2o/img/vi/wall-12.webp",
+    "https://beauty2oem.com/b2o/img/vi/m4.webp"
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/78d41e9fba92/正确性.json"
+}

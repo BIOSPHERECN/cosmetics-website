@@ -1,0 +1,62 @@
+{
+ "at": "2026-09-24T22:05:49+08:00",
+ "worker": "bohui-web",
+ "mode": "hourly",
+ "results": [
+  {
+   "url": "https://biosphere-ai.com/",
+   "status": 0,
+   "errs": [
+    "状态 0 ≠ [302]",
+    "跳转到 (无) ≠ …/en///zh-cn/"
+   ],
+   "crit": true
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/",
+   "status": 200,
+   "errs": [],
+   "crit": true
+  },
+  {
+   "url": "https://biosphere-ai.com/en/",
+   "status": 200,
+   "errs": [],
+   "crit": true
+  },
+  {
+   "url": "https://biosphere-ai.com/robots.txt",
+   "status": 0,
+   "errs": [
+    "状态 0 ≠ [200]"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/bohui/",
+   "status": 302,
+   "errs": [],
+   "crit": true
+  },
+  {
+   "url": "https://beauty2oem.com/",
+   "status": 302,
+   "errs": [],
+   "crit": true
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/",
+   "status": 200,
+   "errs": [
+    "红线标记出现:['自有工厂']"
+   ],
+   "crit": true
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/contact/",
+   "status": 302,
+   "errs": [],
+   "crit": false
+  }
+ ]
+}

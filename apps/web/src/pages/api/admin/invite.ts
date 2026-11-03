@@ -21,7 +21,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   const { token, password } = (await request.json().catch(() => ({}))) as { token?: string; password?: string };
   if (!token || !password) return json({ ok: false, msg: '参数不完整' }, 400);
-  if (password.length < 6) return json({ ok: false, msg: '口令至少 6 位' }, 400);
+  if (password.length < 10) return json({ ok: false, msg: '口令至少 10 位' }, 400);
 
   const row = await db.prepare(
     `SELECT user_id, used, expires_at FROM invites WHERE token_hash=?`

@@ -1,0 +1,101 @@
+{
+  "angle": "合规",
+  "tree": "7dbd08adcbe6ff64c412b22bd6d39a3b55fd2453",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-7dbd08adcbe6.json",
+  "run_label": "review-ticket 7dbd08adcbe6 合规",
+  "reviewer": "claude",
+  "skills_loaded": ["bohui-legal-advertising-claims", "bohui-label-claims-review"],
+  "verdict": "过",
+  "checked": ["合规-①", "合规-②", "合规-③", "合规-④", "合规-⑤", "合规-⑥", "合规-⑦"],
+  "findings": [
+    {
+      "id": "C1",
+      "level": "低",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 71,
+      "claim": "beauty2oem 数字卡把全部 products 计数(market_products 中带全成分的行)标成「款市场爆款情报」,而同一批改动在 blocks.ts 里对同一个数用的是中性的「公开市场产品情报」;库里的行并非都是爆款,属于轻度引人误解的描述性宣称,两站口径也不一致。",
+      "failure_scenario": "访客或同行读到「N 款市场爆款情报」,点进 /decoder/ 发现大量普通或长尾产品,质疑数字注水;属描述性夸大,非医疗/功效宣称,风险等级低(方向:整改文案)。",
+      "evidence": "读 合规.diff 第 71 行与第 341 行;tools/counts-refresh.py 第 27 行 products = market_products WHERE inci 非空且长度>30,没有任何「爆款」筛选条件。",
+      "fix": "改成与 blocks.ts 一致的「款公开市场产品情报」,或把计数口径限定到真正带爆款标记的子集。"
+    },
+    {
+      "id": "C2",
+      "level": "低",
+      "file": "packages/core/src/blocks.ts",
+      "line": 338,
+      "claim": "blocks.ts 只改了 defaults,defaults 只在后台新建区块时写入(api/admin/block.ts 第 85 行);biosphere-ai 线上首页「六项能力」读的是 D1 里已存的区块文案,仍是旧口径(「包材现货」「全球产品配方库」「每个数字都来自本站数据库,点进去可以逐条核对」),各语种译文也未随之更新。beauty2oem 已改成新口径,两站同一件事说法不一致。",
+      "failure_scenario": "买家同时看两站:biosphere-ai 说「N 款现货包材型号」(计数用 packaging status='active'),beauty2oem 说「N 款包材可选」(计数用 pack_shelf,含 sample),两个数不同、措辞一个说现货一个说可选;本条不构成红线,但是 ⑥ 各站/各语种口径一致性未完成。",
+      "evidence": "读 apps/web/src/pages/api/admin/block.ts 第 85 行(def.defaults 仅用于建区块种子);apps/web/src/components/FactoryBlock.astro 第 69 行 packaging: N('packaging');B2oBlock.astro 第 31 行 packaging: N('pack_shelf');tools/counts-refresh.py 第 30、32 行两个计数谓词不同。D1 区块实际内容按规矩未读,线上是否已手工改过属未核实。",
+      "fix": "如需线上同步,走后台改 D1 区块文案(含各语种译文),包材计数统一用 pack_shelf 货架口径。"
+    },
+    {
+      "id": "C3",
+      "level": "低",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 30,
+      "claim": "公开仓新增中文内部注释「09-24 审核员:原图瓶身有近似大牌商标字样,换成无字的几何陈列图」,等于在公开仓里自述曾用过带近似大牌商标的图(R11);同批还有 org.ts「营业执照(工商登记)」注释与 CACHE_V 长注释。",
+      "failure_scenario": "cosmetic-sites 为公开仓,任何人翻源码可看到内部审核记录与曾经的侵权风险自述,可被竞品或打假方引用。影响有限:该图已在本树中替换(tree 中 c-pink-serum.webp blob 6c123fef 与工作区一致,为无字几何图),且 base 树中没有 fd/ 目录,旧图未进公开历史。",
+      "evidence": "读 合规.diff 第 30、366、311-312 行;git ls-tree 51db0dce(base)无 b2o/img/fd;git ls-tree 7dbd08ad 中 c-pink-serum.webp = 6c123fef,与工作区 hash-object 一致;已目视该图为无字几何陈列。",
+      "fix": "注释改为不含「大牌商标」字样的中性说明,或删掉;内部审核记录只进私有仓。"
+    },
+    {
+      "id": "C4",
+      "level": "低",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 18,
+      "claim": "14 张「创始人图库」图片来源无出处记录(无 README、无来源字段);目视均为 AI 生成风格,瓶身文字为不可读乱码,未见可识别的真实品牌名或商标,但 m1-trend-pastel 压缩痕迹重、d-gold-set/d-papaya-set/d-cucumber-set 为四宫格原样输出,无法排除取自参考样例或第三方站。",
+      "failure_scenario": "若其中有图取自参考站或第三方素材平台而非自生成,则违反「原图不上前台」与版权要求;当前无证据证明来源,也无证据证明来源干净。",
+      "evidence": "逐张用 Read 查看 hero-beach-lineup、c-fruit-cans、c-color-tubes、c-starry-premium、c-botanical-set、c-pink-serum、d-gold-set、d-papaya-set、d-cucumber-set、m1-trend-pastel(放大瓶盖压纹核对)、m2-judge-gold、m3-verify-market、m4-launch-tropical-box、insight-pool;apps/web/public/b2o/img/fd 下无来源说明文件。",
+      "fix": "在 fd/ 旁补一份来源清单(生成工具/提示词或创始人确认自有),四宫格图建议裁成单图。"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "G1",
+      "result": "不成立",
+      "why": "合规角度看:tools/ship.sh 第 16 行是审核部路径变量赋值加说明注释,不含对审核员的放行指令或忽略指令,也不在对外页面;不涉及红线词、商务数字或宣称。安全角度的完整结论以安全审核员报告为准。"
+    },
+    {
+      "ref": "JEV",
+      "result": "不成立",
+      "why": "Jev 合规分 0.26、reason 为空、partial=true。逐项人工核对合规 diff:①红线词无命中——无集团旗号、无「自有厂房/非租赁」(「自有产线」不在禁用之列,09-24 22:5x 更正后「自有工厂」也可写),且本改动删除了旧的「广州自有工厂」一句;无印尼工厂、SueAI、参考站名、18,815、阿里国际站、小批量;②无新增起订量/出样/交期/价格数字(寄样 5–14 天为既有白名单);③无医疗用语与功效宣称;④未触及隐私与同意;成立年份 2012 取自营业执照硬事实;「10 万级 GMP」与 faq、llms.txt 既有口径一致;HALAL 在 ORG.certs 中。仅有 C1–C4 四条低级问题,不足以拦。"
+    },
+    {
+      "ref": "LAYA",
+      "result": "不成立",
+      "why": "Laya 置信度 0.06、partial=true、reason 为空,合规 1.0 无具体行号或依据。人工逐行复核同 JEV 条,未发现红线或越界宣称。"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "「市场爆款情报」为描述性夸大,且与 blocks.ts 口径不一致(C1)",
+      "mitigation": "下次改文案时统一为「公开市场产品情报」"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "biosphere-ai 线上区块文案与各语种未同步新口径,包材两站计数谓词不同(C2)",
+      "mitigation": "后台改 D1 区块并统一 pack_shelf"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "公开仓中文内部注释自述曾用近似大牌商标图(C3)",
+      "mitigation": "改中性注释;旧图未进公开历史"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "14 张新图无来源记录(C4)",
+      "mitigation": "补来源清单,由创始人确认为自有或自生成"
+    }
+  ],
+  "smoke_extra": [
+    "上线后看 beauty2oem 首页与 /delivery:数字卡显示 13,000+、15、货架包材数,页面不再出现「广州自有工厂」",
+    "beauty2oem 首页 b2o-position 行显示「2012 年成立」"
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/7dbd08adcbe6/合规.json"
+}

@@ -1,0 +1,292 @@
+---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { t as uiT, type Locale } from '@cosmetic/core/i18n';
+/**
+ * 操作指南(HowTo)—— GEO 诊断点名的两块空白:「HowTo 操作指南」与「知识库」。
+ *
+ * 为什么单独一套路由,而不是塞进 /faq/ 或 /compare/:
+ *   · FAQ 回答「是什么」,对比页回答「A 还是 B」,这里回答「怎么做」。
+ *     三类问题在 AI 那边走的是不同的答案模板,混在一页会互相稀释。
+ *   · HowTo 的价值在**步骤有顺序**。schema.org 的 HowToStep 带 position,
+ *     AI 可以整段搬走不用自己组织 —— 这是引用率最高的一类结构。
+ *   · 一题一个地址,才可能被当成「这一题的答案页」整页引用。
+ *
+ * 内容在 packages/core/src/content/guides.ts,那边写了取数与措辞纪律。
+ * 零 D1 查询。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { GUIDES_ZH, type GuideItem } from '@cosmetic/core/content/guides.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { orgJsonLd, faqJsonLd, howToJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const lang = (Astro.params.lang ?? 'zh-cn') as Locale;
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const site = shell.site;
+const origin = `https://${site?.domain ?? 'biosphere-ai.com'}`;
+const B = `/${lang}`;
+
+const raw = String(Astro.params.slug ?? '').replace(/\/+$/, '');
+const item: GuideItem | undefined = raw ? GUIDES_ZH.find((g) => g.slug === raw) : undefined;
+if (raw && !item) return new Response('Not found', { status: 404 });
+
+const path = raw ? `${B}/guides/${raw}/` : `${B}/guides/`;
+const L = zh
+  ? { eyebrow: '操作指南', idxTitle: '照着做就能走完的几件事',
+      lede: '采购问得最多的不是「你们是什么」,是「这件事我该怎么做」。一题一页,第一句就是答案,后面是可以照着走的步骤。',
+      note: '数字全部来自我们自己的产线与库存。核不到出处的行业数字这里一个都不写 —— 写上去被追问一句就穿帮。',
+      answer: '一句话答案', need: '开始之前手上要有', steps: '步骤', got: '做完手上有',
+      trap: '这一题上最常见的坑', more: '相关页面', back: '全部指南', time: '大概要多久',
+      unit: '步', watch: '看一遍', frames: '逐帧对照', src: '画面来源',
+      cta: '按步骤走下来还有拿不准的?把品类、目标市场、首批量级发给我们', ctaBtn: '发起询盘' }
+  : { eyebrow: 'How-to guides', idxTitle: 'Things you can actually follow through',
+      lede: 'Buyers rarely ask what we are. They ask how to get something done. One question per page, answered in the first line, then steps you can follow.',
+      note: 'Every figure comes from our own lines and stock. Industry numbers we could not source are simply not here.',
+      answer: 'Short answer', need: 'Before you start', steps: 'Steps', got: 'What you end up with',
+      trap: 'Where people get it wrong', more: 'Related', back: 'All guides', time: 'How long it takes',
+      unit: 'steps', watch: 'Watch', frames: 'Frame by frame', src: 'About these images',
+      cta: 'Still stuck? Send us category, destination market and first-run volume', ctaBtn: 'Send an enquiry' };
+
+const crumbs = breadcrumbJsonLd(origin, lang, path, uiT(lang as any)('nav.home'),
+  item
+    ? [{ label: L.eyebrow, href: `${B}/guides/` }, { label: item.q, href: path }]
+    : [{ label: L.eyebrow, href: path }]);
+
+/* 详情页出 HowTo(这一类的主力结构);索引页出 FAQPage ——
+   索引页上每一条只有「问题 + 一句话答案」,那是问答不是步骤,标成 HowTo 名不副实。 */
+/* 有视频才出 VideoObject —— 挂一个不存在的视频比不挂更糟。
+   duration 用 ISO 8601;contentUrl 必须是可直接播放的绝对地址,
+   否则 Google 与 AI 引擎都判为无效。 */
+const videoLd = item?.media?.video
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'VideoObject',
+      name: item.media.video.name,
+      description: item.media.video.desc,
+      thumbnailUrl: `${origin}${item.media.video.poster}`,
+      contentUrl: `${origin}${item.media.video.src}`,
+      uploadDate: item.media.video.uploadDate,
+      duration: `PT${item.media.video.seconds}S`,
+      isFamilyFriendly: true,
+    }
+  : null;
+
+const jsonLd = [
+  orgJsonLd(origin, site?.name ?? 'BIOSPHERE', lang, L.lede),
+  videoLd,
+  item
+    ? howToJsonLd({
+        name: item.q,
+        description: item.answer,
+        url: `${origin}${path}`,
+        totalTime: item.totalTime,
+        supply: item.need,
+        steps: item.steps.map((s) => ({ name: s.name, text: s.text })),
+      })
+    : faqJsonLd(GUIDES_ZH.map((g) => ({ q: g.q, a: g.answer }))),
+  crumbs,
+].filter(Boolean);
+
+const title = item
+  ? item.q
+  : (zh ? '操作指南 —— 选厂、流程、起订量、合规、验厂怎么做'
+        : 'How-to guides — choosing a factory, the process, MOQ, compliance, audits');
+const desc = item ? item.answer : L.lede;
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={site?.variant ?? 'v1'}
+  brand={site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={title} description={desc}
+  siteName={site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={site?.is_live === 1} brandColor={site?.brand_color} theme={site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={site?.name ?? '帛卉'}
+              siteNameZh={site?.tagline ?? ''} nav={shell.nav} />
+
+  <main id="main">
+    {!item && (
+      <>
+        <header class="hd">
+          <p class="eyebrow">{L.eyebrow}</p>
+          <h1>{L.idxTitle}</h1>
+          <p class="lede">{L.lede}</p>
+          <p class="note">{L.note}</p>
+        </header>
+        <ul class="idx">
+          {GUIDES_ZH.map((g) => (
+            <li>
+              <a href={`${B}/guides/${g.slug}/`}>
+                <h2>{g.q}</h2>
+                <p>{g.answer}</p>
+                <span class="meta">{g.steps.length} {L.unit}{g.totalTimeText ? ` · ${g.totalTimeText}` : ''}</span>
+                <span class="go" aria-hidden="true">→</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
+
+    {item && (
+      <>
+        <header class="hd">
+          <p class="eyebrow"><a href={`${B}/guides/`}>{L.back}</a></p>
+          <h1>{item.q}</h1>
+          {/* 答案单独一块、加重 —— 这一段就是 AI 会摘走的那一段 */}
+          <p class="verdict"><b>{L.answer}</b>{item.answer}</p>
+          {item.totalTimeText && <p class="note">{L.time} · {item.totalTimeText}</p>}
+        </header>
+
+        {item.need && item.need.length > 0 && (
+          <section class="need">
+            <h2>{L.need}</h2>
+            <ul>{item.need.map((n) => <li>{n}</li>)}</ul>
+          </section>
+        )}
+
+        {item.media?.video && (
+          <section class="film">
+            <h2>{L.watch}</h2>
+            {/* 竖版素材,给它一个不铺满整幅的容器 —— 9:16 铺满会把一屏全占掉 */}
+            <video src={item.media.video.src} poster={item.media.video.poster}
+                   controls preload="none" playsinline
+                   width="1080" height="1920"></video>
+          </section>
+        )}
+
+        {item.media?.frames && item.media.frames.length > 0 && (
+          <section class="frames">
+            <h2>{L.frames}</h2>
+            <ol>
+              {item.media.frames.map((f) => (
+                <li>
+                  <img src={f.src} alt={f.caption} loading="lazy" decoding="async" width="1024" height="1024" />
+                  <p>{f.caption}</p>
+                </li>
+              ))}
+            </ol>
+            {item.media.note && <p class="note"><b>{L.src}</b>{item.media.note}</p>}
+          </section>
+        )}
+
+        <section class="steps">
+          <h2>{L.steps}</h2>
+          <ol>
+            {item.steps.map((s, i) => (
+              <li>
+                <span class="n" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+                <div>
+                  <h3>{s.name}</h3>
+                  <p>{s.text}</p>
+                  {s.got && <p class="got"><b>{L.got}</b>{s.got}</p>}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section class="trap">
+          <h2>{L.trap}</h2>
+          <ul>{item.trap.map((t) => <li>{t}</li>)}</ul>
+        </section>
+
+        <nav class="more" aria-label={L.more}>
+          <h2>{L.more}</h2>
+          <p>{item.links.map((l) => <a href={`${B}${l.href}`}>{l.label}</a>)}</p>
+        </nav>
+      </>
+    )}
+
+    <section class="cta">
+      <p>{L.cta}</p>
+      <a class="btn" href={`${B}/contact/`}>{L.ctaBtn}</a>
+    </section>
+  </main>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <script type="application/ld+json" set:html={ldJson(jsonLd)} is:inline />
+</BaseLayout>
+
+<style>
+  main { max-width: 62rem; margin: 0 auto; padding: clamp(2rem, 5vw, 4rem) clamp(1rem, 4vw, 3rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }
+  .hd { margin-bottom: clamp(2rem, 4vw, 3rem); }
+  .eyebrow { margin: 0 0 .75rem; font-size: .75rem; letter-spacing: .16em; text-transform: uppercase;
+             color: var(--ck-ink-faint); }
+  .eyebrow a { color: inherit; text-decoration: none; }
+  .eyebrow a:hover { color: var(--ck-accent); }
+  h1 { margin: 0 0 1rem; font-size: clamp(1.75rem, 3.6vw, 2.6rem); line-height: 1.2;
+       letter-spacing: -.02em; text-wrap: balance; }
+  .lede { margin: 0 0 .75rem; font-size: clamp(1rem, 1.6vw, 1.125rem); line-height: 1.75; color: var(--ck-ink-soft); }
+  .note { margin: 0; font-size: .875rem; line-height: 1.7; color: var(--ck-ink-faint); }
+  .verdict { margin: 0 0 .75rem; font-size: 1.0625rem; line-height: 1.75; }
+  .verdict b { display: block; margin-bottom: .375rem; font-size: .6875rem; letter-spacing: .14em;
+               text-transform: uppercase; color: var(--ck-accent); }
+
+  .idx { list-style: none; margin: 0; padding: 0; display: grid; gap: .875rem; }
+  .idx a { display: block; position: relative; padding: clamp(1.125rem, 2.4vw, 1.625rem);
+           border: 1px solid var(--ck-line); border-radius: var(--ck-radius);
+           background: var(--ck-surface); text-decoration: none; color: inherit; }
+  .idx a:hover { border-color: var(--ck-accent); }
+  .idx h2 { margin: 0 0 .5rem; font-size: 1.0625rem; line-height: 1.45; padding-right: 2rem; }
+  .idx p { margin: 0 0 .5rem; font-size: .875rem; line-height: 1.7; color: var(--ck-ink-soft); }
+  .idx .meta { font-size: .75rem; color: var(--ck-ink-faint); font-variant-numeric: tabular-nums; }
+  .idx .go { position: absolute; top: clamp(1.125rem, 2.4vw, 1.625rem); inset-inline-end: 1.25rem;
+             color: var(--ck-ink-faint); }
+
+  section { margin-top: clamp(2.25rem, 4.5vw, 3.5rem); }
+  section h2 { margin: 0 0 1rem; font-size: 1.0625rem; letter-spacing: -.01em; }
+
+  .need ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .375rem; }
+  .need li { font-size: .9375rem; line-height: 1.7; color: var(--ck-ink-soft); }
+
+  /* 步骤用真正的 ol —— 序号是内容不是装饰,读屏与 AI 都靠它判断顺序 */
+  .steps ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.25rem; }
+  .steps li { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); gap: .875rem;
+              padding-bottom: 1.25rem; border-bottom: 1px solid var(--ck-line); }
+  .steps li:last-child { border-bottom: 0; padding-bottom: 0; }
+  .steps .n { font-family: var(--ck-font-mono); font-size: .8125rem; color: var(--ck-accent);
+              padding-top: .15rem; font-variant-numeric: tabular-nums; }
+  .steps h3 { margin: 0 0 .4375rem; font-size: 1rem; line-height: 1.45; }
+  .steps p { margin: 0; font-size: .9375rem; line-height: 1.75; color: var(--ck-ink-soft); }
+  .steps .got { margin-top: .5rem; font-size: .8125rem; color: var(--ck-ink-faint); }
+  .steps .got b { color: var(--ck-ink-soft); font-weight: 600; margin-inline-end: .375rem; }
+
+  .film video { width: min(100%, 22rem); border-radius: var(--ck-radius); display: block;
+                background: #0B0B0C; }
+  .frames ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem;
+               grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr)); }
+  .frames img { width: 100%; height: auto; border-radius: calc(var(--ck-radius) - 2px);
+                border: 1px solid var(--ck-line); background: #fff; display: block; }
+  .frames li p { margin: .5rem 0 0; font-size: .8125rem; line-height: 1.55; color: var(--ck-ink-soft); }
+  .frames .note { margin: 1rem 0 0; font-size: .8125rem; line-height: 1.7; color: var(--ck-ink-faint); }
+  .frames .note b { color: var(--ck-ink-soft); font-weight: 600; margin-inline-end: .375rem; }
+
+  .trap ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .5rem; }
+  .trap li { font-size: .9375rem; line-height: 1.7; color: var(--ck-ink-soft); }
+
+  .more p { margin: 0; display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; }
+  .more a { font-size: .875rem; color: var(--ck-ink-soft); }
+
+  .cta { padding: clamp(1.5rem, 3.5vw, 2.5rem); border-radius: var(--ck-radius);
+         background: var(--ck-surface-alt); border: 1px solid var(--ck-line);
+         display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; }
+  .cta p { margin: 0; color: var(--ck-ink-soft); font-size: .9375rem; line-height: 1.7; }
+  .btn { display: inline-flex; padding: .6875rem 1.5rem; border-radius: 999px;
+         background: var(--ck-accent); color: #fff; text-decoration: none; font-weight: 600; font-size: .9375rem; }
+
+  @media (max-width: 40rem) {
+    .steps li { grid-template-columns: 1.75rem minmax(0, 1fr); gap: .625rem; }
+  }
+</style>

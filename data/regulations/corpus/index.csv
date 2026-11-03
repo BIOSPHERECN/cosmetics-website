@@ -1,0 +1,20 @@
+country,title,source_url,status,file
+东盟,"2003 Agreement on the ASEAN Harmonized Cosmetic Regulatory Scheme","https://cil.nus.edu.sg/databasecil/2003-agreement-on-the-asean-harmonized-cosmetic-regulation-scheme",low,东盟\2003_Agreement_on_the_ASEAN_Harmonized_Cosmetic_Regulatory_Scheme.md
+东盟,"ASEAN Cosmetic Directive (Singapore HSA official overview)","https://www.hsa.gov.sg/cosmetic-products/asean-cosmetic-directive",ok,东盟\ASEAN_Cosmetic_Directive_Singapore_HSA_official_overview.md
+东盟,"Health Products (Cosmetic Products - ASEAN Cosmetic Directive) Regulations 2007 (Singapore Statutes)","https://sso.agc.gov.sg/SL/HPA2007-S683-2007",low,东盟\Health_Products_Cosmetic_Products_ASEAN_Cosmetic_Directive_Regulations_2007_Sing.md
+中国,"化妆品安全技术规范（2015年版）","http://www.customs.gov.cn/spj/fileDir/resource/cms/article/4577004/4653051/2022103111481652098.pdf",ok,中国\化妆品安全技术规范_2015年版.md
+中国,"化妆品注册备案管理办法（市场监管总局令第35号）","https://www.samr.gov.cn/zw/zfxxgk/fdzdgknr/fgs/art/2023/art_5a6fb0527df94edfa7bbc8911bb5ac40.html",ok,中国\化妆品注册备案管理办法_市场监管总局令第35号.md
+中国,"化妆品监督管理条例（国务院令第727号）","https://xzfg.moj.gov.cn/law/detail?LawID=451",ok,中国\化妆品监督管理条例_国务院令第727号.md
+加拿大,"Notification of Cosmetics (Health Canada)","https://www.canada.ca/en/health-canada/services/consumer-product-safety/cosmetics/notification-cosmetics.html",fetch_failed,加拿大\Notification_of_Cosmetics_Health_Canada.md
+加拿大,"Regulatory information for cosmetics (Health Canada)","https://www.hc-sc.gc.ca/cps-spc/cosmet-person/regulations-reglements/index-eng.php",fetch_failed,加拿大\Regulatory_information_for_cosmetics_Health_Canada.md
+印度,"Cosmetics Rules, 2020 (Ministry of Health and Family Welfare, official PDF)","https://thc.nic.in/Central%20Governmental%20Rules/e%20Cosmetics%20Rules,%202020.pdf",fetch_failed,印度\Cosmetics_Rules_2020_Ministry_of_Health_and_Family_Welfare_official_PDF.md
+巴西,"Personal Hygiene Products, Cosmetics and Fragrances (ANVISA)","http://www.gov.br/anvisa/en/regulation-of-products/personal-hygiene-products-cosmetics-and-fragrances",ok,巴西\Personal_Hygiene_Products_Cosmetics_and_Fragrances_ANVISA.md
+日本,"Act on Securing Quality, Efficacy and Safety of Products Including Pharmaceuticals and Medical Devices (PMD Act, Act No.145 of 1960)","https://www.japaneselawtranslation.go.jp/ja/laws/view/3213/en",ok,日本\Act_on_Securing_Quality_Efficacy_and_Safety_of_Products_Including_Pharmaceutical.md
+日本,"Ministerial Order on the Standard of Quality Management for Pharmaceuticals, Quasi-pharmaceuticals, Cosmetics and Regenerative Medicine Products (PMDA)","https://www.pmda.go.jp/files/000269368.pdf",ok,日本\Ministerial_Order_on_the_Standard_of_Quality_Management_for_Pharmaceuticals_Quas.md
+欧盟,"Regulation (EC) No 1223/2009 on cosmetic products (consolidated)","https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02009R1223-20140401",low,欧盟\Regulation_EC_No_1223_2009_on_cosmetic_products_consolidated.md
+澳大利亚,"Cosmetics (Therapeutic Goods Administration - TGA)","https://www.tga.gov.au/resources/explore-topic/cosmetics",fetch_failed,澳大利亚\Cosmetics_Therapeutic_Goods_Administration_TGA.md
+澳大利亚,"Personal care, skincare, make-up and other cosmetic products (AICIS)","http://www.industrialchemicals.gov.au/cosmetics-and-soap/personal-care-skincare-make-and-other-cosmetic-products",fetch_failed,澳大利亚\Personal_care_skincare_make_up_and_other_cosmetic_products_AICIS.md
+美国,"FDA Cosmetics page (laws & regulations overview)","https://www.fda.gov/cosmetics",fetch_failed,美国\FDA_Cosmetics_page_laws_regulations_overview.md
+美国,"Modernization of Cosmetics Regulation Act of 2022 (MoCRA) - FDA","https://www.fda.gov/cosmetics/cosmetics-laws-regulations/modernization-cosmetics-regulation-act-2022-mocra",fetch_failed,美国\Modernization_of_Cosmetics_Regulation_Act_of_2022_MoCRA_FDA.md
+韩国,"Cosmetics Act - MFDS (responsible authority portal)","https://www.mfds.go.kr/eng/index.do",low,韩国\Cosmetics_Act_MFDS_responsible_authority_portal.md
+韩国,"Enforcement Decree of the Cosmetics Act (official English - Korea Law Information Center)","https://elaw.klri.re.kr/eng_mobile/viewer.do?hseq=73920&key=31&type=sogan",ok,韩国\Enforcement_Decree_of_the_Cosmetics_Act_official_English_Korea_Law_Information_C.md

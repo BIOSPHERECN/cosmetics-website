@@ -1,0 +1,206 @@
+---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 产品库总览 —— 四个库的索引页。
+ *
+ * 创始人 2026-09-07:
+ *   「你摆错了,包材库应该是下拉的选项,而不是顶部。
+ *     点顶部要不然就是下拉,要不然进入综合介绍下面几个库的索引,
+ *     然后可以分布点击进入」
+ *
+ * 之前把导航顶层项直接指到 /packaging/,等于用一个库的名字代表四个库,
+ * 找包材的人看不到配方,找配方的人以为这站只有包材。
+ * 现在顶层是这一页:先讲清四个库是一条产线上的四段,再分头点进去。
+ *
+ * 这一页零 D1 查询 —— 数量走 chain.ts 的常量,和货架页顶上的链路条同一份数据。
+ * 一个只有四张卡片的索引页,不该给数据库添任何负担。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { CHAIN_COUNTS } from '@cosmetic/core/content/chain.ts';
+import { ORG } from '@cosmetic/core/content/org.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/libraries/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const B = `/${lang}`;
+
+const T = zh ? {
+  eyebrow: '产品库',
+  title: '四个库,是一条产线上的四段',
+  lede: `包材、配方、包装盒、成品 —— 它们不是四个独立的目录,是同一条产线上先后相连的四段。
+         从哪一段进来都行:看中一只瓶子可以倒推能装什么料,定了配方也能顺着往下找瓶子。`,
+  note: `每一款都有我们自己的编码。看中哪一个把编码发给我们,不必再描述「就那个圆圆的白瓶子」。`,
+  enter: '进入',
+  cards: [
+    { step: 1, name: '包材库', n: CHAIN_COUNTS.packaging, unit: '款', href: `${B}/packaging/`,
+      desc: '瓶、罐、管、泵头、喷头。白底实拍,按类型、材质、容量、适配剂型筛。',
+      detail: '3,674 款有实物图 · 30 种类型 · 47 种材质' },
+    { step: 2, name: '配方库', n: ORG.formulas.value, unit: '个成熟配方', href: `${B}/formulas/`,
+      desc: '按品类、功效、剂型分。每支写明关键成分与适配市场,不写做不到的宣称。',
+      detail: '可按剂型反查能装它的包材' },
+    { step: 3, name: '包装盒', n: CHAIN_COUNTS.carton, unit: '款', href: `${B}/packaging/?t=use-gift,outer-carton`,
+      desc: '外盒、礼盒、套装盒。工序上排在灌装之后 —— 先有瓶、有料,才谈得上外盒。',
+      detail: '包材库里的一类,单独列出来方便找' },
+    { step: 4, name: '成品案例', n: CHAIN_COUNTS.product, unit: '例', href: `${B}/portfolio/`,
+      desc: '已经走完整条链的例子。看得到从料体到外盒的完整搭配。',
+      detail: '不含客户品牌信息' },
+  ],
+  sub: '原料库',
+  subDesc: `${CHAIN_COUNTS.ingredient} 条草本原料 —— 配方的组成,不是链上单独一环。带 INCI、作用机理与配伍禁忌。`,
+  /* 创始人 2026-09-17 看 INCIDecoder:「他们的信息好像更全,是需要学习的,我们是不是也可以变成这样」「这些其实也是可以对外的」 */
+  dec: '成分解读', decN: '3,600+',
+  decDesc: '各国电商榜单上正在卖的产品,按标签公开全成分逐条解读:每个成分做什么、刺激与致痘倾向、评级。看同类爆款怎么配。',
+} : {
+  eyebrow: 'Libraries',
+  title: 'Four libraries, four stages of one line',
+  lede: `Containers, formulas, cartons, finished products — not four separate catalogues but four
+         connected stages of the same production line. Enter at any stage: pick a bottle and work
+         back to what fits it, or start from a formula and work forward.`,
+  note: `Every item carries our own code. Send us a code instead of describing "the round white one".`,
+  enter: 'Open',
+  cards: [
+    { step: 1, name: 'Packaging', n: CHAIN_COUNTS.packaging, unit: 'items', href: `${B}/packaging/`,
+      desc: 'Bottles, jars, tubes, pumps and sprayers. Real shots on white, filtered by type, material, capacity and format.',
+      detail: '3,674 photographed · 30 types · 47 materials' },
+    { step: 2, name: 'Formulas', n: ORG.formulas.value, unit: 'mature', href: `${B}/formulas/`,
+      desc: 'By category, benefit and format. Key actives and eligible markets stated; no claims we cannot support.',
+      detail: 'Cross-reference packaging that fits each format' },
+    { step: 3, name: 'Cartons', n: CHAIN_COUNTS.carton, unit: '', href: `${B}/packaging/?t=use-gift,outer-carton`,
+      desc: 'Outer cartons, gift boxes and sets. They come after filling — bottle and bulk first.',
+      detail: 'A subset of the packaging library, listed separately' },
+    { step: 4, name: 'Products', n: CHAIN_COUNTS.product, unit: '', href: `${B}/portfolio/`,
+      desc: 'Examples that ran the whole chain, bulk through to outer carton.',
+      detail: 'No client brand information shown' },
+  ],
+  sub: 'Botanicals',
+  subDesc: `${CHAIN_COUNTS.ingredient} botanical actives — components of a formula, not a stage of their own. INCI, mechanism and incompatibilities included.`,
+  dec: 'Ingredient decoder', decN: '3,600+',
+  decDesc: 'Best-selling products on global marketplaces, decoded from the full ingredient list on their labels: what each ingredient does, irritancy, comedogenic tendency and rating.',
+};
+
+const ld = {
+  '@context': 'https://schema.org', '@type': 'CollectionPage',
+  name: T.title, url: origin + path, description: T.lede,
+  hasPart: T.cards.map((c) => ({
+    '@type': 'CollectionPage', name: c.name, description: c.desc, url: origin + c.href,
+  })),
+};
+---
+
+<BaseLayout
+  locale={lang as any} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={`${T.title} · ${T.eyebrow}`} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main" class="lib">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+    </header>
+
+    <ol class="cards">
+      {T.cards.map((c) => (
+        <li>
+          <a class="card" href={c.href}>
+            <span class="step" aria-hidden="true">{c.step}</span>
+            <h2>{c.name}<span class="n">{c.n.toLocaleString()}<i>{c.unit}</i></span></h2>
+            <p class="d">{c.desc}</p>
+            <p class="m">{c.detail}</p>
+            <span class="go">{T.enter} →</span>
+          </a>
+        </li>
+      ))}
+    </ol>
+
+    {/* 原料挂在配方下面 —— 它是配方的组成,不是链上单独一环 */}
+    <a class="subcard" href={`${B}/ingredients/`}>
+      <b>{T.sub}<span class="n">{CHAIN_COUNTS.ingredient}</span></b>
+      <span>{T.subDesc}</span>
+    </a>
+
+    {/* 成分解读:与原料库同一种挂法 —— 它是看别人怎么配的参考,不是链上一环。数量写死,这一页零 D1 查询 */}
+    <a class="subcard" href={`${B}/decoder/`}>
+      <b>{T.dec}<span class="n">{T.decN}</span></b>
+      <span>{T.decDesc}</span>
+    </a>
+
+    <p class="note">{T.note}</p>
+  </main>
+  <SiteFooter locale={lang as any} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
+
+  <style>
+    .lib { max-width: min(112.5rem, 100%); margin: 0 auto;
+           padding: clamp(2rem, 5vw, 3.25rem) var(--ck-gutter, 1.25rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }
+    .hd { max-width: 46rem; margin-bottom: clamp(2rem, 5vw, 3rem); }
+    .eyebrow { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase;
+               color: var(--ck-accent); margin: 0 0 .625rem; }
+    h1 { font-size: clamp(1.75rem, 1.25rem + 2vw, 2.75rem); line-height: 1.13;
+         letter-spacing: -.025em; margin: 0 0 .875rem; text-wrap: balance; }
+    .lede { color: var(--ck-ink-soft); font-size: 1rem; line-height: 1.75; margin: 0; }
+
+    .cards { list-style: none; margin: 0 0 1.25rem; padding: 0;
+             display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+             gap: 1.25rem; }
+    .card { display: flex; flex-direction: column; gap: .5rem; height: 100%;
+            text-decoration: none; color: var(--ck-ink);
+            border: 1px solid var(--dtc-line, rgb(0 0 0/.1));
+            border-radius: var(--dtc-radius-card, 14px);
+            padding: 1.5rem 1.375rem; background: var(--dtc-paper, #fff);
+            transition: border-color .15s, transform .15s; }
+    .card:hover { border-color: var(--ck-accent); transform: translateY(-2px); }
+    .step { font-size: .6875rem; width: 1.375rem; height: 1.375rem; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: var(--dtc-wash, rgb(0 0 0/.055)); color: var(--ck-ink-soft);
+            font-variant-numeric: tabular-nums; }
+    .card h2 { font-size: 1.125rem; margin: 0; display: flex; align-items: baseline;
+               justify-content: space-between; gap: .5rem; letter-spacing: -.01em; }
+    .card .n { font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums;
+               color: var(--ck-accent); }
+    .card .n i { font-size: .75rem; font-style: normal; color: var(--ck-ink-soft);
+                 margin-left: .1875rem; }
+    .card .d { font-size: .875rem; line-height: 1.7; color: var(--ck-ink-soft); margin: 0; }
+    .card .m { font-size: .75rem; color: var(--ck-ink-soft); opacity: .8; margin: 0; }
+    .card .go { margin-top: auto; padding-top: .5rem; font-size: .8125rem;
+                color: var(--ck-accent); font-weight: 550; }
+
+    .subcard { display: flex; margin-bottom: .75rem; flex-direction: column; gap: .3125rem;
+               text-decoration: none; color: var(--ck-ink);
+               border: 1px dashed var(--dtc-line, rgb(0 0 0/.16));
+               border-radius: var(--dtc-radius-card, 14px);
+               padding: 1.125rem 1.375rem; background: transparent; }
+    .subcard:hover { border-color: var(--ck-accent); }
+    .subcard b { font-size: 1rem; display: flex; align-items: baseline; gap: .5rem; }
+    .subcard .n { color: var(--ck-accent); font-variant-numeric: tabular-nums; }
+    .subcard span { font-size: .8125rem; color: var(--ck-ink-soft); line-height: 1.7; }
+
+    .note { margin: 1.5rem 0 0; font-size: .8125rem; color: var(--ck-ink-soft); line-height: 1.7; }
+
+    @media (max-width: 60rem) {
+      h1 { font-size: clamp(1.5rem, 1.2rem + 2vw, 1.875rem); }
+      .lede { font-size: .9375rem; }
+      .cards { grid-template-columns: 1fr; gap: .875rem; }
+      .card { padding: 1.125rem 1rem; }
+    }
+  </style>
+</BaseLayout>

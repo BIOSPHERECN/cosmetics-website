@@ -1,0 +1,282 @@
+﻿---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { t as uiT, type Locale } from '@cosmetic/core/i18n';
+/**
+ * 创始人故事 —— GEO 诊断 P1 的一条:「about 页只有 200 字 → 2000 字创始人故事页」。
+ *
+ * 为什么这一页对 AI 有用而不只是抒情:
+ *   AI 回答「XX 工厂靠不靠谱」时,需要的是**可核对的时间线**——
+ *   哪一年做了什么、跟谁合作、拿了什么资质。一段没有年份的品牌故事
+ *   在检索里等于零;一条「2015 拿下 ISO 22716 与 FDA 注册」是能被引用的事实。
+ *   所以这一页按年份组织,每一段都落到一件具体的事上。
+ *
+ * 素材来自创始人 2026-09-09 提供的《一株植物的东方使命》(1,925 字)与一段 50 秒公司片。
+ *
+ * 取舍(不是原文照搬):
+ *   · **客户成绩不写品牌名**。原文提到某印尼品牌做到 TikTok 品类第二、
+ *     某洁牙片成为爆款 —— 这些是客户的商业信息,我们只写「我们协助的客户」。
+ *   · **种植基地口径跟站上其余页面一致**:写「合作山地种植基地 20 余家」,
+ *     不写原文的「万亩」—— 两个数字在同一个站上打架,采购一问就露馅。
+ *   · **法人全称不进这一页**(只进法务页),正文一律写「帛卉」。
+ *   · 视频挂 VideoObject —— 多媒体是诊断点名的五块空白之一,
+ *     但只有真有视频才挂,挂一个不存在的比不挂更糟。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { orgJsonLd, breadcrumbJsonLd } from '../../../../lib/jsonld';
+import { pageShell } from '../../../../lib/shell';
+
+export const prerender = false;
+
+const lang = (Astro.params.lang ?? 'zh-cn') as Locale;
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const site = shell.site;
+const origin = `https://${site?.domain ?? 'biosphere-ai.com'}`;
+const path = `/${lang}/about/founder/`;
+const B = `/${lang}`;
+
+const VIDEO = '/asset/video/founder-story-720p.mp4';
+const VIDEO_POSTER = '/asset/video/founder-story-poster.jpg';
+
+const T = zh ? {
+  eyebrow: '创始人',
+  title: '一株植物的东方使命',
+  sub: '黄光文 · 帛卉创始人',
+  lede: `让中国草本,成为世界美妆的语言 —— 这句话不是口号,是一条从 2001 年走到今天的路线。
+         下面按年份排,每一段都落到一件具体的事上。`,
+  videoTitle: '公司片 · 50 秒',
+  videoNote: '看不了视频?下面的时间线写了同样的内容。',
+  now: '现在',
+  quotesTitle: '他常说的三句',
+  quotes: [
+    '合作会结束,但眼光不会。',
+    '企业的天花板,就是老板的认知边界。',
+    '我们要做的不是锦上添花,而是像粮食一样,让人离不开。',
+  ],
+  timeline: [
+    { y: '1973', h: '湖北红安', p: '出生在「中国第一将军县」。红安这片土地出过 232 位共和国将军,也给了他「宁天下人负我,我不负天下人」这句座右铭。' },
+    { y: '2001', h: '南下广州,从学徒做起', p: '28 岁到广州,从化妆品技术学徒做起 —— 泡实验室、啃配方。' },
+    { y: '2004', h: '进孚瑞集团,做国际原料', p: '代理巴斯夫(BASF)与赢创德固赛的化妆品原材料。别人卖原料,他学的是国际化工的技术体系和跨国企业的管理方法。这一段是他的「黄埔军校」。' },
+    { y: '2012', h: '创办帛卉', p: '广州白云山脚下,12,000 平方米。名字取自「布帛菽粟,万物生长」。从这一年起,帛卉走「品牌建设 + OEM/ODM 代工」双轮。' },
+    { y: '2014', h: '跨国联姻', p: '请来韩国婳韩研究院的韩博士,在厂内联合成立媄迪韩化妆品研究中心。研究院后来因客观原因撤出,但国际化的做事方法留了下来。' },
+    { y: '2015', h: '拿到走向世界的通行证', p: '成立帛卉生物正式做外贸,同年拿下 ISO 22716 与 FDA 工厂注册。' },
+    { y: '2017', h: '把目光从实验室移向山川', p: '贵州毕节的玫瑰、新疆喀什的薰衣草 —— 开始建合作山地种植基地,把提取、发酵、合成接到种植端。「天然、纯净」从此是帛卉的主线。' },
+    { y: '2019', h: '业务进入东南亚', p: '开始为进入东南亚市场的品牌做代工,货由广州基地生产出口。' },
+    { y: '2020–2022', h: '三年 1,150 个 SKU', p: '协助客户开品与生产 1,150 个 SKU。其中一个当时名不见经传的印尼品牌,做到了 TikTok 该品类第二 —— 品牌方的成绩,我们只负责把产品做出来。' },
+    { y: '2023', h: '回炉读书', p: '暨南大学管理学院,取得工商管理硕士学位,并推动校企联动,帛卉与暨大签约挂牌「EMBA 创新实践基地」。' },
+    { y: '2024', h: '扩建与新资质', p: '扩建彩妆粉单元与蜡单元,取得 HALAL 认证,以及儿童与眼部产品生产资质。' },
+    { y: '2025', h: '切入口腔护理 · 成立 AI 项目部', p: '新增口腔护理线(牙膏、漱口水、固体牙片)。同年成立 AI 项目部,把战略方向锁定为「草本美妆 AI 智造平台」—— 草本是根,AI 是翼。' },
+  ],
+  closing: {
+    h: '为什么这些年份对你有用',
+    p: `找代工厂的人真正想知道的是:这家厂在你这个品类上做了多久、踩过哪些坑、手上有没有你要的资质。
+        上面每一条都能核 —— 认证看原件、产线可以来看、种植基地一批一档可调档。
+        故事讲完了,剩下的就是把你的品类、目标市场、首批量级发过来。`,
+  },
+  cta: '把需求发给我们', ctaBtn: '发起询盘',
+  more: '相关页面',
+  links: [
+    { label: '能力与认证', href: '/capabilities/' },
+    { label: '原料溯源与种植基地', href: '/origin/' },
+    { label: '常见问题', href: '/faq/' },
+  ],
+} : {
+  eyebrow: 'Founder',
+  title: 'The eastern mission of one plant',
+  sub: 'Huang Guangwen · Founder of BIOSPHERE',
+  lede: `Making Chinese botanicals a language world beauty speaks — not a slogan, but a route walked since 2001.
+         Ordered by year; every entry lands on something specific.`,
+  videoTitle: 'Company film · 50 seconds',
+  videoNote: 'Cannot play video? The timeline below says the same thing.',
+  now: 'Now',
+  quotesTitle: 'Three things he says often',
+  quotes: [
+    'Partnerships end. Judgement does not.',
+    'A company’s ceiling is the founder’s ceiling.',
+    'We are not here to be the icing. We want to be the grain people cannot do without.',
+  ],
+  timeline: [
+    { y: '1973', h: 'Hong’an, Hubei', p: 'Born in the county known as China’s "first county of generals" — 232 of them. It left him a motto: better the world wrong me than I wrong the world.' },
+    { y: '2001', h: 'South to Guangzhou, starting as an apprentice', p: 'Arrived at 28 and began as a cosmetics technical apprentice — lab bench, formula sheets.' },
+    { y: '2004', h: 'International raw materials', p: 'Sold BASF and Evonik Degussa cosmetic raw materials. Others sold ingredients; he studied the technical system and the way multinationals are run.' },
+    { y: '2012', h: 'BIOSPHERE founded', p: '12,000 m² at the foot of Baiyun Mountain, Guangzhou. Two tracks from day one: own-brand building and OEM/ODM manufacturing.' },
+    { y: '2014', h: 'A Korean research partnership', p: 'A joint research centre inside the plant with a Korean institute. The partner later withdrew; the international way of working stayed.' },
+    { y: '2015', h: 'Passports for export', p: 'Trading arm established; ISO 22716 and FDA facility registration obtained the same year.' },
+    { y: '2017', h: 'From the lab to the land', p: 'Roses in Bijie, Guizhou; lavender in Kashgar, Xinjiang. Cooperating mountain plots connected extraction, fermentation and synthesis back to cultivation.' },
+    { y: '2019', h: 'Into Southeast Asia', p: 'Began manufacturing for brands entering Southeast Asia; goods produced and exported from the Guangzhou plant.' },
+    { y: '2020–2022', h: '1,150 SKUs in three years', p: 'Developed and produced 1,150 SKUs for clients. One then-unknown Indonesian brand reached number two in its TikTok category — the brand’s achievement; we made the product.' },
+    { y: '2023', h: 'Back to school', p: 'MBA from Jinan University’s School of Management, and an EMBA innovation practice base signed between the university and BIOSPHERE.' },
+    { y: '2024', h: 'New units, new credentials', p: 'Colour-cosmetics powder and wax units expanded; HALAL certification plus production credentials for children’s and eye-area products.' },
+    { y: '2025', h: 'Oral care, and an AI unit', p: 'Oral care added (toothpaste, mouthwash, solid tablets). An AI unit was formed and the strategy set: a herbal-beauty AI manufacturing platform. Botanicals are the root; AI is the wing.' },
+  ],
+  closing: {
+    h: 'Why these years matter to you',
+    p: `What a buyer actually wants to know is how long this plant has run your category, what it got wrong on the way,
+        and whether it holds the credentials you need. Every line above is checkable — certificates from the originals,
+        the lines open to visit, cultivation documented batch by batch.`,
+  },
+  cta: 'Send us your brief', ctaBtn: 'Send an enquiry',
+  more: 'Related',
+  links: [
+    { label: 'Capabilities & certification', href: '/capabilities/' },
+    { label: 'Botanical origin', href: '/origin/' },
+    { label: 'FAQ', href: '/faq/' },
+  ],
+};
+
+/* 视频真存在才挂 VideoObject。uploadDate 用素材交付日,不编一个更早的日期。 */
+const videoLd = {
+  '@context': 'https://schema.org',
+  '@type': 'VideoObject',
+  name: zh ? '帛卉 · 公司片' : 'BIOSPHERE · company film',
+  description: T.lede.replace(/\s+/g, ' ').trim(),
+  contentUrl: `${origin}${VIDEO}`,
+  thumbnailUrl: `${origin}${VIDEO_POSTER}`,
+  uploadDate: '2026-09-09',
+  duration: 'PT50S',
+  inLanguage: lang,
+  publisher: { '@type': 'Organization', name: site?.name ?? 'BIOSPHERE', url: origin },
+};
+const personLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: zh ? '黄光文' : 'Huang Guangwen',
+  jobTitle: zh ? '帛卉创始人' : 'Founder, BIOSPHERE',
+  worksFor: { '@type': 'Organization', name: site?.name ?? 'BIOSPHERE', url: origin },
+  alumniOf: { '@type': 'CollegeOrUniversity', name: zh ? '暨南大学管理学院' : 'School of Management, Jinan University' },
+  url: `${origin}${path}`,
+};
+const crumbs = breadcrumbJsonLd(origin, lang, path, uiT(lang as any)('nav.home'),
+  [{ label: zh ? '关于帛卉' : 'About', href: `${B}/about/` }, { label: T.eyebrow, href: path }]);
+const jsonLd = [
+  orgJsonLd(origin, site?.name ?? 'BIOSPHERE', lang, T.lede),
+  personLd, videoLd, crumbs,
+].filter(Boolean);
+
+const title = zh ? '黄光文 —— 帛卉创始人:从红安到 AI 智造的二十四年' : 'Huang Guangwen — founder of BIOSPHERE: twenty-four years';
+const desc = zh
+  ? '帛卉创始人黄光文的时间线:2001 广州学徒、2004 国际原料、2012 创办帛卉、2015 ISO 22716 与 FDA、2017 建种植基地、2019 进东南亚、2023 暨大 MBA、2025 成立 AI 项目部。'
+  : 'A checkable timeline: apprentice in 2001, international raw materials in 2004, BIOSPHERE founded 2012, ISO 22716 and FDA in 2015, cultivation from 2017, Southeast Asia in 2019, MBA in 2023, AI unit in 2025.';
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={site?.variant ?? 'v1'}
+  brand={site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={title} description={desc}
+  siteName={site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={site?.is_live === 1} brandColor={site?.brand_color} theme={site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={site?.name ?? '帛卉'}
+              siteNameZh={site?.tagline ?? ''} nav={shell.nav} />
+
+  <main id="main">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="sub">{T.sub}</p>
+      <p class="lede">{T.lede}</p>
+    </header>
+
+    <figure class="film">
+      <video controls preload="metadata" playsinline poster={VIDEO_POSTER} src={VIDEO}></video>
+      <figcaption>{T.videoTitle} · <span>{T.videoNote}</span></figcaption>
+    </figure>
+
+    <ol class="tl">
+      {T.timeline.map((s) => (
+        <li>
+          <span class="y">{s.y}</span>
+          <div class="c">
+            <h2>{s.h}</h2>
+            <p>{s.p}</p>
+          </div>
+        </li>
+      ))}
+      <li class="now">
+        <span class="y">{T.now}</span>
+        <div class="c"><h2>{T.closing.h}</h2><p>{T.closing.p}</p></div>
+      </li>
+    </ol>
+
+    <section class="quotes">
+      <h2>{T.quotesTitle}</h2>
+      <ul>{T.quotes.map((q) => <li>{q}</li>)}</ul>
+    </section>
+
+    <nav class="more" aria-label={T.more}>
+      <h2>{T.more}</h2>
+      <p>{T.links.map((l) => <a href={`${B}${l.href}`}>{l.label}</a>)}</p>
+    </nav>
+
+    <section class="cta">
+      <p>{T.cta}</p>
+      <a class="btn" href={`${B}/contact/`}>{T.ctaBtn}</a>
+    </section>
+  </main>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <script type="application/ld+json" set:html={ldJson(jsonLd)} is:inline />
+</BaseLayout>
+
+<style>
+  main { max-width: 52rem; margin: 0 auto; padding: clamp(2rem, 5vw, 4rem) clamp(1rem, 4vw, 3rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }
+  .hd { margin-bottom: clamp(1.75rem, 3.5vw, 2.5rem); }
+  .eyebrow { margin: 0 0 .75rem; font-size: .75rem; letter-spacing: .16em; text-transform: uppercase;
+             color: var(--ck-ink-faint); }
+  h1 { margin: 0 0 .5rem; font-size: clamp(1.9rem, 4.2vw, 2.9rem); line-height: 1.15;
+       letter-spacing: -.02em; text-wrap: balance; }
+  .sub { margin: 0 0 1rem; font-size: 1rem; color: var(--ck-accent); font-weight: 600; }
+  .lede { margin: 0; font-size: clamp(1rem, 1.6vw, 1.0625rem); line-height: 1.8; color: var(--ck-ink-soft); }
+
+  .film { margin: 0 0 clamp(2rem, 4vw, 3rem); }
+  .film video { width: 100%; aspect-ratio: 16 / 9; display: block; border-radius: var(--ck-radius);
+                background: #000; }
+  .film figcaption { margin-top: .625rem; font-size: .8125rem; color: var(--ck-ink-faint); }
+  .film figcaption span { color: var(--ck-ink-faint); opacity: .8; }
+
+  /* 时间线:年份靠左成一列,眼睛顺着年份往下扫就是一条路线 */
+  .tl { list-style: none; margin: 0; padding: 0; }
+  .tl li { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: 1.25rem;
+           padding: 1.125rem 0; border-top: 1px solid var(--ck-line); }
+  .tl li:first-child { border-top: 0; }
+  .tl .y { font-family: var(--ck-font-mono); font-size: .8125rem; font-weight: 600;
+           color: var(--ck-accent); letter-spacing: .02em; padding-top: .1875rem;
+           font-variant-numeric: tabular-nums; }
+  .tl h2 { margin: 0 0 .375rem; font-size: 1.0625rem; line-height: 1.4; letter-spacing: -.01em; }
+  .tl p { margin: 0; font-size: .9375rem; line-height: 1.8; color: var(--ck-ink-soft); }
+  .tl .now .c { padding: 1rem 1.125rem; border-radius: var(--ck-radius);
+                background: var(--ck-surface-alt); }
+
+  .quotes { margin-top: clamp(2rem, 4vw, 3rem); }
+  .quotes h2 { margin: 0 0 1rem; font-size: 1.0625rem; }
+  .quotes ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+  .quotes li { padding-inline-start: 1.125rem; border-inline-start: 2px solid var(--ck-accent);
+               font-size: 1rem; line-height: 1.75; color: var(--ck-ink); }
+
+  .more { margin-top: clamp(2rem, 4vw, 3rem); }
+  .more h2 { margin: 0 0 .75rem; font-size: 1.0625rem; }
+  .more p { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; margin: 0; }
+  .more a { font-size: .875rem; color: var(--ck-ink-soft); }
+
+  .cta { margin-top: clamp(2rem, 4vw, 3rem); display: flex; flex-wrap: wrap; align-items: center;
+         justify-content: space-between; gap: 1rem; padding: clamp(1.25rem, 3vw, 2rem);
+         border-radius: var(--ck-radius); background: var(--ck-surface-alt);
+         border: 1px solid var(--ck-line); }
+  .cta p { margin: 0; font-size: .9375rem; color: var(--ck-ink-soft); }
+  .btn { flex: none; display: inline-flex; padding: .6875rem 1.5rem; border-radius: 999px;
+         background: var(--ck-accent); color: #fff; text-decoration: none; font-weight: 600; font-size: .9375rem; }
+
+  @media (max-width: 40rem) {
+    .tl li { grid-template-columns: 1fr; gap: .375rem; }
+    .tl .y { padding-top: 0; }
+  }
+</style>

@@ -1,0 +1,255 @@
+---
+/**
+ * 品类集合页 —— /{lang}/collections/{cat}/
+ *
+ * 为什么单独做一套静态路径,而不是继续用 /portfolio/?cat=xxx:
+ * 查询参数页的 canonical 指回无参页,搜索引擎与 AI 引擎不会把它当成独立入口。
+ * 品类是采购最常用的检索词("面膜代工""防晒 OEM"),必须有可独立索引、
+ * 可被引用的落地页 —— 每页自带该品类的全部在售成品、可引用正文与 FAQ。
+ *
+ * 数据只取 products 表里 status=published 且 is_showcase=1 的产品,与 /portfolio/ 同源同口径。
+ * 文案里的数字只用站内既有事实(厂房/产线/配方数/认证),不编造。
+ */
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { memo } from '../../../lib/memo';
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { CAT_LABEL } from '../../../lib/catalog';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'en';
+const zh = lang.startsWith('zh');
+const cat = String(Astro.params.cat ?? '').toLowerCase();
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const siteId = shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai';
+const tSkip = uiT(lang as any)('a11y.skip');
+
+/* 白名单:只认 CAT_LABEL 里有展示名的品类码(含 haircare 这类库内在用、PRODUCT_CAT 未列的),
+   其余一律回产品总览 —— 避免任意 slug 生成页面,也不漏掉真实品类 */
+const CAT_OK = new Set(Object.keys(CAT_LABEL));
+if (!CAT_OK.has(cat)) return Astro.redirect(`/${lang}/portfolio/`, 302);
+
+const catLabel = CAT_LABEL[cat]?.[zh ? 0 : 1] ?? cat;
+
+let items: any[] = [];
+let catCounts: Array<{ category: string; n: number }> = [];
+if (db) {
+  try {
+    items = await memo(`collection:${siteId}:${lang}:${cat}`, 3600, async () => {
+      return ((await db.prepare(
+        `SELECT p.id, p.slug, p.category, p.moq, p.cover_media, p.updated_at, i.name, i.summary
+           FROM products p LEFT JOIN product_i18n i ON i.product_id = p.id AND i.lang = ?
+          WHERE p.site_id = ? AND p.status = 'published' AND p.is_showcase = 1 AND p.category = ?
+          ORDER BY p.sort_order, p.id DESC`,
+      ).bind(lang, siteId, cat).all().catch(() => ({ results: [] }))).results ?? []) as any[];
+    });
+    catCounts = await memo(`portfoliocat:${siteId}`, 3600, async () => {
+      const catRows = ((await db.prepare(
+        `SELECT category FROM products
+          WHERE site_id = ? AND status = 'published' AND is_showcase = 1`,
+      ).bind(siteId).all().catch(() => ({ results: [] }))).results ?? []) as any[];
+      const byCat = new Map<string, number>();
+      for (const r of catRows) byCat.set(r.category, (byCat.get(r.category) ?? 0) + 1);
+      return [...byCat.entries()].map(([category, n]) => ({ category, n })).sort((a, b) => b.n - a.n);
+    });
+  } catch { items = []; }
+}
+
+/* 空品类不产出薄页面,回总览 */
+if (!items.length) return Astro.redirect(`/${lang}/portfolio/`, 302);
+
+const B = `/${lang}`;
+const path = `/${lang}/collections/${cat}/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const n = items.length;
+/* 只链白名单内的品类,否则指向的集合页会 302 回总览 */
+const otherCats = catCounts.filter((c) => c.category !== cat && CAT_OK.has(c.category));
+
+const lastMod = items.reduce((m: string, p: any) => {
+  const v = String(p.updated_at ?? '').slice(0, 10);
+  return v > m ? v : m;
+}, '');
+
+const T = zh
+  ? {
+      crumbAll: '全部产品', eyebrow: '品类',
+      title: `${catLabel} OEM/ODM 代工 · ${n} 款成品`,
+      lede: `${catLabel}类化妆品的 OEM/ODM 代工:本站收录 ${n} 款已量产成品,起订量按品类与包材议定,支持配方、包材、香型与品牌定制。`,
+      introH: `关于${catLabel}代工`,
+      intro: [
+        `这一页的 ${n} 款${catLabel}产品都来自自有产线的量产记录,不是渲染图或概念稿。每款标注品类、规格与卖点,点击可看到该款的完整资料、图片与询盘入口。`,
+        `工厂位于广州,20,000 ㎡ 厂房、15 条自动化产线,在册配方 13,000+;持有 GMPC、ISO 22716:2007 与 HALAL 认证。${catLabel}的配方调整、包材选型(瓶型/材质/印刷/外盒)、香型与标签语言均可按品牌需求组合。`,
+        `采购流程:确认品类与目标市场 → 打样 → 样品签样 → 书面确认规格、起订量与交期 → 量产。具体起订量、样品费用与交期以书面确认为准。`,
+      ],
+      faqH: `${catLabel}采购常见问题`,
+      faq: [
+        { q: `${catLabel}的代工起订量是多少?`, a: `按具体品类与包材议定,每款卡片标注了参考起订量。批量与包材方案确定后以书面确认。` },
+        { q: `${catLabel}可以打样吗?多久出样?`, a: `可以打样。打样周期按品类与包材备料确认,以书面告知为准;样品签样后进入量产排程。` },
+        { q: `${catLabel}支持哪些定制?`, a: `配方调整、功效宣称、包材选型、香型、质地、容量与标签语言均可按品牌需求组合,支持 OEM 与 ODM 两种合作方式。` },
+        { q: `出口${catLabel}需要哪些合规文件?`, a: `工厂持有 GMPC、ISO 22716 与 HALAL 认证;出口可配合 FDA 注册、CPNP 通报及东南亚市场备案,具体适用文件按目标市场确认。` },
+      ],
+      otherH: '其他品类', ask: '没找到合适的款?告诉我们品类、目标市场与数量。', inq: '发起询盘',
+      empty: '该品类暂未上架成品。',
+      moq: '起订量按品类与包材议定（书面确认）', sample: '打样通常 5–14 天（书面确认）', sampleCta: '申请样品', more: '看详情',
+  }
+  : {
+      crumbAll: 'All products', eyebrow: 'Collection',
+      title: `${catLabel} OEM/ODM manufacturing · ${n} products`,
+      lede: `${catLabel} cosmetics OEM/ODM: ${n} mass-produced items on this page, with MOQ agreed per category and packaging, and full customization of formula, packaging, fragrance and brand.`,
+      introH: `About ${catLabel} manufacturing`,
+      intro: [
+        `All ${n} ${catLabel.toLowerCase()} items on this page come from real production runs on our own lines — not renders or concept sketches. Each card lists category, specs and selling points, and links to the full product page with images and an inquiry form.`,
+        `The factory is in Guangzhou: over 20,000 m² of manufacturing floor, 15 automated production lines and more than 13,000 formulations on file, certified to GMPC, ISO 22716:2007 and HALAL. For ${catLabel.toLowerCase()}, formula adjustments, packaging selection (bottle, material, print, carton), fragrance and label language can all be combined to your brand requirements.`,
+        `Process: confirm category and target market → sampling → sample sign-off → written confirmation of specs, MOQ and lead time → mass production. MOQ, sample fees and lead time are confirmed in writing.`,
+      ],
+      faqH: `${catLabel} buying FAQ`,
+      faq: [
+        { q: `What is the MOQ for ${catLabel.toLowerCase()}?`, a: `MOQ is agreed per category and packaging; each card shows a reference MOQ. It is confirmed in writing once quantity and packaging are set.` },
+        { q: `Can I get ${catLabel.toLowerCase()} samples, and how long does sampling take?`, a: `Yes. Sampling lead time depends on category and packaging availability and is confirmed in writing; mass production is scheduled after sample sign-off.` },
+        { q: `What can be customized for ${catLabel.toLowerCase()}?`, a: `Formula adjustments, efficacy claims, packaging selection, fragrance, texture, volume and label language can be combined to your brand requirements, under either OEM or ODM.` },
+        { q: `Which compliance documents are available for exporting ${catLabel.toLowerCase()}?`, a: `The factory holds GMPC, ISO 22716 and HALAL certifications, and supports FDA registration, CPNP notification and Southeast Asian market filings. Applicable documents are confirmed per target market.` },
+      ],
+      otherH: 'Other categories', ask: 'Nothing quite right? Tell us the category, target market and quantity.', inq: 'Send an inquiry',
+      empty: 'No products in this category yet.',
+      moq: 'MOQ agreed per category and packaging (confirmed in writing)', sample: 'Sampling typically 5–14 days (confirmed in writing)', sampleCta: 'Request sample', more: 'Details',
+  };
+
+const listItems = items.map((p: any, i: number) => ({
+  '@type': 'ListItem', position: i + 1,
+  item: {
+    '@type': 'Product',
+    name: p.name ?? p.slug,
+    url: `${origin}${B}/product/${p.slug}/`,
+    ...(p.cover_media ? { image: `${origin}/media/${p.cover_media}` } : {}),
+    category: catLabel,
+  },
+}));
+
+const jsonLd = ldJson({
+  '@context': 'https://schema.org',
+  '@graph': [{
+    '@type': 'CollectionPage', '@id': `${origin}${path}#collection`,
+    name: T.title, description: T.lede, url: `${origin}${path}`,
+    ...(lastMod ? { dateModified: lastMod } : {}),
+    isPartOf: { '@type': 'WebSite', '@id': `${origin}/#website` },
+    mainEntity: { '@type': 'ItemList', numberOfItems: listItems.length, itemListElement: listItems },
+  }, {
+    '@type': 'FAQPage', '@id': `${origin}${path}#faq`,
+    mainEntity: T.faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+  }, {
+    '@type': 'BreadcrumbList', '@id': `${origin}${path}#breadcrumb`,
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}${B}/` },
+      { '@type': 'ListItem', position: 2, name: T.crumbAll, item: `${origin}${B}/portfolio/` },
+      { '@type': 'ListItem', position: 3, name: catLabel, item: `${origin}${path}` },
+    ],
+  }],
+});
+---
+<BaseLayout locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={siteId}
+  title={T.title} description={T.lede} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main" class="cl">
+    <script type="application/ld+json" set:html={jsonLd} />
+    <nav class="crumb"><a href={`${B}/portfolio/`}>← {T.crumbAll}</a> / <span>{catLabel}</span></nav>
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+    </header>
+
+    {otherCats.length > 0 && (
+      <nav class="chips" aria-label={T.otherH}>
+        <span class="chips-l">{T.otherH}:</span>
+        {otherCats.map((c) => (
+          <a href={`${B}/collections/${c.category}/`}>{CAT_LABEL[c.category]?.[zh ? 0 : 1] ?? c.category}（{c.n}）</a>
+        ))}
+      </nav>
+    )}
+
+    <section class="intro">
+      <h2>{T.introH}</h2>
+      {T.intro.map((p) => <p>{p}</p>)}
+    </section>
+
+    <ul class="grid">
+      {items.map((p, idx) => (
+        <li>
+          <article class="card">
+            <a class="card-main" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>
+              {p.cover_media
+                ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="600" loading={idx < 6 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" />
+                : <div class="ph" />}
+              <h2>{p.name ?? p.slug}</h2>
+              {p.summary && <p>{p.summary}</p>}
+            </a>
+            <p class="meta">{catLabel} · {p.moq ? `${T.moq}: ${p.moq}` : T.moq} · {T.sample}</p>
+            <div class="cta-row">
+              <a class="more" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>{T.more} →</a>
+              <a class="sample" href={`${B}/rfq/?product_id=${encodeURIComponent(String(p.id ?? ''))}&about=${encodeURIComponent(String(p.name ?? p.slug))}&category=${encodeURIComponent(cat)}`}>{T.sampleCta}</a>
+            </div>
+          </article>
+        </li>
+      ))}
+    </ul>
+
+    <section class="faq">
+      <h2>{T.faqH}</h2>
+      {T.faq.map((f) => (
+        <details>
+          <summary>{f.q}</summary>
+          <p>{f.a}</p>
+        </details>
+      ))}
+    </section>
+
+    <p class="ask">{T.ask} <a href={`${B}/contact/?about=${encodeURIComponent(catLabel)}&type=inquiry`}>{T.inq}</a></p>
+  </main>
+  <button id="to-top" class="to-top" aria-label={zh ? '返回顶部' : 'Back to top'} title={zh ? '返回顶部' : 'Back to top'}>↑</button>
+  <SiteFooter locale={lang} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  .cl { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .crumb { margin: 0 0 1rem; font-size: .875rem; opacity: .75; }
+  .crumb a { color: inherit; }
+  .hd { display: grid; gap: .625rem; margin-bottom: 1.25rem; max-width: 62rem; }
+  .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: clamp(1.5rem, 2.6vw, 2.125rem); line-height: 1.26; margin: 0; }
+  .lede { font-size: 1rem; line-height: 1.75; opacity: .85; margin: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 0 0 1.25rem; }
+  .chips-l { font-size: .875rem; opacity: .6; }
+  .chips a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 .75rem; border-radius: 999px;
+             border: 1px solid var(--ck-line, rgba(0,0,0,.14)); text-decoration: none; color: inherit; font-size: .875rem; }
+  .intro { max-width: 62rem; margin: 0 0 1.5rem; }
+  .intro h2 { font-size: 1.125rem; margin: 0 0 .5rem; }
+  .intro p { font-size: .9375rem; line-height: 1.8; opacity: .85; margin: 0 0 .625rem; }
+  .grid { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+  .card { display: grid; gap: .5rem; height: 100%; padding: .875rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; text-decoration: none; color: inherit; }
+  .card img, .ph { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: var(--ck-surface-alt, #f3f3f1); }
+  .card h2 { font-size: 1.0625rem; margin: 0; line-height: 1.4; }
+  .card p { margin: 0; font-size: .9rem; line-height: 1.6; opacity: .75; }
+  .card small { margin-top: auto; opacity: .65; }
+  .faq { max-width: 62rem; margin: 2rem 0 0; }
+  .faq h2 { font-size: 1.125rem; margin: 0 0 .5rem; }
+  .faq details { border-top: 1px solid var(--ck-line, rgba(0,0,0,.12)); padding: .75rem 0; }
+  .faq summary { cursor: pointer; font-weight: 600; font-size: .9688rem; }
+  .faq p { margin: .5rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .82; }
+  .ask { margin: 1.5rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
+  @media (min-width: 900px) { .cl { padding: 2rem 1.5rem 4rem; } }
+  .card { display: grid; gap: .5rem; height: 100%; padding: .875rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; }
+  .card-main { display: grid; gap: .5rem; text-decoration: none; color: inherit; }
+  .card .meta { margin: 0; font-size: .8125rem; line-height: 1.5; opacity: .65; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+  .cta-row .more { font-size: .8125rem; opacity: .75; text-decoration: none; color: inherit; }
+  .cta-row .sample { display: inline-flex; font-size: .8125rem; font-weight: 600; padding: .25rem .625rem; border-radius: 999px; border: 1px solid var(--ck-accent, #333); color: var(--ck-accent, #333); text-decoration: none; }
+</style>

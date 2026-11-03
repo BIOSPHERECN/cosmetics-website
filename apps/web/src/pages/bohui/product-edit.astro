@@ -1,0 +1,345 @@
+---
+/**
+ * 产品一页搞定(A9 · 2026-09-23)
+ *
+ * 创始人:「网站要好像 WordPress、Shopify 那么容易修改,产品上传也非常的轻松容易操作。」
+ * 之前加一个产品要跑两个页面:先去媒体库传图,再回产品页的弹窗里勾图、手写全部文案。
+ * 这一页把它收成一件事:名称 + 品类 + 拖图 → 「AI 帮我填」→ 存草稿 / 预览 / 发布。
+ *
+ * 写库全走现有 /api/admin/product(create / save / images / ai-fill / internal)与 /api/admin/upload,
+ * 这里不另起接口。成本与配方比例只对研发 / 财务 / 老板渲染,接口另有同一道闸。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard, canProductInternal } from '../../lib/guard';
+import { PRODUCT_CAT as CAT } from '../../lib/catalog';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+
+const id = Number(new URL(Astro.request.url).searchParams.get('id')) || 0;
+let p: any = null, imgs: number[] = [], sp: any = {}, inner: any = null;
+if (id) {
+  p = await c.db.prepare(
+    `SELECT p.*, i.name, i.summary, i.description, i.specs_json FROM products p
+       LEFT JOIN product_i18n i ON i.product_id = p.id AND i.lang = 'zh-cn'
+      WHERE p.id = ? AND p.site_id = ?`,
+  ).bind(id, c.tenant.siteId).first<any>();
+  if (!p) return Astro.redirect('/bohui/products/');
+  const { results } = await c.db.prepare(`SELECT media_id FROM product_media WHERE product_id=? ORDER BY sort_order`).bind(id).all<any>();
+  imgs = (results ?? []).map((r: any) => r.media_id);
+  if (!imgs.length && p.cover_media) imgs = [p.cover_media];
+  try { sp = JSON.parse(p.specs_json || '{}') || {}; } catch { sp = {}; }
+}
+const canIn = canProductInternal(c.sess.lab_role);
+if (canIn && id) {
+  inner = await c.db.prepare(`SELECT cost, formula FROM product_internal WHERE product_id=?`).bind(id).first<any>().catch(() => null);
+}
+const points: { title: string; body: string }[] = Array.isArray(sp.tech) && sp.tech.length ? sp.tech : [{ title: '', body: '' }, { title: '', body: '' }, { title: '', body: '' }];
+const { results: lib } = await c.db.prepare(
+  `SELECT id FROM media WHERE mime LIKE 'image/%' ORDER BY id DESC LIMIT 60`,
+).all<any>();
+const status = p?.status ?? 'draft';
+---
+
+<AdminShell title={p ? `编辑产品 · ${p.name ?? ''}` : '新建产品'} active="products" email={c.sess.email} tenant={c.tenant}>
+  <nav class="crumb"><a href="/bohui/products/">产品与剂型</a> › <b>{p ? p.name : '新建产品'}</b></nav>
+  <h1>{p ? '编辑产品' : '新建产品'}</h1>
+  <p class="lead">带 <b class="req">*</b> 的三项填好就能存。其余的点「AI 帮我填」,看一眼再改。只写中文,其它语种由翻译中心自动补。</p>
+
+  <div class="wrap" id="app" data-id={id} data-slug={p?.slug ?? ''} data-status={status} data-canin={canIn ? '1' : ''}>
+    <div class="main">
+      <section class="box">
+        <label class="f">产品名称 <b class="req">*</b>
+          <input id="name" maxlength="60" value={p?.name ?? ''} placeholder="如:积雪草舒缓修护精华" />
+        </label>
+        <label class="f">品类 <b class="req">*</b>
+          <select id="category">
+            {Object.entries(CAT).map(([k, v]) => <option value={k} selected={(p?.category ?? 'skincare') === k}>{v}</option>)}
+          </select>
+        </label>
+
+        <div class="f">产品图片 <b class="req">*</b> <span class="hint-in">第一张是封面,拖动可调顺序</span></div>
+        <div id="drop" class="drop">
+          <div id="thumbs" class="thumbs">
+            {imgs.map((m) => (
+              <figure class="th" draggable="true" data-mid={m}>
+                <img src={`/media/${m}`} alt="" /><button type="button" class="rm" aria-label="移除">✕</button>
+              </figure>
+            ))}
+          </div>
+          <p class="drop-t">把图片拖到这里,或 <label class="pick">点这里选图<input id="pick" type="file" accept="image/*" multiple hidden /></label>
+            <span class="hint-in">· 手机原图也行,会自动压缩</span></p>
+          <details class="lib">
+            <summary>从媒体库里挑已有的图</summary>
+            <div class="libgrid">
+              {lib.map((m: any) => <button type="button" class="libi" data-mid={m.id}><img src={`/media/${m.id}`} alt="" loading="lazy" /></button>)}
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="box">
+        <div class="aihd">
+          <button type="button" id="ai" class="btn pri">✨ AI 帮我填</button>
+          <span id="aimsg" class="hint-in">根据名称、品类和第一张图,写好卖点、描述和搜索标题</span>
+        </div>
+        <label class="f">搜索标题 <span class="hint-in">显示在搜索结果与浏览器标签上,留空就用「名称 | 品类」</span>
+          <input id="seoTitle" maxlength="60" value={sp.seo_title ?? ''} />
+        </label>
+        <label class="f">一句话简介 <span class="hint-in">也是搜索结果里的摘要,留空自动生成</span>
+          <textarea id="summary" rows="2" maxlength="200">{p?.summary ?? ''}</textarea>
+        </label>
+        <div class="f">卖点</div>
+        <div id="points">
+          {points.map((x) => (
+            <div class="pt"><input class="pt-t" maxlength="24" placeholder="卖点(≤12 字)" value={x.title} />
+              <input class="pt-b" maxlength="200" placeholder="一句说明" value={x.body} />
+              <button type="button" class="rm2" aria-label="删掉这条">✕</button></div>
+          ))}
+        </div>
+        <button type="button" id="addpt" class="btn">＋ 加一条卖点</button>
+        <label class="f">详细描述
+          <textarea id="description" rows="6" maxlength="2000">{p?.description ?? ''}</textarea>
+        </label>
+      </section>
+
+      <details class="box more">
+        <summary>更多设置(一般不用动)</summary>
+        <label class="f">网址标识 <span class="hint-in">{p ? '建好后不能改,改了老链接会失效' : '留空自动生成,只能小写字母、数字、连字符'}</span>
+          <input id="slug" pattern="[a-z0-9-]*" value={p?.slug ?? ''} disabled={!!p} placeholder="如 centella-serum" />
+        </label>
+        <label class="f">起订量说明 <span class="hint-in">写说明不写死数字,口径以「工厂口径」页为准</span>
+          <input id="moq" maxlength="40" value={p?.moq ?? ''} />
+        </label>
+        <label class="f">排序 <span class="hint-in">数字小的排前面</span><input id="sortOrder" type="number" value={p?.sort_order ?? 0} /></label>
+        <label class="chk"><input id="featured" type="checkbox" checked={!!p?.is_featured} /> 首页推荐</label>
+        <label class="chk"><input id="showcase" type="checkbox" checked={!!p?.is_showcase} /> 成熟产品展示(过往代工成品)</label>
+      </details>
+
+      {canIn && (
+        <section class="box secret">
+          <h2>内部 · 只有研发、财务、老板看得到</h2>
+          <label class="f">成本说明 <span class="hint-in">只写财务确认过的数,不估算</span>
+            <textarea id="cost" rows="2">{inner?.cost ?? ''}</textarea>
+          </label>
+          <label class="f">配方比例 / 配方编号
+            <textarea id="formula" rows="3">{inner?.formula ?? ''}</textarea>
+          </label>
+        </section>
+      )}
+    </div>
+
+    <aside class="side">
+      <div class="box sticky">
+        <p class="st">状态:<span id="stpill" class:list={['pill', status === 'published' ? 'p-ok' : 'p-wait']}>{status === 'published' ? '已发布' : '草稿'}</span></p>
+        <button type="button" id="save" class="btn wide">{status === 'published' ? '保存修改' : '存草稿'}</button>
+        <button type="button" id="preview" class="btn wide">预览</button>
+        <button type="button" id="publish" class="btn pri wide">{status === 'published' ? '下架(转草稿)' : '发布'}</button>
+        <p id="msg" class="msg"></p>
+        <p class="hint-in">草稿前台看不到;预览只有登录后台的人能打开。</p>
+      </div>
+    </aside>
+  </div>
+</AdminShell>
+
+<style>
+  .crumb { font-size: .8125rem; color: var(--ad-faint); margin-bottom: .5rem; }
+  .crumb a { color: inherit; }
+  .req { color: var(--ad-bad); }
+  .wrap { display: grid; grid-template-columns: minmax(0, 1fr) 16rem; gap: 1.25rem; align-items: start; max-width: 64rem; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
+  .box { background: var(--ad-panel, #fff); border: 1px solid var(--ad-line); border-radius: 10px; padding: 1.125rem 1.25rem; margin-bottom: 1rem; }
+  .box h2 { font-size: .9375rem; }
+  .f { display: block; font-size: .875rem; font-weight: 600; margin: .875rem 0 .375rem; }
+  .f:first-child { margin-top: 0; }
+  .f input, .f select, .f textarea { display: block; width: 100%; margin-top: .375rem; font-weight: 400; font-size: .875rem; }
+  .hint-in { font-size: .75rem; font-weight: 400; color: var(--ad-faint); }
+  .drop { border: 2px dashed var(--ad-line); border-radius: 10px; padding: .875rem; }
+  .drop.over { border-color: var(--ad-accent); background: var(--ad-accent-soft); }
+  .drop-t { font-size: .875rem; margin: .5rem 0 0; }
+  .pick { color: var(--ad-accent); cursor: pointer; text-decoration: underline; }
+  .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); gap: .625rem; }
+  .thumbs:empty { display: none; }
+  .th { position: relative; margin: 0; cursor: grab; }
+  .th img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; display: block; background: var(--ad-sunk); }
+  .th:first-child::after { content: '封面'; position: absolute; left: .375rem; bottom: .375rem; font-size: .75rem;
+    background: var(--ad-accent); color: #fff; padding: .0625rem .375rem; border-radius: 4px; }
+  .th.bad img { outline: 2px solid var(--ad-bad); }
+  .th.busy img { opacity: .4; }
+  .th .cap { position: absolute; inset: auto 0 .375rem 0; text-align: center; font-size: .75rem; }
+  .rm, .rm2 { border: 0; background: rgb(0 0 0 / .55); color: #fff; border-radius: 50%; width: 1.5rem; height: 1.5rem;
+    font-size: .75rem; cursor: pointer; line-height: 1; }
+  .rm { position: absolute; top: .25rem; right: .25rem; }
+  .rm2 { background: transparent; color: var(--ad-faint); flex: none; }
+  .lib summary { font-size: .8125rem; color: var(--ad-accent); cursor: pointer; margin-top: .625rem; }
+  .libgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr)); gap: .375rem; max-height: 14rem; overflow: auto; margin-top: .5rem; }
+  .libi { padding: 0; border: 1px solid var(--ad-line); border-radius: 6px; background: none; cursor: pointer; }
+  .libi img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 5px; display: block; }
+  .aihd { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin-bottom: .25rem; }
+  .pt { display: flex; gap: .5rem; margin-bottom: .5rem; align-items: center; }
+  .pt-t { flex: 0 0 11rem; font-size: .875rem; }
+  .pt-b { flex: 1; font-size: .875rem; }
+  .more summary { font-size: .875rem; font-weight: 600; cursor: pointer; }
+  .chk { display: flex; gap: .5rem; align-items: center; font-size: .875rem; margin-top: .75rem; }
+  .secret { border-color: #EFDCB6; background: var(--ad-warn-soft); }
+  .sticky { position: sticky; top: 1rem; }
+  .st { font-size: .875rem; margin: 0 0 .75rem; }
+  .wide { display: block; width: 100%; margin-bottom: .5rem; font-size: .875rem; }
+  .msg { font-size: .875rem; min-height: 1.3em; margin: .25rem 0 .5rem; }
+  .msg.bad { color: var(--ad-bad); }
+</style>
+
+<script is:inline>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const app = $('#app'), thumbs = $('#thumbs'), msg = $('#msg');
+  let id = Number(app.dataset.id) || 0, slug = app.dataset.slug, status = app.dataset.status;
+  const say = (t, bad) => { msg.textContent = t; msg.className = 'msg' + (bad ? ' bad' : ''); };
+  const post = (b) => fetch('/api/admin/product', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) })
+    .then((r) => r.json()).catch(() => ({ ok: false, msg: '网络断了,稍后再试' }));
+
+  /* ── 图片:浏览器端压缩(长边 1600、WebP)→ 现有上传接口 → 缩略图从 /media/{id} 回读,读不到就标红 ── */
+  async function shrink(file) {
+    if (file.type === 'image/svg+xml') return { blob: file };
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);
+    const cv = new OffscreenCanvas(w, h);
+    cv.getContext('2d').drawImage(bmp, 0, 0, w, h); bmp.close();
+    let q = 0.82, blob = await cv.convertToBlob({ type: 'image/webp', quality: q });
+    while (blob.size > 900000 && q > 0.4) { q -= 0.12; blob = await cv.convertToBlob({ type: 'image/webp', quality: q }); }
+    return { blob: new File([blob], file.name.replace(/\.\w+$/, '') + '.webp', { type: 'image/webp' }), w, h };
+  }
+  function tile(mid) {
+    const f = document.createElement('figure');
+    f.className = 'th'; f.draggable = true;
+    f.innerHTML = '<img alt=""><button type="button" class="rm" aria-label="移除">✕</button>';
+    if (mid) { f.dataset.mid = mid; f.querySelector('img').src = '/media/' + mid; }
+    thumbs.appendChild(f); watch(f); return f;
+  }
+  function watch(f) {
+    const img = f.querySelector('img');
+    img.addEventListener('error', () => { f.classList.add('bad'); say('有图片没读出来(红框),删掉重传一次', true); });
+  }
+  thumbs.querySelectorAll('.th').forEach(watch);
+  async function upload(files) {
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue;
+      const f = tile(null); f.classList.add('busy');
+      f.insertAdjacentHTML('beforeend', '<span class="cap">压缩中…</span>');
+      try {
+        const r0 = await shrink(file);
+        f.querySelector('.cap').textContent = '上传中…';
+        const fd = new FormData();
+        fd.append('file', r0.blob); fd.append('folder', 'products');
+        if (r0.w) { fd.append('width', r0.w); fd.append('height', r0.h); }
+        const d = await fetch('/api/admin/upload', { method: 'POST', body: fd }).then((r) => r.json());
+        if (!d.ok) throw new Error(d.msg);
+        f.dataset.mid = d.id; f.querySelector('img').src = '/media/' + d.id;
+        f.classList.remove('busy'); f.querySelector('.cap').remove();
+      } catch (e) { f.remove(); say((file.name || '图片') + ' 没传上:' + (e.message || ''), true); }
+    }
+  }
+  const drop = $('#drop');
+  ['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (e) => { if (e.dataTransfer?.types?.includes('Files')) { e.preventDefault(); drop.classList.add('over'); } }));
+  ['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, () => drop.classList.remove('over')));
+  drop.addEventListener('drop', (e) => { if (e.dataTransfer.files.length) { e.preventDefault(); upload([...e.dataTransfer.files]); } });
+  $('#pick').addEventListener('change', (e) => { upload([...e.target.files]); e.target.value = ''; });
+  document.querySelectorAll('.libi').forEach((b) => b.addEventListener('click', () => {
+    if (!thumbs.querySelector(`.th[data-mid="${b.dataset.mid}"]`)) tile(b.dataset.mid);
+  }));
+  thumbs.addEventListener('click', (e) => { if (e.target.classList.contains('rm')) e.target.closest('.th').remove(); });
+  /* 拖动调序:原生 HTML5 拖放,拖到谁身上就插到谁前面 */
+  let dragging = null;
+  thumbs.addEventListener('dragstart', (e) => { dragging = e.target.closest('.th'); });
+  thumbs.addEventListener('dragover', (e) => {
+    const t = e.target.closest('.th');
+    if (!dragging || !t || t === dragging) return;
+    e.preventDefault();
+    const after = [...thumbs.children].indexOf(t) > [...thumbs.children].indexOf(dragging);
+    thumbs.insertBefore(dragging, after ? t.nextSibling : t);
+  });
+  thumbs.addEventListener('dragend', () => { dragging = null; });
+  const mediaIds = () => [...thumbs.querySelectorAll('.th[data-mid]:not(.bad)')].map((f) => Number(f.dataset.mid));
+
+  /* ── 卖点行 ── */
+  const addPt = (t = '', b = '') => {
+    const d = document.createElement('div'); d.className = 'pt';
+    d.innerHTML = '<input class="pt-t" maxlength="24" placeholder="卖点(≤12 字)"><input class="pt-b" maxlength="200" placeholder="一句说明"><button type="button" class="rm2" aria-label="删掉这条">✕</button>';
+    d.querySelector('.pt-t').value = t; d.querySelector('.pt-b').value = b;
+    $('#points').appendChild(d);
+  };
+  $('#addpt').addEventListener('click', () => addPt());
+  $('#points').addEventListener('click', (e) => { if (e.target.classList.contains('rm2')) e.target.closest('.pt').remove(); });
+  const points = () => [...document.querySelectorAll('.pt')].map((d) => ({ title: d.querySelector('.pt-t').value.trim(), body: d.querySelector('.pt-b').value.trim() })).filter((x) => x.title || x.body);
+
+  /* ── AI 帮我填:第一张图缩到 512 送去看,名称 + 品类一起给模型;结果只回填表单,不入库 ── */
+  function firstImage() {
+    const img = thumbs.querySelector('.th[data-mid]:not(.bad) img');
+    if (!img || !img.complete || !img.naturalWidth) return '';
+    const k = Math.min(1, 512 / Math.max(img.naturalWidth, img.naturalHeight));
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    try { return cv.toDataURL('image/jpeg', 0.8); } catch { return ''; }
+  }
+  $('#ai').addEventListener('click', async () => {
+    const name = $('#name').value.trim();
+    if (!name) { say('先填产品名称', true); $('#name').focus(); return; }
+    const filled = $('#summary').value.trim() || $('#description').value.trim() || points().length;
+    if (filled && !confirm('AI 会覆盖现在的简介、卖点、描述和搜索标题,继续?')) return;
+    const btn = $('#ai'); btn.disabled = true; $('#aimsg').textContent = 'AI 正在写,大约 10–30 秒…';
+    const r = await post({ action: 'ai-fill', name, category: $('#category').value, image: firstImage() });
+    btn.disabled = false;
+    if (!r.ok) { $('#aimsg').textContent = r.msg || 'AI 没响应,再点一次'; return; }
+    $('#seoTitle').value = r.seoTitle || ''; $('#summary').value = r.summary || ''; $('#description').value = r.description || '';
+    $('#points').innerHTML = ''; (r.points || []).forEach((x) => addPt(x.title, x.body));
+    $('#aimsg').textContent = '写好了,看一眼、改一改再存。';
+  });
+
+  /* ── 存 / 预览 / 发布 ── */
+  async function save(nextStatus) {
+    const name = $('#name').value.trim();
+    if (!name) { say('产品名称没填', true); $('#name').focus(); return false; }
+    if (!mediaIds().length) { say('至少放一张产品图', true); return false; }
+    if (thumbs.querySelector('.th.busy')) { say('图片还在上传,等一下', true); return false; }
+    const base = {
+      name, category: $('#category').value, moq: $('#moq').value.trim(), sortOrder: Number($('#sortOrder').value) || 0,
+      summary: $('#summary').value.trim(), description: $('#description').value.trim(),
+      featured: $('#featured').checked, showcase: $('#showcase').checked,
+    };
+    say('保存中…');
+    if (!id) {
+      const r = await post({ action: 'create', slug: $('#slug').value.trim(), ...base });
+      if (!r.ok) { say(r.msg || '没存上', true); return false; }
+      id = r.id; slug = r.slug; app.dataset.id = id;
+      history.replaceState(null, '', '?id=' + id);
+      $('#slug').value = slug; $('#slug').disabled = true;
+    }
+    const r1 = await post({ action: 'save', id, ...base, status: nextStatus, points: points(), seoTitle: $('#seoTitle').value });
+    if (!r1.ok) { say(r1.msg || '没存上', true); return false; }
+    const r2 = await post({ action: 'images', id, mediaIds: mediaIds() });
+    if (!r2.ok) { say('文字已存,图片没存上:' + (r2.msg || ''), true); return false; }
+    if (app.dataset.canin) {
+      const r3 = await post({ action: 'internal', id, cost: $('#cost').value, formula: $('#formula').value });
+      if (!r3.ok) { say('成本 / 配方没存上:' + (r3.msg || ''), true); return false; }
+    }
+    status = nextStatus;
+    const pub = status === 'published';
+    $('#stpill').textContent = pub ? '已发布' : '草稿'; $('#stpill').className = 'pill ' + (pub ? 'p-ok' : 'p-wait');
+    $('#save').textContent = pub ? '保存修改' : '存草稿';
+    $('#publish').textContent = pub ? '下架(转草稿)' : '发布';
+    say(pub ? '已发布,前台几分钟内可见' : '已存为草稿');
+    return true;
+  }
+  $('#save').addEventListener('click', () => save(status));
+  $('#publish').addEventListener('click', () => save(status === 'published' ? 'draft' : 'published'));
+  $('#preview').addEventListener('click', async () => {
+    const w = window.open('about:blank', '_blank');   // 先开窗:等保存回来再开会被浏览器当弹窗拦掉
+    if (!(await save(status))) { w?.close(); return; }
+    if (w) w.location = '/zh-cn/product/' + slug + '/?preview=1';
+  });
+})();
+</script>

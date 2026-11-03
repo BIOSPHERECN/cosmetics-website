@@ -1,0 +1,347 @@
+---
+/**
+ * AI 接入网关。
+ *
+ * 解决的问题很具体:手上有 9 家可用的模型 key,散在各处。
+ * 每接一个新工具(公众号排版、客服机器人、选品脚本)都要把 9 把 key 抄一遍,
+ * 还要各自实现一遍「这家挂了换下一家」。
+ *
+ * 网关把它收成一个地址 + 一把 key,形状照抄 OpenAI ——
+ * 任何支持 OpenAI 的客户端改一行 base_url 就能用,降级逻辑复用站内那套。
+ *
+ * 安全上的一条线:上游那 9 把 key 永远不出这台服务器。
+ * 发出去的是网关 key,随时可以吊销;上游 key 泄露了要挨家重开,
+ * 其中几家的免费额度还是不可再生的。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const isAdmin = c.sess.role === 'admin';
+
+const { results: keys } = await c.db.prepare(
+  `SELECT k.*,
+          (SELECT COUNT(*) FROM gateway_calls g WHERE g.key_id = k.id AND g.at > datetime('now','-1 hour')) AS last_hour,
+          (SELECT COUNT(*) FROM gateway_calls g WHERE g.key_id = k.id AND g.at > datetime('now','-1 day')) AS last_day,
+          (SELECT COUNT(*) FROM gateway_calls g WHERE g.key_id = k.id AND g.ok = 0 AND g.at > datetime('now','-1 day')) AS fail_day
+     FROM gateway_keys k ORDER BY k.id DESC`,
+).all<any>();
+
+const { results: fleet } = await c.db.prepare(
+  `SELECT id, label, model, tier, is_free FROM providers
+    WHERE enabled = 1 AND length(api_keys) > 0 ORDER BY tier, id`,
+).all<any>();
+
+/* 控制面(0.3.1):上游 key 一把一行,帛卉电脑端登录时从 gateway.biosphere-ai.com/v1/keys 拉走直连官方模型;
+   限流/额度尽由客户端上报,这里冷却或判死,下次拉取不再下发。换 key 在这里改,不用重发安装包。 */
+const nowS = Math.floor(Date.now() / 1000);
+const { results: upKeys } = await c.db.prepare(`SELECT * FROM gw_keys WHERE project = 'bohui' ORDER BY account, priority, id`).all<any>();
+const { results: roles } = await c.db.prepare(`SELECT role, provider_id FROM gw_roles WHERE project = 'bohui'`).all<any>();
+const roleOf = Object.fromEntries(roles.map((r: any) => [r.role, r.provider_id]));
+const ROLES: [string, string][] = [['chat.primary', '对话·主'], ['chat.backup', '对话·备'], ['image.primary', '出图·主'], ['image.backup', '出图·备'], ['video.primary', '出视频']];
+const { results: upEvents } = await c.db.prepare(`SELECT * FROM gw_events WHERE project = 'bohui' AND kind <> 'skill_used' ORDER BY id DESC LIMIT 20`).all<any>();
+/* 09-21 技能召唤 7 天榜(电脑端 0.3.8 起上报;只记不评,后面再加采纳率) */
+let skillUse: any[] = [];
+try { skillUse = ((await c.db.prepare(`SELECT model AS skill, dept, COUNT(*) n FROM gw_events WHERE project = 'bohui' AND kind = 'skill_used' AND ts >= datetime('now', '-7 days') GROUP BY model, dept ORDER BY n DESC LIMIT 30`).all<any>()).results ?? []) as any[]; } catch { /* 表未建 */ }
+const mask = (k: string) => `${k.slice(0, 8)}…${k.slice(-4)}`;
+const bj = (t: number) => new Date(t * 1000 + 8 * 3600_000).toISOString().slice(5, 16).replace('T', ' ');
+const KIND: Record<string, string> = { ratelimit: '限流', quota: '额度尽', auth: '密钥无效', upstream: '上游故障', model_missing: '模型不存在', other: '其他', paused: '暂停', resumed: '启用', uncool: '解冷', added: '新增', deleted: '删除', role: '改线路' };
+
+const { results: recent } = await c.db.prepare(
+  `SELECT g.*, k.name AS key_name FROM gateway_calls g
+     LEFT JOIN gateway_keys k ON k.id = g.key_id
+    ORDER BY g.id DESC LIMIT 30`,
+).all<any>();
+
+const stat = (await c.db.prepare(
+  `SELECT COUNT(*) AS total,
+          SUM(CASE WHEN ok = 0 THEN 1 ELSE 0 END) AS fails,
+          AVG(ms) AS avg_ms
+     FROM gateway_calls WHERE at > datetime('now','-7 day')`,
+).first<any>()) ?? { total: 0, fails: 0, avg_ms: 0 };
+
+/* 接入地址要给的是**这个站自己的域名**,不是后台当前所在的地址。
+   Tenant 上没有 domain 字段(只有 siteId/siteName),所以查一次 sites 表。
+   写死或者用 location.host 都会在后台走别的域名时给出错误的示例。 */
+const dom = (await c.db.prepare(`SELECT domain FROM sites WHERE id = ?`)
+  .bind(c.tenant.siteId).first<{ domain: string }>())?.domain ?? new URL(Astro.request.url).host;
+const base = `https://${dom}`;
+---
+
+<AdminShell title="AI 接入网关" active="gateway" email={c.sess.email} tenant={c.tenant}>
+  <h1>AI 接入网关</h1>
+  <p class="lead">
+    对外一个地址、一把 key,背后是舰队里 {fleet.length} 家模型的自动降级。
+    形状与 OpenAI 完全一致 —— 任何支持 OpenAI 的客户端改一行 <code>base_url</code> 就能接。
+    <b>上游的 key 不会离开服务器</b>,发出去的网关 key 随时可吊销。
+  </p>
+
+  <section class="card">
+    <h2>接入方式</h2>
+    <table class="kv">
+      <tr><th>Base URL</th><td><code>{base}/api/gateway/v1</code></td></tr>
+      <tr><th>鉴权</th><td><code>Authorization: Bearer &lt;网关 key&gt;</code></td></tr>
+      <tr><th>对话</th><td><code>POST /chat/completions</code></td></tr>
+      <tr><th>模型列表</th><td><code>GET /models</code></td></tr>
+      <tr>
+        <th>model 字段</th>
+        <td>
+          填 <code>auto</code> 或留空 = 自动挡,按实测排名逐家降级;
+          填某一家的 id(如 <code>gemini</code>)= 只用那家。
+          <span class="hint">填 <code>gpt-4o</code> 这类我们没有的名字不会报错,会退回自动挡 —— 否则大量客户端接不进来。</span>
+        </td>
+      </tr>
+      <tr>
+        <th>回包额外头</th>
+        <td><code>x-bohui-provider</code> 实际应答的是哪一家 · <code>x-bohui-latency-ms</code> 耗时</td>
+      </tr>
+    </table>
+
+    <details class="ex">
+      <summary>curl 示例</summary>
+      <pre>{`curl ${base}/api/gateway/v1/chat/completions \\
+  -H "Authorization: Bearer bh-你的网关key" \\
+  -H "Content-Type: application/json" \\
+  -d '{"model":"auto","messages":[{"role":"user","content":"把这句翻成泰语:真空乳化"}]}'`}</pre>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>网关背后的舰队</h2>
+    <p class="hint">排序即降级顺序,来自实测(泰/韩/阿三门同题对比)。要调整去<a href="/bohui/models/">模型舰队</a>。</p>
+    <ol class="fleet">
+      {fleet.map((p: any) => (
+        <li>
+          <b>{p.id}</b>
+          <span>{p.label} · {p.model}</span>
+          {p.is_free ? <span class="pill p-ok">免费额度</span> : <span class="pill">付费</span>}
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="card" id="up">
+    <h2>上游 key(帛卉电脑端直连用)</h2>
+    <p class="hint">电脑端登录时来这里拉一份 key 直连官方模型;限流 / 额度尽由电脑端上报,这里冷却到点自动可用,密钥无效连错 3 次判「坏」要人工启用。换 key 在这里加、停、删即可,不用重发安装包。</p>
+    <table>
+      <thead><tr>
+        <th style="width:5rem">账号</th><th style="width:10rem">密钥</th><th style="width:4rem">顺序</th><th style="width:6rem">状态</th>
+        <th style="width:10rem">冷却到</th><th>最近错误</th><th style="width:9rem">最近下发</th><th style="width:11rem"></th>
+      </tr></thead>
+      <tbody>
+        {upKeys.length === 0 && <tr><td colspan="8" class="empty">还没有上游 key。</td></tr>}
+        {upKeys.map((k: any) => (
+          <tr data-id={k.id}>
+            <td><b>{k.account}</b></td>
+            <td><code>{mask(k.secret)}</code></td>
+            <td>{k.priority}</td>
+            <td>{k.status === 'active' ? (k.cooldown_until > nowS ? <span class="pill p-bad">冷却中</span> : <span class="pill p-ok">启用</span>) : k.status === 'paused' ? <span class="pill">暂停</span> : <span class="pill p-bad">坏</span>}</td>
+            <td class="hint">{k.cooldown_until > nowS ? bj(k.cooldown_until) : ''}</td>
+            <td class="hint">{k.last_error ? `${k.last_error.slice(0, 60)} · ${k.last_error_at?.slice(5, 16) ?? ''}` : ''}</td>
+            <td class="hint">{k.last_seen_at?.slice(5, 16) ?? '从未'}</td>
+            <td>
+              {isAdmin && <button class="mini" data-up={k.status === 'active' ? 'up.pause' : 'up.resume'}>{k.status === 'active' ? '暂停' : '启用'}</button>}
+              {isAdmin && k.cooldown_until > nowS && <button class="mini" data-up="up.uncool">解冷</button>}
+              {isAdmin && <button class="mini danger" data-up="up.delete">删除</button>}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    {isAdmin && (
+      <form id="upadd" class="mk">
+        <select name="account"><option value="sensenova">sensenova</option><option value="agnes">agnes</option></select>
+        <input name="secret" placeholder="sk-…(新 key 整串)" required style="min-width:22rem" />
+        <label>顺序 <input name="priority" type="number" value="50" min="1" max="999" /></label>
+        <button type="submit">加一把</button>
+      </form>
+    )}
+    <h3>三条线各用哪个模型</h3>
+    <div class="mk" id="roles">
+      {ROLES.map(([role, label]) => (
+        <label>{label}
+          <select data-role={role} disabled={!isAdmin}>
+            {fleet.map((p: any) => <option value={p.id} selected={roleOf[role] === p.id}>{p.id} · {p.model}</option>)}
+          </select>
+        </label>
+      ))}
+    </div>
+    <h3>技能召唤(近 7 天)</h3>
+    {skillUse.length === 0 ? <p class="hint">还没有上报。电脑端 0.3.8 起,员工对话里每召唤一次技能记一条;先看哪些技能真被用到,采纳率下一步。</p> : (
+      <table><thead><tr><th>技能</th><th style="width:8rem">部门</th><th style="width:5rem">次数</th></tr></thead><tbody>
+        {skillUse.map((r: any) => <tr><td>{r.skill}</td><td>{r.dept}</td><td>{r.n}</td></tr>)}
+      </tbody></table>)}
+    <h3>最近事件</h3>
+    <table>
+      <thead><tr><th style="width:8rem">时间</th><th style="width:5rem">key</th><th style="width:7rem">类型</th><th style="width:4rem">码</th><th style="width:7rem">部门</th><th style="width:8rem">来源</th><th>摘要</th></tr></thead>
+      <tbody>
+        {upEvents.length === 0 && <tr><td colspan="7" class="empty">还没有事件。</td></tr>}
+        {upEvents.map((e: any) => (
+          <tr><td class="hint">{e.ts.slice(5, 16)}</td><td>{e.key_id ? `#${e.key_id}` : ''} {e.account}</td><td>{KIND[e.kind] ?? e.kind}</td><td>{e.status || ''}</td><td>{e.dept}</td><td class="hint">{e.client}</td><td class="hint">{e.msg?.slice(0, 80)}</td></tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>网关 key</h2>
+    {!isAdmin && <p class="warn">只有管理员能发放和吊销 key。</p>}
+    {isAdmin && (
+      <form id="mk" class="mk">
+        <input name="name" placeholder="给谁用的?如「公众号排版脚本」" required />
+        <label>每小时上限 <input name="limit" type="number" value="200" min="1" max="10000" /></label>
+        <label><input type="checkbox" name="sc" value="chat" checked disabled /> 对话</label>
+        <label><input type="checkbox" name="sc" value="vision" /> 读图</label>
+        <button type="submit">签发</button>
+      </form>
+    )}
+    <p id="fresh" class="fresh" hidden></p>
+
+    <table>
+      <thead><tr>
+        <th>名称</th><th style="width:9rem">前缀</th><th style="width:7rem">近 1 小时</th>
+        <th style="width:7rem">近 24 小时</th><th style="width:6rem">限额/时</th>
+        <th style="width:7rem">状态</th><th style="width:10rem">最近调用</th><th style="width:9rem"></th>
+      </tr></thead>
+      <tbody>
+        {keys.length === 0 && <tr><td colspan="8" class="empty">还没有发过 key。上面签发一把即可开始接入。</td></tr>}
+        {keys.map((k: any) => (
+          <tr data-id={k.id}>
+            <td><b>{k.name}</b><span class="hint">{k.scopes}</span></td>
+            <td><code>{k.prefix}…</code></td>
+            <td class={k.last_hour >= k.hourly_limit ? 'over' : ''}>{k.last_hour}</td>
+            <td>{k.last_day}{k.fail_day > 0 && <span class="pill p-bad">失败 {k.fail_day}</span>}</td>
+            <td><input class="lim" type="number" value={k.hourly_limit} min="1" max="10000" disabled={!isAdmin} /></td>
+            <td>{k.enabled ? <span class="pill p-ok">启用</span> : <span class="pill">停用</span>}</td>
+            <td class="hint">{k.last_used_at ?? '从未'}</td>
+            <td>
+              {isAdmin && <button class="mini" data-act="toggle">{k.enabled ? '停用' : '启用'}</button>}
+              {isAdmin && <button class="mini danger" data-act="delete">吊销</button>}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>近 7 天</h2>
+    <div class="stats">
+      <div><b>{stat.total ?? 0}</b><span>调用次数</span></div>
+      <div><b>{stat.fails ?? 0}</b><span>失败</span></div>
+      <div><b>{stat.avg_ms ? Math.round(stat.avg_ms) : 0}</b><span>平均毫秒</span></div>
+    </div>
+    <table>
+      <thead><tr><th style="width:11rem">时间</th><th>key</th><th style="width:7rem">类型</th>
+        <th style="width:9rem">应答方</th><th style="width:6rem">耗时</th><th>结果</th></tr></thead>
+      <tbody>
+        {recent.length === 0 && <tr><td colspan="6" class="empty">还没有调用记录。</td></tr>}
+        {recent.map((g: any) => (
+          <tr>
+            <td class="hint">{g.at}</td>
+            <td>{g.key_name ?? `#${g.key_id}(已吊销)`}</td>
+            <td>{g.kind}</td>
+            <td>{g.provider ?? '—'}</td>
+            <td>{g.ms ?? '—'}</td>
+            <td>{g.ok ? <span class="pill p-ok">成功</span> : <span class="pill p-bad" title={g.err}>{String(g.err ?? '失败').slice(0, 40)}</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+</AdminShell>
+
+<style>
+  .card { border: 1px solid var(--ad-line); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; background: var(--ad-panel); }
+  .card h2 { margin: 0 0 .75rem; font-size: 1rem; }
+  .kv { width: 100%; }
+  .kv th { text-align: left; width: 9rem; vertical-align: top; padding: .375rem .5rem .375rem 0; font-weight: 600; }
+  .kv td { padding: .375rem 0; }
+  code { background: rgb(0 0 0 / .06); padding: .125rem .375rem; border-radius: 3px; font-size: .8125rem; }
+  .hint { color: var(--ad-faint); font-size: .75rem; display: block; margin-top: .125rem; }
+  .ex { margin-top: .75rem; }
+  .ex pre { background: rgb(0 0 0 / .05); padding: .875rem; border-radius: 6px; overflow-x: auto; font-size: .75rem; line-height: 1.6; }
+  .fleet { margin: .5rem 0 0; padding-left: 1.25rem; }
+  .fleet li { padding: .25rem 0; display: flex; gap: .5rem; align-items: baseline; flex-wrap: wrap; }
+  .fleet b { min-width: 7rem; }
+  .fleet span { font-size: .8125rem; color: var(--ad-soft); }
+  .mk { display: flex; gap: .625rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+  .mk input[name=name] { flex: 1; min-width: 14rem; }
+  .mk label { font-size: .8125rem; display: flex; gap: .25rem; align-items: center; }
+  .mk input[type=number] { width: 5.5rem; }
+  .fresh { background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; padding: .875rem; font-size: .8125rem; word-break: break-all; }
+  .lim { width: 5rem; }
+  .over { color: #c62828; font-weight: 700; }
+  .empty { text-align: center; color: var(--ad-faint); padding: 1.5rem; }
+  .stats { display: flex; gap: 2rem; margin-bottom: 1rem; }
+  .stats b { font-size: 1.5rem; display: block; font-variant-numeric: tabular-nums; }
+  .stats span { font-size: .75rem; color: var(--ad-faint); }
+  .mini { font-size: .75rem; padding: .25rem .5rem; margin-right: .25rem; }
+  .danger { color: #c62828; }
+  .warn { background: #fff3e0; padding: .625rem .875rem; border-radius: 6px; font-size: .8125rem; }
+</style>
+
+<script is:inline>
+  (() => {
+    const post = (b) => fetch('/api/admin/gateway', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b),
+    }).then((r) => r.json());
+
+    const mk = document.getElementById('mk');
+    mk?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = new FormData(mk);
+      const scopes = [...mk.querySelectorAll('input[name=sc]:checked')].map((i) => i.value);
+      const r = await post({ action: 'create', name: f.get('name'), hourlyLimit: Number(f.get('limit')), scopes });
+      if (!r.ok) { alert(r.msg || '签发失败'); return; }
+      // 明文只出现这一次 —— 库里存的是哈希,刷新之后再也拿不到
+      const box = document.getElementById('fresh');
+      box.hidden = false;
+      box.textContent = `新 key(只显示这一次,请立即复制保存):${r.key}`;
+      box.scrollIntoView({ block: 'center' });
+    });
+
+    document.querySelectorAll('button[data-act]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const tr = b.closest('tr'), id = Number(tr.dataset.id), act = b.dataset.act;
+        if (act === 'delete' && !confirm('吊销之后用这把 key 的程序会立刻收到 401,确定?')) return;
+        const r = await post({ action: act, id });
+        if (r.ok) location.reload(); else alert(r.msg || '操作失败');
+      });
+    });
+
+    // 上游 key(控制面)
+    document.querySelectorAll('button[data-up]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const id = Number(b.closest('tr').dataset.id), action = b.dataset.up;
+        if (action === 'up.delete' && !confirm('删除后电脑端下次拉取就没有这把 key 了,确定?')) return;
+        const r = await post({ action, id });
+        if (r.ok) location.reload(); else alert(r.msg || '操作失败');
+      });
+    });
+    const upadd = document.getElementById('upadd');
+    upadd?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = new FormData(upadd);
+      const r = await post({ action: 'up.add', account: f.get('account'), secret: f.get('secret'), priority: Number(f.get('priority')) });
+      if (r.ok) location.reload(); else alert(r.msg || '加 key 失败');
+    });
+    document.querySelectorAll('#roles select[data-role]').forEach((sel) => {
+      sel.addEventListener('change', async () => {
+        const r = await post({ action: 'role.set', role: sel.dataset.role, providerId: sel.value });
+        if (!r.ok) alert(r.msg || '改线路失败');
+      });
+    });
+
+    document.querySelectorAll('input.lim').forEach((i) => {
+      i.addEventListener('change', async () => {
+        const id = Number(i.closest('tr').dataset.id);
+        const r = await post({ action: 'limit', id, hourlyLimit: Number(i.value) });
+        if (!r.ok) alert(r.msg || '改限额失败');
+      });
+    });
+  })();
+</script>

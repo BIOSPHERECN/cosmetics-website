@@ -1,0 +1,1043 @@
+---
+/**
+ * 3D 瓶身预览 —— 让客户在选包材阶段就看到"自己的瓶子长什么样"。
+ *
+ * 为什么要做这个:
+ *   · 美妆客户看 SKU 图选瓶型,但平面图转不出立体感;拿到手才发现瓶肩太陡、
+ *     标签比例不对,改一次打样就是两周 + 五千块。这里先在浏览器里转一圈,
+ *     把"瓶型 × 颜色 × 标签"三个变量在屏幕上调好,再下结论。
+ *   · 真实 glTF 模型要建模师配合,周期长且只覆盖标准瓶型。这里用 three.js 的
+ *     LatheGeometry 参数化生成滴管瓶/软管/广口瓶/喷雾瓶四种轮廓,改一个参数
+ *     就能调瓶身比例,不需要美术介入。
+ *
+ * 技术取舍:
+ *   · three.js 走 CDN ESM 引入(MIT),OrbitControls 同源;零 npm 依赖,
+ *     两边站点(品牌站 + DTC 站)都能直接 import 这个组件。
+ *   · 标签带必须单独做 CylinderGeometry:LatheGeometry 的 UV 会铺满整瓶,
+ *     拿它贴标签等于把标签糊到瓶肩和瓶底上。标签网格的半径比瓶身直身段
+ *     大 0.2(场景单位≈mm),高度只取直身段,绕一圈,贴在正确位置。
+ *   · 标签文字用 CanvasTexture 实时渲染:输入框打字 → canvas 重绘 →
+ *     texture.needsUpdate = true,不用重载场景。
+ *   · 截图走 renderer.domElement.toDataURL():preserveDrawingBuffer 必须开,
+ *     否则 toDataURL 拿到的是空画布(WebGL 默认渲染后清缓冲)。
+ */
+export interface Props {
+  /** 'zh' 开头走中文,其余英文 */
+  locale?: string;
+  class?: string;
+}
+const { locale = 'zh', class: cls = '' } = Astro.props;
+const zh = String(locale).startsWith('zh');
+
+/** 瓶型轮廓参数 —— LatheGeometry 的 points 数组。
+ *  坐标系:X=半径(到中轴距离),Y=高度。单位约等于 mm,后面 camera 距离据此推导。
+ *  每种瓶型都从底→顶画一条母线,旋转 360° 得到瓶身。 */
+const PROFILES: Record<string, { label_zh: string; label_en: string }> = {
+  dropper: { label_zh: '滴管瓶', label_en: 'Dropper' },
+  tube:    { label_zh: '软管',   label_en: 'Tube' },
+  jar:     { label_zh: '广口瓶', label_en: 'Jar' },
+  spray:   { label_zh: '喷雾瓶', label_en: 'Spray' },
+  pump:    { label_zh: '泵头瓶', label_en: 'Pump' },
+  airless: { label_zh: '真空瓶', label_en: 'Airless' },
+  roller:  { label_zh: '走珠瓶', label_en: 'Roller' },
+};
+
+const COLORS = [
+  { hex: '#1f4e79', name_zh: '深蓝',  name_en: 'Deep Blue' },
+  { hex: '#c8a96a', name_zh: '香槟金', name_en: 'Champagne' },
+  { hex: '#e8e4dc', name_zh: '瓷白',  name_en: 'Porcelain' },
+  { hex: 'rose', name_zh: '玫瑰粉', name_en: 'Rose' },
+  { hex: '#2d2d2d', name_zh: '墨黑',  name_en: 'Onyx' },
+  { hex: '#7a9e7e', name_zh: '竹青',  name_en: 'Bamboo' },
+];
+
+const T = zh
+  ? {
+      title: '3D 瓶身预览',
+      hint: '选瓶型、换颜色、贴标签,360° 转着看。调好了再下结论。',
+      bottleType: '瓶型',
+      color: '瓶身颜色',
+      customColor: '自定义颜色',
+      label: '标签文字',
+      labelPh: '输入品牌名或 logo 文字',
+      labelOn: '显示标签',
+      labelOff: '隐藏标签',
+      reset: '复位视角',
+      snapshot: '截图当前角度',
+      compare: '多瓶型对比',
+      compareHint: '至少勾选两个瓶型',
+      shotDone: '已截图,长按或右键保存',
+      shotFail: '截图失败,请重试',
+      dragHint: '鼠标拖拽旋转 · 滚轮缩放',
+      noWebgl: '你的浏览器不支持 WebGL,无法显示 3D 预览。',
+      caps: '瓶盖',
+      body: '瓶身',
+      material: '材质与表面',
+      preset: '快速预设',
+      prGlass: '玻璃', prFrosted: '磨砂', prMatte: '哑光', prMetal: '金属',
+      background: '背景', bgLight: '浅色', bgGray: '灰色', bgDark: '深色',
+      capGroup: '瓶盖', capColor: '盖色', capMetal: '镜面度',
+      roughness: '粗糙度',
+      metalness: '金属性',
+      opacity: '透明度',
+    }
+  : {
+      title: '3D Bottle Preview',
+      hint: 'Pick a bottle, switch colors, stick a label, spin 360°. Decide before you sample.',
+      bottleType: 'Bottle type',
+      color: 'Body color',
+      customColor: 'Custom color',
+      label: 'Label text',
+      labelPh: 'Enter brand name or logo text',
+      labelOn: 'Show label',
+      labelOff: 'Hide label',
+      reset: 'Reset view',
+      snapshot: 'Snapshot this angle',
+      compare: 'Compare bottles',
+      compareHint: 'Select at least two bottle types',
+      shotDone: 'Captured — long-press or right-click to save',
+      shotFail: 'Capture failed, please retry',
+      dragHint: 'Drag to rotate · Scroll to zoom',
+      noWebgl: 'Your browser does not support WebGL.',
+      caps: 'Cap',
+      body: 'Body',
+      material: 'Material & finish',
+      preset: 'Presets',
+      prGlass: 'Glass', prFrosted: 'Frosted', prMatte: 'Matte', prMetal: 'Metal',
+      background: 'Background', bgLight: 'Light', bgGray: 'Grey', bgDark: 'Dark',
+      capGroup: 'Cap', capColor: 'Cap colour', capMetal: 'Cap metalness',
+      roughness: 'Roughness',
+      metalness: 'Metalness',
+      opacity: 'Opacity',
+    };
+
+/** 唯一实例 id —— 一页可能放多个预览(不同瓶型对比),id 不能撞。 */
+const uid = 'bp3d-' + Math.random().toString(36).slice(2, 8);
+---
+
+<section class:list={['bp3d', cls]} id={uid} aria-label={T.title}>
+  <div class="bp3d-stage">
+    <header class="bp3d-head">
+      <h3>{T.title}</h3>
+      <p class="lead">{T.hint}</p>
+    </header>
+
+    <div class="bp3d-grid">
+      <aside class="bp3d-controls">
+        <fieldset class="bp3d-types">
+          <legend>{T.bottleType}</legend>
+          <div class="bp3d-typegrid">
+            {Object.entries(PROFILES).map(([key, p]) => (
+              <label class="bp3d-typecard">
+                <input type="checkbox" name={`${uid}-type`} value={key} checked={key === 'dropper'} />
+                <span class="bp3d-typecard-name">{zh ? p.label_zh : p.label_en}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset class="bp3d-colors">
+          <legend>{T.color}</legend>
+          <div class="bp3d-swatches">
+            {COLORS.map((c, i) => (
+              <button type="button" class="bp3d-swatch" data-color={c.hex}
+                      style={`--sw:${c.hex === 'rose' ? '#d98a8a' : c.hex}`}
+                      aria-label={zh ? c.name_zh : c.name_en}
+                      aria-pressed={i === 0 ? 'true' : 'false'}>
+                <span class="bp3d-sw-name">{zh ? c.name_zh : c.name_en}</span>
+              </button>
+            ))}
+          </div>
+          <label class="bp3d-custom">
+            <span>{T.customColor}</span>
+            <input type="color" value="#1f4e79" data-custom-color />
+          </label>
+        </fieldset>
+
+        <fieldset class="bp3d-material">
+          <legend>{T.material}</legend>
+          <div class="bp3d-presets" role="group" aria-label={T.preset}>
+            <button type="button" data-preset="glass" aria-pressed="false">{T.prGlass}</button>
+            <button type="button" data-preset="frosted" aria-pressed="false">{T.prFrosted}</button>
+            <button type="button" data-preset="matte" aria-pressed="false">{T.prMatte}</button>
+            <button type="button" data-preset="metal" aria-pressed="false">{T.prMetal}</button>
+          </div>
+          <div class="bp3d-matrow">
+            <label for={`${uid}-rough`}>{T.roughness}</label>
+            <input id={`${uid}-rough`} type="range" min="0" max="1" step="0.01" value="0.35" data-mat="roughness" />
+            <output>0.35</output>
+          </div>
+          <div class="bp3d-matrow">
+            <label for={`${uid}-metal`}>{T.metalness}</label>
+            <input id={`${uid}-metal`} type="range" min="0" max="1" step="0.01" value="0.05" data-mat="metalness" />
+            <output>0.05</output>
+          </div>
+          <div class="bp3d-matrow">
+            <label for={`${uid}-opac`}>{T.opacity}</label>
+            <input id={`${uid}-opac`} type="range" min="0.3" max="1" step="0.01" value="0.88" data-mat="opacity" />
+            <output>88%</output>
+          </div>
+          <div class="bp3d-matrow">
+            <label>{T.background}</label>
+            <div class="bp3d-bgs" role="group" aria-label={T.background}>
+              <button type="button" data-bg="light" style="--sw:#f4f4f6" aria-pressed="true">{T.bgLight}</button>
+              <button type="button" data-bg="gray" style="--sw:#dcdce2" aria-pressed="false">{T.bgGray}</button>
+              <button type="button" data-bg="dark" style="--sw:#1b1b22" aria-pressed="false">{T.bgDark}</button>
+            </div>
+            <output></output>
+          </div>
+        </fieldset>
+
+        <fieldset class="bp3d-material bp3d-cap">
+          <legend>{T.capGroup}</legend>
+          <div class="bp3d-caps">
+            <button type="button" class="bp3d-cap-sw" data-cap="#333333" style="--sw:#333333" aria-pressed="true" aria-label="#333333"></button>
+            <button type="button" class="bp3d-cap-sw" data-cap="#c9a227" style="--sw:#c9a227" aria-pressed="false" aria-label="#c9a227"></button>
+            <button type="button" class="bp3d-cap-sw" data-cap="#e8e8e8" style="--sw:#e8e8e8" aria-pressed="false" aria-label="#e8e8e8"></button>
+            <button type="button" class="bp3d-cap-sw" data-cap="#b03a48" style="--sw:#b03a48" aria-pressed="false" aria-label="#b03a48"></button>
+            <input type="color" class="bp3d-cap-custom" value="#333333" aria-label={T.capColor} />
+          </div>
+          <div class="bp3d-matrow">
+            <label for={`${uid}-capm`}>{T.capMetal}</label>
+            <input id={`${uid}-capm`} type="range" min="0" max="1" step="0.01" value="0.3" data-capmat="metalness" />
+            <output>0.30</output>
+          </div>
+        </fieldset>
+
+        <fieldset class="bp3d-label-fs">
+          <legend>{T.label}</legend>
+          <input type="text" class="bp3d-label-text" placeholder={T.labelPh} value="" maxlength="40" />
+          <label class="bp3d-label-toggle">
+            <input type="checkbox" class="bp3d-label-show" checked />
+            <span>{T.labelOn}</span>
+          </label>
+        </fieldset>
+      </aside>
+
+      <div class="bp3d-view">
+        <div class="bp3d-compare" data-compare hidden></div>
+        <div class="bp3d-canvas-wrap" data-canvas-wrap>
+          <noscript><p>{T.noWebgl}</p></noscript>
+        </div>
+        <div class="bp3d-toolbar">
+          <button type="button" class="bp3d-btn" data-action="reset">{T.reset}</button>
+          <button type="button" class="bp3d-btn" data-action="compare">{T.compare}</button>
+          <button type="button" class="bp3d-btn bp3d-btn-primary" data-action="snapshot">{T.snapshot}</button>
+          <span class="bp3d-fb" role="status" aria-live="polite"></span>
+        </div>
+        <p class="bp3d-drag-hint">{T.dragHint}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- model-viewer:Google Web Components (Apache-2.0),备用渲染通道。
+     这里不依赖它渲染 —— 我们用 three.js 自己画。引入它的原因是:
+     一些移动端浏览器对 ESM three.js 的 OrbitControls 触摸支持有差异,
+     万一 three.js 加载失败,fallback 到 model-viewer 的 auto-rotate 至少能转起来。
+     实际渲染路径以 three.js 为准。 -->
+<script type="module" src="https://unpkg.com/@google/model-viewer@3.5.1/dist/model-viewer.min.js" is:inline></script>
+
+<script is:inline>
+(function () {
+  var host = document.currentScript.closest('.bp3d');
+  if (!host) return;
+  var uid = host.id;
+  var wrap = host.querySelector('[data-canvas-wrap]');
+  var fb = host.querySelector('.bp3d-fb');
+  var zh = (document.documentElement.lang || 'zh').indexOf('zh') === 0;
+  var TXT = zh
+    ? { noWebgl: '你的浏览器不支持 WebGL,无法显示 3D 预览。', loadErr: '3D 引擎加载失败,请检查网络后刷新。', shotDone: '已截图,长按或右键保存图片', shotFail: '截图失败,请重试' }
+    : { noWebgl: 'Your browser does not support WebGL.', loadErr: '3D engine failed to load. Please refresh.', shotDone: 'Captured — long-press or right-click to save', shotFail: 'Capture failed, please retry' };
+
+  /* WebGL 检测 —— 不支持就退到提示文字,不白屏 */
+  var test = document.createElement('canvas');
+  var glCtx = test.getContext('webgl2') || test.getContext('webgl');
+  if (!glCtx) { wrap.innerHTML = '<p>' + TXT.noWebgl + '</p>'; return; }
+
+  /* three.js (MIT) + OrbitControls 从 CDN ESM 引入 */
+  var THREE_URL = 'https://unpkg.com/three@0.169.0/build/three.module.js';
+  var OC_URL    = 'https://unpkg.com/three@0.169.0/examples/jsm/controls/OrbitControls.js';
+
+  import(THREE_URL).then(function (THREE) {
+    return import(OC_URL).then(function (mod) {
+      return { THREE: THREE, OrbitControls: mod.OrbitControls };
+    });
+  }).then(function (libs) {
+    initScene(libs);
+  }).catch(function (e) {
+    console.error('[BottlePreview3D] load error:', e);
+    wrap.innerHTML = '<p>' + TXT.loadErr + '</p>';
+  });
+
+  /* ── 瓶型轮廓 ──────────────────────────────────────
+   * LatheGeometry 的 points: Vector2 数组,X=半径(到中轴),Y=高度。
+   * 从底画到顶,绕 Y 轴旋转 360° 得到瓶身。
+   * 直身段 = 瓶身上下半径不变的中间一段,标签只贴这一段。
+   * 每个 profile 返回 { points, straightBand: { yTop, yBottom, radius } }
+   *   straightBand 给标签 CylinderGeometry 用。 */
+  function profileDropper() {
+    /* 滴管瓶:底圆角 → 直身长圆柱 → 肩部收窄 → 细颈 → 胶帽 */
+    var pts = [];
+    var r = 12; /* 直身段半径 */
+    /* 底部圆角 */
+    pts.push([0, 0], [11.5, 0], [12, 1.2], [12, 3]);
+    /* 直身段:高度 3 → 52 */
+    for (var y = 3; y <= 52; y += 7) pts.push([12, y]);
+    /* 肩部收窄:52 → 58,半径 12 → 5 */
+    pts.push([12, 52], [11, 54], [9, 56], [7, 57.5], [5, 58]);
+    /* 细颈:58 → 64 */
+    pts.push([5, 58], [5, 64]);
+    /* 胶帽(盖子):64 → 70,半径 5 → 6 */
+    pts.push([5, 64], [6, 65], [6, 70], [0, 70]);
+    return {
+      points: pts.map(function (p) { return { x: p[0], y: p[1] }; }),
+      straightBand: { yBottom: 5, yTop: 50, radius: 12 },
+      capRange: { yBottom: 58, yTop: 70 },
+      capRadius: 6,
+    };
+  }
+
+  function profileTube() {
+    /* 软管:底圆角 → 直身圆柱 → 锥顶收口 → 螺纹颈 → 盖 */
+    var pts = [];
+    var r = 11;
+    pts.push([0, 0], [10.5, 0], [11, 1.2], [11, 3]);
+    /* 直身段:3 → 45 */
+    for (var y = 3; y <= 45; y += 6) pts.push([11, y]);
+    /* 锥顶:45 → 54,半径 11 → 3 */
+    pts.push([11, 45], [10, 48], [8, 50.5], [5, 52.5], [3, 54]);
+    /* 螺纹颈:54 → 56 */
+    pts.push([3, 54], [3, 56]);
+    /* 盖子:56 → 64 */
+    pts.push([3, 56], [4.5, 57], [4.5, 64], [0, 64]);
+    return {
+      points: pts.map(function (p) { return { x: p[0], y: p[1] }; }),
+      straightBand: { yBottom: 5, yTop: 43, radius: 11 },
+      capRange: { yBottom: 54, yTop: 64 },
+      capRadius: 4.5,
+    };
+  }
+
+  function profileJar() {
+    /* 广口瓶:矮胖 → 大开口,盖子直接扣在瓶口 */
+    var pts = [];
+    var r = 18;
+    pts.push([0, 0], [17.5, 0], [18, 1.5], [18, 4]);
+    /* 直身段:4 → 30(矮胖) */
+    for (var y = 4; y <= 30; y += 5) pts.push([18, y]);
+    /* 瓶口外沿:30 → 33,半径微收到 17 */
+    pts.push([18, 30], [17.5, 31], [17, 32.5], [17, 34]);
+    /* 大开口内壁:34 → 0(内部空腔,用反向点表示开口)
+       LatheGeometry 不支持开口,这里画到顶面然后收口到 0 */
+    pts.push([17, 34], [16.5, 34.5], [0, 34.5]);
+    return {
+      points: pts.map(function (p) { return { x: p[0], y: p[1] }; }),
+      straightBand: { yBottom: 6, yTop: 29, radius: 18 },
+      capRange: { yBottom: 30, yTop: 34.5 },
+      capRadius: 17,
+    };
+  }
+
+  function profileSpray() {
+    /* 喷雾瓶:方柱体近似(用多段逼近方形截面) + 顶部喷头。
+       LatheGeometry 是圆旋体,方形截面用 8 段圆弧逼近,
+       但为了简洁这里仍用圆形旋体表示瓶身,喷头用单独几何体叠加。 */
+    var pts = [];
+    var r = 13;
+    pts.push([0, 0], [12.5, 0], [13, 1.5], [13, 4]);
+    /* 直身段:4 → 50 */
+    for (var y = 4; y <= 50; y += 6) pts.push([13, y]);
+    /* 肩部收窄:50 → 56,半径 13 → 7 */
+    pts.push([13, 50], [12, 52], [10, 54], [8, 55.5], [7, 56]);
+    /* 颈:56 → 60 */
+    pts.push([7, 56], [7, 60]);
+    /* 喷头基座:60 → 63 */
+    pts.push([7, 60], [9, 61], [9, 63]);
+    /* 喷头收尖:63 → 68 */
+    pts.push([9, 63], [7, 65], [4, 68], [0, 68]);
+    return {
+      points: pts.map(function (p) { return { x: p[0], y: p[1] }; }),
+      straightBand: { yBottom: 6, yTop: 48, radius: 13 },
+      capRange: { yBottom: 56, yTop: 68 },
+      capRadius: 9,
+    };
+  }
+
+  /* 泵头瓶:直身 + 收肩 + 宽矮泵头(比滴管帽更矮更宽) */
+  function profilePump() {
+    var pts = [];
+    pts.push([0, 0], [12.5, 0], [13, 1.3], [13, 3]);
+    for (var y = 3; y <= 45; y += 6) pts.push([13, y]);
+    /* 肩部收窄 */
+    pts.push([12, 47], [10, 49.5], [7.5, 51.5], [6, 53]);
+    /* 颈 */
+    pts.push([6, 53], [6, 55]);
+    /* 泵头:宽扁,顶部略收 */
+    pts.push([6, 55], [8, 56], [8.5, 58], [8.5, 61], [0, 61]);
+    return {
+      points: pts.map(function (p) { return { x: p[0], y: p[1] }; }),
+      straightBand: { yBottom: 5, yTop: 43, radius: 13 },
+      capRange: { yBottom: 55, yTop: 61 },
+      capRadius: 8.5,
+    };
+  }
+
+  /* 真空瓶:直身更高、圆肩、泵头较窄(全包裹设计,标签区更长) */
+  function profileAirless() {
+    var pts = [];
+    pts.push([0, 0], [13.5, 0], [14, 1.4], [14, 3]);
+    for (var y = 3; y <= 48; y += 6) pts.push([14, y]);
+    /* 圆肩 */
+    pts.push([13.5, 50], [12, 52], [10, 53.5], [8, 54.5], [7, 55]);
+    pts.push([7, 55], [7, 57]);
+    /* 泵头:窄圆柱 + 顶片 */
+    pts.push([7, 57], [7.5, 58], [7.5, 61], [0, 61]);
+    return {
+      points: pts.map(function (p) { return { x: p[0], y: p[1] }; }),
+      straightBand: { yBottom: 5, yTop: 46, radius: 14 },
+      capRange: { yBottom: 56, yTop: 61 },
+      capRadius: 7.5,
+    };
+  }
+
+  /* 走珠瓶:细长瓶身 + 小球头 */
+  function profileRoller() {
+    var pts = [];
+    pts.push([0, 0], [6.5, 0], [7, 1.2], [7, 2.5]);
+    for (var y = 2.5; y <= 52; y += 6) pts.push([7, y]);
+    /* 肩部收窄 */
+    pts.push([6.8, 53.5], [6, 55], [5.5, 56]);
+    /* 球头:较小的球形容器 */
+    pts.push([5.5, 56], [5.5, 58], [4.8, 60], [3.2, 61.5], [0, 62]);
+    return {
+      points: pts.map(function (p) { return { x: p[0], y: p[1] }; }),
+      straightBand: { yBottom: 4, yTop: 50, radius: 7 },
+      capRange: { yBottom: 56, yTop: 62 },
+      capRadius: 5.5,
+    };
+  }
+
+  var PROFILES = {
+    dropper: profileDropper,
+    tube: profileTube,
+    jar: profileJar,
+    spray: profileSpray,
+    pump: profilePump,
+    airless: profileAirless,
+    roller: profileRoller,
+  };
+
+  function initScene(libs) {
+    var THREE = libs.THREE;
+    var OrbitControls = libs.OrbitControls;
+
+    var canvas = document.createElement('canvas');
+    canvas.className = 'bp3d-canvas';
+    wrap.appendChild(canvas);
+
+    /* renderer:preserveDrawingBuffer 必须为 true,
+       否则 toDataURL 拿到的是空画布(WebGL 渲染后默认清缓冲)。 */
+    var renderer = new THREE.WebGLRenderer({
+      canvas: canvas,
+      antialias: true,
+      preserveDrawingBuffer: true,
+      alpha: true,
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+
+    var scene = new THREE.Scene();
+
+    /* 相机:瓶子高约 70 单位(≈mm),相机距离 90 能看到全瓶 */
+    var camera = new THREE.PerspectiveCamera(35, 1, 1, 500);
+    var initialCam = { x: 35, y: 30, z: 90 };
+    camera.position.set(initialCam.x, initialCam.y, initialCam.z);
+
+    /* 光照:主光 + 补光 + 环境光 —— 模拟棚拍打光 */
+    var amb = new THREE.AmbientLight(0xffffff, 0.55);
+    scene.add(amb);
+    var key = new THREE.DirectionalLight(0xffffff, 1.2);
+    key.position.set(40, 60, 50);
+    scene.add(key);
+    var fill = new THREE.DirectionalLight(0xcce0ff, 0.4);
+    fill.position.set(-40, 30, 20);
+    scene.add(fill);
+    /* 底部环境反光 */
+    var rim = new THREE.DirectionalLight(0xffffff, 0.25);
+    rim.position.set(0, -20, -40);
+    scene.add(rim);
+
+    /* 地面阴影投射面(一个淡淡的圆盘,不是真阴影) */
+    var shadowGeo = new THREE.CircleGeometry(22, 32);
+    var shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.08 });
+    var shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+    shadowMesh.rotation.x = -Math.PI / 2;
+    shadowMesh.position.y = 0.1;
+    scene.add(shadowMesh);
+
+    /* OrbitControls:360° 旋转,限制缩放范围 */
+    var controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.12;
+    controls.minDistance = 50;
+    controls.maxDistance = 180;
+    controls.target.set(0, 30, 0);
+    controls.update();
+
+    /* 状态 */
+    var state = {
+      type: 'dropper',
+      color: '#1f4e79',
+      labelText: '',
+      showLabel: true,
+    };
+
+    var bottleGroup = new THREE.Group();
+    scene.add(bottleGroup);
+
+    /* 材质:瓶身半透明感(玻璃/塑料),盖子不透明 */
+    var bodyMat = new THREE.MeshStandardMaterial({
+      color: state.color,
+      roughness: 0.35,
+      metalness: 0.05,
+      transparent: true,
+      opacity: 0.88,
+    });
+    var capMat = new THREE.MeshStandardMaterial({
+      color: 0x333333,
+      roughness: 0.5,
+      metalness: 0.3,
+    });
+
+    /* 材质面板(2026-10-30):粗糙度 / 金属性 / 透明度实时作用到瓶身材质。
+       透明度 < 1 时保持 transparent,到 1 时关掉以省一次混合计算。 */
+    (function bindMaterial() {
+      var rows = host.querySelectorAll('[data-mat]');
+      rows.forEach(function (el) {
+        var key = el.getAttribute('data-mat');
+        var out = el.parentElement ? el.parentElement.querySelector('output') : null;
+        function apply() {
+          var v = Number(el.value);
+          if (!isFinite(v)) return;
+          bodyMat[key] = v;
+          if (key === 'opacity') bodyMat.transparent = v < 0.999;
+          bodyMat.needsUpdate = true;
+          if (out) out.textContent = key === 'opacity' ? Math.round(v * 100) + '%' : v.toFixed(2);
+        }
+        el.addEventListener('input', apply);
+        apply();
+      });
+
+      /* 快速预设:一次把三个滑块设到目标值,再触发 input 让上面的 apply 生效 */
+      var PRESETS = {
+        glass:   { roughness: 0.05, metalness: 0.0,  opacity: 0.55 },
+        frosted: { roughness: 0.75, metalness: 0.0,  opacity: 0.90 },
+        matte:   { roughness: 0.95, metalness: 0.0,  opacity: 1.00 },
+        metal:   { roughness: 0.25, metalness: 0.90, opacity: 1.00 },
+      };
+      host.querySelectorAll('[data-preset]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var pr = PRESETS[btn.getAttribute('data-preset')];
+          if (!pr) return;
+          ['roughness', 'metalness', 'opacity'].forEach(function (k) {
+            var el = host.querySelector('[data-mat="' + k + '"]');
+            if (el) { el.value = String(pr[k]); el.dispatchEvent(new Event('input', { bubbles: true })); }
+          });
+          host.querySelectorAll('[data-preset]').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+          btn.setAttribute('aria-pressed', 'true');
+        });
+      });
+
+      /* 背景:改 scene.background,浅色/灰/深色三档 */
+      var BG = { light: 0xf4f4f6, gray: 0xdcdce2, dark: 0x1b1b22 };
+      host.querySelectorAll('[data-bg]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var c = BG[btn.getAttribute('data-bg')];
+          if (typeof c === 'number' && scene) {
+            scene.background = new THREE.Color(c);
+            if (renderer) renderer.render(scene, camera);
+          }
+          host.querySelectorAll('[data-bg]').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+          btn.setAttribute('aria-pressed', 'true');
+        });
+      });
+
+      /* 瓶盖材质(2026-10-30):颜色色块 + 自定义取色 + 镜面度 */
+      host.querySelectorAll('[data-cap]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          capMat.color.set(btn.getAttribute('data-cap'));
+          host.querySelectorAll('[data-cap]').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+          btn.setAttribute('aria-pressed', 'true');
+        });
+      });
+      var capCustom = host.querySelector('.bp3d-cap-custom');
+      if (capCustom) {
+        capCustom.addEventListener('input', function () {
+          capMat.color.set(capCustom.value);
+          host.querySelectorAll('[data-cap]').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+        });
+      }
+      host.querySelectorAll('[data-capmat]').forEach(function (el) {
+        var out = el.parentElement ? el.parentElement.querySelector('output') : null;
+        function apply() {
+          var v = Number(el.value);
+          if (!isFinite(v)) return;
+          capMat.metalness = v;
+          if (out) out.textContent = v.toFixed(2);
+        }
+        el.addEventListener('input', apply);
+        apply();
+      });
+    })();
+
+    /* ── 构建瓶身 ────────────────────────────────────── */
+    function buildBottle(type) {
+      /* 清掉旧网格 */
+      while (bottleGroup.children.length > 0) {
+        var c = bottleGroup.children[0];
+        if (c.geometry) c.geometry.dispose();
+        bottleGroup.remove(c);
+      }
+      if (type === 'spray') {
+        buildSprayBottle(THREE);
+      } else {
+        buildLatheBottle(THREE, type);
+      }
+    }
+
+    /* 通用 LatheGeometry 瓶身:滴管/软管/广口瓶 */
+    function buildLatheBottle(THREE, type) {
+      var prof = PROFILES[type]();
+      var pts = prof.points.map(function (p) { return new THREE.Vector2(p.x, p.y); });
+      var geo = new THREE.LatheGeometry(pts, 64);
+      geo.computeVertexNormals();
+      var body = new THREE.Mesh(geo, bodyMat);
+      body.name = 'body';
+      bottleGroup.add(body);
+
+      /* 盖子:用一个矮圆柱覆盖 capRange */
+      var capH = prof.capRange.yTop - prof.capRange.yBottom;
+      var capGeo = new THREE.CylinderGeometry(prof.capRadius, prof.capRadius, capH, 48);
+      var cap = new THREE.Mesh(capGeo, capMat);
+      cap.name = 'cap';
+      cap.position.y = (prof.capRange.yBottom + prof.capRange.yTop) / 2;
+      bottleGroup.add(cap);
+
+      /* 标签带 */
+      buildLabelBand(THREE, prof.straightBand);
+    }
+
+    /* 喷雾瓶:LatheGeometry 瓶身 + 方形喷头(叠加几何体) */
+    function buildSprayBottle(THREE) {
+      var prof = PROFILES['spray']();
+      var pts = prof.points.map(function (p) { return new THREE.Vector2(p.x, p.y); });
+      var geo = new THREE.LatheGeometry(pts, 48);
+      geo.computeVertexNormals();
+      var body = new THREE.Mesh(geo, bodyMat);
+      body.name = 'body';
+      bottleGroup.add(body);
+
+      /* 喷头:用 BoxGeometry 叠加一个方形喷嘴 */
+      var nozzleGeo = new THREE.BoxGeometry(5, 8, 4);
+      var nozzle = new THREE.Mesh(nozzleGeo, capMat);
+      nozzle.name = 'nozzle';
+      nozzle.position.set(0, 64, 6);
+      nozzle.rotation.x = -0.15;
+      bottleGroup.add(nozzle);
+
+      /* 喷头基座:矮圆柱 */
+      var baseH = 3;
+      var baseGeo = new THREE.CylinderGeometry(prof.capRadius, prof.capRadius, baseH, 32);
+      var base = new THREE.Mesh(baseGeo, capMat);
+      base.name = 'cap';
+      base.position.y = 61.5;
+      bottleGroup.add(base);
+
+      buildLabelBand(THREE, prof.straightBand);
+    }
+
+    /* ── 标签带 ──────────────────────────────────────
+     * 关键:标签是单独的 CylinderGeometry 网格,不是 LatheGeometry 的 UV 贴图。
+     *   · LatheGeometry 的 UV 会铺满整瓶(从底到顶),拿它贴标签等于标签糊满瓶身。
+     *   · 标签网格半径 = 瓶身直身段半径 + 0.2(单位≈mm),刚好贴在瓶身表面外,
+     *     不穿模也不浮空。
+     *   · 高度只取直身段(straightBand.yTop - yBottom),不铺满。
+     *   · CanvasTexture 把文字画到 canvas 上,再贴到标签的侧面贴图。 */
+    var labelMesh = null;
+    var labelTexture = null;
+    var labelCanvas = null;
+    var labelCtx = null;
+
+    function buildLabelBand(THREE, band) {
+      if (labelMesh) {
+        labelMesh.geometry.dispose();
+        bottleGroup.remove(labelMesh);
+        labelMesh = null;
+      }
+      var labelRadius = band.radius + 0.2; /* 半径+0.2mm,贴在瓶身外侧 */
+      var labelH = band.yTop - band.yBottom;
+      var labelGeo = new THREE.CylinderGeometry(labelRadius, labelRadius, labelH, 64, 1, true);
+      /* openEnded=true:标签是个空心管,只渲染外表面,不画顶/底面 */
+
+      /* CanvasTexture:文字渲染到 canvas → texture → 贴到标签材质 */
+      labelCanvas = document.createElement('canvas');
+      labelCanvas.width = 1024;
+      labelCanvas.height = 256;
+      labelCtx = labelCanvas.getContext('2d');
+
+      labelTexture = new THREE.CanvasTexture(labelCanvas);
+      labelTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      labelTexture.needsUpdate = true;
+
+      var labelMat = new THREE.MeshStandardMaterial({
+        map: labelTexture,
+        roughness: 0.6,
+        metalness: 0.0,
+        side: THREE.DoubleSide,
+      });
+
+      labelMesh = new THREE.Mesh(labelGeo, labelMat);
+      labelMesh.name = 'label';
+      labelMesh.position.y = (band.yBottom + band.yTop) / 2;
+      labelMesh.visible = state.showLabel;
+      bottleGroup.add(labelMesh);
+
+      drawLabel();
+    }
+
+    /* 把品牌文字画到 canvas 上。
+       文字横向铺开,绕标签一圈(CylinderGeometry 的 UV:u=角度, v=高度)。 */
+    function drawLabel() {
+      if (!labelCtx || !labelCanvas) return;
+      var ctx = labelCtx;
+      var w = labelCanvas.width;
+      var h = labelCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      /* 标签底色:浅色纸质感 */
+      ctx.fillStyle = '#f5f3ee';
+      ctx.fillRect(0, 0, w, h);
+
+      /* 上下边框线 */
+      ctx.strokeStyle = '#c8a96a';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(0, 8); ctx.lineTo(w, 8);
+      ctx.moveTo(0, h - 8); ctx.lineTo(w, h - 8);
+      ctx.stroke();
+
+      var text = state.labelText.trim();
+      if (!text) {
+        /* 没文字时画一个占位提示 */
+        text = zh ? '（输入品牌名）' : '(Enter brand name)';
+        ctx.fillStyle = '#bbb';
+      } else {
+        ctx.fillStyle = '#2d2d2d';
+      }
+
+      /* 文字:居中,绕一圈重复几次让旋转时总能看到 */
+      ctx.font = 'bold 72px "Helvetica Neue", Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      var repeats = Math.max(1, Math.ceil(w / (ctx.measureText(text).width + 80)));
+      var stepW = w / repeats;
+      for (var i = 0; i < repeats; i++) {
+        ctx.fillText(text, stepW * (i + 0.5), h / 2);
+      }
+
+      if (labelTexture) labelTexture.needsUpdate = true;
+    }
+
+    /* ── 尺寸自适应 ────────────────────────────────── */
+    function resize() {
+      var rect = wrap.getBoundingClientRect();
+      var w = rect.width || 400;
+      var h = rect.height || 400;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    var ro = new ResizeObserver(resize);
+    ro.observe(wrap);
+    resize();
+
+    /* ── 动画循环 ──────────────────────────────────── */
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    /* ── 事件绑定 ──────────────────────────────────── */
+    /* 瓶型:方块卡片 + 多选(2026-10-30)
+       多选用于批量出图;3D 只显示「最后选中的那个」作为主预览。 */
+    var typeInputs = host.querySelectorAll('input[name="' + uid + '-type"]');
+    function syncTypes() {
+      var picked = Array.prototype.filter.call(typeInputs, function (i) { return i.checked; });
+      if (!picked.length) { typeInputs[0].checked = true; picked = [typeInputs[0]]; }
+      var primary = picked[picked.length - 1];
+      state.type = primary.value;
+      buildBottle(state.type);
+      typeInputs.forEach(function (i) {
+        var card = i.closest('.bp3d-typecard');
+        if (card) card.classList.toggle('is-primary', i === primary);
+      });
+    }
+    typeInputs.forEach(function (input) {
+      input.addEventListener('change', function () {
+        if (!input.checked) {
+          var still = Array.prototype.some.call(typeInputs, function (i) { return i.checked; });
+          if (!still) { input.checked = true; return; }   /* 至少保留一个 */
+        }
+        syncTypes();
+      });
+    });
+    syncTypes();
+
+    /* 颜色色板 */
+    host.querySelectorAll('.bp3d-swatch').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var color = btn.getAttribute('data-color');
+        if (color === 'rose') color = '#d98a8a';
+        state.color = color;
+        bodyMat.color.set(color);
+        host.querySelectorAll('.bp3d-swatch').forEach(function (b) {
+          b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+        });
+        /* 同步自定义色选器 */
+        var custom = host.querySelector('[data-custom-color]');
+        if (custom) custom.value = color;
+      });
+    });
+
+    /* 自定义颜色 */
+    var customColor = host.querySelector('[data-custom-color]');
+    if (customColor) {
+      customColor.addEventListener('input', function () {
+        state.color = customColor.value;
+        bodyMat.color.set(customColor.value);
+        host.querySelectorAll('.bp3d-swatch').forEach(function (b) {
+          b.setAttribute('aria-pressed', 'false');
+        });
+      });
+    }
+
+    /* 标签文字 */
+    var labelInput = host.querySelector('.bp3d-label-text');
+    if (labelInput) {
+      labelInput.addEventListener('input', function () {
+        state.labelText = labelInput.value;
+        drawLabel();
+      });
+    }
+
+    /* 标签显示/隐藏 */
+    var labelToggle = host.querySelector('.bp3d-label-show');
+    if (labelToggle) {
+      labelToggle.addEventListener('change', function () {
+        state.showLabel = labelToggle.checked;
+        if (labelMesh) labelMesh.visible = state.showLabel;
+      });
+    }
+
+    /* 工具栏:复位 + 截图 */
+    /* 多瓶型对比:逐个切换 → 渲染 → toDataURL,零网络成本、瞬时出图 */
+    var compareBox = host.querySelector('[data-compare]');
+    function renderCompare() {
+      if (!compareBox) return;
+      var picked = Array.prototype.filter.call(typeInputs, function (i) { return i.checked; });
+      if (picked.length < 2) { if (fb) fb.textContent = TXT.compareHint; return; }
+      var prev = state.type;
+      var frag = document.createDocumentFragment();
+      picked.forEach(function (input) {
+        buildBottle(input.value);
+        renderer.render(scene, camera);
+        var url = renderer.domElement.toDataURL('image/png');
+        var fig = document.createElement('figure');
+        var img = document.createElement('img');
+        img.src = url; img.alt = input.value;
+        var cap = document.createElement('figcaption');
+        cap.textContent = input.value;
+        fig.appendChild(img); fig.appendChild(cap); frag.appendChild(fig);
+      });
+      compareBox.innerHTML = '';
+      compareBox.appendChild(frag);
+      compareBox.hidden = false;
+      buildBottle(prev);
+      renderer.render(scene, camera);
+    }
+
+    host.querySelectorAll('[data-action]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var action = btn.getAttribute('data-action');
+        if (action === 'reset') {
+          camera.position.set(initialCam.x, initialCam.y, initialCam.z);
+          controls.target.set(0, 30, 0);
+          controls.update();
+        } else if (action === 'snapshot') {
+          snapshot();
+        } else if (action === 'compare') {
+          renderCompare();
+        }
+      });
+    });
+
+    /* 截图:renderer.domElement.toDataURL()。
+       preserveDrawingBuffer=true 是前提(已在 renderer 构造时开启)。 */
+    function snapshot() {
+      try {
+        /* 先渲染一帧再截,确保缓冲里有最新画面 */
+        renderer.render(scene, camera);
+        var dataUrl = renderer.domElement.toDataURL('image/png');
+        var a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = 'bottle-preview-' + Date.now() + '.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        if (fb) { fb.textContent = TXT.shotDone; fb.style.color = '#1D7A46'; }
+        setTimeout(function () { if (fb) fb.textContent = ''; }, 3000);
+      } catch (e) {
+        console.error('[BottlePreview3D] snapshot error:', e);
+        if (fb) { fb.textContent = TXT.shotFail; fb.style.color = '#A02B20'; }
+      }
+    }
+
+    /* ── 初始化:构建默认瓶型 ──────────────────────── */
+    buildBottle(state.type);
+  }
+})();
+</script>
+
+<style>
+  .bp3d { display: block; padding: clamp(2rem, 4vw, 3.5rem) 0;
+          background: var(--dtc-sand, var(--ck-surface-alt, #f5f5f7));
+          border-top: 1px solid var(--dtc-line, rgb(0 0 0 / .08));
+          border-bottom: 1px solid var(--dtc-line, rgb(0 0 0 / .08)); }
+  .bp3d-stage { max-width: 56rem; margin: 0 auto; padding: 0 var(--ck-gutter, 1.25rem); }
+  .bp3d-head h3 { font-size: clamp(1.25rem, 1rem + .8vw, 1.75rem);
+                   letter-spacing: -.015em; margin: 0 0 .5rem; }
+  .bp3d-head .lead { color: var(--ck-ink-soft); font-size: var(--ck-small); margin: 0 0 1.5rem; }
+  .bp3d-grid { display: grid; grid-template-columns: 16rem 1fr; gap: 1.5rem; align-items: start; }
+  .bp3d-controls { display: grid; gap: 1.25rem; }
+  .bp3d-controls fieldset { border: 1px solid var(--dtc-line, var(--ck-line, #e4e6ea));
+                              border-radius: 10px; padding: .875rem; margin: 0;
+                              background: var(--ck-paper, #fff); }
+  .bp3d-controls legend { font-size: var(--ck-small); font-weight: 600;
+                            color: var(--ck-ink-soft); padding: 0 .375rem; }
+  .bp3d-types { display: grid; gap: .5rem; }
+  .bp3d-typegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: .375rem; }
+  .bp3d-typecard { position: relative; display: grid; place-items: center; gap: .25rem;
+    padding: .625rem .375rem; border: 1px solid var(--tw-border, #d9d9d9); border-radius: 8px;
+    background: #fff; cursor: pointer; text-align: center;
+    transition: border-color .2s, background .2s, box-shadow .2s; }
+  .bp3d-typecard:hover { border-color: var(--tw-primary, #7c4da8); }
+  .bp3d-typecard input { position: absolute; opacity: 0; pointer-events: none; }
+  .bp3d-typecard-name { font-size: .75rem; color: var(--ck-ink-soft); line-height: 1.3; }
+  .bp3d-typecard:has(input:checked) { border-color: var(--tw-primary, #7c4da8); background: var(--tw-primary-bg, #f7f3fb); }
+  .bp3d-typecard:has(input:checked) .bp3d-typecard-name { color: var(--tw-primary-active, #603a86); font-weight: 600; }
+  .bp3d-typecard:has(input:checked)::after { content: '✓'; position: absolute; top: .25rem; right: .3125rem;
+    width: 1rem; height: 1rem; border-radius: 50%; display: grid; place-items: center;
+    font-size: 10px; color: #fff; background: var(--tw-primary, #7c4da8); }
+  .bp3d-typecard.is-primary { box-shadow: 0 0 0 2px rgb(124 77 168 / .22); }
+  .bp3d-typecard.is-primary::before { content: ''; position: absolute; inset: 0; border-radius: 8px;
+    border: 2px solid var(--tw-primary, #7c4da8); pointer-events: none; }
+
+  .bp3d-type { display: flex; align-items: center; gap: .5rem; font-size: .875rem;
+                cursor: pointer; padding: .3125rem .25rem; border-radius: 6px;
+                transition: background .15s; }
+  .bp3d-type:hover { background: var(--ck-accent-soft, #eaf1f8); }
+  .bp3d-type input { accent-color: var(--ck-accent, #1f4e79); }
+  .bp3d-type input:checked + span { font-weight: 600; color: var(--ck-accent, #1f4e79); }
+
+  .bp3d-swatches { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+  .bp3d-swatch { width: 2.5rem; height: 2.5rem; border-radius: 50%; border: 2px solid transparent;
+                  background: var(--sw); cursor: pointer; position: relative;
+                  transition: border-color .15s, transform .1s; padding: 0; }
+  .bp3d-swatch:hover { transform: scale(1.08); }
+  .bp3d-swatch[aria-pressed="true"] { border-color: var(--ck-ink, #16181d); }
+  .bp3d-sw-name { position: absolute; bottom: -1.1rem; left: 50%; transform: translateX(-50%);
+                   font-size: .625rem; white-space: nowrap; color: var(--ck-ink-soft);
+                   opacity: 0; transition: opacity .15s; pointer-events: none; }
+  .bp3d-swatch:hover .bp3d-sw-name { opacity: 1; }
+  .bp3d-custom { display: grid; gap: .3125rem; font-size: var(--ck-small); margin-top: .5rem; }
+  .bp3d-custom input[type="color"] { width: 100%; height: 2rem; border: 1px solid var(--ck-line, #e4e6ea);
+                                      border-radius: 6px; cursor: pointer; padding: 2px; background: var(--ck-paper, #fff); }
+
+  .bp3d-label-fs { display: grid; gap: .5rem; }
+  .bp3d-label-text { font: inherit; font-size: .9375rem; padding: .625rem .75rem; width: 100%;
+                      border: 1px solid var(--dtc-line, rgb(0 0 0 / .14)); border-radius: 10px;
+                      background: var(--ck-paper, #fff); color: var(--ck-ink); }
+  .bp3d-label-text:focus { outline: none; border-color: var(--ck-accent, #1f4e79);
+                            box-shadow: 0 0 0 3px color-mix(in srgb, var(--ck-accent, #1f4e79) 16%, transparent); }
+  .bp3d-label-toggle { display: flex; align-items: center; gap: .5rem; font-size: var(--ck-small);
+                        color: var(--ck-ink-soft); cursor: pointer; }
+  .bp3d-label-toggle input { accent-color: var(--ck-accent, #1f4e79); }
+
+  .bp3d-view { display: grid; gap: .75rem; }
+  .bp3d-canvas-wrap { width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden;
+                       background: radial-gradient(ellipse at 50% 40%, #fafafa 0%, #e8e8ec 100%);
+                       border: 1px solid var(--dtc-line, rgb(0 0 0 / .1));
+                       display: flex; align-items: center; justify-content: center; }
+  .bp3d-canvas { width: 100% !important; height: 100% !important; display: block; touch-action: none; }
+  .bp3d-toolbar { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+  .bp3d-btn { font: inherit; font-size: .875rem; font-weight: 600; padding: .625rem 1.25rem;
+               border: 1px solid var(--ck-line, #e4e6ea); border-radius: var(--ck-cta-radius, 980px);
+               background: var(--ck-paper, #fff); color: var(--ck-ink, #16181d); cursor: pointer;
+               transition: background .15s, border-color .15s; }
+  .bp3d-btn:hover { background: var(--ck-surface-alt, #f6f6f4); border-color: var(--ck-line-strong, #c8ccd4); }
+  .bp3d-btn-primary { background: var(--ck-accent, #1f4e79); color: var(--ck-on-accent, #fff);
+                       border-color: transparent; }
+  .bp3d-btn-primary:hover { background: var(--ck-accent-deep, #163a5a); }
+  .bp3d-fb { font-size: var(--ck-small); color: var(--ck-ink-soft); }
+  .bp3d-drag-hint { font-size: .75rem; color: var(--ck-ink-faint, #656974); margin: 0; text-align: center; }
+
+  @media (max-width: 44rem) {
+    .bp3d-grid { grid-template-columns: 1fr; }
+    .bp3d-canvas-wrap { aspect-ratio: 1 / 1; }
+  }
+  /* 材质滑块（Ant 直线滑块观感） */
+  .bp3d-material { border: 0; margin: 0; padding: 0; }
+  .bp3d-material legend { padding: 0; font-size: .75rem; color: var(--ck-ink-soft); margin-bottom: .5rem; }
+  .bp3d-matrow { display: grid; grid-template-columns: 4.25rem minmax(0, 1fr) 2.75rem; gap: .5rem; align-items: center; margin-bottom: .5rem; }
+  .bp3d-matrow:last-child { margin-bottom: 0; }
+  .bp3d-matrow label { font-size: .75rem; color: var(--ck-ink-soft); }
+  .bp3d-matrow input[type=range] { width: 100%; accent-color: var(--tw-primary, #7c4da8); height: 1.25rem; cursor: pointer; }
+  .bp3d-matrow output { font-size: .6875rem; color: var(--ck-ink-faint); text-align: right; font-variant-numeric: tabular-nums; }
+  /* 快速预设 + 背景 */
+  .bp3d-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: .25rem; margin-bottom: .625rem; }
+  .bp3d-presets button { padding: .3125rem .25rem; border: 1px solid var(--tw-border, #d9d9d9); border-radius: 6px;
+    background: #fff; color: var(--ck-ink-soft); font: inherit; font-size: .6875rem; cursor: pointer;
+    transition: border-color .2s, background .2s, color .2s; }
+  .bp3d-presets button:hover { border-color: var(--tw-primary, #7c4da8); color: var(--ck-ink); }
+  .bp3d-presets button[aria-pressed='true'] { border-color: var(--tw-primary, #7c4da8);
+    background: var(--tw-primary-bg, #f7f3fb); color: var(--tw-primary-active, #603a86); font-weight: 600; }
+  .bp3d-bgrow { margin-top: .5rem; }
+  .bp3d-bgs { display: flex; gap: .25rem; }
+  .bp3d-bgs button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
+    padding: .25rem; border: 1px solid var(--tw-border, #d9d9d9); border-radius: 6px; background: #fff;
+    color: var(--ck-ink-soft); font: inherit; font-size: .6875rem; cursor: pointer; }
+  .bp3d-bgs button::before { content: ''; width: .625rem; height: .625rem; border-radius: 2px;
+    background: var(--sw, #ccc); border: 1px solid rgb(0 0 0 / .1); }
+  .bp3d-bgs button[aria-pressed='true'] { border-color: var(--tw-primary, #7c4da8);
+    background: var(--tw-primary-bg, #f7f3fb); color: var(--tw-primary-active, #603a86); font-weight: 600; }
+  /* 瓶盖色块 */
+  .bp3d-caps { display: flex; flex-wrap: wrap; gap: .375rem; align-items: center; margin-bottom: .625rem; }
+  .bp3d-cap-sw { width: 1.5rem; height: 1.5rem; padding: 0; border-radius: 50%; cursor: pointer;
+    background: var(--sw, #999); border: 2px solid transparent;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / .12); }
+  .bp3d-cap-sw[aria-pressed='true'] { border-color: var(--tw-primary, #7c4da8);
+    box-shadow: 0 0 0 2px rgb(124 77 168 / .18); }
+  .bp3d-cap-custom { width: 1.75rem; height: 1.75rem; padding: 0; cursor: pointer;
+    border: 1px solid var(--tw-border, #d9d9d9); border-radius: 6px; background: #fff; }
+  /* 多瓶型对比 */
+  .bp3d-compare { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: .5rem;
+    margin-bottom: .75rem; }
+  .bp3d-compare[hidden] { display: none; }
+  .bp3d-compare figure { margin: 0; border: 1px solid var(--tw-border-2, #f0f0f0); border-radius: 8px;
+    overflow: hidden; background: #fff; }
+  .bp3d-compare img { width: 100%; display: block; aspect-ratio: 3 / 4; object-fit: cover; }
+  .bp3d-compare figcaption { padding: .3125rem .5rem; font-size: 11px; color: var(--tw-text-3, rgba(0,0,0,.45)); text-align: center; }
+</style>

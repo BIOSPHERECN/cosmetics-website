@@ -22,163 +22,116 @@
 export const LOCALES = [
   'en',
   'zh-cn',
-  'ja',
-  'ko',
-  'id',
-  'ms',
-  'th',
-  'vi',
-  'hi',
-  'bn',
-  'tl',
-  'ur',
-  'pa',
-  'te',
-  'ta',
-  'mr',
-  'gu',
-  'jv',
+  'zh-tw',      // 繁體中文 —— 台港澳市场,hreflang zh-TW
+  'jp',
+  'kr',
   'fr',
   'de',
-  'es',
-  'it',
-  'pt',
-  'nl',
-  'pl',
-  'sv',
-  'da',
-  'fi',
-  'no',
-  'cs',
-  'el',
-  'hu',
-  'ro',
-  'uk',
   'ru',
-  'pt-br',
-  'es-mx',
+  'id',
+  'my',
+  'th',
+  'vn',
+  'ph',
+  'es',
+  'pt',
   'ar',
   'tr',
-  'fa',
-  'he',
-  'sw',
-  'ha',
-  'am',
-  'kk',
-  'uz',
+  'in',
 ] as const;
 export type Locale = (typeof LOCALES)[number];
 
-export const DEFAULT_LOCALE: Locale = 'zh-cn';
+export const DEFAULT_LOCALE: Locale = 'en';
 
 /** 下拉里的大区分组 —— 顺序与 LOCALES 一致 */
+/**
+ * 语言下拉里的分区名 —— 必须跟着界面语言走。
+ *
+ * 之前这四个名字是中文字面量直接写在 locales.json 的 group 字段里,
+ * 于是法国采购打开下拉看到的是「主要语言 / 东南亚 / 拉丁美洲」——
+ * 语言切换器是整站唯一一处**所有语种的访客都会点开**的地方,
+ * 偏偏那里露出中文,给人的印象就是"这站没真做国际化"。
+ *
+ * 这 68 条是手写的,不进机翻管线:地区名是最容易译出洋相的一类词
+ * (「中东」机翻成方位词、「拉丁美洲」被拆开),而且只有 68 条,手写更省事。
+ */
+export type LocaleGroupKey = 'global' | 'sea' | 'latam' | 'mesa';
+
+export const GROUP_LABELS: Record<string, Record<LocaleGroupKey, string>> = {
+  en:      { global: 'Global',       sea: 'Southeast Asia',              latam: 'Latin America',   mesa: 'Middle East & South Asia' },
+  'zh-cn': { global: '主要语言',       sea: '东南亚',                       latam: '拉丁美洲',         mesa: '中东与南亚' },
+  ja:      { global: '主要言語',       sea: '東南アジア',                    latam: 'ラテンアメリカ',    mesa: '中東・南アジア' },
+  ko:      { global: '주요 언어',      sea: '동남아시아',                    latam: '라틴 아메리카',     mesa: '중동·남아시아' },
+  fr:      { global: 'International', sea: 'Asie du Sud-Est',             latam: 'Amérique latine', mesa: 'Moyen-Orient et Asie du Sud' },
+  de:      { global: 'International', sea: 'Südostasien',                 latam: 'Lateinamerika',   mesa: 'Naher Osten & Südasien' },
+  ru:      { global: 'Основные',      sea: 'Юго-Восточная Азия',          latam: 'Латинская Америка', mesa: 'Ближний Восток и Южная Азия' },
+  id:      { global: 'Global',        sea: 'Asia Tenggara',               latam: 'Amerika Latin',   mesa: 'Timur Tengah & Asia Selatan' },
+  ms:      { global: 'Global',        sea: 'Asia Tenggara',               latam: 'Amerika Latin',   mesa: 'Timur Tengah & Asia Selatan' },
+  th:      { global: 'ภาษาหลัก',        sea: 'เอเชียตะวันออกเฉียงใต้',            latam: 'ละตินอเมริกา',      mesa: 'ตะวันออกกลางและเอเชียใต้' },
+  vi:      { global: 'Toàn cầu',      sea: 'Đông Nam Á',                  latam: 'Mỹ Latinh',       mesa: 'Trung Đông & Nam Á' },
+  tl:      { global: 'Global',        sea: 'Timog-Silangang Asya',        latam: 'Latin America',   mesa: 'Gitnang Silangan at Timog Asya' },
+  es:      { global: 'Global',        sea: 'Sudeste Asiático',            latam: 'América Latina',  mesa: 'Oriente Medio y Asia del Sur' },
+  pt:      { global: 'Global',        sea: 'Sudeste Asiático',            latam: 'América Latina',  mesa: 'Médio Oriente e Ásia do Sul' },
+  ar:      { global: 'عالمي',          sea: 'جنوب شرق آسيا',                 latam: 'أمريكا اللاتينية',  mesa: 'الشرق الأوسط وجنوب آسيا' },
+  tr:      { global: 'Küresel',       sea: 'Güneydoğu Asya',              latam: 'Latin Amerika',   mesa: 'Orta Doğu ve Güney Asya' },
+  hi:      { global: 'वैश्विक',          sea: 'दक्षिण-पूर्व एशिया',              latam: 'लैटिन अमेरिका',      mesa: 'मध्य पूर्व और दक्षिण एशिया' },
+};
+
+/** 取分区名;某语种没写就回落英文 —— 回落成英文远好过回落成中文 */
+export function groupLabel(locale: string, key: string): string {
+  const row = GROUP_LABELS[locale] ?? GROUP_LABELS.en;
+  return row[key as LocaleGroupKey] ?? GROUP_LABELS.en[key as LocaleGroupKey] ?? key;
+}
+
 export const LOCALE_GROUPS: { group: string; codes: Locale[] }[] = [
-  { group: 'Global', codes: ['en'] },
-  { group: '亚太', codes: ['zh-cn', 'ja', 'ko', 'id', 'ms', 'th', 'vi', 'hi', 'bn', 'tl', 'ur', 'pa', 'te', 'ta', 'mr', 'gu', 'jv'] },
-  { group: '欧洲', codes: ['fr', 'de', 'es', 'it', 'pt', 'nl', 'pl', 'sv', 'da', 'fi', 'no', 'cs', 'el', 'hu', 'ro', 'uk', 'ru'] },
-  { group: '美洲', codes: ['pt-br', 'es-mx'] },
-  { group: '中东非洲', codes: ['ar', 'tr', 'fa', 'he', 'sw', 'ha', 'am'] },
-  { group: '独联体', codes: ['kk', 'uz'] },
+  { group: 'global', codes: ['en', 'zh-cn', 'zh-tw', 'jp', 'kr', 'fr', 'de', 'ru'] },
+  { group: 'sea', codes: ['id', 'my', 'th', 'vn', 'ph'] },
+  { group: 'latam', codes: ['es', 'pt'] },
+  { group: 'mesa', codes: ['ar', 'tr', 'in'] },
 ];
 
 /** hreflang 属性值(SEOHead 与 sitemap i18n 共用同一张表,保持一致) */
 export const HREFLANG: Record<Locale, string> = {
   en:       'en',
   'zh-cn':  'zh-CN',
-  ja:       'ja',
-  ko:       'ko',
-  id:       'id',
-  ms:       'ms',
-  th:       'th',
-  vi:       'vi',
-  hi:       'hi',
-  bn:       'bn',
-  tl:       'tl',
-  ur:       'ur',
-  pa:       'pa',
-  te:       'te',
-  ta:       'ta',
-  mr:       'mr',
-  gu:       'gu',
-  jv:       'jv',
+  'zh-tw':  'zh-TW',
+  jp:       'ja',
+  kr:       'ko',
   fr:       'fr',
   de:       'de',
-  es:       'es',
-  it:       'it',
-  pt:       'pt',
-  nl:       'nl',
-  pl:       'pl',
-  sv:       'sv',
-  da:       'da',
-  fi:       'fi',
-  no:       'no',
-  cs:       'cs',
-  el:       'el',
-  hu:       'hu',
-  ro:       'ro',
-  uk:       'uk',
   ru:       'ru',
-  'pt-br':  'pt-BR',
-  'es-mx':  'es-MX',
+  id:       'id',
+  my:       'ms',
+  th:       'th',
+  vn:       'vi',
+  ph:       'tl',
+  es:       'es',
+  pt:       'pt',
   ar:       'ar',
   tr:       'tr',
-  fa:       'fa',
-  he:       'he',
-  sw:       'sw',
-  ha:       'ha',
-  am:       'am',
-  kk:       'kk',
-  uz:       'uz',
+  in:       'hi',
 };
 
 /** og:locale 值 */
 export const OG_LOCALE: Record<Locale, string> = {
   en:       'en_US',
   'zh-cn':  'zh_CN',
-  ja:       'ja_JP',
-  ko:       'ko_KR',
-  id:       'id_ID',
-  ms:       'ms_MY',
-  th:       'th_TH',
-  vi:       'vi_VN',
-  hi:       'hi_IN',
-  bn:       'bn_BD',
-  tl:       'tl_PH',
-  ur:       'ur_PK',
-  pa:       'pa_IN',
-  te:       'te_IN',
-  ta:       'ta_IN',
-  mr:       'mr_IN',
-  gu:       'gu_IN',
-  jv:       'jv_ID',
+  'zh-tw':  'zh_TW',
+  jp:       'ja_JP',
+  kr:       'ko_KR',
   fr:       'fr_FR',
   de:       'de_DE',
-  es:       'es_ES',
-  it:       'it_IT',
-  pt:       'pt_PT',
-  nl:       'nl_NL',
-  pl:       'pl_PL',
-  sv:       'sv_SE',
-  da:       'da_DK',
-  fi:       'fi_FI',
-  no:       'nb_NO',
-  cs:       'cs_CZ',
-  el:       'el_GR',
-  hu:       'hu_HU',
-  ro:       'ro_RO',
-  uk:       'uk_UA',
   ru:       'ru_RU',
-  'pt-br':  'pt_BR',
-  'es-mx':  'es_MX',
+  id:       'id_ID',
+  my:       'ms_MY',
+  th:       'th_TH',
+  vn:       'vi_VN',
+  ph:       'tl_PH',
+  es:       'es_ES',
+  pt:       'pt_PT',
   ar:       'ar_AR',
   tr:       'tr_TR',
-  fa:       'fa_IR',
-  he:       'he_IL',
-  sw:       'sw_KE',
-  ha:       'ha_NG',
-  am:       'am_ET',
-  kk:       'kk_KZ',
-  uz:       'uz_UZ',
+  in:       'hi_IN',
 };
 
 /**
@@ -189,101 +142,47 @@ export const OG_LOCALE: Record<Locale, string> = {
  */
 export const LOCALE_LABELS: Record<Locale, string> = {
   en:       'English',
-  'zh-cn':  '中文',
-  ja:       '日本語',
-  ko:       '한국어',
-  id:       'Indonesia',
-  ms:       'Malaysia',
-  th:       'ไทย',
-  vi:       'Tiếng Việt',
-  hi:       'हिन्दी',
-  bn:       'বাংলা',
-  tl:       'Filipino',
-  ur:       'اردو',
-  pa:       'ਪੰਜਾਬੀ',
-  te:       'తెలుగు',
-  ta:       'தமிழ்',
-  mr:       'मराठी',
-  gu:       'ગુજરાતી',
-  jv:       'Jawa',
+  /* 加了繁体之后,简体必须显式标「简体」——
+     两个选项都写「中文」的话,台港读者根本不知道该点哪个。 */
+  'zh-cn':  '简体中文',
+  'zh-tw':  '繁體中文',
+  jp:       '日本語',
+  kr:       '한국어',
   fr:       'Français',
   de:       'Deutsch',
-  es:       'Español',
-  it:       'Italiano',
-  pt:       'Português',
-  nl:       'Nederlands',
-  pl:       'Polski',
-  sv:       'Svenska',
-  da:       'Dansk',
-  fi:       'Suomi',
-  no:       'Norsk',
-  cs:       'Čeština',
-  el:       'Ελληνικά',
-  hu:       'Magyar',
-  ro:       'Română',
-  uk:       'Українська',
   ru:       'Русский',
-  'pt-br':  'Português (BR)',
-  'es-mx':  'Español (MX)',
+  id:       'Indonesia',
+  my:       'Malaysia',
+  th:       'ไทย',
+  vn:       'Tiếng Việt',
+  ph:       'Filipino',
+  es:       'Español',
+  pt:       'Português',
   ar:       'العربية',
   tr:       'Türkçe',
-  fa:       'فارسی',
-  he:       'עברית',
-  sw:       'Kiswahili',
-  ha:       'Hausa',
-  am:       'አማርኛ',
-  kk:       'Қазақша',
-  uz:       'Oʻzbek',
+  in:       'हिन्दी',
 };
 
 /** 收起时按钮上的两字码(ISO 国别码为准;日本按创始人要求写 JP 不写 JA) */
 export const LOCALE_SHORT: Record<Locale, string> = {
   en:       'EN',
-  'zh-cn':  '中文',
-  ja:       'JP',
-  ko:       'KR',
-  id:       'ID',
-  ms:       'MY',
-  th:       'TH',
-  vi:       'VN',
-  hi:       'IN',
-  bn:       'BD',
-  tl:       'PH',
-  ur:       'PK',
-  pa:       'PA',
-  te:       'TE',
-  ta:       'TA',
-  mr:       'MR',
-  gu:       'GU',
-  jv:       'JV',
+  'zh-cn':  '简',
+  'zh-tw':  '繁',
+  jp:       'JP',
+  kr:       'KR',
   fr:       'FR',
   de:       'DE',
-  es:       'ES',
-  it:       'IT',
-  pt:       'PT',
-  nl:       'NL',
-  pl:       'PL',
-  sv:       'SE',
-  da:       'DK',
-  fi:       'FI',
-  no:       'NO',
-  cs:       'CZ',
-  el:       'GR',
-  hu:       'HU',
-  ro:       'RO',
-  uk:       'UA',
   ru:       'RU',
-  'pt-br':  'BR',
-  'es-mx':  'MX',
+  id:       'ID',
+  my:       'MY',
+  th:       'TH',
+  vn:       'VN',
+  ph:       'PH',
+  es:       'ES',
+  pt:       'PT',
   ar:       'AR',
   tr:       'TR',
-  fa:       'IR',
-  he:       'IL',
-  sw:       'KE',
-  ha:       'HA',
-  am:       'AM',
-  kk:       'KZ',
-  uz:       'UZ',
+  in:       'IN',
 };
 
 /**
@@ -292,7 +191,7 @@ export const LOCALE_SHORT: Record<Locale, string> = {
  * 导航在右、正文右起,访客读到的是彻底错乱的版面,等于没上线。
  * BaseLayout 据此输出 <html dir>,版式用逻辑属性(margin-inline 等)自动跟着翻。
  */
-export const RTL_LOCALES = new Set<string>(['ur', 'ar', 'fa', 'he']);
+export const RTL_LOCALES = new Set<string>(['ar']);
 export const isRtl = (l: string) => RTL_LOCALES.has(l);
 
 export function isLocale(x: string | undefined): x is Locale {
@@ -331,6 +230,10 @@ const zhCN = {
   'footer.contact': '联系方式',
   'footer.certs': '资质认证',
   'footer.rights': '保留所有权利。',
+  'footer.privacy': '隐私政策',
+  'footer.legal': '法律声明',
+  'footer.cookies': 'Cookie 政策',
+  'footer.disclaimer': '免责声明',
   'lang.label': '语言',
   'a11y.skip': '跳到主内容',
   'notfound.title': '页面不存在',
@@ -365,6 +268,10 @@ const en: Record<UiKey, string> = {
   'footer.contact': 'Contact',
   'footer.certs': 'Certifications',
   'footer.rights': 'All rights reserved.',
+  'footer.privacy': 'Privacy Policy',
+  'footer.legal': 'Legal Notices',
+  'footer.cookies': 'Cookie Policy',
+  'footer.disclaimer': 'Disclaimer',
   'lang.label': 'Language',
   'a11y.skip': 'Skip to content',
   'notfound.title': 'Page not found',
@@ -397,6 +304,10 @@ const ja: Record<UiKey, string> = {
   'footer.contact': '連絡先',
   'footer.certs': '認証・資格',
   'footer.rights': 'All rights reserved.',
+  'footer.privacy': 'プライバシーポリシー',
+  'footer.legal': '法的表示',
+  'footer.cookies': 'クッキーポリシー',
+  'footer.disclaimer': '免責事項',
   'lang.label': '言語',
   'a11y.skip': '本文へスキップ',
   'notfound.title': 'ページが見つかりません',
@@ -432,6 +343,10 @@ const id: Record<UiKey, string> = {
   'footer.contact': 'Kontak',
   'footer.certs': 'Sertifikasi',
   'footer.rights': 'Hak cipta dilindungi undang-undang.',
+  'footer.privacy': 'Kebijakan Privasi',
+  'footer.legal': 'Ketentuan Hukum',
+  'footer.cookies': 'Kebijakan Cookie',
+  'footer.disclaimer': 'Penafian',
   'lang.label': 'Bahasa',
   'a11y.skip': 'Lompat ke konten',
   'notfound.title': 'Halaman tidak ditemukan',
@@ -467,6 +382,10 @@ const ms: Record<UiKey, string> = {
   'footer.contact': 'Hubungi',
   'footer.certs': 'Pensijilan',
   'footer.rights': 'Hak cipta terpelihara.',
+  'footer.privacy': 'Dasar Privasi',
+  'footer.legal': 'Notis Undang-undang',
+  'footer.cookies': 'Dasar Kuki',
+  'footer.disclaimer': 'Penafian',
   'lang.label': 'Bahasa',
   'a11y.skip': 'Langkau ke kandungan',
   'notfound.title': 'Halaman tidak dijumpai',
@@ -501,6 +420,10 @@ const fr: Record<UiKey, string> = {
   'footer.contact': 'Contact',
   'footer.certs': 'Certifications',
   'footer.rights': 'Tous droits réservés.',
+  'footer.privacy': 'Politique de confidentialité',
+  'footer.legal': 'Mentions légales',
+  'footer.cookies': 'Politique de cookies',
+  'footer.disclaimer': 'Avertissement',
   'lang.label': 'Langue',
   'a11y.skip': 'Aller au contenu',
   'notfound.title': 'Page introuvable',
@@ -522,11 +445,28 @@ const fr: Record<UiKey, string> = {
  * 人工的写在本文件里,永远压过生成表 —— 机器只补空缺,不覆盖定稿。
  * 想把某个语种"转正":把它整份从 ui.generated.ts 搬进本文件即可。
  */
-const HUMAN = { 'zh-cn': zhCN, en, ja, id, ms, fr } as Record<string, Record<UiKey, string>>;
+// 键是**路径码**(jp/my),值是手写词表变量名(ja/ms)——
+// 两者不同是有意的:路径走国家码,变量名跟着语言走。
+const HUMAN = { 'zh-cn': zhCN, en, jp: ja, id, my: ms, fr } as Record<string, Record<UiKey, string>>;
 
 export const ui = Object.fromEntries(
   LOCALES.map((l) => [l, HUMAN[l] ?? generated[l] ?? HUMAN.en]),
 ) as Record<Locale, Record<UiKey, string>>;
+
+/**
+ * 界面词表覆盖检查 —— 开发期跑,构建时不参与。
+ *
+ * 上面那行的 `?? HUMAN.en` 是兜底,好处是永远不会因为缺词表而白屏;
+ * 坏处是**缺了也不吭声**:把路径码从 ja 改成 jp 那次,HUMAN 里还写着 ja,
+ * 于是日语站的导航、按钮、页脚全部悄悄变成英文,页面照常渲染、构建照常通过。
+ * 所以把"谁在吃兜底"显式列出来,别让它藏在一个 ?? 后面。
+ */
+export function uiCoverage(): { locale: string; source: 'human' | 'generated' | 'fallback-en' }[] {
+  return LOCALES.map((l) => ({
+    locale: l,
+    source: HUMAN[l] ? 'human' : generated[l] ? 'generated' : 'fallback-en',
+  }));
+}
 
 /** 取词函数工厂;overrides 供品牌皮肤覆盖个别词条 */
 export function t(locale: Locale, overrides?: Partial<Record<UiKey, string>>) {

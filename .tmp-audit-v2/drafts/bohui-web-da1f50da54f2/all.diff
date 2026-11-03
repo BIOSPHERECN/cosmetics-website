@@ -1,0 +1,721 @@
+diff --git a/apps/web/astro.config.mjs b/apps/web/astro.config.mjs
+index 17d7bc6..fe16847 100644
+--- a/apps/web/astro.config.mjs
++++ b/apps/web/astro.config.mjs
+@@ -1,5 +1,52 @@
+ import { defineConfig } from 'astro/config';
+ import cloudflare from '@astrojs/cloudflare';
++import { spawnSync } from 'node:child_process';
++import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
++import { resolve } from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++/**
++ * 审核部 v2.1 第一关(tools-review/audit_v2/设计-v2.1.md §1.2):每次 astro build 之前跑 gate1,不过就构建失败。
++ * audit_v2/ENABLED 不在 = 观察模式:照跑、只提示、不拦、不注入。
++ * 构建完给产物 wrangler.json 注入 build.command(§2.8 ③):有人进产物目录直接 wrangler deploy,wrangler 会先跑审核单校验。
++ * 破窗只认 ship.sh --breakglass 导出的 BOHUI_BREAKGLASS(去空白 ≥6 字),gate1 退出码 3(硬规则)破窗也不放。
++ */
++const AV2 = 'F:/0cosmetic/tools-review/audit_v2';
++const GATE = `${AV2}/cache/gate_approved/audit_v2`;
++const WORKER = 'bohui-web';
++let appRoot = null;
++let serverDir = null;
++const bohuiGate1 = {
++  name: 'bohui-gate1',
++  hooks: {
++    'astro:config:done': ({ config }) => {
++      appRoot = fileURLToPath(config.root);
++      serverDir = fileURLToPath(config.build.server);
++    },
++    'astro:build:start': () => {
++      const on = existsSync(`${AV2}/ENABLED`);
++      const repo = resolve(appRoot, '../..');
++      const r = spawnSync('F:/0cosmetic/_venv/review/Scripts/python.exe', [on ? `${GATE}/gate1.py` : `${AV2}/gate1.py`, '--repo', repo, '--mode', 'build'],
++        { stdio: 'inherit', env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' } });
++      if (r.status === 0) return;
++      if (!on) { console.warn(`[第一关] 观察模式(${AV2}/ENABLED 不在):exit ${r.status ?? r.error},不拦`); return; }
++      const bg = process.env.BOHUI_BREAKGLASS || '';
++      if ([...bg.replace(/\s/g, '')].length >= 6 && r.status !== 3) {
++        appendFileSync(`${AV2}/ledger/breakglass.jsonl`, JSON.stringify({ ts: new Date().toISOString(), layer: 'astro', repo, gate1_exit: r.status, reason: bg.slice(0, 300) }) + '\n');
++        console.warn('[第一关] 破窗放行,已记账,24 小时内追审');
++        return;
++      }
++      throw new Error(`第一关未过(exit ${r.status ?? r.error}),构建中止。拦截项见上;线上出事见 ${AV2}/设计-v2.1.md §3`);
++    },
++    'astro:build:done': () => {
++      const f = serverDir && `${serverDir}/wrangler.json`;
++      if (!existsSync(`${AV2}/ENABLED`) || !f || !existsSync(f)) return;
++      const c = JSON.parse(readFileSync(f, 'utf-8'));
++      c.build = { command: `${GATE}/verify_or_bg.cmd ${WORKER}` };
++      writeFileSync(f, JSON.stringify(c));
++    },
++  },
++};
+ 
+ /**
+  * 帛卉多站 SSR 应用 —— 一个部署按域名服务 5 个品牌站 + /admin 后台。
+@@ -8,6 +55,7 @@ import cloudflare from '@astrojs/cloudflare';
+ export default defineConfig({
+   output: 'server',
+   adapter: cloudflare(),
++  integrations: [bohuiGate1],
+   // 不能用 'always':它会把 /media/x.jpg 也重定向成 /media/x.jpg/,
+   // 静态资源随之 404。SSR 下页面路径由 [...path] 自己规整,不依赖这个开关。
+   trailingSlash: 'ignore',
+diff --git a/apps/web/public/b2o/img/fd/c-botanical-set.webp b/apps/web/public/b2o/img/fd/c-botanical-set.webp
+new file mode 100644
+index 0000000..83110fb
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/c-botanical-set.webp differ
+diff --git a/apps/web/public/b2o/img/fd/c-color-tubes.webp b/apps/web/public/b2o/img/fd/c-color-tubes.webp
+new file mode 100644
+index 0000000..02e6fb1
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/c-color-tubes.webp differ
+diff --git a/apps/web/public/b2o/img/fd/c-fruit-cans.webp b/apps/web/public/b2o/img/fd/c-fruit-cans.webp
+new file mode 100644
+index 0000000..b1c1086
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/c-fruit-cans.webp differ
+diff --git a/apps/web/public/b2o/img/fd/c-pink-serum.webp b/apps/web/public/b2o/img/fd/c-pink-serum.webp
+new file mode 100644
+index 0000000..b28adc3
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/c-pink-serum.webp differ
+diff --git a/apps/web/public/b2o/img/fd/c-starry-premium.webp b/apps/web/public/b2o/img/fd/c-starry-premium.webp
+new file mode 100644
+index 0000000..7892092
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/c-starry-premium.webp differ
+diff --git a/apps/web/public/b2o/img/fd/d-cucumber-set.webp b/apps/web/public/b2o/img/fd/d-cucumber-set.webp
+new file mode 100644
+index 0000000..cd00a2d
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/d-cucumber-set.webp differ
+diff --git a/apps/web/public/b2o/img/fd/d-gold-set.webp b/apps/web/public/b2o/img/fd/d-gold-set.webp
+new file mode 100644
+index 0000000..89684b8
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/d-gold-set.webp differ
+diff --git a/apps/web/public/b2o/img/fd/d-papaya-set.webp b/apps/web/public/b2o/img/fd/d-papaya-set.webp
+new file mode 100644
+index 0000000..1d6535d
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/d-papaya-set.webp differ
+diff --git a/apps/web/public/b2o/img/fd/hero-beach-lineup.webp b/apps/web/public/b2o/img/fd/hero-beach-lineup.webp
+new file mode 100644
+index 0000000..115ed1c
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/hero-beach-lineup.webp differ
+diff --git a/apps/web/public/b2o/img/fd/insight-pool.webp b/apps/web/public/b2o/img/fd/insight-pool.webp
+new file mode 100644
+index 0000000..9da73ea
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/insight-pool.webp differ
+diff --git a/apps/web/public/b2o/img/fd/m1-trend-pastel.webp b/apps/web/public/b2o/img/fd/m1-trend-pastel.webp
+new file mode 100644
+index 0000000..49a8469
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/m1-trend-pastel.webp differ
+diff --git a/apps/web/public/b2o/img/fd/m2-judge-gold.webp b/apps/web/public/b2o/img/fd/m2-judge-gold.webp
+new file mode 100644
+index 0000000..68ab9dc
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/m2-judge-gold.webp differ
+diff --git a/apps/web/public/b2o/img/fd/m3-verify-market.webp b/apps/web/public/b2o/img/fd/m3-verify-market.webp
+new file mode 100644
+index 0000000..365909a
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/m3-verify-market.webp differ
+diff --git a/apps/web/public/b2o/img/fd/m4-launch-tropical-box.webp b/apps/web/public/b2o/img/fd/m4-launch-tropical-box.webp
+new file mode 100644
+index 0000000..80c3724
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/m4-launch-tropical-box.webp differ
+diff --git a/apps/web/src/components/B2oBlock.astro b/apps/web/src/components/B2oBlock.astro
+index 5445e55..24337e3 100644
+--- a/apps/web/src/components/B2oBlock.astro
++++ b/apps/web/src/components/B2oBlock.astro
+@@ -26,6 +26,7 @@ const fmt = (n: number) => Number(n || 0).toLocaleString('en-US');
+ const counts: any = (await getCounts(db)) ?? {};
+ const N = (k: string) => Number(counts[k] ?? 0);
+ const lines = Number(ORG.figures.find((f) => f.nameEn === 'Automated production lines')?.value ?? 15);
++const foundingYear = new Date(ORG.foundingDate).getUTCFullYear();
+ const VARS: Record<string, string> = {
+   products: fmt(N('products')), summaries: fmt(N('summaries')), formulas: ORG.formulas.value, packaging: fmt(N('pack_shelf')),
+   regs: String(N('regs')), inci: fmt(N('inci')), lines: String(lines), site: siteName,
+@@ -44,11 +45,21 @@ const href = (h: any, fb: string) => { const v = String(h ?? '').trim(); if (!v)
+ 
+ /* 配图:全部自托管 webp(apps/web/public/b2o/img/),写死宽高防跳版 */
+ const IMG: Record<string, [string, number, number, string]> = {
+-  hero: ['01-hero-shelf', 1248, 832, '几款无品牌的护肤品摆在浅色石台上,晨光斜照'],
++  hero: ['fd/hero-beach-lineup', 1024, 1024, '海边沙滩上摆放着多款色彩明快的防晒产品和热带水果'],
+   desk: ['02-seller-desk', 1248, 832, '卖家在打包台前整理样品瓶和纸箱'],
+   lab: ['03-lab-bench', 1248, 832, '实验台上,戴手套的手用滴管往烧杯里加精华'],
+-  pack: ['05-packaging', 1024, 1024, '无品牌的白色与浅绿色包装盒和瓶罐'],
+-  qc: ['06-qc-crop', 679, 452, '戴手套的手对着窗光检查一支样品小瓶'],
++  methodTrend: ['fd/m1-trend-pastel', 1024, 1024, '粉色背景前摆放着三款淡彩防晒产品'],
++  methodJudge: ['fd/m2-judge-gold', 1024, 1024, '棕榈叶影下的金色瓶罐与白色软管防晒组合'],
++  methodVerify: ['fd/m3-verify-market', 1024, 1024, '戴遮阳帽和墨镜的女子站在阳光下的户外市集'],
++  methodLaunch: ['fd/m4-launch-tropical-box', 1024, 1024, '绿叶间摆放着两款热带植物图案的产品包装'],
++  deliveryGold: ['fd/d-gold-set', 1600, 1600, '暖金色桌面上陈列着金色软管、喷瓶和精华瓶'],
++  deliveryPapaya: ['fd/d-papaya-set', 1600, 1600, '木瓜和黄瓜旁摆放着淡绿与杏色护肤软管'],
++  deliveryCucumber: ['fd/d-cucumber-set', 1600, 1600, '黄瓜与切片旁陈列着浅绿色软管和按压瓶'],
++  cardPink: ['fd/c-pink-serum', 1024, 1024, '粉色花朵和透明质感背景前的粉色精华瓶'],
++  cardTubes: ['fd/c-color-tubes', 1024, 1024, '粉色背景前的蓝、白、红三款彩色软管'],
++  cardStarry: ['fd/c-starry-premium', 1024, 1024, '夜色灯光下摆放着星月图案的深蓝色瓶罐组合'],
++  cardFruit: ['fd/c-fruit-cans', 1024, 1024, '鲜橙、柚子和菠萝前摆放着三款色彩鲜艳的防晒瓶'],
++  cardBotanical: ['fd/c-botanical-set', 1024, 1024, '向日葵和绿叶间摆放着植物图案的绿色瓶罐'],
+   ware: ['07-warehouse', 1248, 832, '明亮的仓库里整齐码放的纸箱'],
+   herb: ['08-botanical', 1024, 1024, '石板上摆着植物油、洋甘菊、茶叶、芦荟和白泥'],
+   hand: ['09-market-hand', 1024, 1024, '手握一支浅绿色玻璃精华瓶'],
+@@ -57,7 +68,7 @@ const IMG: Record<string, [string, number, number, string]> = {
+ };
+ const img = (k: string, eager = false) => {
+   const [f, w, h, alt] = IMG[k];
+-  return { src: `/b2o/img/${f}.webp`, width: w, height: h, alt, loading: eager ? 'eager' : 'lazy', decoding: 'async', fetchpriority: eager ? 'high' : undefined } as any;
++  return { src: `/b2o/img/${f}.webp`, width: w, height: h, alt, class: `b2o-img-${k}`, loading: eager ? 'eager' : 'lazy', decoding: 'async', fetchpriority: eager ? 'high' : undefined } as any;
+ };
+ 
+ /* 机会卡「有没有已发布的」与公开预判台账(is_public=1,≤60 行,只公开字段)都读构建时快照,访客请求零查库。
+@@ -66,18 +77,23 @@ const hasCards = type === 'fx_cards' && !!(SNAP as any).has_cards;
+ const ledger: any[] = type === 'fx_ledger' && Array.isArray((SNAP as any).ledger) ? (SNAP as any).ledger : [];
+ const dotCls = (x: any, r: any) => (!String(r ?? '').trim() ? '' : x.outcome === 'right' ? 'ok' : x.outcome === 'wrong' ? 'x' : 'mid');
+ 
+-/* 在库数据图:只放同一类东西(库里的条目),对数刻度;产线和市场单独画成可数的方块与圆点 */
+-const bars = [
+-  { l: '真实产品库', v: N('products'), u: '款', n: `全成分产品,另有 ${fmt(N('summaries'))} 条配方视角解读`, h: 'https://biosphere-ai.com/zh-cn/decoder/' },
+-  { l: '原料目录', v: N('inci'), u: '条', n: '各国原料目录,配方阶段先核限用和禁用成分', h: 'https://biosphere-ai.com/zh-cn/regulations/' },
+-  { l: '包材现货', v: N('pack_shelf'), u: '款', n: '瓶、罐、管、泵头、彩盒,先按剂型选结构', h: 'https://biosphere-ai.com/zh-cn/packaging/' },
+-  /* 09-24 老板会议:配方对外用成熟配方总数 13,000+,不用库里在线行数 */
+-  { l: '成熟配方', v: ORG.formulas.n, s: '+', u: '个', n: '均经稳定性测试,从中匹配现成配方,不给 AI 现编配方', h: 'https://biosphere-ai.com/zh-cn/formulas/' },
+-].filter((b) => b.v > 0);
+-const LOGMAX = 5.3;
+-const pct = (v: number) => `${Math.max(2, (Math.log10(Math.max(1, v)) / LOGMAX) * 100).toFixed(1)}%`;
+-const TICKS: Array<[number, string]> = [[0, '1'], [1, '10'], [2, '100'], [3, '1千'], [4, '1万'], [5, '10万']];
+-const regs = N('regs');
++/* 09-24 事实口径修正:五项能力性质不同,分别陈述,不再用对数柱长制造可比性。
++   配方与产线读 ORG 硬事实;包材、市场情报、法规原料目录只读构建时计数快照。 */
++const deliveryTitle = '判断之后，帛卉把它做出来';
++const deliveryIntro = '预判落到生产：帛卉自有产线和成熟配方，加上公开市场与法规数据。';
++const evidenceCards = [
++  { value: ORG.formulas.value, label: '成熟配方', note: '均经稳定性测试，按你的需求匹配现成配方。' },
++  { value: fmt(lines), label: '条自动化产线', note: '10 万级 GMP 洁净车间。' },
++  { value: fmt(N('pack_shelf')), label: '款包材可选', note: '瓶、罐、软管、泵头等款式库。' },
++  { value: fmt(N('products')), label: '款市场爆款情报', note: '从公开渠道收集，用于判断趋势。', href: 'https://biosphere-ai.com/zh-cn/decoder/' },
++  { value: fmt(N('inci')), label: '条各国法规原料目录', note: '公开法规数据。', href: 'https://biosphere-ai.com/zh-cn/regulations/' },
++];
++const exportReasons = [
++  { value: String(foundingYear), label: '年成立', note: '帛卉化妆品，专注化妆品研发与生产。' },
++  { value: String(lines), label: '条自动化产线', note: '10 万级 GMP 洁净车间。' },
++  { value: ORG.formulas.value, label: '成熟配方', note: '均经稳定性测试。' },
++  { value: '出海合规', label: '资料准备', note: '支持美国 MoCRA、欧盟 CPNP、东盟与清真 HALAL 等资料准备。' },
++];
+ 
+ const briefRows = [
+   ['产品结构', '你现在卖什么、靠什么赚钱'],
+@@ -97,6 +113,7 @@ const Arrow = '→';
+         <div class="b2o-hero-copy">
+           <h1 class="b2o-h1 b2o-h1-hero"><span class="ln">{tidy(d.title)}</span>{d.sub && <span class="ln">{tidy(d.sub)}</span>}</h1>
+           <p class="b2o-lede">提交店铺，24 小时内拿到一份 1 至 2 页的机会简报。</p>
++          <p class="b2o-position">帛卉化妆品 · {foundingYear} 年成立 · 多年海外市场经验 · 主要服务出海化妆品品牌</p>
+           <div class="b2o-cta-row">
+             <a class="b2o-btn b2o-btn-pri" href={BRIEF}>提交店铺，拿简报<span class="ico" aria-hidden="true">{Arrow}</span></a>
+             <a class="b2o-btn b2o-btn-sec" href="#b2o-sample">看简报样张</a>
+@@ -140,6 +157,22 @@ const Arrow = '→';
+       </div>
+     </section>
+ 
++    <section class="b2o-sec b2o-export">
++      <div class="b2o-wrap">
++        <header class="b2o-head">
++          <h2 class="b2o-h2">为什么找我们出海</h2>
++          <p class="b2o-lede">帛卉化妆品把生产硬实力和出海资料准备放在同一条交付链路里。</p>
++        </header>
++        <div class="b2o-export-grid" role="list">
++          {exportReasons.map((item) => (
++            <article class="b2o-export-card" role="listitem">
++              <strong>{item.value}</strong><span>{item.label}</span><p>{item.note}</p>
++            </article>
++          ))}
++        </div>
++      </div>
++    </section>
++
+     <section class="b2o-sec b2o-band">
+       <div class="b2o-wrap">
+         <div class="b2o-ph band-ph"><img {...img('ware')} /></div>
+@@ -166,29 +199,16 @@ const Arrow = '→';
+       </header>
+       {stepList.slice(0, 4).map((x, i) => (
+         <div class:list={['b2o-row', `r${i + 1}`]}>
+-          <span class="no">{String(i + 1).padStart(2, '0')}</span>
+-          <h3 class="t">{x.label}</h3>
+-          <p class="dsc">{x.note}</p>
++          <div class="info">
++            <span class="no">{String(i + 1).padStart(2, '0')}</span>
++            <h3 class="t">{x.label}</h3>
++            <p class="dsc">{x.note}</p>
++          </div>
+           <div class="v">
+-            {i === 0 && <div class="b2o-ph r20"><img {...img('hand')} /></div>}
+-            {i === 1 && (
+-              <div class="b2o-viz" role="img" aria-label="正方与反方各列证据,最后给出裁决">
+-                <div class="debate"><div class="pro"><b>正方 · 支持的证据</b><i style="--w:92%"></i><i style="--w:70%"></i><i style="--w:80%"></i></div><div class="con"><b>反方 · 反对的证据</b><i style="--w:76%"></i><i style="--w:88%"></i><i style="--w:54%"></i></div></div>
+-                <div class="verdict"><span>裁决：推进 / 观察 / 放弃</span><span>附失效条件</span></div>
+-              </div>
+-            )}
+-            {i === 2 && (
+-              <div class="b2o-viz" role="img" aria-label="回填表示意:三条预判,30、60、90 天均待回填">
+-                <div class="b2o-dots">
+-                  <span></span><span class="hd">30 天</span><span class="hd">60 天</span><span class="hd">90 天</span>
+-                  <span class="lb">预判一</span><i class="dot"></i><i class="dot"></i><i class="dot"></i>
+-                  <span class="lb">预判二</span><i class="dot"></i><i class="dot"></i><i class="dot"></i>
+-                  <span class="lb">预判三</span><i class="dot"></i><i class="dot"></i><i class="dot"></i>
+-                </div>
+-                <div class="b2o-legend"><span><i class="dot ok"></i>成立</span><span><i class="dot x"></i>错了</span><span><i class="dot"></i>待回填</span></div>
+-              </div>
+-            )}
+-            {i === 3 && <div class="b2o-ph r20"><img {...img('vials')} /></div>}
++            {i === 0 && <div class="b2o-ph r20"><img {...img('methodTrend')} /></div>}
++            {i === 1 && <div class="b2o-ph r20"><img {...img('methodJudge')} /></div>}
++            {i === 2 && <div class="b2o-ph r20"><img {...img('methodVerify')} /></div>}
++            {i === 3 && <div class="b2o-ph r20"><img {...img('methodLaunch')} /></div>}
+           </div>
+         </div>
+       ))}
+@@ -206,7 +226,7 @@ const Arrow = '→';
+           {pageDesc && <p class="b2o-lede">{tidy(pageDesc)}</p>}
+           <div class="b2o-cta-row"><a class="b2o-btn b2o-btn-pri" href={BRIEF}>提交店铺，拿简报<span class="ico" aria-hidden="true">{Arrow}</span></a></div>
+         </div>
+-        <figure class="b2o-bezel pic"><div class="core b2o-ph r32 sq"><img {...img('herb', true)} /></div></figure>
++        <figure class="b2o-bezel pic"><div class="core b2o-ph r32 sq"><img {...img('cardTubes', true)} /></div></figure>
+       </div>
+     )}
+     {hasCards ? (
+@@ -219,6 +239,7 @@ const Arrow = '→';
+         </header>
+         <div class="b2o-opp-grid">
+           <article class="b2o-oc" aria-label="机会卡结构示意">
++            <div class="b2o-ph card-pic"><img {...img(page === '' ? 'cardPink' : 'cardFruit')} /></div>
+             <div class="tagrow"><span class="b2o-tag accent">{page === '' ? '结构示意' : '结构示意，首批复核后上线'}</span><span class="b2o-tag">国家 · 平台 · 品类</span></div>
+             <h3>一张机会卡长这样</h3>
+             <div class="stage" aria-label="趋势阶段"><span>萌芽</span><span class="on">上升</span><span>高价</span></div>
+@@ -248,6 +269,7 @@ const Arrow = '→';
+             </div>
+           ) : (
+             <div class="b2o-oc-side">
++              <div class="b2o-ph card-side-pic"><img {...img('cardBotanical')} /></div>
+               <h3>机会卡按趋势阶段排</h3>
+               <ol class="stages">{['萌芽', '验证', '加速', '扩散', '拥挤', '价格战', '成熟', '衰退'].map((x) => <li class:list={{ hot: x === '验证' || x === '加速' }}>{x}</li>)}</ol>
+               <p class="b2o-lede">最值得抢的是「验证到加速」这一段。代表商品、配方方向和时间窗口不公开，按你的店铺来定。</p>
+@@ -266,7 +288,7 @@ const Arrow = '→';
+   <section class="b2o-sec b2o-oneline"><div class="b2o-wrap"><a class="b2o-link" href={`${B}/#method`}>{tidy(d.title)}：看我们怎么判断 {Arrow}</a></div></section>
+ )}
+ 
+-{/* 判断之后 / 帛卉交付:同一套数据,画成图 */}
++{/* 判断之后 / 帛卉交付:性质不同的事实分卡陈述 */}
+ {type === 'fx_six' && (
+   <>
+     {page === 'delivery' && (
+@@ -276,14 +298,14 @@ const Arrow = '→';
+             <h1 class="b2o-h1">{tidy(pageTitle)}</h1>
+             {pageDesc && <p class="b2o-lede">{tidy(pageDesc)}</p>}
+           </div>
+-          <figure class="b2o-bezel pic"><div class="core b2o-ph r32 sq"><img {...img('pack', true)} /></div></figure>
++          <figure class="b2o-bezel pic"><div class="core b2o-ph r32 sq"><img {...img('deliveryGold', true)} /></div></figure>
+         </div>
+       </section>
+     )}
+     <section class:list={['b2o-sec', 'alt', 'b2o-deliver', page === 'delivery' ? 'is-page' : '']}>
+       <div class="b2o-wrap b2o-grid">
+         <div class="side">
+-          <figure class="b2o-bezel side-pic"><div class:list={['core', 'b2o-ph', page === 'delivery' ? 'tall' : '']}><img {...img(page === 'delivery' ? 'vials' : 'lab')} /></div></figure>
++          <figure class="b2o-bezel side-pic"><div class:list={['core', 'b2o-ph', page === 'delivery' ? 'tall' : '']}><img {...img(page === 'delivery' ? 'deliveryPapaya' : 'lab')} /></div></figure>
+           {page === '' && (
+             <div class="b2o-todo" role="img" aria-label="车间实拍图位,待补实拍">
+               <div><b>广州工厂 · 灌装车间</b>此处只放真实拍摄的车间照片<span class="b2o-tag red">待补实拍</span></div>
+@@ -291,41 +313,20 @@ const Arrow = '→';
+           )}
+         </div>
+         <div class="main">
+-          <h2 class="b2o-h2">{tidy(d.title)}</h2>
+-          {d.intro && <p class="b2o-lede">{tidy(d.intro)}</p>}
+-          <div class="b2o-chart">
+-            <div class="chart-h"><h3>帛卉可调用的在库条目</h3><span>对数刻度，每格乘以 10</span></div>
+-            <div class="b2o-bars" role="list">
+-              <div class="axis" aria-hidden="true">
+-                {TICKS.map(([p, t]) => <><i style={`left:${((p / LOGMAX) * 100).toFixed(2)}%`}></i><em style={`left:${((p / LOGMAX) * 100).toFixed(2)}%`}>{t}</em></>)}
+-              </div>
+-              {bars.map((b) => (
+-                <a class="bar" role="listitem" href={b.h} aria-label={`${b.l} ${fmt(b.v)}${b.s ?? ''} ${b.u}:${b.n}`}>
+-                  <span class="l">{b.l}</span>
+-                  <span class="track"><span class="fill" style={`--v:${pct(b.v)}`}></span><span class="tipn">{b.n}</span></span>
+-                  <span class="val">{fmt(b.v)}{b.s ?? ''}<small>{b.u}</small></span>
+-                </a>
+-              ))}
+-            </div>
+-            <details><summary>查看数据表</summary>
+-              <table><thead><tr><th>条目</th><th>数量</th></tr></thead><tbody>{bars.map((b) => <tr><td>{b.l}</td><td>{fmt(b.v)}{b.s ?? ''} {b.u}</td></tr>)}</tbody></table>
+-            </details>
+-          </div>
+-          <div class="b2o-cap">
+-            <div class="cap">
+-              <h3><b>{lines}</b> 条自动化产线</h3>
+-              <div class="sq" role="img" aria-label={`${lines} 条自动化产线`}>{Array.from({ length: lines }).map(() => <i></i>)}</div>
+-              <p>{ORG.certs.join('、')} 认证，广州自有工厂，欢迎验厂。</p>
+-            </div>
+-            {regs > 0 && (
+-              <div class="cap">
+-                <h3><b>{regs}</b> 个目标市场的准入要点</h3>
+-                <div class="dt" role="img" aria-label={`${regs} 个市场`}>{Array.from({ length: regs }).map(() => <i></i>)}</div>
+-                <p>配方阶段先核目标国的限用与禁用成分，少返工。</p>
+-              </div>
+-            )}
++          <h2 class="b2o-h2">{deliveryTitle}</h2>
++          <p class="b2o-lede">{deliveryIntro}</p>
++          <div class="b2o-number-cards" role="list">
++            {evidenceCards.map((card) => {
++              const Tag = card.href ? 'a' : 'div';
++              return (
++                <Tag class="b2o-number-card" role="listitem" href={card.href}>
++                  <strong>{card.value}<span>{card.label}</span></strong>
++                  <p>{card.note}</p>
++                  {card.href && <small>查看公开数据 {Arrow}</small>}
++                </Tag>
++              );
++            })}
+           </div>
+-          <p class="b2o-src">数字读自帛卉数据库的计数快照，点每一条可以去工厂站逐条核对。</p>
+         </div>
+       </div>
+     </section>
+@@ -342,7 +343,7 @@ const Arrow = '→';
+       </header>
+       <ol class="chain">{stepList.map((x) => <li><b>{x.label}</b><span>{x.note}</span></li>)}</ol>
+       <div class="pics">
+-        <figure class="b2o-bezel"><div class="core b2o-ph r32"><img {...img('ware')} /></div></figure>
++        <figure class="b2o-bezel"><div class="core b2o-ph r32"><img {...img('deliveryCucumber')} /></div></figure>
+         <div class="b2o-todo" role="img" aria-label="灌装或质检车间实拍图位,待补实拍">
+           <div><b>广州工厂 · 灌装与质检车间</b>此处只放真实拍摄的车间照片<span class="b2o-tag red">待补实拍</span></div>
+         </div>
+@@ -471,7 +472,7 @@ const Arrow = '→';
+           <h1 class="b2o-h1">{tidy(pageTitle)}</h1>
+           {pageDesc && <p class="b2o-lede">{tidy(pageDesc)}</p>}
+         </div>
+-        <figure class="b2o-bezel pic"><div class="core b2o-ph r32 wide"><img {...img('qc', true)} /></div></figure>
++        <figure class="b2o-bezel pic"><div class="core b2o-ph r32 wide"><img {...img('cardStarry', true)} /></div></figure>
+       </div>
+     </section>
+     <section class="b2o-sec alt b2o-ledger">
+diff --git a/apps/web/src/components/_HomeFactory.astro.retired-0921 b/apps/web/src/components/_HomeFactory.astro.retired-0921
+index 390931c..927ce05 100644
+--- a/apps/web/src/components/_HomeFactory.astro.retired-0921
++++ b/apps/web/src/components/_HomeFactory.astro.retired-0921
+@@ -73,18 +73,18 @@ const T = zh ? {
+   searchPh: '例:玻尿酸精华、SPF50 轻薄防晒、氨基酸洁面、烟酰胺身体乳', searchBtn: '找同款',
+   paths: [[`#opps`, '找产品机会', '不知道下一款做什么?看今天的机会卡'], [`${B}/formulas/`, '我有产品想法', '在库配方基底按品类 / 剂型 / 功效筛'], [waHref || `${B}/contact/`, '已有产品要代工', '发全成分表或样品,工厂直接出方案']],
+   pathHint: '你只说目标。找同款、配方、包材、法规、打样、生产由工厂负责。',
+-  s0: '不是口号:六项能力,每项都有证据', s0lead: '把项目交给一家工厂之前,先看它凭什么交付。下面每个数字都来自本站数据库,点进去可以逐条核对。',
++  s0: '不是口号:六项能力,每项都有证据', s0lead: '预判落到生产:帛卉自有产线和成熟配方,加上公开市场与法规数据。',
+   six: [
+     ['全球产品配方库', `${fmt(N('products', 0))} 款全成分真实产品 · ${fmt(N('summaries', 0))} 条配方视角解读`, '看别人怎么做:同类产品的成分结构、主打活性物、宣称边界,再决定你的产品怎么做。', `${B}/decoder/`],
+     ['在库配方基底', `${fmt(N('formulas', 0))} 条可直接打样的配方基底 · ${fmt(N('classics', 0))} 条古方文献数字化`, '不是从零研发:按品类、剂型、功效、目标市场匹配基底,改活性物与肤感,寄样评估。', `${B}/formulas/`],
+     ['工厂与产线', `${lines} 条自动化产线 · ${ORG.certs.join(' / ')}`, '护肤 / 身体 / 洗护 / 防晒 / 彩妆 / 口腔;欢迎验厂,证书复印件与产线视频随时给。', `${B}/about/`],
+-    ['包材现货', `${fmt(N('packaging', 0))} 款现货包材型号`, '瓶、罐、管、泵头、彩盒:先按剂型选结构,再谈定制。', `${B}/packaging/`],
++    ['包材款式库', `${fmt(N('packaging', 0))} 款包材可选`, '瓶、罐、软管、泵头等款式库:先按剂型选结构,再确认供应与定制方案。', `${B}/packaging/`],
+     ['法规与合规', `${N('regs', 0)} 个市场准入要点 · ${fmt(N('inci', 0))} 条原料目录`, '印尼 BPOM、马来 NPRA、沙特 SFDA、美国 MoCRA、欧盟 CPNP:配方阶段先核限用与禁用,不做返工。', `${B}/regulations/`],
+     ['目标市场落地', `${OEM_MARKETS.length} 个市场 × ${OEM_CATEGORIES.length} 个品类代工页`, `${OEM_MARKETS.map((m) => m.zh).join(' / ')}:每个市场的备案路径、责任方、标签要点与买手问答。`, `${B}/oem/`],
+   ] as Array<[string, string, string, string]>,
+   s2: '今天,什么产品值得做?', s2lead: (d: string) => `按跨境爆款榜、同类产品库与目标市场法规每日生成 · 更新 ${d} · 星级是相对定性,不是测算数字。`, s2none: '机会卡每日生成;先看配方库或直接说你的处境。',
+   oppLabels: ['市场需求', '竞争程度', '价格空间', '供应链可行性'], oppBtn: '让工厂给方案', s2more: '没有你要的?发一句话说你的处境,工厂按目标市场给方向',
+-  s3: '看到一个产品,就交给工厂做', s3lead: '输入产品名:先在真实产品库找同款、拆全成分结构,再匹配在库基底、核目标市场法规,然后寄样。成本与起订按项目由工厂报,页面不估数。',
++  s3: '看到一个产品,就交给工厂做', s3lead: '输入产品名:先在公开市场产品情报中找同款、拆全成分结构,再匹配在库基底、核目标市场法规,然后寄样。成本与起订按项目由工厂报,页面不估数。',
+   s3flow: ['找同款', '拆全成分', '匹配在库基底', '寄样评估', '试产与大货'], s3latest: '最新入库的全球产品',
+   s5: '在库配方基底:按品类看真产品', s5lead: '每一条都有编号、剂型与功效标签,点编号看基底说明;寄样通常 5–14 天。这里列的是基底,不是你的最终配方 —— 活性物、肤感、香型按你的品牌改。',
+   s5all: '看全部', s5count: (n: number) => `${n} 条基底`,
+diff --git a/apps/web/src/middleware.ts b/apps/web/src/middleware.ts
+index 1444b68..fcc616f 100644
+--- a/apps/web/src/middleware.ts
++++ b/apps/web/src/middleware.ts
+@@ -514,7 +514,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+   /* v3(2026-09-07 上午):D1 额度耗尽期间,边缘把一批 404 与 503 缓存住了 ——
+      修好之后访客拿到的仍是坏副本。推版本号是清掉它们唯一干净的办法。 */
+   /* v4(2026-09-07 晚):sitemap 拆分、繁中上线、跨站兜底重写 —— 清掉全部旧副本 */
+-  const CACHE_V = 'v84';   // 09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
++  const CACHE_V = 'v85';   // 09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
+   const keyFor = (r: Request) => {
+     const u = new URL(r.url);
+     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。
+diff --git a/apps/web/src/pages/[lang]/insights.astro b/apps/web/src/pages/[lang]/insights.astro
+index acaf724..9021363 100644
+--- a/apps/web/src/pages/[lang]/insights.astro
++++ b/apps/web/src/pages/[lang]/insights.astro
+@@ -44,7 +44,7 @@ const toc = getHeadings().filter((h) => h.depth === 2 && !/脚注|footnote/i.tes
+           <h1 class="b2o-h1">{title}</h1>
+           <p class="b2o-lede">出口与平台数据、选品和选厂逻辑、17 个市场的准入要点，以及六条帛卉独家洞察。每个数字都有出处脚注。</p>
+         </div>
+-        <figure class="b2o-bezel pic"><div class="core b2o-ph"><img src="/b2o/img/11-notebook.webp" width="1248" height="832" alt="浅色木桌上摊开一本空白笔记本,旁边是几支无品牌的样品瓶和一杯茶" loading="eager" fetchpriority="high" decoding="async" /></div></figure>
++        <figure class="b2o-bezel pic"><div class="core b2o-ph"><img class="b2o-img-insightPool" src="/b2o/img/fd/insight-pool.webp" width="1024" height="1024" alt="戴遮阳帽和墨镜的女子在清透池水前享受阳光" loading="eager" fetchpriority="high" decoding="async" /></div></figure>
+       </div>
+     </section>
+     <section class="b2o-sec alt b2o-ins-body">
+diff --git a/apps/web/src/styles/b2o.css b/apps/web/src/styles/b2o.css
+index f800736..3e0a13f 100644
+--- a/apps/web/src/styles/b2o.css
++++ b/apps/web/src/styles/b2o.css
+@@ -75,7 +75,7 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) main h1,
+ html[data-brand="beauty2oem"]:not(#b2o-scope) main h2,
+ html[data-brand="beauty2oem"]:not(#b2o-scope) main h3 { font-family: var(--b2o-font); letter-spacing: -.01em; line-height: 1.25; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-wrap { max-width: var(--ck-maxw); margin: 0 auto; padding-inline: var(--b2o-gutter); }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sec { padding-block: clamp(3.5rem, 7vw, 7rem); background: var(--b2o-bg); color: var(--b2o-ink); }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sec { padding-block: clamp(2.5rem, 4.5vw, 4.5rem); background: var(--b2o-bg); color: var(--b2o-ink); }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sec.alt { background: var(--b2o-bg-alt); }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: clamp(1.25rem, 2.4vw, 2.5rem); }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-h1 { margin: 0; font-size: clamp(1.875rem, 1.2rem + 2.2vw, 2.5rem); line-height: 1.2; font-weight: 700; letter-spacing: -.02em; text-wrap: balance; }
+@@ -127,6 +127,21 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ph.tall { aspect-ratio: 4 / 5
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ph.wide { aspect-ratio: 3 / 2; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ph.r20 { border-radius: var(--b2o-r); }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ph img { display: block; width: 100%; height: 100%; object-fit: cover; filter: var(--b2o-img-filter); transition: transform 1.2s var(--b2o-ease); }
++/* 创始人图库的主体焦点：桌面产品保留中下部，人物保留脸部。 */
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-hero { object-position: 50% 62%; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-methodTrend,
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-methodJudge,
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-methodLaunch { object-position: 50% 55%; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-methodVerify { object-position: 50% 28%; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-deliveryGold,
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-deliveryPapaya,
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-deliveryCucumber { object-position: 50% 52%; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-cardPink,
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-cardTubes,
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-cardStarry,
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-cardFruit,
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-cardBotanical { object-position: 50% 50%; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-insightPool { object-position: 50% 28%; }
+ @media (hover: hover) { html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bezel:hover .b2o-ph img { transform: scale(1.03); } }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tag { display: inline-block; font-size: .75rem; font-weight: 600; letter-spacing: .04em; padding: .2rem .65rem; border-radius: 980px; background: var(--b2o-paper); color: var(--b2o-ink-2); box-shadow: inset 0 0 0 1px var(--b2o-line-strong); }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tag.accent { background: var(--b2o-green-soft); color: var(--b2o-green); box-shadow: none; }
+@@ -151,6 +166,7 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero { padding-block: clamp(2
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero .b2o-grid { align-items: center; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero-copy { grid-column: 1 / span 6; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero-copy .b2o-lede { max-width: 26em; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-position { margin: 1.15rem 0 0; padding: .75rem 1rem; border-left: 3px solid var(--b2o-green); border-radius: 0 var(--b2o-r-in) var(--b2o-r-in) 0; background: var(--b2o-green-soft); color: var(--b2o-ink); font-size: .9375rem; line-height: 1.55; font-weight: 650; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-promise { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 2.5rem; box-shadow: inset 0 1px 0 var(--b2o-line-strong); font-variant-numeric: tabular-nums; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-promise div { padding: 1.1rem 1rem 0 0; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-promise div + div { padding-left: 1rem; box-shadow: inset 1px 0 0 var(--b2o-line); }
+@@ -175,6 +191,14 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-facts div { padding: .85rem 0
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-facts dt { font-size: .8125rem; color: var(--b2o-muted); }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-facts dd { margin: 0; font-weight: 600; }
+ 
++/* ── 出海信任区 ─────────────────────────────────────── */
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export { padding-top: 0; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-card { min-width: 0; padding: 1.25rem; border-radius: var(--b2o-r); background: var(--b2o-paper); box-shadow: var(--b2o-shadow), inset 0 0 0 1px var(--b2o-line); }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-card strong { display: block; color: var(--b2o-green); font-size: clamp(1.35rem, 2.5vw, 2rem); line-height: 1.1; letter-spacing: -.02em; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-card span { display: block; margin-top: .35rem; color: var(--b2o-ink); font-size: .875rem; font-weight: 700; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-card p { margin: .75rem 0 0; color: var(--b2o-muted); font-size: .8125rem; line-height: 1.6; }
++
+ /* ── 24 小时:通栏图带 + 浮层时间线 ───────────────────────── */
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-band .band-ph { aspect-ratio: 21 / 8; border-radius: var(--b2o-r-lg); }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-band .panel { position: relative; margin: -7rem clamp(1rem, 4vw, 4rem) 0 auto; width: min(100%, 64rem); background: var(--b2o-paper); border-radius: var(--b2o-r-lg); box-shadow: var(--b2o-shadow-hi), inset 0 0 0 1px var(--b2o-line); padding: clamp(1.5rem, 3vw, 2.5rem); }
+@@ -189,13 +213,14 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tl p { margin: 0; font-size:
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-band .note { margin: 1.5rem 0 0; padding-top: 1rem; box-shadow: inset 0 1px 0 var(--b2o-line); font-size: .875rem; color: var(--b2o-muted); }
+ 
+ /* ── 方法:杂志目录行 ─────────────────────────────────────── */
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: clamp(1.25rem, 2.4vw, 2.5rem); padding: 2rem 0; box-shadow: inset 0 1px 0 var(--b2o-line-strong); align-items: start; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .no { grid-column: 1 / span 1; font-size: .875rem; font-weight: 700; color: var(--b2o-green); padding-top: .4rem; font-variant-numeric: tabular-nums; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .t { grid-column: 2 / span 3; margin: 0; font-size: clamp(1.375rem, 1rem + 1vw, 1.75rem); font-weight: 600; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .dsc { grid-column: 5 / span 4; margin: 0; color: var(--b2o-ink-2); line-height: 1.75; padding-top: .35rem; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .v { grid-column: 9 / span 4; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .v .b2o-ph { aspect-ratio: 16 / 9; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-viz { aspect-ratio: 16 / 9; border-radius: var(--b2o-r); background: var(--b2o-bg-alt); box-shadow: inset 0 0 0 1px var(--b2o-line); padding: 1.25rem; display: flex; flex-direction: column; justify-content: center; gap: .75rem; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(22rem, .72fr); gap: clamp(1.5rem, 4vw, 4rem); padding: 1rem 0; box-shadow: inset 0 1px 0 var(--b2o-line-strong); align-items: center; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .info { min-width: 0; display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); column-gap: .8rem; align-items: baseline; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .no { grid-column: 1; grid-row: 1; font-size: .875rem; font-weight: 700; color: var(--b2o-green); font-variant-numeric: tabular-nums; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .t { grid-column: 2; grid-row: 1; margin: 0; font-size: clamp(1.375rem, 1rem + 1vw, 1.75rem); font-weight: 600; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .dsc { grid-column: 2; grid-row: 2; margin: .35rem 0 0; color: var(--b2o-ink-2); line-height: 1.65; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .v { min-width: 0; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .v .b2o-ph { aspect-ratio: 21 / 8; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-viz { aspect-ratio: 21 / 8; border-radius: var(--b2o-r); background: var(--b2o-bg-alt); box-shadow: inset 0 0 0 1px var(--b2o-line); padding: 1rem; display: flex; flex-direction: column; justify-content: center; gap: .6rem; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-viz .debate { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-viz .debate div { background: var(--b2o-paper); border-radius: var(--b2o-r-in); padding: .75rem; box-shadow: inset 0 0 0 1px var(--b2o-line); }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-viz .debate b { font-size: .8125rem; }
+@@ -209,6 +234,7 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-dots .dot { justify-self: cen
+ /* ── 机会卡样卡 + 台账预览 ────────────────────────────────── */
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-opp-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: clamp(1.25rem, 2.4vw, 2.5rem); align-items: start; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc { grid-column: 1 / span 6; background: var(--b2o-paper); border-radius: var(--b2o-r-lg); box-shadow: var(--b2o-shadow-hi), inset 0 0 0 1px var(--b2o-line); padding: clamp(1.25rem, 2.5vw, 2rem); }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc .card-pic { aspect-ratio: 16 / 7; border-radius: var(--b2o-r); margin: calc(clamp(1.25rem, 2.5vw, 2rem) * -1) calc(clamp(1.25rem, 2.5vw, 2rem) * -1) 1.25rem; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc .tagrow { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc h3 { margin: 0 0 .75rem; font-size: 1.1875rem; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc .stage { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: .5rem; }
+@@ -224,6 +250,7 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc .refill small { display: i
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc .foot { margin: 1rem 0 0; padding-top: 1rem; box-shadow: inset 0 1px 0 var(--b2o-line); font-size: .875rem; color: var(--b2o-muted); line-height: 1.7; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ledger-mini, html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc-side { grid-column: 8 / span 5; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc-side { display: grid; gap: 1.25rem; justify-items: start; align-self: start; padding-top: .5rem; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc-side .card-side-pic { width: 100%; aspect-ratio: 16 / 8; border-radius: var(--b2o-r); }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc-side h3 { margin: 0; font-size: 1.0625rem; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc-side .stages { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(8, auto); gap: 4px; width: 100%; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc-side .stages li { font-size: .75rem; text-align: center; padding: .45rem .1rem; border-radius: 6px; background: var(--b2o-bg-alt); color: var(--b2o-muted); border-top: 3px solid var(--b2o-line-strong); white-space: nowrap; }
+@@ -248,40 +275,17 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-phead-sec { padding-block: cl
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cards.is-page { padding-top: clamp(2.5rem, 5vw, 4.5rem); }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cards.is-page .b2o-phead { margin-bottom: clamp(3.5rem, 7vw, 6rem); }
+ 
+-/* ── 判断之后:图 + 图表 ───────────────────────────────────── */
++/* ── 判断之后:图 + 分项数字卡 ─────────────────────────────── */
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-deliver .b2o-grid { align-items: start; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-deliver .side { grid-column: 1 / span 5; display: grid; gap: 1.25rem; align-content: start; }
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-deliver .main { grid-column: 7 / span 6; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart { margin-top: 2rem; background: var(--b2o-paper); border-radius: var(--b2o-r-lg); box-shadow: var(--b2o-shadow), inset 0 0 0 1px var(--b2o-line); padding: clamp(1.25rem, 2.5vw, 2rem); }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart .chart-h { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart .chart-h h3 { margin: 0; font-size: 1rem; font-weight: 700; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart .chart-h span { font-size: .8125rem; color: var(--b2o-muted); }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars { --lab: 8rem; --valw: 6.5rem; position: relative; margin-top: 1.25rem; padding-bottom: 1.75rem; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .axis { position: absolute; left: var(--lab); right: var(--valw); top: 0; bottom: 1.75rem; pointer-events: none; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .axis i { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--b2o-line); }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .axis em { position: absolute; bottom: -1.5rem; transform: translateX(-50%); font-style: normal; font-size: .75rem; color: var(--b2o-muted); white-space: nowrap; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar { position: relative; display: grid; grid-template-columns: var(--lab) 1fr var(--valw); align-items: center; min-height: 48px; text-decoration: none; color: inherit; border-radius: 8px; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .l { font-size: .875rem; color: var(--b2o-ink-2); padding-right: .75rem; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .track { position: relative; height: 48px; display: flex; align-items: center; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .fill { height: 10px; border-radius: 0 4px 4px 0; background: var(--b2o-green); width: var(--v); transition: opacity .2s; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .val { font-size: .9375rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .val small { font-size: .75rem; font-weight: 500; color: var(--b2o-muted); margin-left: .2rem; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .tipn { position: absolute; left: 0; bottom: calc(100% - 6px); z-index: 2; max-width: 18rem; background: var(--b2o-ink); color: var(--b2o-bg); font-size: .8125rem; line-height: 1.5; padding: .5rem .75rem; border-radius: 10px; opacity: 0; transform: translateY(4px); pointer-events: none; transition: opacity .18s, transform .18s var(--b2o-ease); }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar:hover .tipn, html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar:focus-visible .tipn { opacity: 1; transform: none; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars:hover .bar:not(:hover) .fill { opacity: .35; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart details { margin-top: .75rem; font-size: .875rem; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart summary { cursor: pointer; color: var(--b2o-green); font-weight: 600; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart td, html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart th { padding: .45rem 0; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart td:last-child, html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chart th:last-child { text-align: right; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .cap { background: var(--b2o-paper); border-radius: var(--b2o-r); box-shadow: inset 0 0 0 1px var(--b2o-line); padding: 1.25rem; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap h3 { margin: 0 0 .9rem; font-size: .9375rem; font-weight: 600; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap h3 b { font-size: 1.75rem; font-weight: 700; letter-spacing: -.02em; margin-right: .2rem; font-variant-numeric: tabular-nums; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .sq { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; max-width: 14rem; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .sq i { aspect-ratio: 1; border-radius: 4px; background: var(--b2o-green); }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .dt { display: grid; grid-template-columns: repeat(11, 1fr); gap: 5px; max-width: 16rem; }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .dt i { aspect-ratio: 1; border-radius: 50%; background: color-mix(in srgb, var(--b2o-green) 78%, transparent); }
+-html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap p { margin: .9rem 0 0; font-size: .8125rem; color: var(--b2o-muted); line-height: 1.6; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 2rem; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card { min-width: 0; min-height: 10.5rem; display: flex; flex-direction: column; padding: 1.25rem; border-radius: var(--b2o-r); background: var(--b2o-paper); color: var(--b2o-ink); box-shadow: var(--b2o-shadow), inset 0 0 0 1px var(--b2o-line); text-decoration: none; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card strong { display: block; font-size: clamp(1.75rem, 4vw, 2.35rem); line-height: 1.05; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card strong span { display: block; margin-top: .45rem; font-size: .875rem; line-height: 1.35; letter-spacing: 0; color: var(--b2o-ink-2); }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card p { margin: auto 0 0; padding-top: 1rem; font-size: .8125rem; line-height: 1.6; color: var(--b2o-muted); }
++html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card small { display: block; margin-top: .5rem; font-size: .75rem; font-weight: 600; color: var(--b2o-green); }
++html[data-brand="beauty2oem"]:not(#b2o-scope) a.b2o-number-card:hover { box-shadow: var(--b2o-shadow), inset 0 0 0 1.5px var(--b2o-green); }
+ 
+ /* ── 交付页链路 ───────────────────────────────────────────── */
+ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-chain .chain { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); position: relative; counter-reset: c; }
+@@ -452,7 +456,7 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ins-rail .b2o-btn { width: 10
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-grid > *,
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-opp-grid > *,
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row > * { grid-column: 1 / -1 !important; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sec { padding-block: 2.25rem; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-sec { padding-block: 1.5rem; }
+   /* 手机首页压到 6000px 内:收起重复信息(事实四格、图带注释、首页图表旁的实验台图、页脚导航),产线与市场两块并排 */
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-facts,
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-band .note,
+@@ -460,7 +464,7 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ins-rail .b2o-btn { width: 10
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-deliver:not(.is-page) .side-pic,
+   html[data-brand="beauty2oem"]:not(#b2o-scope) footer.ft .b2o-fnav { display: none; }
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-read .b2o-ph { aspect-ratio: 16 / 9; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero { padding-block: 1.75rem 2.5rem; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero { padding-block: 1.25rem 1.75rem; }
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-promise { margin-top: 1.75rem; }
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cta-row { margin-top: 1.5rem; }
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-hero-visual { padding-bottom: 0; margin-top: .5rem; }
+@@ -473,22 +477,23 @@ html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ins-rail .b2o-btn { width: 10
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tl { grid-template-columns: 1fr; gap: 1rem; }
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tl::before { left: 7px; right: auto; top: 8px; bottom: 8px; width: 2px; height: auto; background: var(--b2o-green); }
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-tl li { padding: 0 0 0 2rem; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row { padding: 1.25rem 0; gap: .35rem; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .no { padding-top: 0; }
+-  /* 方法四行:手机上只留「早发现」的照片,其余三行的图示收起 */
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row:not(.r1) .v { display: none; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row.r1 .v { margin-top: .75rem; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-position { margin-top: .9rem; padding: .65rem .75rem; font-size: .8125rem; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export { padding-top: .5rem; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-export-card { padding: .9rem; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row { grid-template-columns: 1fr; padding: .85rem 0; gap: .65rem; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .info { grid-template-columns: 2rem minmax(0, 1fr); column-gap: .55rem; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .dsc { margin-top: .2rem; font-size: .9rem; line-height: 1.5; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .v { margin-top: 0; display: block; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .v .b2o-ph,
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-row .b2o-viz { aspect-ratio: 16 / 7; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-methodVerify,
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-img-insightPool { object-position: 50% 24%; }
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-deliver .side .b2o-ph.tall { aspect-ratio: 16 / 9; }
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-deliver .main { order: -1; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars { --lab: 5.75rem; --valw: 5.25rem; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-bars .bar .l { font-size: .8125rem; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .cap { padding: 1rem; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap h3 { font-size: .8125rem; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap h3 b { display: block; font-size: 1.5rem; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .sq i, html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .dt i { border-radius: 2px; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .sq, html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .dt { gap: 3px; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap .dt i { border-radius: 50%; }
+-  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-cap p { display: none; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; margin-top: 1.5rem; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card { min-height: 9.5rem; padding: 1rem; }
++  html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-number-card strong { font-size: clamp(1.35rem, 7vw, 1.8rem); }
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-ledger-mini { display: none; }
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-oc dl { grid-template-columns: 5rem 1fr; }
+   html[data-brand="beauty2oem"]:not(#b2o-scope) .b2o-phead .pic .b2o-ph.sq { aspect-ratio: 16 / 9; }
+diff --git a/packages/core/src/blocks.ts b/packages/core/src/blocks.ts
+index 1fc1625..7fa207e 100644
+--- a/packages/core/src/blocks.ts
++++ b/packages/core/src/blocks.ts
+@@ -300,12 +300,12 @@ export const BLOCKS: BlockDef[] = [
+     sketch: '⊞',
+     defaults: {
+       title: '不是口号:六项能力,每项都有证据',
+-      intro: '把项目交给一家工厂之前,先看它凭什么交付。下面每个数字都来自本站数据库,点进去可以逐条核对。',
++      intro: '预判落到生产:帛卉自有产线和成熟配方,加上公开市场与法规数据。',
+       items: [
+-        { label: '全球产品配方库', evidence: '{products} 款全成分真实产品 · {summaries} 条配方视角解读', note: '看别人怎么做:同类产品的成分结构、主打活性物、宣称边界,再决定你的产品怎么做。', href: '/decoder/', image: '' },
++        { label: '市场爆款情报', evidence: '{products} 款公开市场产品情报 · {summaries} 条配方视角解读', note: '从公开渠道收集,用于判断同类产品的成分结构、主打活性物与宣称边界。', href: '/decoder/', image: '' },
+         { label: '在库配方基底', evidence: '{formulas} 条可直接打样的配方基底 · {classics} 条古方文献数字化', note: '不是从零研发:按品类、剂型、功效、目标市场匹配基底,改活性物与肤感,寄样评估。', href: '/formulas/', image: '' },
+         { label: '工厂与产线', evidence: '{lines} 条自动化产线 · {certs}', note: '护肤 / 身体 / 洗护 / 防晒 / 彩妆 / 口腔;欢迎验厂,证书复印件与产线视频随时给。', href: '/about/', image: '' },
+-        { label: '包材现货', evidence: '{packaging} 款现货包材型号', note: '瓶、罐、管、泵头、彩盒:先按剂型选结构,再谈定制。', href: '/packaging/', image: '' },
++        { label: '包材款式库', evidence: '{packaging} 款包材可选', note: '瓶、罐、软管、泵头等款式库:先按剂型选结构,再确认供应与定制方案。', href: '/packaging/', image: '' },
+         { label: '法规与合规', evidence: '{regs} 个市场准入要点 · {inci} 条原料目录', note: '印尼 BPOM、马来 NPRA、沙特 SFDA、美国 MoCRA、欧盟 CPNP:配方阶段先核限用与禁用,不做返工。', href: '/regulations/', image: '' },
+         { label: '目标市场落地', evidence: '{markets} 个市场 × {cats} 个品类代工页', note: '{marketNames}:每个市场的备案路径、责任方、标签要点与买手问答。', href: '/oem/', image: '' },
+       ],
+@@ -331,7 +331,7 @@ export const BLOCKS: BlockDef[] = [
+     sketch: '▬ ⊞',
+     defaults: {
+       title: '看到一个产品,就交给工厂做',
+-      intro: '输入产品名:先在真实产品库找同款、拆全成分结构,再匹配在库基底、核目标市场法规,然后寄样。成本与起订按项目由工厂报,页面不估数。',
++      intro: '输入产品名:先在公开市场产品情报中找同款、拆全成分结构,再匹配在库基底、核目标市场法规,然后寄样。成本与起订按项目由工厂报,页面不估数。',
+       steps: ['找同款', '拆全成分', '匹配在库基底', '寄样评估', '试产与大货'],
+       sub: '最新入库的全球产品',
+     },
+diff --git a/packages/core/src/content/org.ts b/packages/core/src/content/org.ts
+index 4d3b304..ee685fa 100644
+--- a/packages/core/src/content/org.ts
++++ b/packages/core/src/content/org.ts
+@@ -19,7 +19,7 @@ export const ORG = {
+   city: 'Guangzhou',
+   region: 'Guangdong',
+   country: 'CN',
+-  founded: undefined as string | undefined,   // 资料未给,不编
++  foundingDate: '2012-06-01',   // 营业执照(工商登记),对外成立年份统一从这里取
+   /* 2026-09-07:CE 删掉。创始人原话「没CE」——
+      前台的认证行当天就改了,但结构化数据这份漏了,
+      等于我们一边跟人说没有,一边告诉机器我们有。
+@@ -87,7 +87,7 @@ export function orgJsonLd(base: string, siteName: string, locale: string, descri
+        此前这里写过 2003 —— 抄自我们自己的阿里国际站店铺页(「since 2003」),
+        而那个店铺已经没人维护、数字是错的。教训:**对外渠道不是真源**,
+        哪怕是我们自己开的。同理阿里店的产线数(12)、面积(15,000㎡)也是旧数,以本站为准。 */
+-    foundingDate: '2012-06-01',
++    foundingDate: ORG.foundingDate,
+         contactPoint: [{
+       '@type': 'ContactPoint',
+       contactType: 'sales',
+diff --git a/tools/ship.sh b/tools/ship.sh
+index 3e19941..8e7e5ae 100644
+--- a/tools/ship.sh
++++ b/tools/ship.sh
+@@ -1,6 +1,7 @@
+ #!/usr/bin/env bash
+ # 公司站(bohui-web)唯一上线入口:四道闸(Semgrep/费用/Laya/审核)全过才部署,结果记 F:/0cosmetic/助手交付/上线闸门日志.md
+-# 用法:bash tools/ship.sh [--dry-run] [--reviewed=<审核报告>] [--note="说明,降读改动带【降读】"] [--base=<提交>]
++# 用法(v2.1,审核部 ENABLED 后):bash tools/ship.sh --note "说明" | --dry-run | --status | --urgent … | --breakglass "理由" | --rollback[=<版本>] --reason "…"(详见 tools-review/audit_v2/ship_lib.sh 开头)
++# v1 用法(ENABLED 不在时):bash tools/ship.sh [--dry-run] [--reviewed=<审核报告>] [--note="说明,降读改动带【降读】"] [--base=<提交>]
+ # 部署步骤照 QUEUE.md:构建 → dist/server 里 source 公司 .env → wrangler deploy -c wrangler.json
+ REPO=F:/0cosmetic/cosmetic-sites; SITE=公司站; WORKER=bohui-web; BASELINE=5b98667
+ SCOPE=(apps packages)
+@@ -12,4 +13,5 @@ deploy() (
+   set -a; . "$REPO/.env"; set +a
+   npx wrangler deploy -c wrangler.json
+ )
+-source F:/0cosmetic/tools-review/gate.sh "$@"
++AV2=F:/0cosmetic/tools-review/audit_v2   # 审核部 v2.1:ENABLED 在 → v2(审核单 + 三家共判,从已批准副本执行);不在 → v1 四道闸(gate.sh 留档)
++if [ -f "$AV2/ENABLED" ]; then source "$AV2/cache/gate_approved/audit_v2/ship_lib.sh" "$@"; else source F:/0cosmetic/tools-review/gate.sh "$@"; fi

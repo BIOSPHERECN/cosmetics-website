@@ -1,0 +1,262 @@
+---
+/**
+ * 结构化 RFQ / 样品申请（P0）
+ * 必填：市场 / 品类 / 预估量 / 联系方式（邮箱或 WhatsApp）
+ * POST /api/inquiry → D1 inquiries + 通知；成功页展示 ticket_id
+ * 不自动报价。Turnstile 走 humanGate（配了 TURNSTILE_SECRET 即校验）。
+ * 小满映射（获客侧回写）：ticket_id→外部单号；name/company/email/whatsapp；
+ * market→目标市场；category→品类；volume→预估量；product_id→产品编码；source=rfq。
+ */
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { PRODUCT_CAT } from '../../../lib/catalog';
+
+export const prerender = false;
+const lang = Astro.params.lang ?? 'en';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const siteId = shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai';
+const B = `/${lang}`;
+const path = `${B}/rfq/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const q = Astro.url.searchParams;
+const productId = (q.get('product_id') ?? '').trim().slice(0, 40);
+const about = (q.get('about') ?? '').trim().slice(0, 160);
+const categoryQ = (q.get('category') ?? '').trim().slice(0, 40);
+const marketQ = (q.get('market') ?? '').trim().slice(0, 80);
+const siteKey = (import.meta.env.TURNSTILE_SITE_KEY as string | undefined) ?? '0x4AAAAAAEh9PTvpt4eaYV_q';
+const waNum = String(((Astro.locals as any)?.contact ?? {}).whatsapp ?? '').replace(/\D/g, '');
+const cats = Object.entries(PRODUCT_CAT);
+
+const T = zh
+  ? {
+      title: '申请样品 / RFQ',
+      h1: '申请样品或提交 RFQ',
+      lede: '填写市场、品类、预估量与联系方式。我们写入工单后通知销售；两个工作日内书面回复。本表不自动报价。',
+      note: '起订量与交期按品类与包材书面确认；打样通常 5–14 天（书面确认）。',
+      market: '目标市场',
+      marketPh: '例：印尼、美国、沙特',
+      category: '品类',
+      categoryPh: '选择品类',
+      volume: '预估首单量',
+      volumePh: '例：5000 件',
+      product: '产品 / 编码（可选）',
+      productPh: '产品名或内部编码',
+      productId: '产品 ID',
+      name: '称呼',
+      company: '公司（可选）',
+      email: '邮箱',
+      wa: 'WhatsApp / 电话',
+      contactHint: '邮箱或 WhatsApp 至少填一项',
+      message: '备注（可选）',
+      messagePh: '功效、包材、合规需求等',
+      submit: '提交 RFQ',
+      sending: '提交中…',
+      ok: '已收到。工单号：',
+      okHint: '请保存工单号，便于跟进。我们不自动报价，销售会书面回复。',
+      fail: '提交失败，请稍后重试或改用邮件。',
+      needContact: '请填写邮箱或 WhatsApp。',
+      needFields: '请填写市场、品类与预估量。',
+      portfolio: '返回产品库',
+      oem: 'OEM 市场矩阵',
+      noQuote: '提交后不会自动报价。',
+    }
+  : {
+      title: 'Request sample / RFQ',
+      h1: 'Request a sample or submit an RFQ',
+      lede: 'Required: target market, category, estimated volume, and a contact. We create a ticket, notify sales, and reply in writing within two business days. This form never auto-quotes.',
+      note: 'MOQ and lead time are confirmed in writing per category and packaging. Sampling typically 5–14 days (confirmed in writing).',
+      market: 'Target market',
+      marketPh: 'e.g. Indonesia, US, Saudi Arabia',
+      category: 'Category',
+      categoryPh: 'Select a category',
+      volume: 'Estimated first order',
+      volumePh: 'e.g. 5,000 pcs',
+      product: 'Product / code (optional)',
+      productPh: 'Product name or internal code',
+      productId: 'Product ID',
+      name: 'Name',
+      company: 'Company (optional)',
+      email: 'Email',
+      wa: 'WhatsApp / phone',
+      contactHint: 'Email or WhatsApp required',
+      message: 'Notes (optional)',
+      messagePh: 'Claims, packaging, compliance needs…',
+      submit: 'Submit RFQ',
+      sending: 'Sending…',
+      ok: 'Received. Ticket ID: ',
+      okHint: 'Keep this ticket ID for follow-up. We never auto-quote; sales replies in writing.',
+      fail: 'Could not send — please retry or email us.',
+      needContact: 'Enter an email or WhatsApp number.',
+      needFields: 'Market, category and volume are required.',
+      portfolio: 'Back to product library',
+      oem: 'OEM by market',
+      noQuote: 'Submitting does not generate an automatic quote.',
+    };
+---
+<BaseLayout locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={siteId}
+  title={T.title} description={T.lede} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main" class="rfq">
+    <header class="hd">
+      <h1>{T.h1}</h1>
+      <p class="lede">{T.lede}</p>
+      <p class="note">{T.note}</p>
+      <p class="note strong">{T.noQuote}</p>
+    </header>
+
+    <div id="rfq-ok" class="ok hidden" role="status" aria-live="polite" hidden></div>
+
+    <form id="rfq-form" class="f" action="/api/inquiry" method="post" novalidate>
+      <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
+             style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+      <input type="hidden" name="source" value="rfq" />
+      <input type="hidden" name="lang" value={lang} />
+      <input type="hidden" name="site" value={siteId} />
+      <input type="hidden" name="sourcePath" value={path} />
+      <input type="hidden" name="product_id" value={productId} />
+
+      <label><span>{T.market} *</span>
+        <input type="text" name="market" required maxlength="80" placeholder={T.marketPh} value={marketQ} />
+      </label>
+      <label><span>{T.category} *</span>
+        <select name="category" required>
+          <option value="">{T.categoryPh}</option>
+          {cats.map(([id, label]) => (
+            <option value={id} selected={categoryQ === id}>{zh ? label : id}</option>
+          ))}
+        </select>
+      </label>
+      <label><span>{T.volume} *</span>
+        <input type="text" name="volume" required maxlength="40" placeholder={T.volumePh} />
+      </label>
+      <label><span>{T.product}</span>
+        <input type="text" name="iq_product" maxlength="160" placeholder={T.productPh} value={about} />
+      </label>
+      {productId && <p class="pid">{T.productId}: <code>{productId}</code></p>}
+
+      <div class="g2">
+        <label><span>{T.name} *</span><input type="text" name="name" required maxlength="120" autocomplete="name" /></label>
+        <label><span>{T.company}</span><input type="text" name="company" maxlength="160" autocomplete="organization" /></label>
+      </div>
+      <div class="g2">
+        <label><span>{T.email}</span><input type="email" name="email" maxlength="200" autocomplete="email" /></label>
+        <label><span>{T.wa}</span><input type="tel" name="whatsapp" maxlength="40" autocomplete="tel" inputmode="tel" placeholder="+62 …" /></label>
+      </div>
+      <p class="hint">{T.contactHint}</p>
+      <label><span>{T.message}</span><textarea name="notes" rows="3" maxlength="2000" placeholder={T.messagePh}></textarea></label>
+
+      {siteKey && <div class="cf-turnstile" data-sitekey={siteKey} data-size="flexible"></div>}
+      <button class="btn" type="submit">{T.submit}</button>
+      <p class="fb" id="rfq-fb" role="status" aria-live="polite"></p>
+    </form>
+
+    <p class="links">
+      <a href={`${B}/portfolio/`}>{T.portfolio}</a>
+      · <a href={`${B}/oem/`}>{T.oem}</a>
+      {waNum && <> · <a href={`https://wa.me/${waNum}`} target="_blank" rel="noopener">WhatsApp</a></>}
+      · <a href={`mailto:${shell.email}`}>{shell.email}</a>
+    </p>
+  </main>
+  <SiteFooter locale={lang} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+{siteKey && <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer is:inline />}
+<script is:inline define:vars={{ zh, tOk: T.ok, tOkHint: T.okHint, tFail: T.fail, tSending: T.sending, tNeedContact: T.needContact, tNeedFields: T.needFields, tSubmit: T.submit }}>
+  (function () {
+    var form = document.getElementById('rfq-form');
+    var fb = document.getElementById('rfq-fb');
+    var ok = document.getElementById('rfq-ok');
+    if (!form) return;
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var fd = new FormData(form);
+      var market = String(fd.get('market') || '').trim();
+      var category = String(fd.get('category') || '').trim();
+      var volume = String(fd.get('volume') || '').trim();
+      var email = String(fd.get('email') || '').trim();
+      var whatsapp = String(fd.get('whatsapp') || '').trim();
+      var name = String(fd.get('name') || '').trim();
+      if (!market || !category || !volume) { fb.className = 'fb err'; fb.textContent = tNeedFields; return; }
+      if (!email && !whatsapp) { fb.className = 'fb err'; fb.textContent = tNeedContact; return; }
+      var product = String(fd.get('iq_product') || '').trim();
+      var productId = String(fd.get('product_id') || '').trim();
+      var notes = String(fd.get('notes') || '').trim();
+      var bits = [];
+      bits.push((zh ? '【RFQ/样品】' : '[RFQ/Sample]') + ' market=' + market + '; category=' + category + '; volume=' + volume);
+      if (productId) bits.push('product_id=' + productId);
+      if (product) bits.push((zh ? '产品: ' : 'Product: ') + product);
+      if (notes) bits.push(notes);
+      bits.push(zh ? '（不自动报价；待销售书面回复）' : '(No auto-quote; written reply from sales)');
+      var body = {
+        source: 'rfq',
+        lang: String(fd.get('lang') || ''),
+        site: String(fd.get('site') || ''),
+        sourcePath: String(fd.get('sourcePath') || ''),
+        name: name,
+        company: String(fd.get('company') || ''),
+        email: email,
+        whatsapp: whatsapp,
+        market: market,
+        category: category,
+        volume: volume,
+        product_id: productId,
+        message: bits.join('\n'),
+        'cf-turnstile-response': String(fd.get('cf-turnstile-response') || ''),
+      };
+      var btn = form.querySelector('button[type=submit]');
+      if (btn) { btn.disabled = true; btn.textContent = tSending; }
+      fb.className = 'fb'; fb.textContent = '';
+      try {
+        var r = await fetch('/api/inquiry', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || !j.ok) {
+          fb.className = 'fb err';
+          fb.textContent = (j && j.msg) ? j.msg : tFail;
+        } else {
+          var tid = j.ticket_id || j.id || '';
+          form.classList.add('hidden');
+          ok.hidden = false; ok.classList.remove('hidden');
+          ok.innerHTML = '<strong>' + tOk + '<code>' + tid + '</code></strong><br>' + tOkHint;
+          fb.className = 'fb ok'; fb.textContent = '';
+        }
+      } catch (err) {
+        fb.className = 'fb err'; fb.textContent = tFail;
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = tSubmit; }
+      }
+    });
+  })();
+</script>
+
+<style>
+  .rfq { max-width: 40rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+  .hd { display: grid; gap: .625rem; margin-bottom: 1.25rem; }
+  h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); margin: 0; line-height: 1.25; }
+  .lede, .note, .hint { margin: 0; line-height: 1.65; opacity: .85; font-size: .9375rem; }
+  .note.strong { font-weight: 600; opacity: 1; }
+  .f { display: grid; gap: .875rem; }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: .875rem; }
+  label { display: grid; gap: .3125rem; font-size: .875rem; }
+  label > span { opacity: .75; }
+  input, select, textarea { font: inherit; padding: .6875rem .8125rem; border: 1px solid var(--ck-line, rgba(0,0,0,.14)); border-radius: 10px; background: var(--ck-surface, #fff); color: inherit; width: 100%; }
+  .btn { font: inherit; font-weight: 600; padding: .8125rem 1.5rem; border: 0; border-radius: 999px; background: var(--ck-accent, #333); color: #fff; cursor: pointer; justify-self: start; }
+  .btn:disabled { opacity: .5; cursor: wait; }
+  .fb { font-size: .875rem; min-height: 1.25rem; }
+  .fb.err { color: #A02B20; } .fb.ok { color: #1D7A46; }
+  .ok { padding: 1rem 1.125rem; border-radius: 12px; border: 1px solid #1D7A46; background: #f0faf4; margin-bottom: 1rem; line-height: 1.6; }
+  .ok.hidden, .hidden { display: none !important; }
+  .pid { font-size: .8125rem; opacity: .75; margin: 0; }
+  .links { margin-top: 1.5rem; font-size: .875rem; }
+  .cf-turnstile { margin: .25rem 0; }
+  @media (max-width: 40rem) { .g2 { grid-template-columns: 1fr; } }
+</style>

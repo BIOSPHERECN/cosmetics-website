@@ -1,0 +1,12 @@
+{
+ "_说明": "Laya 与 Jev 共用的五题(英文问)与判定阈值。改本文件 = 改闸门(ship_ops.sh gate)。",
+ "questions": {
+  "cost": {"type": "noul", "instructions": "Will this code change add recurring cloud cost: more database reads or writes per visitor request, R2 list/copy operations, calls to paid AI or API services, metered Workers AI / Vectorize / KV writes, or more frequent cron jobs?"},
+  "security": {"type": "noul", "instructions": "Could this code change leak secrets or credentials, weaken authentication or authorization of admin or member routes, or introduce an SQL, HTML or URL injection?"},
+  "compliance": {"type": "noul", "instructions": "Does this change add public-facing text that claims a corporate group, mentions a factory in Indonesia, mentions SueAI, claims owning rather than renting the factory, shows factory information on the beauty2ai platform site, or states specific MOQ, sampling time, lead time or price numbers?"},
+  "correctness": {"type": "score", "instructions": "How likely is this change to break existing pages or features after deployment?", "criteria": ["unlikely", "possible", "likely"]},
+  "decision": {"type": "choice", "instructions": "Should a careful reviewer allow or block deploying this change?", "criteria": {"allow": "safe to deploy as is", "block": "likely adds cost, leaks secrets, breaks brand rules or breaks production"}}
+ },
+ "jev": {"pass_conf": 0.7, "block_conf": 0.8, "noul_max": 0.5, "correctness_max": 2, "daily_input_cap": 2000000, "timeout": 20, "max_chars": 6000},
+ "laya": {"pass_conf": 0.6, "noul_max": 0.5, "correctness_max": 2, "block_open": false, "timeout": 240, "cpu_busy_pct": 85}
+}

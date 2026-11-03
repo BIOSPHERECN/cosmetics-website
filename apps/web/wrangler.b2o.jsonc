@@ -1,0 +1,51 @@
+// beauty2oem.com 独立 Worker 的配置(拆站施工图:F:/0cosmetic/助手交付/beauty2oem-拆站-施工图.md)
+//
+// 这份不是完整的部署配置,不要直接 `wrangler deploy -c` 它(没有 main,会报错退出,这是故意的)。
+// 构建后跑 `python tools/b2o-split/mkconfig.py`,把这份盖到适配器产物 dist/server/wrangler.json 上,
+// 生成 dist/server/wrangler.b2o.json 再部署。main / assets / rules / no_bundle / IMAGES 这些结构项取自产物。
+//
+// 绑定一律「白名单」:下面列了几个,新 Worker 就只有几个。wrangler.toml 以后给 bohui-web 加的绑定(AI、Vectorize、
+// 第二个库……)不会自动带过来 —— 要给 beauty2oem 用,必须在这里显式加一行,过审核闸。
+// 迁移脚本 tools/b2o-split/migrate.py 也用这份做 `-c`(只读 d1_databases 这一段),库名 beauty2oem-db 与公司库 bohui-cms-v2 刻意不同名。
+//
+// 只写整行注释(mkconfig.py 按「整行 // 开头」剥注释,行尾注释会解析失败)。
+{
+  "name": "beauty2oem-web",
+  // workers.dev 与带版本号的预览地址会绕过 beauty2oem.com 这个 zone 上的防火墙规则(R0-R3、S1、S2),一律关死
+  "workers_dev": false,
+  "preview_urls": false,
+  // 新库:2-1 步 `wrangler d1 create beauty2oem-db`(先 source 公司 .env)后把 id 填进来;占位符在时 mkconfig 拒绝生成部署配置
+  "d1_databases": [
+    { "binding": "DB", "database_name": "beauty2oem-db", "database_id": "<待建:beauty2oem-db 的 id>" }
+  ],
+  // Astro 适配器要求有 SESSION 这个 KV 绑定(代码没用 Astro.session,实际不读写);给新站单独建一个,不和 bohui-web 共用
+  "kv_namespaces": [
+    { "binding": "SESSION", "id": "<待建:beauty2oem-session 的 id>" }
+  ],
+  // 访问打点单独一个数据集:现在两站混在 bohui_pulse 里,数据点里没有域名维度,根本分不开
+  "analytics_engine_datasets": [
+    { "binding": "PULSE", "dataset": "b2o_pulse" }
+  ],
+  // 会员登录信、询盘通知走账号级 Email Sending;发件人按域名选 hello@beauty2oem.com(lib/mail.ts SITE_FROM)
+  "send_email": [
+    { "name": "EMAIL" }
+  ],
+  // 不给:DB 以外的任何库、PHOTO(R2 桶可写,新站用不到;图片放 public/b2o/ 走静态资源)、AI、VECTORIZE(公司知识库)
+  // vars 以产物里的为底、这里的覆盖(TURNSTILE_SITE_KEY 同一个组件,已授权 beauty2oem.com)
+  "vars": {
+    "SITE_MODE": "b2o",
+    "CACHE_V": "b2o1",
+    "ALLOWED_HOSTS": "beauty2oem.com,www.beauty2oem.com"
+  },
+  // 只在切换那一步用:`mkconfig.py --live` 才把这两项并进去。放在 env.live 里,是为了让误跑的
+  // `wrangler triggers deploy -c 本文件` 碰不到域名 —— 非交互模式下 wrangler 会不问一声把域名从 bohui-web 抢过来
+  // (wrangler 4.120 publishCustomDomains:!process.stdout.isTTY 时 override_existing_origin = true)。
+  "env": {
+    "live": {
+      "routes": [
+        { "pattern": "beauty2oem.com", "custom_domain": true }
+      ],
+      "triggers": { "crons": ["*/10 * * * *"] }
+    }
+  }
+}

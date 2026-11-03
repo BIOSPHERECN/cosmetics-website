@@ -1,0 +1,20 @@
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProxy environment variables detected. We'll use your proxy for fetch requests.[0m
+
+
+
+ ⛅️ wrangler 4.120.0
+────────────────────
+Successfully created tail, expires at 2026-09-07T06:38:22Z
+Connected to bohui-web, waiting for logs...
+GET https://biosphere-ai.com/zh-cn/packaging/?z=1495 - Ok @ 2026/9/7 08:44:08
+  (error) 00:44:08 [ERROR] ReferenceError: dbErr is not defined
+    at chunks/index_AjacIDlV.mjs:48624:2
+    at async callComponentAsTemplateResultOrResponse (chunks/server_Bw1fWQea.mjs:5717:24)
+    at async renderToAsyncIterable (chunks/server_Bw1fWQea.mjs:5737:25)
+    at async renderPage (chunks/server_Bw1fWQea.mjs:6177:33)
+    at async PagesHandler.handle (chunks/entrypoints_DQJeIJLY.mjs:1943:17)
+    at async virtual_astro_middleware.mjs:337:14
+    at async callMiddleware (chunks/entrypoints_DQJeIJLY.mjs:1787:9)
+    at async AstroMiddleware.handle (chunks/entrypoints_DQJeIJLY.mjs:1867:15)
+    at async AstroHandler.render (chunks/entrypoints_DQJeIJLY.mjs:4128:16)
+    at async App.render (chunks/entrypoints_DQJeIJLY.mjs:4559:15)

@@ -1,0 +1,117 @@
+---
+/**
+ * 包材供应商档案 —— 把「这个瓶型找谁做」沉淀下来。
+ *
+ * 为什么必须有这一页:图册是别人的文件,人会走、微信记录会翻不到、网盘会乱。
+ * 一个瓶型将来能不能复产,取决于我们自己有没有留下:找谁、什么价、起订多少、
+ * 交期多久、有没有审过厂、上次踩过什么坑。这些不是图册里能找到的东西。
+ *
+ * 编码规则:{前缀}-P{页码},单品再加 -{序号} —— FLD-P042、FLD-P042-3。
+ * 编码带厂简称,跟单时报得出口,也不会跟别家的料号混。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const { results: rows } = await c.db.prepare(
+  `SELECT s.*,
+          (SELECT COUNT(*) FROM pack_assets a WHERE a.supplier_s = s.slug) pages
+     FROM suppliers s ORDER BY s.status, s.name_zh`).all<any>().catch(() => ({ results: [] as any[] }));
+
+const total = (rows ?? []).reduce((n: number, r: any) => n + (r.pages ?? 0), 0);
+const FIELDS: [string, string, string][] = [
+  ['contact', '对接人', 'text'], ['phone', '电话', 'text'], ['wechat', '微信', 'text'],
+  ['email', '邮箱', 'text'], ['website', '官网', 'text'], ['city', '所在地', 'text'],
+  ['categories', '主营品类', 'text'], ['moq_note', '起订口径', 'text'],
+  ['lead_note', '交期口径', 'text'], ['cert_note', '认证 / 审厂', 'text'],
+  ['price_note', '报价与账期', 'text'], ['notes', '合作记录与坑', 'textarea'],
+];
+---
+
+<AdminShell title="包材供应商档案" active="suppliers" email={c.sess.email}>
+  <h1>包材供应商档案</h1>
+  <p class="lead">
+    {rows?.length ?? 0} 家在册,图册共 {total} 页。编码规则 <code>前缀-P页码</code>,
+    例 <code>FLD-P042</code> = 富兰德图册第 42 页;单品再加序号 <code>FLD-P042-3</code>。
+    对客户只显示编码与图,不出现厂名。
+  </p>
+
+  {(rows ?? []).map((r: any) => (
+    <details class="sup">
+      <summary>
+        <span class="px">{r.prefix}</span>
+        <span class="nm">{r.name_zh}</span>
+        <span class="sh">{r.short_zh}</span>
+        <span class="ct">{r.categories ?? '—'}</span>
+        <span class="pg">{r.pages ?? 0} 页</span>
+      </summary>
+      <form class="f" data-id={r.id}>
+        <div class="grid">
+          {FIELDS.filter(([, , t]) => t === 'text').map(([k, label]) => (
+            <label><span>{label}</span><input name={k} value={r[k] ?? ''} /></label>
+          ))}
+        </div>
+        <label class="full"><span>合作记录与坑</span>
+          <textarea name="notes" rows="3">{r.notes ?? ''}</textarea></label>
+        <div class="act">
+          <button class="btn pri" type="submit">保存</button>
+          <span class="fb"></span>
+          <a class="lnk" href={`/bohui/media/?folder=packcat&q=${r.slug}`}>看这家的图册页 →</a>
+        </div>
+      </form>
+    </details>
+  ))}
+
+  <style>
+    .lead { color: var(--ad-ink-soft, #6b6480); font-size: .875rem; margin-bottom: 1.25rem; }
+    code { background: var(--ad-ground, #F5F5F7); padding: .0625rem .3125rem; border-radius: 5px; }
+    .sup { border: 1px solid var(--ad-line, rgb(0 0 0/.1)); border-radius: 10px;
+           margin-bottom: .5rem; background: var(--ad-side, #fff); }
+    .sup summary { cursor: pointer; padding: .6875rem .875rem; display: grid;
+                   grid-template-columns: 4rem 10rem 6rem 1fr 5rem; gap: .75rem;
+                   align-items: center; font-size: .875rem; }
+    .px { font-weight: 700; color: var(--ad-accent, #7C4DA8); font-variant-numeric: tabular-nums; }
+    .nm { font-weight: 600; }
+    .sh, .ct { color: var(--ad-ink-soft, #6b6480); }
+    .pg { text-align: right; color: var(--ad-ink-soft, #6b6480); font-variant-numeric: tabular-nums; }
+    .f { padding: 0 .875rem .875rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .625rem; }
+    label { display: grid; gap: .25rem; font-size: .8125rem; }
+    label > span { color: var(--ad-ink-soft, #6b6480); }
+    input, textarea { font: inherit; font-size: .875rem; padding: .4375rem .625rem; width: 100%;
+      border: 1px solid var(--ad-line, rgb(0 0 0/.12)); border-radius: 8px;
+      background: var(--ad-side, #fff); color: var(--ad-ink, #312052); }
+    .full { margin-top: .625rem; }
+    .act { display: flex; align-items: center; gap: .75rem; margin-top: .75rem; }
+    .btn { font: inherit; font-size: .875rem; padding: .4375rem 1.125rem; border: 0; border-radius: 980px;
+           background: var(--ad-accent, #7C4DA8); color: #fff; cursor: pointer; }
+    .fb { font-size: .8125rem; color: var(--ad-ink-soft, #6b6480); }
+    .lnk { margin-left: auto; font-size: .8125rem; color: var(--ad-accent, #7C4DA8); text-decoration: none; }
+    @media (max-width: 60rem) { .sup summary { grid-template-columns: 3.5rem 1fr; } .sh, .ct { display: none; } }
+  </style>
+
+  <script is:inline>
+    document.querySelectorAll('form.f').forEach((f) => {
+      f.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fb = f.querySelector('.fb');
+        fb.textContent = '保存中…';
+        const body = { id: Number(f.dataset.id) };
+        new FormData(f).forEach((v, k) => { body[k] = String(v); });
+        try {
+          const r = await fetch('/api/admin/supplier', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+          });
+          const d = await r.json();
+          fb.textContent = d.ok ? '已保存' : (d.msg || '保存失败');
+          setTimeout(() => { fb.textContent = ''; }, 2500);
+        } catch (err) {
+          fb.textContent = '网络异常';
+        }
+      });
+    });
+  </script>
+</AdminShell>

@@ -1,0 +1,14 @@
+# 资讯采集闹钟 Worker —— 只放触发器与入口,凭据走 secret(CRON_KEY)
+name = "bohui-news-cron"
+main = "index.js"
+compatibility_date = "2026-08-01"
+# 09-24 暴露面:只靠 cron 触发,没有调用方用 workers.dev(手动口 ?key= 也随之关闭)→ 关掉
+workers_dev = false
+preview_urls = false
+
+# 北京时间 07:30 / 13:30 / 19:30 三班
+[triggers]
+# 2026-09-04 评审后暂停:自动采集改写并对外发布存在著作权与反不正当竞争风险,
+# 资讯线改为人工签发。保留 Worker 本体,恢复时把下面这行取消注释再 deploy。
+crons = []
+# crons = ["30 23 * * *", "30 5 * * *", "30 11 * * *"]

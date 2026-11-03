@@ -1,0 +1,232 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * AI 站内搜索 —— 问一句话,拿一段带出处的短回答 + 一排来源卡片。
+ *
+ * 为什么不做传统的关键词列表:
+ *   采购方问的是「烟酰胺能加到多少」「出欧盟要准备什么」这类问题,
+ *   十条蓝链接等于把问题原样还给他。这里先答四句话,再把依据摊开让他自己核。
+ *
+ * 两层检索:
+ *   ① 我们自己的库(成分/配方/包材/爆款情报/专题/知识库/资讯)—— 优先,也是我们的差异
+ *   ② 全网(Bing RSS,免 key,一次请求)—— 补充时效信息
+ *   模型只允许用检索到的内容作答并标 [编号];查不到就直说没有。
+ *
+ * 排版刻意克制:答案短、卡片小、一屏能看完。长内容让客户点进对应页面看。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../lib/shell';
+import { searchHint } from '../../lib/searchhint';
+import { getCounts } from '../../lib/counts';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const tSkip = uiT(lang as any)('a11y.skip');
+const zh = lang.startsWith('zh');
+/* AI 检索的语料只有中英两套;其他语种明确告知,别让访客搜空了以为我们没有 */
+const sHint = searchHint(lang);
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/search/`;
+
+/* 库存量直接写进首屏 —— 这既是给人看的底气,也是给 AI 抓取的事实。
+   09-24 C5(代码审计 P0-4):原来每次渲染 5 条全表计数(约 2.2 万行),随便带个参数就能绕过缓存逐次现算;
+   现在只读计数文件(tools/counts-refresh.py 写,构建时打进包)。某项没有就不写这一项,不回退现算、不编。
+   包材改用货架口径(status='active'),与包材页、首页对外口径一致。 */
+const cn = (await getCounts(db)) ?? {};
+const num = (k: string) => (typeof cn[k] === 'number' ? (cn[k] as number) : 0);
+/* 09-24 老板会议:库里在线配方行数不对外当配方总数用(总数口径是成熟配方 13,000+),这里不列 */
+const nIng = num('ingredients'), nP = num('packaging'), nT = num('trend_active'), nK = num('kb');
+const libs = (zhx: boolean) => ([
+  [nIng, zhx ? '条成分' : 'ingredients'], [nP, zhx ? '款包材' : 'packaging specs'],
+  [nT, zhx ? '条带出处的市场情报' : 'sourced market signals'], [nK, zhx ? '条专家与客服口径' : 'expert and service notes'],
+] as [number, string][]).filter(([n]) => n > 0).map(([n, l]) => (zhx ? `${n} ${l}` : `${n} ${l}`)).join(zhx ? '、' : ', ');
+
+const T = zh ? {
+  eyebrow: 'AI 搜索',
+  title: '问一句话,拿一段有出处的回答',
+  lead: libs(true) ? `先查我们自己的库(${libs(true)}),再补全网。` : '先查我们自己的库,再补全网。',
+  ph: '例:烟酰胺在精华里一般加多少?出欧盟的防晒要注意什么?',
+  go: '提问', running: '检索中…',
+  egs: ['出口欧盟需要准备哪些资料', '敏感肌精华可以用哪些活性物', '30ml 精华配什么包材', '巴西市场怎么进'],
+  ans: '回答', src: '依据与来源', inner: '来自我们的库', outer: '来自公开网络',
+  none: '站内和公开网络都没找到相关内容 —— 换个说法试试,或直接把问题发给我们。',
+  noModel: '模型暂时不可用,下面是检索到的原始结果。',
+  ask: '直接问人', disclaimer: '回答由 AI 根据下方来源生成,涉及法规请以最新官方文本为准,报价与交期以书面确认为准。',
+} : {
+  eyebrow: 'AI search',
+  title: 'Ask a question, get a sourced answer',
+  lead: libs(false) ? `We search our own library first (${libs(false)}), then the open web.` : 'We search our own library first, then the open web.',
+  ph: 'e.g. How much niacinamide goes into a serum? What does an EU sunscreen need?',
+  go: 'Ask', running: 'Searching…',
+  egs: ['What do I need to sell in the EU', 'Actives for sensitive-skin serums', 'Packaging for a 30ml serum', 'How to enter Brazil'],
+  ans: 'Answer', src: 'Sources', inner: 'From our library', outer: 'From the open web',
+  none: 'Nothing found in our library or on the open web — try different wording, or send us the question directly.',
+  noModel: 'The model is unavailable right now; here are the raw retrieval results.',
+  ask: 'Ask a person', disclaimer: 'The answer is generated from the sources below. For regulatory points the latest official text governs; pricing and lead times are confirmed in writing.',
+};
+---
+
+<BaseLayout
+  locale={lang as any}
+  school={shell.variant?.school ?? 'atelier'}
+  variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title}
+  description={T.lead}
+  siteName={shell.site?.name ?? '帛卉'}
+  siteUrl={`https://${shell.site?.domain ?? 'bohui.group'}`}
+  path={path}
+  indexable={shell.site?.is_live === 1}
+  brandColor={shell.site?.brand_color}
+  theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+
+  <main id="main" class="wrap">
+    <p class="eyebrow">{T.eyebrow}</p>
+    <h1>{T.title}</h1>
+    <p class="lead">{T.lead}</p>
+
+    <form class="box" id="f">
+      {sHint && <p class="shint">{sHint}</p>}
+      <input id="q" type="search" placeholder={T.ph} maxlength="200" autocomplete="off" />
+      <button class="go" type="submit">{T.go}</button>
+    </form>
+    <div class="egs">{T.egs.map((e) => <button type="button" class="eg">{e}</button>)}</div>
+
+    <p class="msg" id="msg" hidden></p>
+
+    <section id="out" hidden>
+      <div class="ansbox" id="ansbox" hidden>
+        <p class="k">{T.ans}</p>
+        <div class="ans" id="ans"></div>
+        <p class="disc">{T.disclaimer}</p>
+      </div>
+      <p class="k" id="srck" hidden>{T.src}</p>
+      <div class="cards" id="cards"></div>
+      <p class="more"><a class="cta" href={`/${lang}/contact/`}>{T.ask}</a></p>
+    </section>
+  </main>
+
+  <SiteFooter locale={lang as any} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+
+  <style>
+  .shint { margin: .5rem 0 .5rem; font-size: .875rem; line-height: 1.6; opacity: .75; }
+    .wrap { max-width: 56rem; margin: 0 auto;
+            padding: clamp(2.5rem, 6vw, 4.5rem) var(--ck-gutter, 1.25rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }
+    .eyebrow { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase;
+               color: var(--ck-accent); margin: 0 0 .625rem; }
+    h1 { max-width: 20ch; line-height: 1.1; letter-spacing: -.025em; margin: 0 0 .75rem; text-wrap: balance; }
+    .lead { color: var(--ck-ink-soft); font-size: 1rem; margin: 0 0 1.75rem; }
+
+    .box { display: flex; gap: .5rem; }
+    #q { flex: 1; font: inherit; font-size: 1rem; padding: .875rem 1.125rem;
+         border: 1px solid var(--dtc-line, rgb(0 0 0/.14)); border-radius: 980px;
+         background: var(--dtc-paper, #fff); color: var(--ck-ink); }
+    #q:focus { outline: none; border-color: var(--ck-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ck-accent) 18%, transparent); }
+    .go { font: inherit; font-size: .9375rem; font-weight: 600; padding: .875rem 1.5rem; border: 0;
+          border-radius: 980px; background: var(--ck-accent); color: var(--ck-on-accent); cursor: pointer; }
+    .go:disabled { opacity: .5; cursor: wait; }
+    .egs { display: flex; flex-wrap: wrap; gap: .4375rem; margin: .875rem 0 0; }
+    .eg { font: inherit; font-size: .8125rem; color: var(--ck-ink-soft); cursor: pointer;
+          border: 1px solid var(--dtc-line, rgb(0 0 0/.1)); border-radius: 980px;
+          padding: .3125rem .8125rem; background: none; }
+    .eg:hover { background: var(--dtc-sand, #f5f5f7); }
+    .msg { font-size: var(--ck-small); color: var(--ck-ink-soft); margin: 1.25rem 0 0; }
+
+    .k { font-size: .6875rem; letter-spacing: .16em; text-transform: uppercase;
+         color: var(--ck-ink-soft); margin: 2rem 0 .625rem; }
+    .ansbox { margin-top: .5rem; }
+    .ans { font-size: 1.0625rem; line-height: 1.75; }
+    .ans sup { color: var(--ck-accent); font-weight: 600; }
+    .disc { font-size: .75rem; color: var(--ck-ink-soft); margin: .875rem 0 0; line-height: 1.6; }
+
+    .cards { display: grid; gap: .5rem; }
+    .card { display: block; text-decoration: none; color: inherit; padding: .75rem .9375rem;
+            border: 1px solid var(--dtc-line, rgb(0 0 0/.08)); border-radius: 12px;
+            background: var(--dtc-paper, #fff); }
+    .card:hover { border-color: var(--ck-accent); }
+    .card .top { display: flex; align-items: baseline; gap: .5rem; margin-bottom: .1875rem; }
+    .card .n { font-size: .75rem; color: var(--ck-accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .card .t { font-size: .9375rem; font-weight: 600; }
+    .card .kind { font-size: .6875rem; padding: .0625rem .4375rem; border-radius: 980px;
+                  background: var(--dtc-sand, #f5f5f7); color: var(--ck-ink-soft); white-space: nowrap; }
+    .card .s { font-size: .8125rem; color: var(--ck-ink-soft); line-height: 1.6;
+               display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .card .x { font-size: .6875rem; color: var(--ck-ink-soft); margin-top: .25rem; }
+    .more { margin-top: 1.75rem; }
+    .cta { display: inline-block; padding: .6875rem 1.375rem; background: var(--ck-accent);
+           color: var(--ck-on-accent); text-decoration: none; border-radius: 980px;
+           font-size: .875rem; font-weight: 600; }
+  </style>
+
+  <script is:inline define:vars={{ T, lang }}>
+    (function () {
+      const $ = (s) => document.querySelector(s);
+      const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      let busy = false;
+
+      function card(h, i) {
+        const external = /^https?:/.test(h.url);
+        return `<a class="card" href="${esc(h.url)}"${external ? ' target="_blank" rel="noopener nofollow"' : ''}>
+          <span class="top"><span class="n">${i + 1}</span><span class="t">${esc(h.title)}</span>
+            <span class="kind">${esc(h.kind)}</span></span>
+          ${h.snippet ? `<span class="s">${esc(h.snippet)}</span>` : ''}
+          ${h.extra ? `<span class="x">${esc(h.extra)}</span>` : ''}
+        </a>`;
+      }
+
+      async function ask(q) {
+        if (busy || !q || q.length < 2) return;
+        busy = true;
+        $('#msg').hidden = false; $('#msg').textContent = T.running;
+        $('.go').disabled = true;
+        try {
+          const r = await fetch('/api/ai/search', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ q, lang }),
+          });
+          const d = await r.json();
+          $('#msg').hidden = true;
+          /* 401 要登录 / 429 今日满了:接口带回 href + cta(会员限额 2026-09-23),给一个能点的入口而不是一句死话 */
+          if (!d.ok) { $('#msg').hidden = false; $('#msg').innerHTML = esc(d.msg || '出错了') + (d.href ? ` <a href="${esc(d.href)}">${esc(d.cta || '→')}</a>` : ''); return; }
+          $('#out').hidden = false;
+          const hits = d.hits || [];
+          if (!hits.length) { $('#ansbox').hidden = true; $('#srck').hidden = true; $('#cards').innerHTML = `<p class="s">${T.none}</p>`; return; }
+          if (d.answer) {
+            /* [1] 这类引用标成上标,点了能跳到对应卡片 —— 短回答 + 可核依据,才叫有出处 */
+            $('#ans').innerHTML = esc(d.answer)
+              .replace(/\n{2,}/g, '</p><p>').replace(/\[(\d+)\]/g, '<sup>[$1]</sup>');
+            $('#ansbox').hidden = false;
+          } else {
+            $('#ans').textContent = T.noModel; $('#ansbox').hidden = false;
+          }
+          $('#srck').hidden = false;
+          $('#cards').innerHTML = hits.map(card).join('');
+        } catch (e) {
+          $('#msg').hidden = false; $('#msg').textContent = String(e).slice(0, 80);
+        } finally {
+          busy = false; $('.go').disabled = false;
+        }
+      }
+
+      $('#f').addEventListener('submit', (e) => { e.preventDefault(); ask($('#q').value.trim()); });
+      document.querySelectorAll('.eg').forEach((b) => b.addEventListener('click', () => {
+        $('#q').value = b.textContent; ask(b.textContent);
+      }));
+      /* 支持从别处带问题过来:?q=… */
+      const q0 = new URLSearchParams(location.search).get('q');
+      if (q0) { $('#q').value = q0; ask(q0); }
+    })();
+  </script>
+</BaseLayout>

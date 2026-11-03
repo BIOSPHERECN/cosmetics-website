@@ -19,12 +19,13 @@ import { apiGuard, json } from '../../../lib/guard';
 import { loadFleet } from '../../../lib/fleet';
 import { translateJson, translateBatch, TARGETS } from '../../../lib/translate';
 import { env } from 'cloudflare:workers';
+import { invalidateNavSnap } from '../../../lib/snap';
 
 export const prerender = false;
 
 /** 已上线的语种 —— 与 packages/core/src/i18n 的 LOCALES 保持一致 */
 const LOCALES = [
-  'en', 'zh-cn', 'ja', 'ko', 'id', 'ms', 'th', 'vi', 'hi', 'bn', 'tl', 'ur', 'pa', 'te', 'ta', 'mr', 'gu', 'jv', 'fr', 'de', 'es', 'it', 'pt', 'nl', 'pl', 'sv', 'da', 'fi', 'no', 'cs', 'el', 'hu', 'ro', 'uk', 'ru', 'pt-br', 'es-mx', 'ar', 'tr', 'fa', 'he', 'sw', 'ha', 'am', 'kk', 'uz',
+  'en', 'zh-cn', 'jp', 'kr', 'fr', 'de', 'ru', 'id', 'my', 'th', 'vn', 'ph', 'es', 'pt', 'ar', 'tr', 'in',
 ];
 
 type Row = { kind: 'site' | 'page' | 'product' | 'block'; id: number | string; label: string };
@@ -129,6 +130,7 @@ export const POST: APIRoute = async ({ request }) => {
         ).bind(r.id, lang, got['0'] || r.nav_label, got['1'] || r.title, got['2'] ?? r.seo_desc).run();
         done.push({ kind: 'page', id: r.id, label: `页面 /${r.slug}` });
       }
+      if ((results ?? []).length) await invalidateNavSnap(c.db, site);   // translated nav labels must show without waiting for the snapshot TTL
     }
 
     /* ③ 版块正文 —— 量最大的一档 */

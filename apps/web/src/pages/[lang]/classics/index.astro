@@ -1,0 +1,97 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/** 古方库 —— 创始人 2026-09-10 交来的《古方库_化妆品适用候选》:抽检确认 6 方置顶、v2 主候选 75 方标「优选」、外用美容方 700 余、含禁用组分 442 方只列名「仅供研究」。
+ *  红线:只列药味不列剂量;禁用组分方不给组成;每条都是「古籍记载,非功效宣称」。数据 D1 classics,`tools/classics-load.py`。图谱里同名节点可跳。 */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { memo } from '../../../lib/memo';
+import { getCounts } from '../../../lib/counts';
+import MemberGate from '../../../components/MemberGate.astro';
+import { searchGate } from '../../../lib/member';
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn'; const zh = lang.startsWith('zh');
+const db = (env as any).DB as D1Database | undefined; const tSkip = uiT(lang as any)('a11y.skip');
+const url = new URL(Astro.url);
+const TIERS = ['confirmed', 'primary', 'candidate', 'research'];
+const fT0 = (url.searchParams.get('t') ?? '').slice(0, 12); const fT = TIERS.includes(fT0) ? fT0 : '';
+const fQ0 = (url.searchParams.get('q') ?? '').trim().slice(0, 40);
+/* 09-24 搜索计每日额度(安全架构 C2):未登录、爬虫、超额不搜,只出列表 + 登录/额度卡 */
+const sg = await searchGate(Astro, env, db, 'classics', fQ0);
+const fQ = sg && sg.state !== 'full' ? '' : fQ0;
+const PER = 60;
+/* 09-24:整库 986 方记 1 小时(与语种、档位、搜索词都无关)。档位计数、档位筛选、会员搜索全在内存里做 ——
+   上一版每个 ?t= ?q= ?p= 组合都现查一遍全表(随机参数即绕过缓存),再按档位分组计数一次。 */
+let all: any[] = [];
+if (db) {
+  try {
+    all = await memo('classics-all', 3600, async () => ((await db.prepare(`SELECT * FROM classics ORDER BY CASE tier WHEN 'confirmed' THEN 0 WHEN 'primary' THEN 1 WHEN 'candidate' THEN 2 ELSE 3 END, id`).all<any>()).results ?? []) as any[]);
+  } catch { all = []; }
+}
+const counts: Record<string, number> = {};
+for (const r of all) counts[r.tier] = (counts[r.tier] ?? 0) + 1;
+const hasQ = (v: unknown) => String(v ?? '').includes(fQ);
+const rows = all.filter((r) => (!fT || r.tier === fT) && (!fQ || hasQ(r.name) || hasQ(r.book) || hasQ(r.purposes) || hasQ(r.composition)));
+const total = all.length;
+/* 图谱同源计数读静态计数文件的 graph_types(counts-refresh.py 写),不再 GROUP BY kg_nodes */
+const kg = ((await getCounts(db))?.graph_types ?? {}) as Record<string, number>;
+const pages = Math.max(1, Math.ceil(rows.length / PER));
+const pg = Math.min(pages, Math.max(1, parseInt(url.searchParams.get('p') ?? '1') || 1));
+const shown = rows.slice((pg - 1) * PER, pg * PER);
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const B = `/${lang}`; const path = `${B}/classics/`; const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const pq = (n: number) => `${path}?${fT ? 't=' + fT + '&' : ''}${fQ ? 'q=' + encodeURIComponent(fQ) + '&' : ''}p=${n}`;
+const TIER: Record<string, [string, string]> = { confirmed: ['抽检确认可用', 'Verified usable'], primary: ['主候选(v2 A/B)', 'Primary candidates'], candidate: ['外用美容方 · 无禁用组分', 'External use, no banned components'], research: ['含铅汞砒 · 仅供研究', 'Contains banned components, research only'] };
+const T = zh ? { eyebrow: '源头 · 原料', title: `古方库 · ${total.toLocaleString()} 方`, lede: '从 20,000 余篇古籍里筛出的外用美容方:方名、出处、用途、药味组成(不列剂量)、主治,以及帛卉对「最像今天哪类产品」的解读。抽检确认可用的置顶;含铅汞砒等禁用组分的只列方名,仅供研究。', note: '古籍记载,非功效宣称。组成以通行本为准、只列药味不列剂量与煎服法;任何复刻须按目标市场原料目录与安全技术规范重新评估。', all: '全部', search: '搜方名 / 出处 / 用途 / 药味', go: '搜', book: '出处', purp: '用途', form: '剂型', comp: '组成(只列药味)', ind: '主治', modern: '最像今天哪类产品', note2: '备注', toxic: '禁用组分', graph: '在知识图谱里看', empty: '没有匹配的方。' }
+             : { eyebrow: 'Source · botanicals', title: `Classical formula library · ${total.toLocaleString()}`, lede: 'External-use beauty formulas screened from 20,000+ classical texts: name, source, purpose, herbs (no dosages), indications, and our reading of the closest modern product type. Verified ones first; formulas with banned components are listed by name only, research use.', note: 'Historical records, not efficacy claims. Herbs listed without dosages; any reproduction must be re-assessed against the target market inventory and safety standard.', all: 'All', search: 'Search name / source / purpose / herb', go: 'Search', book: 'Source', purp: 'Purpose', form: 'Form', comp: 'Herbs (no dosage)', ind: 'Indication', modern: 'Closest modern product', note2: 'Note', toxic: 'Banned components', graph: 'View in knowledge graph', empty: 'No match.' };
+---
+<BaseLayout locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.lede} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path} indexable={shell.site?.is_live === 1 && !fT && !fQ0 && pg === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <header class="hd"><p class="eyebrow">{T.eyebrow}</p><h1>{T.title}</h1><p class="lede">{T.lede}</p><p class="note">{T.note}</p></header>
+    <p class="kg">{zh ? '知识图谱同源:' : 'Also in the knowledge graph:'} {(kg['古方'] ?? 0).toLocaleString()} {zh ? '条外用方' : 'external formulas'} · {(kg['古方(含禁用组分)'] ?? 0).toLocaleString()} {zh ? '条含禁用组分方' : 'with banned components'} · {(kg['药材'] ?? 0).toLocaleString()} {zh ? '味药材' : 'herbs'} · {(kg['典籍'] ?? 0).toLocaleString()} {zh ? '部典籍' : 'classical texts'} <a href={`${B}/graph/`}>{zh ? '打开图谱 →' : 'Open graph →'}</a></p>
+    <form class="box" method="get" action={path}>{fT && <input type="hidden" name="t" value={fT} />}<input type="search" name="q" value={fQ0} placeholder={T.search} maxlength="40" /><button type="submit">{T.go}</button></form>
+    {sg && <MemberGate lang={lang} g={sg} next={`${path}?q=${encodeURIComponent(fQ0)}`} what={['古方检索结果', 'search results']} />}
+    <nav class="tabs"><a class:list={['chip', { on: !fT }]} href={path}>{T.all} <i>{total}</i></a>{Object.entries(TIER).map(([k, v]) => <a class:list={['chip', { on: fT === k }]} href={`${path}?t=${k}`}>{zh ? v[0] : v[1]} <i>{counts[k] ?? 0}</i></a>)}</nav>
+    {shown.length === 0 && <p class="lede">{T.empty}</p>}
+    <ul class="cards">{shown.map((r) => (
+      <li class:list={['card', r.tier]}>
+        <p class="who"><span class="tag">{zh ? TIER[r.tier]?.[0] : TIER[r.tier]?.[1]}</span>{r.grade && <span class="gr">{r.grade}</span>}</p>
+        <h2>{zh && r.ok ? <a href={`${B}/classics/${r.id}/`}>{r.name}</a> : r.name}</h2>
+        <dl>
+          {r.book && (<><dt>{T.book}</dt><dd>{r.book}</dd></>)}
+          {r.purposes && (<><dt>{T.purp}</dt><dd>{r.purposes}</dd></>)}
+          {r.form && (<><dt>{T.form}</dt><dd>{r.form}</dd></>)}
+          {r.composition && (<><dt>{T.comp}</dt><dd>{r.composition}</dd></>)}
+          {r.indication && (<><dt>{T.ind}</dt><dd class="muted">{r.indication}</dd></>)}
+          {r.modern && (<><dt>{T.modern}</dt><dd><b>{r.modern}</b></dd></>)}
+          {r.toxic && (<><dt>{T.toxic}</dt><dd class="warn">{r.toxic}</dd></>)}
+          {r.note && (<><dt>{T.note2}</dt><dd class="muted">{r.note}</dd></>)}
+        </dl>
+        <p class="foot">{zh && r.ok === 1 && <a href={`${B}/classics/${r.id}/`}>{zh ? '单页详解' : 'Detail'} →</a>} <a href={`${B}/graph/?t=${encodeURIComponent(r.name)}`}>{T.graph} →</a></p>
+      </li>))}</ul>
+    {pages > 1 && <nav class="pager">{Array.from({ length: pages }, (_, i) => i + 1).map((n) => <a class:list={['pg', { on: n === pg }]} href={pq(n)}>{n}</a>)}</nav>}
+  </main>
+  <SiteFooter locale={lang} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+<style>
+  .card h2 a { color: inherit; text-decoration: none; } .card h2 a:hover { color: var(--ck-accent, #7C4DA8); } .foot a { margin-right: .75rem; }
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .hd { display: grid; gap: .75rem; margin-bottom: 1rem; max-width: 62rem; } .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: clamp(1.625rem, 3vw, 2.25rem); line-height: 1.24; margin: 0; } .lede { font-size: 1rem; line-height: 1.75; opacity: .85; margin: 0; } .note { font-size: .875rem; opacity: .62; margin: 0; border-left: 2px solid currentColor; padding-left: .75rem; }
+  .kg { margin: 0 0 .75rem; font-size: .9rem; opacity: .8; font-variant-numeric: tabular-nums; }
+  .box { display: flex; gap: .5rem; margin: 0 0 .75rem; max-width: 40rem; } .box input { flex: 1; min-height: 44px; padding: 0 .875rem; border: 1px solid var(--ck-line, rgba(0,0,0,.2)); border-radius: 10px; font: inherit; } .box button { min-height: 44px; padding: 0 1rem; border-radius: 10px; border: 0; background: var(--ck-ink, #111); color: var(--ck-paper, #fff); font: inherit; }
+  .tabs { display: flex; flex-wrap: wrap; gap: .375rem; margin: 0 0 1.25rem; } .chip { min-height: 40px; display: inline-flex; align-items: center; gap: .375rem; padding: 0 .75rem; font-size: .875rem; border-radius: 999px; text-decoration: none; color: inherit; border: 1px solid var(--ck-line, rgba(0,0,0,.16)); } .chip i { font-style: normal; opacity: .6; } .chip.on { background: var(--ck-ink, #111); color: var(--ck-paper, #fff); }
+  .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; } .card { padding: .875rem 1rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 12px; } .card.confirmed { border-color: var(--ck-accent, #1f4e79); } .card.research { opacity: .8; }
+  .who { margin: 0; display: flex; gap: .5rem; align-items: center; } .tag { font-size: .6875rem; letter-spacing: .06em; padding: .125rem .5rem; border-radius: 999px; border: 1px solid var(--ck-line, rgba(0,0,0,.2)); } .confirmed .tag { background: var(--ck-accent, #1f4e79); color: #fff; border-color: transparent; } .gr { font-size: .75rem; opacity: .6; }
+  .card h2 { font-size: 1.0625rem; margin: .25rem 0 .375rem; } .card dl { margin: 0; display: grid; grid-template-columns: 1fr; gap: .15rem; } .card dt { font-size: .75rem; opacity: .55; } .card dd { margin: 0 0 .3rem; font-size: .875rem; line-height: 1.6; } .muted { opacity: .7; } .warn { color: #b00020; }
+  .foot { margin: .375rem 0 0; font-size: .8125rem; } .foot a { color: inherit; opacity: .75; }
+  .pager { display: flex; flex-wrap: wrap; gap: .375rem; margin: 1rem 0; } .pg { min-width: 2.5rem; min-height: 2.5rem; display: inline-grid; place-items: center; border: 1px solid var(--ck-line, rgba(0,0,0,.16)); border-radius: 8px; text-decoration: none; color: inherit; } .pg.on { background: var(--ck-ink, #111); color: var(--ck-paper, #fff); }
+  @media (min-width: 900px) { main { padding: 2rem 1.5rem 4rem; } .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } .card dl { grid-template-columns: 5.5rem 1fr; gap: .15rem .625rem; } }
+  @media (min-width: 1400px) { .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+</style>

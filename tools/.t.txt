@@ -1,0 +1,158 @@
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProxy environment variables detected. We'll use your proxy for fetch requests.[0m
+
+
+
+ ⛅️ wrangler 4.120.0
+────────────────────
+Successfully created tail, expires at 2026-09-07T18:54:00Z
+Connected to bohui-web, waiting for logs...
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost: the Worker did not respond to a keep-alive ping within 10000ms.[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost: the Worker did not respond to a keep-alive ping within 10000ms.[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 2 of 5) in 2s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost: the Worker did not respond to a keep-alive ping within 10000ms.[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost: the Worker did not respond to a keep-alive ping within 10000ms.[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost: the Worker did not respond to a keep-alive ping within 10000ms.[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost: the Worker did not respond to a keep-alive ping within 10000ms.[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost: the Worker did not respond to a keep-alive ping within 10000ms.[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost: the Worker did not respond to a keep-alive ping within 10000ms.[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 2 of 5) in 2s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+Reconnected to bohui-web.
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 1 of 5) in 1s...[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 2 of 5) in 2s...[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 3 of 5) in 4s...[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 4 of 5) in 8s...[0m
+
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTail connection lost. Reconnecting (attempt 5 of 5) in 16s...[0m
+
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mUnable to reconnect to the tail for bohui-web after 5 attempts. Please re-run `wrangler tail bohui-web` to start a new session.[0m
+
+
+🪵  Logs were written to "C:\Users\Administrator\AppData\Roaming\xdg.config\.wrangler\logs\wrangler-2026-09-07_12-53-58_265.log"

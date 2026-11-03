@@ -1,0 +1,79 @@
+[材料已截断:共 174 行,给了约 76 行]
+Site worker: bohui-web. Tier: L3. Note: 【零读】beauty2oem 首页视觉重排:首屏换创始人图库泳池模特满屏大图、新增 12 张作品墙瀑布流、方法区配图放大到半屏、中间版块改白/浅灰底、删空占位框;另含 middleware 冒烟探针头 x-bohui-probe(PROBE_SECRET 未设前不生效)
+diff --stat:
+ apps/web/public/b2o/img/vi/hero-full.webp | Bin 0 -> 159108 bytes
+ apps/web/public/b2o/img/vi/m1.webp        | Bin 0 -> 33396 bytes
+ apps/web/public/b2o/img/vi/m2.webp        | Bin 0 -> 89472 bytes
+ apps/web/public/b2o/img/vi/m3.webp        | Bin 0 -> 110682 bytes
+ apps/web/public/b2o/img/vi/m4.webp        | Bin 0 -> 139138 bytes
+ apps/web/public/b2o/img/vi/wall-01.webp   | Bin 0 -> 116996 bytes
+ apps/web/public/b2o/img/vi/wall-02.webp   | Bin 0 -> 79246 bytes
+ apps/web/public/b2o/img/vi/wall-03.webp   | Bin 0 -> 76350 bytes
+ apps/web/public/b2o/img/vi/wall-04.webp   | Bin 0 -> 102420 bytes
+ apps/web/public/b2o/img/vi/wall-05.webp   | Bin 0 -> 81580 bytes
+ apps/web/public/b2o/img/vi/wall-06.webp   | Bin 0 -> 82640 bytes
+ apps/web/public/b2o/img/vi/wall-07.webp   | Bin 0 -> 127118 bytes
+ apps/web/public/b2o/img/vi/wall-08.webp   | Bin 0 -> 90646 bytes
+ apps/web/public/b2o/img/vi/wall-09.webp   | Bin 0 -> 139884 bytes
+ apps/web/public/b2o/img/vi/wall-10.webp   | Bin 0 -> 91716 bytes
+ apps/web/public/b2o/img/vi/wall-11.webp   | Bin 0 -> 157178 bytes
+ apps/web/public/b2o/img/vi/wall-12.webp   | Bin 0 -> 115776 bytes
+ apps/web/src/components/B2oBlock.astro    |  84 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------
+ apps/web/src/middleware.ts                |  12 ++++++++++--
+ apps/web/src/styles/b2o.css               |  55 +++++++++++++++++++++++++++++++++++++++----------------
+ 20 files changed, 105 insertions(+), 46 deletions(-)
+Gate-1 hits: 
+Risks: RK2 middleware.ts 变了:所有请求都经过它; RK7 对外文案/页面变了 apps/web/src/components/B2oBlock.astro; RK7 对外文案/页面变了 apps/web/src/middleware.ts
+Changed lines:
+
+diff --git a/apps/web/src/middleware.ts b/apps/web/src/middleware.ts
+--- a/apps/web/src/middleware.ts
++++ b/apps/web/src/middleware.ts
+@@ -468,3 +468,11 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+-  if ((req.method === 'GET' || req.method === 'HEAD') && !staff && !dev && isPagePath(url0.pathname)) {
++  /* 09-25 自家冒烟探针:上线后冒烟要绕开边缘缓存看新版本(原来靠 ?kk=,C1 起会被 301 掉 → 冒烟 4/23 误报)。
++     请求头 x-bohui-probe 与 secret PROBE_SECRET 一致才算:不跳转、不读写缓存、现渲染一次。
++     secret 没配时谁都不算;外人带 ?kk= 照旧 301。 */
++  const probeSecret = String((cfEnv as any)?.PROBE_SECRET ?? '');
++  const probeHdr = req.headers.get('x-bohui-probe') ?? '';
++  let probeDiff = probeSecret.length === 0 || probeHdr.length !== probeSecret.length ? 1 : 0;
++  for (let i = 0; i < probeHdr.length && i < probeSecret.length; i++) probeDiff |= probeHdr.charCodeAt(i) ^ probeSecret.charCodeAt(i);
++  const probe = probeDiff === 0;
++  if ((req.method === 'GET' || req.method === 'HEAD') && !staff && !dev && !probe && isPagePath(url0.pathname)) {
+@@ -507,3 +515,3 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+-    !noCache && !staff && !member;
++    !noCache && !staff && !member && !probe;
+diff --git a/apps/web/public/b2o/img/vi/hero-full.webp b/apps/web/public/b2o/img/vi/hero-full.webp
+diff --git a/apps/web/public/b2o/img/vi/m1.webp b/apps/web/public/b2o/img/vi/m1.webp
+diff --git a/apps/web/public/b2o/img/vi/m2.webp b/apps/web/public/b2o/img/vi/m2.webp
+diff --git a/apps/web/public/b2o/img/vi/m3.webp b/apps/web/public/b2o/img/vi/m3.webp
+diff --git a/apps/web/public/b2o/img/vi/m4.webp b/apps/web/public/b2o/img/vi/m4.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-01.webp b/apps/web/public/b2o/img/vi/wall-01.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-02.webp b/apps/web/public/b2o/img/vi/wall-02.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-03.webp b/apps/web/public/b2o/img/vi/wall-03.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-04.webp b/apps/web/public/b2o/img/vi/wall-04.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-05.webp b/apps/web/public/b2o/img/vi/wall-05.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-06.webp b/apps/web/public/b2o/img/vi/wall-06.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-07.webp b/apps/web/public/b2o/img/vi/wall-07.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-08.webp b/apps/web/public/b2o/img/vi/wall-08.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-09.webp b/apps/web/public/b2o/img/vi/wall-09.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-10.webp b/apps/web/public/b2o/img/vi/wall-10.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-11.webp b/apps/web/public/b2o/img/vi/wall-11.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-12.webp b/apps/web/public/b2o/img/vi/wall-12.webp
+diff --git a/apps/web/src/components/B2oBlock.astro b/apps/web/src/components/B2oBlock.astro
+--- a/apps/web/src/components/B2oBlock.astro
++++ b/apps/web/src/components/B2oBlock.astro
+@@ -47,2 +47,19 @@ const href = (h: any, fb: string) => { const v = String(h ?? '').trim(); if (!v)
++  heroFull: ['vi/hero-full', 1024, 1024, '戴草帽和太阳镜的女子在泳池边展示防晒产品'],
++  wall01: ['vi/wall-01', 1024, 1024, '海滩与热带水果间陈列多款彩色防晒产品'],
++  wall02: ['vi/wall-02', 1024, 1024, '粉色背景前陈列蓝色、白色和橙色软管与喷瓶'],
++  wall03: ['vi/wall-03', 1024, 1024, '夜景灯光前陈列星空图案的深蓝色瓶罐'],
++  wall04: ['vi/wall-04', 1024, 1024, '柑橘和菠萝旁陈列三款水果插画瓶装产品'],
++  wall05: ['vi/wall-05', 1200, 1200, '暖色展台上分层陈列金黄色瓶装与软管产品'],
++  wall06: ['vi/wall-06', 1200, 1200, '木瓜与黄瓜主题的四组绿色和橙色产品陈列'],
++  wall07: ['vi/wall-07', 1024, 1024, '海浪与贝壳前竖立海洋图案的彩色软管'],
++  wall08: ['vi/wall-08', 1024, 1024, '橙子与棕榈叶间陈列橙黄色软管'],
++  wall09: ['vi/wall-09', 1024, 1024, '热带水果和泳池背景前陈列多款鲜艳瓶装产品'],
++  wall10: ['vi/wall-10', 1024, 1024, '向日葵与橙子旁陈列黄色瓶装和白色软管'],
++  wall11: ['vi/wall-11', 1024, 1024, '绿叶
+[没给到内容的文件 1 个] apps/web/src/styles/b2o.css

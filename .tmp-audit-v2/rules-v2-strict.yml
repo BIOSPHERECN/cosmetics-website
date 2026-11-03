@@ -1,0 +1,113 @@
+# 审核部 v2.1 · 第一关 strict 规则(C5、C12、S1、R1–R4)。行内 nosemgrep / gate-ok 对这份一律无效(绕-12)。
+# 与 rules.yml(v1)、rules-v2.yml 在同一次 semgrep 调用里跑(--disable-nosem),gate1.py 按 metadata.strict 判「写了豁免也照拦」。
+# C10(d1 不带 -c)要先拼 \ 续行再匹配,semgrep 做不到,写在 gate1.py 的 PY_RULES 里,同样 strict。
+# 改本文件 = 改闸门,走 ship_ops.sh gate。
+rules:
+  - id: C5-r2-copy-move
+    languages: [regex]
+    severity: ERROR
+    message: R2 复制/搬移(一天烧过 40 美元)。分类只改 D1 字段,图永不挪(zero-r2-move)。不设例外。
+    metadata: {gid: C5, level: block, strict: true, hard: true, cat: 费用}
+    patterns:
+      - pattern-either:
+          - pattern-regex: '(?i)\bcopy_?object\s*\(|x-amz-copy-source|\bCopySource\b|r2-migrate|\bmove_?object\s*\('
+          - pattern-regex: '\brclone\s+(copy|move|sync|copyto|moveto)\b'
+          - pattern-regex: '\baws\s+s3\s+(cp|mv|sync)\b[^\n]*s3://'
+      - pattern-not-regex: '(?m)^[ \t]*(//|/\*|\*|#|rem\s|::).*$'
+    paths:
+      exclude: ["*.md"]
+
+  - id: C12-deploy-outside-ship
+    languages: [regex]
+    severity: ERROR
+    message: 部署命令写进了 ship 之外的脚本(先写脚本再间接部署 = 绕闸)。上线只走 ship.sh / ship_ops.sh。不设例外。
+    metadata: {gid: C12, level: block, strict: true, cat: 安全}
+    patterns:
+      - pattern-either:
+          - pattern-regex: '\bwrangler\S*["'',\s]+(deploy|publish|rollback|versions["'',\s]+(deploy|upload)|triggers["'',\s]+deploy)\b'
+          - pattern-regex: 'api\.cloudflare\.com\S*/workers/(scripts|deployments)'
+      - pattern-not-regex: '(?m)^[ \t]*(//|/\*|\*|#|rem\s|::).*$'
+    paths:
+      exclude: ["*.md", "/tools/platform/deploy.sh", "/audit_v2/ship_lib.sh"]
+
+  - id: C12-deploy-npm-script
+    languages: [regex]
+    severity: ERROR
+    message: package.json 的 scripts(含 pre*/post* 钩子)里出现部署,构建时就会间接部署。
+    metadata: {gid: C12, level: block, strict: true, cat: 安全}
+    pattern-regex: '"[\w:-]*"\s*:\s*"[^"\n]*(\bwrangler\S*\s+(deploy|publish|versions\s+(deploy|upload)|rollback)\b|\bdeploy[\w.-]*\.(sh|py|ps1|mjs|js)\b)'
+    paths:
+      include: ["package.json"]
+
+  - id: S1-secret-literal-v2
+    languages: [regex]
+    severity: ERROR
+    message: 疑似密钥明文(GitHub / AWS / 私钥 / Slack / *_SECRET、*_TOKEN 赋值)。密钥只进 .env 或 wrangler secret。
+    metadata: {gid: S1, level: block, strict: true, hard: true, cat: 安全}
+    pattern-either:
+      - pattern-regex: '\bghp_[A-Za-z0-9]{36}\b'
+      - pattern-regex: '\bgithub_pat_\w{60,}'
+      - pattern-regex: '\bAKIA[0-9A-Z]{16}\b'
+      - pattern-regex: '-----BEGIN [A-Z ]*PRIVATE KEY-----'
+      - pattern-regex: '\bxox[abprs]-[A-Za-z0-9-]{10,}'
+      - pattern-regex: '\b(TYPESAFE_API_KEY|\w*_SECRET|\w*_TOKEN)\s*[:=]\s*[''"](?!__Host-|__Secure-)(?=[\w-]*[A-Za-z])(?=[\w-]*\d)(?![a-z]+(?:-[a-z]+)+[''"])[\w-]{16,}[''"]'
+    paths:
+      exclude: ["*.md"]
+
+  - id: R1-group-branding
+    languages: [regex]
+    severity: ERROR
+    message: 集团旗号。对外只是帛卉(中文=帛卉化妆品,英文=BIOSPHERE),法人全称只进法务页。
+    metadata: {gid: R1, level: block, strict: true, hard: true, cat: 合规}
+    patterns:
+      - pattern-regex: '帛卉集团|本集团|\bBOHUI\s+GROUP\b|\bBohui\s+Group\b|五平台生态'
+      - pattern-not-regex: '(?m)^[ \t]*(//|/\*|\*).*$'
+    paths: &P
+      include:
+        - "/apps/web/src/pages/"
+        - "/apps/web/src/middleware.ts"
+        - "/apps/web/src/components/"
+        - "/apps/web/src/layouts/"
+        - "/apps/web/src/lib/"
+        - "/packages/*/src/"
+        - "/apps/web/public/**/*.txt"
+        - "/apps/web/public/**/*.xml"
+        - "/apps/web/public/**/*.json"
+        - "/apps/web/public/**/*.html"
+        - "/apps/web/public/**/*.webmanifest"
+      exclude:
+        - "/apps/web/src/pages/bohui/"
+        - "/apps/web/src/pages/*/bohui/"
+        - "/apps/web/src/pages/hosonzuo/"
+        - "/apps/web/src/pages/api/admin/"
+        - "/apps/web/src/pages/api/cron/"
+        - "*.md"
+
+  - id: R2-owned-factory
+    languages: [regex]
+    severity: ERROR
+    message: 「自有厂房/非租赁」禁用。09-24 22:5x 创始人更正:「自有工厂」是对的(老板自己的工厂,贸易公司才不是),不拦。
+    metadata: {gid: R2, level: block, strict: true, hard: true, cat: 合规}
+    patterns:
+      - pattern-regex: '自有厂房|非租赁'
+      - pattern-not-regex: '(?m)^[ \t]*(//|/\*|\*).*$'
+    paths: *P
+
+  - id: R3-indonesia-factory
+    languages: [regex]
+    severity: ERROR
+    message: 印尼工厂对外不提(印尼作为目标市场、BPOM、HALAL 不受影响)。
+    metadata: {gid: R3, level: block, strict: true, hard: true, cat: 合规}
+    patterns:
+      - pattern-regex: '印尼(工厂|厂房|基地)|双基地|Tangerang|(?i)\bIndonesia(n)?\s+(factory|facility|base)\b(?!-)|(?i)\bsecond\s+factory\b'
+      - pattern-not-regex: '(?m)^[ \t]*(//|/\*|\*).*$'
+    paths: *P
+
+  - id: R4-sueai
+    languages: [regex]
+    severity: ERROR
+    message: 帛卉里不出现 SueAI(只允许在 F:/0cosmetic/crm/)。
+    metadata: {gid: R4, level: block, strict: true, hard: true, cat: 合规}
+    pattern-regex: '(?i)\bsue\s?ai\b'
+    paths:
+      exclude: ["*.md", "/crm/"]

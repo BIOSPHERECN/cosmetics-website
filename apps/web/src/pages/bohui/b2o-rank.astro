@@ -1,0 +1,132 @@
+---
+/**
+ * 当前实力榜 + 变化速度榜(2026-09-24 W3)。
+ * 数据只读 market_snapshots(0061,每天一行名次 / 评论数)JOIN market_products。
+ * 只有 Amazon 美国站有时间序列;其他平台只有商品快照或上架可见日(market_product_seen,无名次、无评论数序列),
+ * 一律写「缺快照」,不拿单点数编速度。排名≠销量。
+ * 行数:单类目最新日 + 窗口首日各约 100 行;平台清单走 (platform,pid) 唯一索引,10 分钟 isolate 缓存。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const CAT: Record<string, string> = { beauty: '美妆总榜', 'skin-care': '护肤', face: '面部护肤', 'face-cleansers': '洁面', sunscreen: '防晒', 'hair-care': '洗护发', 'shampoo-conditioner': '洗发水/护发素', 'hair-masks': '发膜', 'hair-oils': '护发油', scalp: '头皮护理', makeup: '彩妆总榜', 'makeup-face': '底妆', 'makeup-eyes': '眼妆', 'makeup-lips': '唇妆', 'lip-care': '唇部护理' };
+const url = new URL(Astro.request.url);
+const cat = CAT[url.searchParams.get('cat') ?? ''] ? url.searchParams.get('cat')! : 'beauty';
+const win = [7, 14, 30].includes(Number(url.searchParams.get('d'))) ? Number(url.searchParams.get('d')) : 7;
+
+type R = { pid: string; rank: number; price: number | null; rating: number | null; reviews: number | null; title: string | null; brand: string | null; url: string | null };
+type V = R & { r0: number | null; rv0: number | null; climb: number | null; perDay: number | null };
+let latest = '', first = '', days = 0, upN = 0, newN = 0, strong: R[] = [], fast: V[] = [], newIn: R[] = [], err = '';
+try {
+  const m = await c.db.prepare(`SELECT MAX(date) d FROM market_snapshots WHERE platform='amazon-us' AND cat=?`).bind(cat).first<{ d: string | null }>();
+  latest = m?.d ?? '';
+  if (latest) {
+    const w = await c.db.prepare(`SELECT MIN(date) a, COUNT(DISTINCT date) n FROM market_snapshots WHERE platform='amazon-us' AND cat=? AND date >= date(?, ?)`)
+      .bind(cat, latest, `-${win} days`).first<{ a: string; n: number }>();
+    first = w?.a ?? latest; days = w?.n ?? 1;
+    const sel = `SELECT s.pid, s.rank, s.price, s.rating, s.reviews, p.title, p.brand, p.url FROM market_snapshots s LEFT JOIN market_products p ON p.platform=s.platform AND p.pid=s.pid WHERE s.platform='amazon-us' AND s.cat=? AND s.date=? ORDER BY s.rank`;
+    const [a, b] = await c.db.batch([c.db.prepare(sel).bind(cat, latest), c.db.prepare(sel).bind(cat, first)]);
+    const now = a.results as R[], old = new Map((b.results as R[]).map((r) => [r.pid, r]));
+    strong = now.slice(0, 20);
+    const span = Math.max(1, (Date.parse(latest) - Date.parse(first)) / 864e5);
+    const all: V[] = now.map((r) => {
+      const o = old.get(r.pid);
+      return { ...r, r0: o?.rank ?? null, rv0: o?.reviews ?? null, climb: o ? o.rank - r.rank : null,
+        perDay: o && r.reviews != null && o.reviews != null ? Math.round((r.reviews - o.reviews) / span) : null };
+    });
+    /* 速度 = 窗口内名次上升位数;同位数按日均新增评论排。窗口首日不在榜的单列「新上榜」,不硬算位数 */
+    /* 09-24 W3 验收:卡片数字取截断前的总数(原来显示的是表格截断后的 20 / 10) */
+    const up = first === latest ? [] : all.filter((r) => (r.climb ?? 0) > 0).sort((x, y) => (y.climb! - x.climb!) || ((y.perDay ?? 0) - (x.perDay ?? 0)));
+    const nw = first === latest ? [] : all.filter((r) => r.r0 === null);
+    upN = up.length; newN = nw.length; fast = up.slice(0, 20); newIn = nw.slice(0, 10);
+  }
+} catch (e) { err = String((e as Error)?.message ?? e).slice(0, 120); }
+
+/* 哪些平台缺快照:有商品、没有 market_snapshots 序列 */
+const PC: { at: number; v: { platform: string; n: number }[]; snap: string[] } = ((globalThis as any).__b2oRankPC ??= { at: 0, v: [], snap: [] });
+if (Date.now() - PC.at > 600e3) try {
+  const [p, s] = await c.db.batch([
+    c.db.prepare(`SELECT platform, COUNT(*) n FROM market_products GROUP BY platform ORDER BY n DESC`),
+    c.db.prepare(`SELECT DISTINCT platform FROM market_snapshots`),
+  ]);
+  PC.v = p.results as { platform: string; n: number }[]; PC.snap = (s.results as { platform: string }[]).map((r) => r.platform); PC.at = Date.now();
+} catch { /* 显示空清单 */ }
+const missing = PC.v.filter((p) => !PC.snap.includes(p.platform));
+
+const n0 = (v: number | null | undefined) => v == null ? '—' : v.toLocaleString('en-US');
+const t = (r: R) => (r.title ?? r.pid).slice(0, 70);
+---
+
+<AdminShell title="实力榜与速度榜" active="b2o-rank" email={c.sess.email} tenant={c.tenant}>
+  <h1>当前实力榜 · 变化速度榜</h1>
+  <p class="lead notice">Amazon 美国站畅销榜每日快照。名次是平台畅销排名,<b>排名≠销量</b>;评论数是累计值,日均新增只作热度参考。</p>
+
+  <form class="bar" method="get">
+    <select name="cat">{Object.entries(CAT).map(([k, v]) => <option value={k} selected={k === cat}>{v}</option>)}</select>
+    <select name="d">{[7, 14, 30].map((d) => <option value={d} selected={d === win}>近 {d} 天</option>)}</select>
+    <button class="btn pri" type="submit">查看</button>
+  </form>
+
+  {err ? <div class="empty">快照表读不到(market_snapshots,迁移 0061):{err}</div> : !latest ? <div class="empty">「{CAT[cat]}」缺快照:这个类目还没有任何一天的榜单。</div> : (
+    <>
+      <div class="cards">
+        <div class="card"><div class="k">最新快照</div><div class="v">{latest}</div><div class="s">{CAT[cat]} · amazon-us</div></div>
+        <div class="card"><div class="k">窗口内快照天数</div><div class="v">{days}</div><div class="s">{first} 至 {latest}(缺的日子没抓到,不补)</div></div>
+        <div class="card"><div class="k">名次上升款</div><div class="v">{upN}</div><div class="s">另有新上榜 {newN} 款(表格只列前 20 / 前 10)</div></div>
+      </div>
+
+      <div class="grid2">
+        <section class="panel">
+          <h2>当前实力榜(最新名次前 20)</h2>
+          <table>
+            <thead><tr><th>#</th><th>商品</th><th class="r">评论数</th><th class="r">评分</th><th class="r">价格</th></tr></thead>
+            <tbody>{strong.map((r) => (
+              <tr><td class="num">{r.rank}</td><td>{r.url ? <a href={r.url} target="_blank" rel="noopener">{t(r)}</a> : t(r)}<div class="dim">{r.brand ?? ''}</div></td>
+                <td class="r num">{n0(r.reviews)}</td><td class="r num">{r.rating ?? '—'}</td><td class="r num">{r.price != null ? `$${r.price}` : '—'}</td></tr>
+            ))}</tbody>
+          </table>
+        </section>
+        <section class="panel">
+          <h2>变化速度榜({first} → {latest},名次上升位数)</h2>
+          {first === latest ? <div class="empty">缺快照:窗口里只有 1 天,算不出变化。</div> : fast.length === 0 ? <div class="empty">窗口内没有名次上升的款。</div> : (
+            <table>
+              <thead><tr><th>商品</th><th class="r">名次</th><th class="r">上升</th><th class="r">日均新增评论</th></tr></thead>
+              <tbody>{fast.map((r) => (
+                <tr><td>{r.url ? <a href={r.url} target="_blank" rel="noopener">{t(r)}</a> : t(r)}<div class="dim">{r.brand ?? ''}</div></td>
+                  <td class="r num">{r.r0} → {r.rank}</td><td class="r num">+{r.climb}</td><td class="r num">{r.perDay == null ? '—' : r.perDay}</td></tr>
+              ))}</tbody>
+            </table>
+          )}
+          {newIn.length > 0 && (<>
+            <h2 style="margin-top:1rem">新上榜({first} 那天不在榜)</h2>
+            <table><tbody>{newIn.map((r) => <tr><td class="num">{r.rank}</td><td>{t(r)}<div class="dim">{r.brand ?? ''}</div></td></tr>)}</tbody></table>
+          </>)}
+        </section>
+      </div>
+    </>
+  )}
+
+  <section class="panel" style="margin-top:.75rem">
+    <h2>缺快照的平台</h2>
+    {missing.length === 0 ? <p class="dim">都有快照。</p> : (
+      <table>
+        <thead><tr><th>平台</th><th class="r">在库商品</th><th>状态</th></tr></thead>
+        <tbody>{missing.map((p) => <tr><td>{p.platform}</td><td class="r num">{n0(p.n)}</td><td>缺快照:没有名次 / 评论数时间序列,不出实力榜与速度榜</td></tr>)}</tbody>
+      </table>
+    )}
+  </section>
+
+  <style>
+    .notice{border-left:3px solid var(--ad-warn);padding-left:.75rem}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+    .panel{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:1rem 1.125rem}
+    h2{font-size:.9375rem;margin:0 0 .5rem}
+    th.r,td.r{text-align:right} .dim{color:var(--ad-faint);font-size:.75rem}
+    td{font-size:.875rem;vertical-align:top}
+    @media (max-width:60rem){.grid2{grid-template-columns:1fr}}
+  </style>
+</AdminShell>

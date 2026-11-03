@@ -1,0 +1,62 @@
+{
+ ".github/workflows/ai-batch.yml": {
+  "sha": "2f099fd849a52801cb4cd4495a319ebc604b45e5",
+  "state": "disabled_manually"
+ },
+ ".github/workflows/audit-dept.yml": {
+  "sha": "41bd4392425043227ae363a2a02de67f26f8fca4",
+  "state": "active"
+ },
+ ".github/workflows/cat-jev.yml": {
+  "sha": "c359da083c7eb5cd4f741a406e22716c5d0c37a9",
+  "state": "disabled_manually"
+ },
+ ".github/workflows/catalog-i18n.yml": {
+  "sha": "048ee0905849d2de7ec862aa13c0e292f8926e2b",
+  "state": "disabled_manually"
+ },
+ ".github/workflows/deep-report.yml": {
+  "sha": "91833fff898a30a13ba436766e1910419a22c82b",
+  "state": "disabled_manually"
+ },
+ ".github/workflows/health.yml": {
+  "sha": "7c6158ec20a89e336001c226fdff89a6319d9611",
+  "state": "active"
+ },
+ ".github/workflows/html-i18n.yml": {
+  "sha": "6624cbe1c9bc091d2bad031f9a32f0873a02aa9e",
+  "state": "disabled_manually"
+ },
+ ".github/workflows/ingredient-facts.yml": {
+  "sha": "0d709d073351d381bf85c259feaae393010125aa",
+  "state": "disabled_manually"
+ },
+ ".github/workflows/lit-refs.yml": {
+  "sha": "93e7f3400fac5fdf71669b188356ad13ca145639",
+  "state": "disabled_manually"
+ },
+ ".github/workflows/news-cn.yml": {
+  "sha": "abe1f11b52f54268c8fac3480c55f332ae23f1b1",
+  "state": "disabled_manually"
+ },
+ ".github/workflows/packjob.yml": {
+  "sha": "da068a028a31621c8ab057e6004477aa3e305b2d",
+  "state": "disabled_manually"
+ },
+ ".github/workflows/probe-qy.yml": {
+  "sha": "866c53715cad5fcf2bda9a81755a07ca1f2b61f6",
+  "state": "disabled_manually"
+ },
+ ".github/workflows/probe.yml": {
+  "sha": "3c047d75fb8e0e07844b81cdb7a95426083a44e2",
+  "state": "disabled_manually"
+ },
+ ".github/workflows/summaries.yml": {
+  "sha": "ab14a4edf89085c38bc73634e84e6bf4a1306ef4",
+  "state": "disabled_manually"
+ },
+ ".github/workflows/trend-media.yml": {
+  "sha": "dcbc21b8d17e41f6dc058b44a33e4be8d7debb22",
+  "state": "disabled_manually"
+ }
+}

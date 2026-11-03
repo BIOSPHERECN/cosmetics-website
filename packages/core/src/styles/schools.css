@@ -62,7 +62,7 @@
   --ck-h1: clamp(2.812rem, 1.3rem + 3.6vw, 7.4rem);   /* 大标题 */
   --ck-weight-head: 700;
   --ck-tracking-head: -0.025em;
-  --ck-section-py: 5rem;
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
   --ck-gap: 1.25rem;           /* 栅格严整,间距一致 */
   --ck-radius: 2px;
   --ck-radius-lg: 3px;
@@ -93,7 +93,7 @@
   --ck-lh-head: 1.22;
   --ck-tracking-head: -0.005em;
   --ck-lh-body: 1.8;
-  --ck-section-py: 6.5rem;     /* 留白多 */
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
   --ck-gap: 2rem;
   --ck-radius: 10px;
   --ck-radius-lg: 16px;
@@ -126,7 +126,7 @@
   --ck-lh-head: 1.1;
   --ck-tracking-head: 0.005em;
   --ck-tracking-eyebrow: 0.22em;
-  --ck-section-py: 8rem;       /* 超大留白 */
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
   --ck-gap: 2.5rem;
   --ck-radius: 0;
   --ck-radius-lg: 0;
@@ -181,7 +181,7 @@
   --ck-font-head: var(--ck-font-serif);
   --ck-h1: clamp(2.812rem, 1.2rem + 4vw, 7.4rem);
   --ck-weight-head: 400;
-  --ck-section-py: 6rem;
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
   --ck-radius: 3px;
 }
 
@@ -210,7 +210,7 @@
   --ck-weight-head: 650;
   --ck-tracking-head: -0.02em;
   --ck-font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, monospace;
-  --ck-section-py: 5rem;
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
   --ck-gap: 1.25rem;
   --ck-radius: 6px;
   --ck-radius-lg: 10px;

@@ -15,6 +15,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const LOC = JSON.parse(readFileSync('tools/locales.json', 'utf8'));
+
+// 分区在 locales.json 里存稳定键(global/sea/latam/mesa):
+// 前台按访客语言翻译(见 i18n 的 GROUP_LABELS);后台只有中文界面,落中文。
+const ZH_GROUP = { global: '主要语言', sea: '东南亚', latam: '拉丁美洲', mesa: '中东与南亚' };
 const codes = LOC.map((l) => l.code);
 const key = (c) => (/^[a-z]+$/.test(c) ? c : `'${c}'`);
 const pad = Math.max(...codes.map((c) => key(c).length)) + 2;
@@ -65,12 +69,12 @@ for (const l of LOC) {
 {
   const f = 'apps/web/src/lib/translate.ts';
   let s = readFileSync(f, 'utf8');
-  const HAND = new Set(['zh-cn', 'en', 'ja', 'id', 'ms', 'fr']);
+  const HAND = new Set(['zh-cn', 'en', 'jp', 'id', 'my', 'fr']);
   const body = LOC.filter((l) => !HAND.has(l.code)).map((l) =>
     `  ${key(l.code)}: { name: '${l.label}', hint: 'Write in ${l.label} (${l.code}). B2B register, plain and concrete, no marketing superlatives.`
     + (l.rtl ? ' Right-to-left script; keep Latin brand names and certificate codes as-is.' : '')
     + `' },`).join('\n');
-  s = s.replace(/(\/\* 以下 \d+ 语由 tools\/locales\.json 同步生成[\s\S]*?\*\/\n)[\s\S]*?\n\};/,
+  s = s.replace(/(\/\* 以下 \d+ 语由 tools\/locales\.json 同步生成[\s\S]*?\*\/\r?\n)[\s\S]*?\n\};/,
     `/* 以下 ${LOC.length - HAND.size} 语由 tools/locales.json 同步生成 —— 措辞提示是通用模板,\n`
     + `     哪个语种译得不对味,把它挪到上面手写一份更细的提示即可。 */\n${body}\n};`);
   writeFileSync(f, s, 'utf8');
@@ -96,4 +100,59 @@ for (const l of LOC) {
     `const HREFLANG = { ${LOC.map((l) => `${key(l.code)}: '${l.hreflang}'`).join(', ')} };`);
   writeFileSync(f, s, 'utf8');
   console.log('✓ ship-gate.mjs');
+}
+
+
+/* ── 6 后台语言页签 / RTL / hreflang(apps/web/src/lib/db.ts)──────
+   中间件不能 import 组件包,后台页面也不能,所以这里必须各存一份。
+   各存一份没问题,手工同步才是问题,所以一起生成。
+   这份一直是手写的第六张表,而且已经漂了:主表 46 门时它只有 36 门 —— */
+{
+  const f = 'apps/web/src/lib/db.ts';
+  let s = readFileSync(f, 'utf8');
+  s = s.replace(/export const LANG_GROUPS: \{ group: string; langs: \[string, string\]\[\] \}\[\] = \[[\s\S]*?\n\];/,
+    'export const LANG_GROUPS: { group: string; langs: [string, string][] }[] = [\n'
+    + groups.map(([g, cs]) =>
+        `  { group: '${ZH_GROUP[g] ?? g}', langs: [${cs.map((c) => {
+          const l = LOC.find((x) => x.code === c);
+          return `['${c}', '${l.label}']`;
+        }).join(', ')}] },`).join('\n')
+    + '\n];');
+  s = s.replace(/export const RTL = new Set\(\[[^\]]*\]\);/,
+    `export const RTL = new Set([${LOC.filter((l) => l.rtl).map((l) => `'${l.code}'`).join(', ')}]);`);
+  const odd = LOC.filter((l) => l.hreflang !== l.code);
+  s = s.replace(/return \(\{[^}]*\} as Record<string, string>\)\[lang\] \?\? lang;/,
+    `return ({ ${odd.map((l) => `'${l.code}': '${l.hreflang}'`).join(', ')} } as Record<string, string>)[lang] ?? lang;`);
+  writeFileSync(f, s, 'utf8');
+  console.log(`OK db.ts      ${codes.length} 语 · hreflang 特例 ${odd.length} 条`);
+}
+
+// ── 收尾自检 ──────────────────────────────────────────────────
+// String.replace 不匹配时原样返回,不抛错。所以上面每一句 writeFileSync
+// 都会照写、控制台都会照打 OK —— 即使正则一个字都没改到。
+// 真发生过:translate.ts 的正则要求注释结束符后紧跟 \n,而仓库是 CRLF,
+// 中间隔着 \r,于是那张表停在 30 门旧语种上,日志却显示一切正常。
+// 所以不查"替换跑没跑",直接查结果:出口文件里不许再出现已退役的语种码。
+{
+  const RETIRED = ['bn','ur','pa','te','ta','mr','gu','jv','it','nl','pl','sv','da','fi',
+                   'no','cs','el','hu','ro','uk','pt-br','es-mx','fa','he','sw','ha','am','kk','uz',
+                   'ja','ko','ms','vi','tl','hi'];
+  const OUT = ['packages/core/src/i18n/index.ts', 'apps/web/src/lib/translate.ts',
+               'apps/web/src/pages/api/admin/translate.ts', 'tools/ship-gate.mjs',
+               'apps/web/src/lib/db.ts'];
+  const live = new Set(codes);
+  const bad = [];
+  for (const f of OUT) {
+    const src = readFileSync(f, 'utf8').replace(/\/\/.*/g, '');
+    for (const c of RETIRED) {
+      if (live.has(c)) continue;
+      if (new RegExp(`(^|[\s\[{(,])'${c}'\s*[,:\]}]`, 'm').test(src)) bad.push(`${f} 仍含 '${c}'`);
+    }
+  }
+  if (bad.length) {
+    console.error('\n自检不过 —— 有替换没生效但没报错:');
+    bad.forEach((b) => console.error('   ' + b));
+    process.exit(1);
+  }
+  console.log('OK 自检通过:出口文件均无退役语种残留');
 }

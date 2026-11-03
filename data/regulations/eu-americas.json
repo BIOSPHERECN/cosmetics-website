@@ -1,0 +1,503 @@
+{
+  "markets": [
+    {
+      "id": "eu",
+      "region": "Europe",
+      "country_en": "European Union",
+      "country_zh": "欧盟",
+      "authority_en": "European Commission (DG GROW) with Member State competent authorities",
+      "authority_zh": "欧盟委员会(内部市场总司)及各成员国主管机关",
+      "law_en": "Regulation (EC) No 1223/2009 of the European Parliament and of the Council on cosmetic products",
+      "law_zh": "欧盟化妆品法规(EC)第1223/2009号",
+      "law_ref": "Regulation (EC) No 1223/2009",
+      "in_force_since": "2013-07-11",
+      "latest_update": {
+        "date": "2026-04-28",
+        "what": "Commission Regulation (EU) 2026/909 ('Omnibus Act 2') published (in force 2026-05-18) restricting fragrance allergens such as benzyl salicylate and citral, aluminium compounds, zinc salts and hair dyes and banning triphenyl phosphate, with placing-on-market deadline 2027-01-01 and sell-through to 2028-07-01; Omnibus VIII (EU) 2026/78 applied from 2026-05-01 (nano/massive silver banned, hexyl salicylate and o-phenylphenol restricted).",
+        "source": "https://cosmeservice.com/news/eu-cosmetics-regulation-2026-909-restrictions-deadlines/"
+      },
+      "market_entry": "Pre-market electronic notification of every product in the Cosmetic Products Notification Portal (CPNP) by the Responsible Person before placing on the market (Art. 13); no approval.",
+      "responsible_person": "A Responsible Person established in the EU is mandatory — by default the EU manufacturer or importer, or a third party appointed by written mandate (Art. 4).",
+      "safety_file": "Product Information File (PIF) kept 10 years, containing the Cosmetic Product Safety Report (CPSR, Annex I Parts A/B) signed by a qualified safety assessor, GMP (ISO 22716) statement, manufacturing description and proof of claims.",
+      "labeling_key": "Language(s) fixed by each Member State; INCI ingredient list; fragrance allergens named above 0.001% (leave-on) / 0.01% (rinse-off) — Regulation (EU) 2023/1545 adds 56 allergens to the historic 26, mandatory for products placed on the market from 2026-07-31 and for all products from 2028-07-31.",
+      "animal_testing": "Full testing and marketing bans since 2013-03-11 (Art. 18): cosmetics or ingredients tested on animals for cosmetic purposes cannot be marketed in the EU.",
+      "ingredient_lists": "Annex II (prohibited), Annex III (restricted), Annex IV (colorants), Annex V (preservatives), Annex VI (UV filters); CosIng database for INCI names.",
+      "official_url": "https://eur-lex.europa.eu/eli/reg/2009/1223/oj",
+      "sources": [
+        "https://single-market-economy.ec.europa.eu/sectors/cosmetics/cosmetic-products-specific-topics/fragrance-allergens-labelling_en",
+        "https://cosmeservice.com/news/eu-cosmetics-regulation-2026-909-restrictions-deadlines/",
+        "https://www.complifegroup.com/2026/02/03/omnibus-cosmetc-substances-permitted-prohibited/",
+        "https://coslaw.eu/new-substances-will-be-banned-in-cosmetics-in-the-eu-from-1-september-2025-omnibus-act-vii/",
+        "https://eur-lex.europa.eu/eli/reg/2026/909/oj",
+        "https://eur-lex.europa.eu/eli/reg/2026/78/oj"
+      ],
+      "notes": "EUR-Lex pages for 2026/78 and 2026/909 were not machine-readable at fetch time; their OJ dates (2026-01-13 and 2026-04-28) and deadlines are taken from Complife and Cosmeservice regulatory bulletins and should be cross-checked against the OJ text. Omnibus VII = Regulation (EU) 2025/877 (TPO ban applied 2025-09-01, no sell-through)."
+    },
+    {
+      "id": "uk",
+      "region": "Europe",
+      "country_en": "United Kingdom (Great Britain)",
+      "country_zh": "英国(大不列颠)",
+      "authority_en": "Office for Product Safety and Standards (OPSS), Department for Business and Trade",
+      "authority_zh": "英国产品安全与标准办公室(OPSS)",
+      "law_en": "UK Cosmetics Regulation — assimilated Regulation (EC) No 1223/2009 as amended by Schedule 34 of the Product Safety and Metrology etc. (Amendment etc.) (EU Exit) Regulations 2019",
+      "law_zh": "英国化妆品法规(保留的欧盟1223/2009法规,经2019年产品安全与计量(修订)(脱欧)条例附表34修改)",
+      "law_ref": "Regulation (EC) No 1223/2009 (assimilated GB law); SI 2019/696 Schedule 34",
+      "in_force_since": "2021-01-01",
+      "latest_update": {
+        "date": "2026-01-12",
+        "what": "SI 2026/23 bans 4-MBC (enzacamene) and cuts the 'contains formaldehyde' warning threshold to 0.001% released from 2026-07-15, and adds CMR substances incl. TPO to Annex II from 2026-08-15 (sell-through to 2027-02-14); SI 2026/109 (Mar 2026) restricts hexyl salicylate from 2026-08-15 and bans 17 further CMRs incl. nano silver from 2027-03-23 (sell-through 2027-09-22).",
+        "source": "https://www.legislation.gov.uk/uksi/2026/23/contents/made"
+      },
+      "market_entry": "Pre-market notification on OPSS's Submit Cosmetic Product Notifications (SCPN) service by the UK Responsible Person before placing on the GB market; Northern Ireland stays under EU CPNP rules.",
+      "responsible_person": "A Responsible Person established in the UK (manufacturer, importer or a company appointed by mandate) is mandatory and its address goes on the label; an EU RP is not accepted for GB.",
+      "safety_file": "PIF with a Cosmetic Product Safety Report signed by a suitably qualified safety assessor (qualification recognised in the UK), kept 10 years and available in English on request.",
+      "labeling_key": "English labelling with UK RP name/address; INCI list; only the historic 26 fragrance allergens must be declared (>0.001% leave-on / >0.01% rinse-off) because GB has not adopted the EU 2023/1545 expansion; formaldehyde-releaser warning at ≥0.001% from 2026-07-15.",
+      "animal_testing": "Testing and marketing bans carried over from EU law (Art. 18 of the assimilated regulation) remain in force.",
+      "ingredient_lists": "Annexes II–VI of the UK Cosmetics Regulation (prohibited, restricted, colorants, preservatives, UV filters), now amended by UK statutory instruments on their own timetable.",
+      "official_url": "https://www.legislation.gov.uk/eur/2009/1223",
+      "sources": [
+        "https://www.legislation.gov.uk/uksi/2026/23/contents/made",
+        "https://cosmeservice.com/news/uk-cosmetic-regulation-update-si-2026-23-and-new-cmr-restrictions/",
+        "https://cosmeservice.com/news/uk-cosmetic-regulation-si-2026-109-hexyl-salicylate/",
+        "https://www.ul.com/news/uk-cosmetic-products-restrictions-regulations-2026-proposed",
+        "https://coslaw.eu/great-britain-notifies-the-wto-of-an-amendment-to-its-cosmetics-regulation-new-hexyl-salicylate-restrictions-and-cmr-bans/",
+        "https://euverify.com/resource/eu-uk-fragrance-allergen-rules/"
+      ],
+      "notes": "SI 2026/109 dates (hexyl salicylate 2026-08-15; 17 CMRs 2027-03-23) come from Cosmeservice/CIRS summaries, the legislation.gov.uk text could not be fetched; OPSS has not concluded any consultation on adopting the expanded allergen list as of Sept 2026."
+    },
+    {
+      "id": "ch",
+      "region": "Europe",
+      "country_en": "Switzerland",
+      "country_zh": "瑞士",
+      "authority_en": "Federal Food Safety and Veterinary Office (FSVO / BLV / OSAV) with cantonal enforcement authorities",
+      "authority_zh": "瑞士联邦食品安全与兽医局(FSVO)及各州执法机关",
+      "law_en": "Ordinance of the FDHA on Cosmetics (VKos / OCos) under the Foodstuffs Act (LMG) and the Foodstuffs and Utility Articles Ordinance (LGV)",
+      "law_zh": "联邦内政部化妆品条例(VKos),隶属《食品法》(LMG)与《食品及日用品条例》(LGV)",
+      "law_ref": "SR 817.023.31 (Ordinance of 16 December 2016); LGV SR 817.02 Art. 54",
+      "in_force_since": "2017-05-01",
+      "latest_update": {
+        "date": "2026-01-01",
+        "what": "Amendment RU 2025 824 (adopted 2025-12-09) applies the 1 ppm furocoumarin limit to the sum of eight marker furocoumarins in leave-on products with sun exposure from 2026-01-01 without transition period; ingredient annexes follow EU 1223/2009 by dynamic reference, currently updated through Regulation (EU) 2026/909.",
+        "source": "https://coslaw.eu/new-switzerland-restrictions-on-furocoumarins-effective-january-2026/"
+      },
+      "market_entry": "No pre-market notification or registration — products are placed on the market under the manufacturer's/importer's self-control (Selbstkontrolle) with cantonal market surveillance.",
+      "responsible_person": "The manufacturer or importer domiciled in Switzerland who places the product on the market is the responsible person for compliance and self-control; no separate RP designation exists.",
+      "safety_file": "A product information file with a safety assessment/safety report equivalent to the EU PIF/CPSR must be kept and shown to authorities on request.",
+      "labeling_key": "Labelling in at least one official language (German, French or Italian); INCI ingredient list; fragrance allergens per the EU Annex III entries (0.001% leave-on / 0.01% rinse-off) because Swiss law refers to the EU annexes; Swiss-domiciled responsible party on the label.",
+      "animal_testing": "Animal testing of cosmetics/ingredients and marketing of animal-tested cosmetics are prohibited in line with the EU ban (LGV Art. 59).",
+      "ingredient_lists": "Annexes II–VI of Regulation (EC) No 1223/2009 apply by reference (LGV Art. 54); Switzerland keeps only stricter national deviations such as the furocoumarin limit.",
+      "official_url": "https://www.fedlex.admin.ch/eli/cc/2017/165/de",
+      "sources": [
+        "https://coslaw.eu/new-switzerland-restrictions-on-furocoumarins-effective-january-2026/",
+        "https://www.complifegroup.com/2025/12/16/furocoumarins-switzerland-revises-cosmetics-ordinance/",
+        "https://www.blv.admin.ch/blv/de/home/gebrauchsgegenstaende/rechts-und-vollzugsgrundlagen/gesetzliche-anforderungen-kosmetika/geregelte-stoffe-kosmetische-mittel.html",
+        "https://www.droit-bilingue.ch/de-it/8/81/817.023.31-index.html",
+        "https://www.sgs.com/en/news/2025/06/furocoumarin-regulation-in-switzerland-what-cosmetics-importers-must-know"
+      ],
+      "notes": "Fedlex text is not machine-readable; article numbers (LGV Art. 59 animal testing, language rule) should be checked; Swiss transitional dates for the 2023/1545 allergen expansion could not be verified."
+    },
+    {
+      "id": "tr",
+      "region": "Europe",
+      "country_en": "Turkey (Türkiye)",
+      "country_zh": "土耳其",
+      "authority_en": "Turkish Medicines and Medical Devices Agency (TİTCK), Ministry of Health",
+      "authority_zh": "土耳其药品和医疗器械管理局(TİTCK)",
+      "law_en": "Cosmetic Products Regulation (Kozmetik Ürünler Yönetmeliği)",
+      "law_zh": "化妆品产品条例",
+      "law_ref": "Official Gazette No. 32184 (bis) of 8 May 2023, under Cosmetics Law No. 5324",
+      "in_force_since": "2023-11-08",
+      "latest_update": {
+        "date": "2024-03-05",
+        "what": "Amending regulation (Official Gazette No. 32480) revised the annexes and RP rules, including D5/D6 siloxane limits of 0.1% in rinse-off products from 2026-12-01 and in all products from 2027-06-06; separately, Ministry of Trade distance-selling rules (OG 2024-10-30) require Turkish labels, importer details and the ÜTS notification number in online listings from 2025-04-01.",
+        "source": "https://www.resmigazete.gov.tr/eskiler/2024/03/20240305-4.htm"
+      },
+      "market_entry": "Pre-market product notification in the Product Tracking System (ÜTS) by the Turkish Responsible Person before placing on the market; no approval but TİTCK may review the file.",
+      "responsible_person": "A Responsible Person resident/established in Turkey (manufacturer, importer or a legal entity appointed by written agreement) must be designated and holds the PIF.",
+      "safety_file": "Product Information File and cosmetic product safety assessment/report by a qualified assessor mirroring EU 1223/2009 Annex I; valid EU safety assessment reports are accepted without repetition.",
+      "labeling_key": "Turkish-language labelling (INCI names allowed for ingredients) with the Turkish RP name/address; fragrance allergens declared per Annex III thresholds (0.001% leave-on / 0.01% rinse-off); e-commerce listings must show legible Turkish label images and the ÜTS number.",
+      "animal_testing": "Article 21 prohibits placing on the market cosmetics or ingredients tested on animals where validated alternative methods exist, mirroring the EU ban.",
+      "ingredient_lists": "Annexes II–VI of the Cosmetic Products Regulation (prohibited, restricted, colorants, preservatives, UV filters), aligned to the EU annexes with a time lag.",
+      "official_url": "https://www.resmigazete.gov.tr/eskiler/2023/05/20230508M1-1.htm",
+      "sources": [
+        "https://www.cailliau-colakel.av.tr/en/new-regulation-for-cosmetic-products-harmonized-with-eu-legislation-3/",
+        "https://moral.av.tr/en/legal-updates/the-regulation-on-cosmetic-products-has-been-published-1814",
+        "https://www.resmigazete.gov.tr/eskiler/2024/03/20240305-4.htm",
+        "https://greenovationconsulting.com/en/turkey-ecommerce-cosmetic-regulation-uts-labeling/",
+        "https://mevzuat.gov.tr/MevzuatMetin/yonetmelik/7.5.40405.pdf"
+      ],
+      "notes": "Entry into force (six months after publication) is stated by two law-firm summaries; the Resmî Gazete text could not be fetched. Whether the October-2024 draft amendment (digital labels/QR codes, notification fees) was gazetted could not be confirmed."
+    },
+    {
+      "id": "eaeu",
+      "region": "Eurasia",
+      "country_en": "Russia / Eurasian Economic Union (Russia, Belarus, Kazakhstan, Armenia, Kyrgyzstan)",
+      "country_zh": "俄罗斯/欧亚经济联盟(俄罗斯、白俄罗斯、哈萨克斯坦、亚美尼亚、吉尔吉斯斯坦)",
+      "authority_en": "Eurasian Economic Commission (EEC) sets the rules; national bodies enforce — in Russia Rospotrebnadzor (state registration, surveillance) and accredited certification bodies for declarations",
+      "authority_zh": "欧亚经济委员会(EEC)制定规则;俄罗斯由消费者权益保护和公益监督局(Rospotrebnadzor)及认可认证机构执行",
+      "law_en": "Technical Regulation of the Customs Union TR CU 009/2011 'On Safety of Perfumery and Cosmetic Products'",
+      "law_zh": "关税同盟技术法规TR CU 009/2011《香水化妆品安全》",
+      "law_ref": "TR CU 009/2011 (Customs Union Commission Decision No. 799 of 23 September 2011)",
+      "in_force_since": "2012-07-01",
+      "latest_update": {
+        "date": "2026-04-08",
+        "what": "EEC Board Decision No. 87 of 2025-10-07 updated the lists of standards supporting TR CU 009/2011 (new test methods for formaldehyde, UV-A, water resistance and SPF; essential-oil safety standards) effective 2026-04-08; the last substantive annex revision (EEC Council Decision No. 64 of 2022-04-15, prohibited/restricted lists, colorants, preservatives, UV filters) took effect 2023-04-18.",
+        "source": "https://schmidt-export.com/news/lists-standards-tr-cu-0092011-have-been-updated"
+      },
+      "market_entry": "Mandatory EAC conformity assessment before placing on the market — Declaration of Conformity for most cosmetics, or a State Registration Certificate (SGR) for higher-risk groups such as children's, intimate-hygiene, tanning, whitening, hair-dye/perm, chemical-peel and fluoride >0.15% products — recorded in the EAEU unified register.",
+      "responsible_person": "The applicant for the declaration or state registration must be a legal entity or sole trader registered in an EAEU member state (manufacturer, its authorised representative or importer) and is named on the label.",
+      "safety_file": "Technical evidence behind the declaration — test reports from accredited EAEU laboratories (physico-chemical, microbiological, toxicological/clinical) plus GMP evidence; no PIF/CPSR concept but equivalent documents are held by the applicant.",
+      "labeling_key": "Russian (plus the state language of the member state of sale) for product name, purpose, warnings, applicant/manufacturer details, shelf life and batch; the ingredient list may use INCI/Latin; EAC mark mandatory; no fragrance-allergen declaration requirement.",
+      "animal_testing": "No ban — animal testing is not prohibited and toxicological data may still be generated in vivo.",
+      "ingredient_lists": "Annex 1 (prohibited), Annex 2 (restricted), Annex 3 (colorants), Annex 4 (preservatives), Annex 5 (UV filters) of TR CU 009/2011, plus the list of products subject to state registration (Annex 12).",
+      "official_url": "https://eec.eaeunion.org/en/news/18-aprelya-vstupili-v-silu-izmeneniya-v-tekhreglament-na-parfyumerno-kosmeticheskuyu-produktsiyu/",
+      "sources": [
+        "https://eec.eaeunion.org/en/news/18-aprelya-vstupili-v-silu-izmeneniya-v-tekhreglament-na-parfyumerno-kosmeticheskuyu-produktsiyu/",
+        "https://eec.eaeunion.org/en/news/izmeneny-perechni-standartov-k-tekhreglamentu-soyuza-o-bezopasnosti-parfyumerno-kosmeticheskoy-produ/",
+        "https://schmidt-export.com/news/lists-standards-tr-cu-0092011-have-been-updated",
+        "https://schmidt-export.com/eac-certification/tr-cu-0092011-safety-perfumes-and-cosmetic-products",
+        "https://www.tuv.com/market-access-services/en/certification-filter/customs-union-(cu)-technical-regulation-tr-cu-009-2011-safety-of-perfumes-and-cosmetic-products.html"
+      ],
+      "notes": "Annex numbering for the state-registration product list (Annex 12) and the SGR product categories are summarised from certification-body guidance, not re-verified against the consolidated regulation text."
+    },
+    {
+      "id": "us",
+      "region": "North America",
+      "country_en": "United States",
+      "country_zh": "美国",
+      "authority_en": "U.S. Food and Drug Administration (FDA)",
+      "authority_zh": "美国食品药品监督管理局(FDA)",
+      "law_en": "Federal Food, Drug, and Cosmetic Act (FD&C Act) Chapter VI as amended by the Modernization of Cosmetics Regulation Act of 2022 (MoCRA), plus the Fair Packaging and Labeling Act for labelling",
+      "law_zh": "《联邦食品、药品和化妆品法》第六章(经2022年《化妆品监管现代化法案》MoCRA修订)及《公平包装与标签法》",
+      "law_ref": "21 U.S.C. §§ 361–364k; MoCRA (Pub. L. 117-328, Div. FF, Title III, Subtitle E)",
+      "in_force_since": "2022-12-29",
+      "latest_update": {
+        "date": "2025-11-28",
+        "what": "FDA withdrew its Dec-2024 proposed rule on asbestos testing of talc-containing cosmetics; the statutory GMP and fragrance-allergen rules remain overdue (allergen and formaldehyde hair-smoothing NPRMs now targeted for Nov 2026), FDA issued its PFAS-in-cosmetics report on 2025-12-29 and first biennial facility-registration renewals fell due from Dec 2025.",
+        "source": "https://www.foley.com/insights/publications/2026/03/how-mocra-is-reshaping-fda-oversight-of-cosmetics-in-2026/"
+      },
+      "market_entry": "No pre-market approval — MoCRA requires facility registration (renewed every two years) and product listing (updated annually) through FDA's Cosmetics Direct portal, enforced since 2024-07-01; color additives need FDA approval and sunscreens/anti-dandruff products are OTC drugs.",
+      "responsible_person": "A 'responsible person' is the manufacturer, packer or distributor whose name appears on the label; a U.S. address is not mandated, but foreign facilities must name a U.S. agent and the responsible person must handle adverse-event reporting.",
+      "safety_file": "Adequate safety-substantiation records (tests, studies or other evidence) must be kept for each product; serious adverse events must be reported to FDA within 15 business days and records kept 6 years.",
+      "labeling_key": "English labelling per 21 CFR 701 and the FPLA (identity, net contents, ingredients in descending order, warnings, responsible person name/address); MoCRA adds a domestic address/phone or e-mail for adverse-event contact and professional-use statements; fragrance-allergen disclosure starts only once FDA's pending rule is final.",
+      "animal_testing": "No federal ban (FDA does not require animal testing); about a dozen states, e.g. California and New York, prohibit selling cosmetics newly tested on animals.",
+      "ingredient_lists": "No annex system — 21 CFR 700 (prohibited/restricted ingredients such as mercury and chloroform), 21 CFR 73/74/82 approved color additives, plus MoCRA-mandated talc and fragrance-allergen rules still pending.",
+      "official_url": "https://www.fda.gov/cosmetics/cosmetics-laws-regulations/modernization-cosmetics-regulation-act-2022-mocra",
+      "sources": [
+        "https://www.fda.gov/cosmetics/registration-listing-cosmetic-product-facilities-and-products",
+        "https://www.fda.gov/cosmetics/cosmetics-news-events/fda-updates-web-portal-and-informational-materials-help-cosmetic-facilities-prepare-biennial",
+        "https://www.foley.com/insights/publications/2026/03/how-mocra-is-reshaping-fda-oversight-of-cosmetics-in-2026/",
+        "https://www.registrarcorp.com/blog/cosmetics/mocra/mocra-unified-agenda/",
+        "https://www.certifiedcosmetics.com/blog/regulatory-news/fda-proposes-new-cosmetic-rules-on-formaldehyde-and-fragrance-allergens/"
+      ],
+      "notes": "Rule status comes from FDA registration/renewal pages and a March-2026 Foley & Lardner review; NPRM target dates are Unified Agenda estimates, not published rules. MoCRA's main provisions took effect 2023-12-29."
+    },
+    {
+      "id": "ca",
+      "region": "North America",
+      "country_en": "Canada",
+      "country_zh": "加拿大",
+      "authority_en": "Health Canada (Consumer Product Safety Directorate)",
+      "authority_zh": "加拿大卫生部(消费品安全司)",
+      "law_en": "Food and Drugs Act and the Cosmetic Regulations",
+      "law_zh": "《食品药品法》及《化妆品条例》",
+      "law_ref": "R.S.C. 1985, c. F-27; C.R.C., c. 869 as amended by SOR/2024-63",
+      "in_force_since": "1977",
+      "latest_update": {
+        "date": "2026-04-12",
+        "what": "Fragrance-allergen disclosure under SOR/2024-63 took effect: 24 allergens must be named in the ingredient list above 0.001% (leave-on) / 0.01% (rinse-off), expanding to 81 allergens for new products from 2026-08-01 and all products from 2028-08-01, with a compliance-promotion year to 2027-04-11.",
+        "source": "https://www.canada.ca/en/health-canada/services/consumer-product-safety/reports-publications/industry-professionals/labelling-cosmetics.html"
+      },
+      "market_entry": "Post-market notification — a Cosmetic Notification Form must be filed with Health Canada within 10 days after first sale in Canada; no licence or approval.",
+      "responsible_person": "No mandatory Canadian RP; the label must carry the name and principal place of business of the manufacturer or the Canadian importer/distributor, and the notifier is accountable to Health Canada.",
+      "safety_file": "No formal PIF — manufacturers/importers must be able to demonstrate safety on request, comply with the Cosmetic Ingredient Hotlist and may not rely on new animal-test data.",
+      "labeling_key": "Bilingual English/French mandatory statements; INCI ingredient list; fragrance allergens named above 0.001% leave-on / 0.01% rinse-off from 2026-04-12; metric net quantity and manufacturer/importer address.",
+      "animal_testing": "Cosmetic animal testing and the sale of cosmetics relying on new animal-test data are banned since 2023-12-22 (Bill C-47 amendments to the Food and Drugs Act).",
+      "ingredient_lists": "Cosmetic Ingredient Hotlist (administrative list of prohibited and restricted ingredients) backed by the Food and Drugs Act s.16 general safety prohibition.",
+      "official_url": "https://laws-lois.justice.gc.ca/eng/regulations/C.R.C.,_c._869/",
+      "sources": [
+        "https://gazette.gc.ca/rp-pr/p2/2024/2024-04-24/html/sor-dors63-eng.html",
+        "https://www.canada.ca/en/health-canada/services/consumer-product-safety/reports-publications/industry-professionals/labelling-cosmetics.html",
+        "https://www.canada.ca/en/health-canada/services/cosmetics/animal-testing-ban.html",
+        "https://www.canada.ca/en/health-canada/services/consumer-product-safety/cosmetics/notification-cosmetics.html",
+        "https://www.canada.ca/en/health-canada/services/consumer-product-safety/cosmetics/cosmetic-ingredient-hotlist-prohibited-restricted-ingredients/hotlist.html",
+        "https://www.complifegroup.com/2026/04/13/canada-clarifies-fragrance-allergen-reporting-concentration-confirmed-optional/"
+      ],
+      "notes": "SOR/2024-63 was published 2024-04-24 and its non-allergen provisions took effect 2024-10-09; the 81-allergen phase dates are from the canada.ca labelling guide; Health Canada clarified in 2026 that allergen concentrations in the CNF are optional."
+    },
+    {
+      "id": "mx",
+      "region": "North America",
+      "country_en": "Mexico",
+      "country_zh": "墨西哥",
+      "authority_en": "Federal Commission for Protection against Sanitary Risks (COFEPRIS), Secretaría de Salud",
+      "authority_zh": "联邦卫生风险防护委员会(COFEPRIS)",
+      "law_en": "General Health Law (Ley General de Salud) and the Regulation on Sanitary Control of Products and Services, with NOM-141-SSA1/SCFI-2012 (labelling) and NOM-259-SSA1-2022 (GMP)",
+      "law_zh": "《卫生总法》及《产品与服务卫生控制条例》,配套NOM-141-SSA1/SCFI-2012(标签)与NOM-259-SSA1-2022(GMP)",
+      "law_ref": "Ley General de Salud Arts. 269–272 and 271 Bis; Reglamento de Control Sanitario de Productos y Servicios; NOM-141-SSA1/SCFI-2012",
+      "in_force_since": "1984-07-01",
+      "latest_update": {
+        "date": "2025-07-11",
+        "what": "COFEPRIS published in the DOF an Acuerdo de simplificación merging, eliminating and fully digitising sanitary procedures (including notices) via its digital single window, effective 20–30 business days after publication; NOM-259-SSA1-2022 GMP became mandatory 2023-03-02 and the prohibited/restricted-substances Acuerdo (DOF 2010-05-21) was last amended 2014-03-11.",
+        "source": "https://www.dof.gob.mx/nota_detalle.php?codigo=5762739&fecha=11/07/2025"
+      },
+      "market_entry": "No product registration or notification — the manufacturer or importer files an Aviso de Funcionamiento (establishment operating notice) with COFEPRIS and compliant products can be sold; an Aviso de Publicidad is required for advertising.",
+      "responsible_person": "No formal RP; the Mexican manufacturer or importer that files the Aviso de Funcionamiento is legally accountable and must appear on the label.",
+      "safety_file": "No mandatory PIF — the manufacturer/importer must hold evidence of safety and of compliance with the substances Acuerdo and GMP (NOM-259) available to COFEPRIS on inspection.",
+      "labeling_key": "Spanish labelling per NOM-141-SSA1/SCFI-2012 (product name, INCI ingredient list, net content, responsible party, lot, warnings); no fragrance-allergen disclosure requirement.",
+      "animal_testing": "Banned since 2021-10-15 — Art. 271 Bis of the General Health Law prohibits manufacturing, importing or marketing cosmetics tested on animals (decree DOF 2021-10-14).",
+      "ingredient_lists": "Acuerdo por el que se determinan las sustancias prohibidas y restringidas en la elaboración de productos cosméticos (DOF 2010-05-21, amended 2014-03-11).",
+      "official_url": "https://www.gob.mx/cofepris/acciones-y-programas/productos-cosmeticos-404020",
+      "sources": [
+        "https://www.dof.gob.mx/nota_detalle.php?codigo=5632679&fecha=14/10/2021",
+        "https://www.dof.gob.mx/nota_detalle.php?codigo=5335505&fecha=11/03/2014",
+        "https://dof.gob.mx/nota_detalle.php?codigo=5143790&fecha=21/05/2010",
+        "https://www.dof.gob.mx/nota_detalle.php?codigo=5762739&fecha=11/07/2025",
+        "https://www.cirs-group.com/en/cosmetics/mexico-cofepris-launches-major-agreement-to-simplify-sanitary-procedures"
+      ],
+      "notes": "The DOF page for the 2025 simplification Acuerdo could not be fetched, so its cosmetic-specific effects are summarised from CIRS/Greenberg Traurig."
+    },
+    {
+      "id": "br",
+      "region": "Latin America",
+      "country_en": "Brazil",
+      "country_zh": "巴西",
+      "authority_en": "Brazilian Health Regulatory Agency (ANVISA)",
+      "authority_zh": "巴西国家卫生监督局(ANVISA)",
+      "law_en": "Law No. 6.360/1976 on sanitary surveillance, implemented for cosmetics by RDC No. 752/2022 (classification, labelling, notification and registration)",
+      "law_zh": "第6.360/1976号卫生监督法及RDC 752/2022(分类、标签、通报/注册)",
+      "law_ref": "Lei nº 6.360/1976; RDC nº 752/2022",
+      "in_force_since": "2022-10-03",
+      "latest_update": {
+        "date": "2026-06-11",
+        "what": "RDC 1.030/2026 (new prohibited list internalising Mercosur GMC 07/25, 12-month adaptation) and RDC 1.029/2026 (restricted list part 1 per GMC 06/25, 24-month adaptation) were issued, following RDC 995/2025's TPO and DMPT ban (in force 2025-11-03) and Law 15.183/2025's animal-testing ban (2025-07-31).",
+        "source": "https://agenciagov.ebc.com.br/noticias/202607/anvisa-atualiza-listas-de-substancias-para-uso-em-cosmeticos"
+      },
+      "market_entry": "Pre-market regularisation with ANVISA — electronic notification for most products and registration for higher-risk 'products subject to registration' (sunscreens, hair straighteners, repellents, hand sanitisers, children's products), filed by a Brazilian company holding an AFE.",
+      "responsible_person": "A Brazilian legal entity with ANVISA operating authorisation (AFE) and state licence must be the product holder (detentora) named on the label; foreign manufacturers need a local importer/holder.",
+      "safety_file": "Safety/efficacy dossier (formula, specifications, stability, microbiology, safety assessment and, for registered products, efficacy data) kept by the holder and submitted for registration.",
+      "labeling_key": "Portuguese labelling per RDC 752/2022 (name, INCI ingredients, holder and CNPJ, ANVISA notification/registration number, lot, validity, warnings, consumer service contact); no fragrance-allergen declaration requirement.",
+      "animal_testing": "Law No. 15.183 of 2025-07-31 bans testing of cosmetics, perfumes and hygiene products or their ingredients on live vertebrates, with narrow CONCEA exceptions.",
+      "ingredient_lists": "RDC 529/2021 (prohibited substances) as amended by RDC 995/2025 and RDC 1.030/2026; RDC 1.029/2026 (restricted substances, part 1); separate Mercosur-harmonised RDCs list permitted preservatives, UV filters and colorants.",
+      "official_url": "https://anvisalegis.datalegis.net/action/ActionDatalegis.php?acao=abrirTextoAto&tipo=RDC&numeroAto=00000752&seqAto=000&valorAno=2022&orgao=RDC%2FDC%2FANVISA%2FMS&codTipo=&desItem=&desItemFim=&cod_menu=1696&cod_modulo=134&pesquisa=true",
+      "sources": [
+        "https://www.gov.br/anvisa/pt-br/acessoainformacao/perguntasfrequentes/cosmeticos/registro-de-cosmeticos",
+        "https://agenciagov.ebc.com.br/noticias/202607/anvisa-atualiza-listas-de-substancias-para-uso-em-cosmeticos",
+        "https://www.casadacosmetologia.com.br/post/informe-regulat%C3%B3rio-n%C2%BA-047-2026-anvisa-publica-rdcs-n%C2%BA-1-029-2026-e-n%C2%BA-1-030-2026-com-atualiza%C3%A7%C3%A3o-d",
+        "https://www12.senado.leg.br/noticias/materias/2025/07/31/lei-que-proibe-testes-de-cosmeticos-em-animais-ja-esta-em-vigor",
+        "https://site.cff.org.br/noticia/Noticias-gerais/31/10/2025/anvisa-proibe-uso-de-substancias-quimicas-em-cosmeticos-por-risco-de-cancer-e-problemas-reprodutivos",
+        "https://intertox.com.br/anvisa-atualiza-regulamentacao-de-ingredientes-cosmeticos-e-fortalece-a-harmonizacao-regulatoria/"
+      ],
+      "notes": "RDC 1.029/1.030 are dated 2026-06-11 with DOU publication reported as 2026-06-15, and RDC 1.029's annexes were still to be released; a public consultation (1.399/2026) on the second part of the restricted list ran 2026-07-08 to 2026-09-08."
+    },
+    {
+      "id": "ar",
+      "region": "Latin America",
+      "country_en": "Argentina",
+      "country_zh": "阿根廷",
+      "authority_en": "National Administration of Drugs, Food and Medical Technology (ANMAT) — INAME",
+      "authority_zh": "国家药品、食品和医疗技术管理局(ANMAT)",
+      "law_en": "Resolution (ex-MSyAS) No. 155/98 on personal hygiene products, cosmetics and perfumes, with ANMAT Dispositions 1107/99 and 1108/99 on product admission",
+      "law_zh": "第155/98号决议(个人卫生用品、化妆品和香水)及ANMAT第1107/99、1108/99号处置令",
+      "law_ref": "Resolución MSyAS 155/98; Disposiciones ANMAT 1107/99 and 1108/99; Ley 16.463",
+      "in_force_since": "1998",
+      "latest_update": {
+        "date": "2026-05-21",
+        "what": "Dispositions 2599/2026 and 2601/2026 (BO 2026-05-21) incorporated Mercosur GMC 06/25 (restricted list, replacing the 2011/2022 lists) and GMC 07/25, after Disposition 2820/2026 (BO 2026-05-15) banned TPO and N,N-dimethyl-p-toluidine with 60 days to adapt; 2025 deregulation removed ANMAT prior intervention on cosmetic imports (Disp. 4033/2025, from 2025-07-10) and allowed establishment enabling by sworn declaration (Disp. 7939/2025).",
+        "source": "https://www.boletinoficial.gob.ar/detalleAviso/primera/342225/20260521"
+      },
+      "market_entry": "Pre-market product admission/inscription with ANMAT — Grade I (low-risk) products by automatic admission via sworn declaration and Grade II products (e.g., sunscreens, hair straighteners, antiperspirants, fluoride oral care) by evaluation — before manufacture or import.",
+      "responsible_person": "The ANMAT-enabled Argentine manufacturer or importer (establishment with a registered technical director) is the product holder; foreign makers must work through such an importer.",
+      "safety_file": "Formula, specifications, microbiological and stability data and safety substantiation kept by the holder and declared under oath for admission; no formal PIF/CPSR.",
+      "labeling_key": "Spanish labelling per Res. 155/98 and Mercosur rules (name, INCI ingredients, holder and technical director, ANMAT establishment and product admission numbers, lot, expiry, warnings); no fragrance-allergen declaration requirement.",
+      "animal_testing": "No national ban in force; proposed bills have not been enacted.",
+      "ingredient_lists": "Mercosur technical regulations internalised by ANMAT dispositions: GMC 27/25 and 07/25 prohibited list (Disp. 2820/2026 and 2601/2026), GMC 06/25 restricted list (Disp. 2599/2026), plus lists of permitted preservatives, UV filters and colorants.",
+      "official_url": "https://servicios.infoleg.gob.ar/infolegInternet/anexos/55000-59999/56703/norma.htm",
+      "sources": [
+        "https://www.boletinoficial.gob.ar/detalleAviso/primera/342011/20260515",
+        "https://www.boletinoficial.gob.ar/detalleAviso/primera/342225/20260521",
+        "https://www.boletinoficial.gob.ar/detalleAviso/primera/342226/20260521",
+        "https://colfarsfe.org.ar/2026/05/15/cosmeticos-disposicion-2820-2026-boletin-oficial-35-910-15-de-mayo-de-2026/",
+        "https://www.argentina.gob.ar/normativa/nacional/norma-413858/texto",
+        "https://www.argentina.gob.ar/normativa/nacional/disposici%C3%B3n-7939-2025-419276/texto",
+        "https://servicios.infoleg.gob.ar/infolegInternet/anexos/55000-59999/56703/norma.htm"
+      ],
+      "notes": "official_url points to Disp. 1108/99 on Infoleg (Res. 155/98 text not fetched); the absence of a national animal-testing ban was not positively verified against a primary source."
+    },
+    {
+      "id": "co-can",
+      "region": "Latin America",
+      "country_en": "Colombia / Andean Community (Bolivia, Colombia, Ecuador, Peru)",
+      "country_zh": "哥伦比亚/安第斯共同体(玻利维亚、哥伦比亚、厄瓜多尔、秘鲁)",
+      "authority_en": "INVIMA (Colombia) and the other national competent authorities under Andean Community Decision 833",
+      "authority_zh": "哥伦比亚国家药品食品监督局(INVIMA)及安第斯共同体第833号决定下的各国主管机关",
+      "law_en": "Andean Community Decision 833 'Harmonisation of Legislation on Cosmetic Products'",
+      "law_zh": "安第斯共同体第833号决定《化妆品立法协调》",
+      "law_ref": "Decisión 833 (Gaceta Oficial 3450, 2018-11-26), amended by Decisions 857 and 944; Resolución 2108 (implementing regulation); Resolución 2310/2022 (labelling)",
+      "in_force_since": "2021-03-01",
+      "latest_update": {
+        "date": "2025-06-24",
+        "what": "Decision 944 amended Art. 9 of Decision 833 to drop the blanket Spanish-translation requirement for technical documentation; the Andean Labelling Technical Regulation (Res. 2310) became mandatory 2025-12-17 and Colombia's MinSalud Resolution 0814/2026 (May 2026) now requires a no-animal-testing conformity declaration with new and renewed NSOs.",
+        "source": "https://bvcenadim.digemid.minsa.gob.pe/index.php/noticias/543-decision-n-944-comunidad-andina-aprueba-cambios-en-la-regulacion-sanitaria-para-productos-cosmeticos"
+      },
+      "market_entry": "Pre-market Notificación Sanitaria Obligatoria (NSO) — a code issued by the national authority (INVIMA in Colombia) after filing the technical dossier, valid 7 years and recognised across CAN member states.",
+      "responsible_person": "A titular/holder domiciled in the member country (manufacturer, importer or authorised company) files the NSO and is the legal responsible party named on the label.",
+      "safety_file": "Technical information per Decision 833: qualitative/quantitative INCI formula, specifications, safety and efficacy substantiation, stability and label art, plus GMP evidence under Res. 2108.",
+      "labeling_key": "Spanish labelling per Res. 2310 (name, INCI ingredients, NSO holder/importer, country of origin, NSO number, lot, expiry, warnings); no fragrance-allergen threshold rule.",
+      "animal_testing": "Colombia's Law 2047/2020 bans testing, import, manufacture and sale of animal-tested cosmetics from 2024-08-10 (regulated by Res. 0814/2026); Ecuador has a similar ban, Peru and Bolivia do not yet.",
+      "ingredient_lists": "Decision 833 accepts the EU Annexes II–VI, US FDA and Mercosur lists as reference lists for prohibited, restricted and permitted ingredients.",
+      "official_url": "https://www.invima.gov.co/biblioteca/decision-833-armonizacion-legislaciones-cosmeticos-can",
+      "sources": [
+        "https://www.invima.gov.co/biblioteca/decision-833-armonizacion-legislaciones-cosmeticos-can",
+        "https://web.invima.gov.co/en/invima-informa-que-la-decision-andina-833-de-2018-que-regula-productos-cosmeticos-entro-en-vigencia-el-1-de-marzo-de-2021",
+        "https://www.invima.gov.co/sala-de-prensa/en-2025-entrara-en-vigencia-el-reglamento-tecnico-andino-para-el-etiquetado-de",
+        "https://www.invima.gov.co/biblioteca/resolucion-2310-etiquetado-productos-cosmeticos",
+        "https://bvcenadim.digemid.minsa.gob.pe/index.php/noticias/543-decision-n-944-comunidad-andina-aprueba-cambios-en-la-regulacion-sanitaria-para-productos-cosmeticos",
+        "https://normograma.invima.gov.co/compilacion/docs/decision_comisioncandina_dec944.htm",
+        "https://www.infobae.com/colombia/2026/05/06/el-ministerio-de-salud-reglamento-la-prohibicion-de-pruebas-en-animales-para-cosmeticos-en-colombia-invima-fijo-un-nuevo-requisito/",
+        "https://www.invima.gov.co/biblioteca/resolucion-2108-reglamento-decision-833-productos-cosmeticos"
+      ],
+      "notes": "The Decision 833 reference-list wording (Art. 5) was not re-fetched; Res. 0814/2026's date is as reported by Infobae (2026-05-06); the Ecuador ban is cited from secondary reports."
+    },
+    {
+      "id": "cl",
+      "region": "Latin America",
+      "country_en": "Chile",
+      "country_zh": "智利",
+      "authority_en": "Public Health Institute of Chile (ISP), Ministry of Health",
+      "authority_zh": "智利公共卫生研究所(ISP)",
+      "law_en": "Supreme Decree No. 239/2002 — Regulation of the National Cosmetics Control System, under the Sanitary Code",
+      "law_zh": "第239/2002号最高法令《国家化妆品控制系统条例》",
+      "law_ref": "DS 239/2002 (Diario Oficial 2003-06-20), as amended; Código Sanitario; Ley 21.646",
+      "in_force_since": "2003-06-20",
+      "latest_update": {
+        "date": "2025-01-27",
+        "what": "Law 21.646 banning animal testing of cosmetics and their ingredients (and marketing of such products) entered into force; a March-2025 public consultation proposed amending DS 239 to implement it.",
+        "source": "https://www.cooperativaciencia.cl/tendencias/2025/01/27/entra-en-vigor-la-ley-que-prohibe-experimentos-en-animales-para-cosmeticos-en-el-pais/"
+      },
+      "market_entry": "Pre-market ISP sanitary registration for cosmetics, while low-risk products (DS 239 Art. 5 b–c, e.g., solid soaps and ISP-listed categories) only require notification to ISP before sale.",
+      "responsible_person": "A Chilean titular (manufacturer or importer with an ISP-authorised establishment and a technical director) holds the registration and is named on the label.",
+      "safety_file": "Registration dossier with formula, specifications, stability and safety/efficacy evidence; special-purpose cosmetics such as sunscreens need efficacy data.",
+      "labeling_key": "Spanish labelling with ISP registration number, INCI ingredients, titular, lot, expiry and warnings; no fragrance-allergen declaration requirement.",
+      "animal_testing": "Banned since 2025-01-27 under Law 21.646 — safety must be demonstrated with validated alternative methods.",
+      "ingredient_lists": "DS 239 relies on ISP-adopted lists of prohibited/restricted substances, preservatives, colorants and UV filters, largely aligned with EU/Mercosur references.",
+      "official_url": "https://www.bcn.cl/leychile/navegar?idNorma=211455",
+      "sources": [
+        "https://www.bcn.cl/leychile/navegar?idNorma=211455",
+        "https://www.bcn.cl/portal/leyfacil/recurso/prohibicion-de-la-experimentacion-en-animales-en-la-elaboracion-de-productos-cosmeticos",
+        "https://www.cooperativaciencia.cl/tendencias/2025/01/27/entra-en-vigor-la-ley-que-prohibe-experimentos-en-animales-para-cosmeticos-en-el-pais/",
+        "https://www.ispch.gob.cl/wp-content/uploads/2024/04/Formulario-de-notificacion-enviado-a-publicacion-pdf.pdf",
+        "https://cnc.cl/wp-content/uploads/2025/03/CONSULTA-PUBLICA-MODIFICACION-DS-239-LEY-21646-TESTEO-EN-ANIMALES.pdf",
+        "https://www.chileatiende.gob.cl/fichas/1927-registro-de-productos-cosmeticos"
+      ],
+      "notes": "Whether the DS 239 amendment implementing Law 21.646 has been published could not be confirmed; the ingredient-list instruments were not re-verified."
+    },
+    {
+      "id": "pe",
+      "region": "Latin America",
+      "country_en": "Peru",
+      "country_zh": "秘鲁",
+      "authority_en": "General Directorate of Medicines, Supplies and Drugs (DIGEMID), Ministry of Health",
+      "authority_zh": "秘鲁药品、物资和药物总局(DIGEMID)",
+      "law_en": "Law No. 29459 on Pharmaceutical Products, Medical Devices and Sanitary Products and its regulation DS 016-2011-SA, applying Andean Decision 833",
+      "law_zh": "第29459号《药品、医疗器械和卫生产品法》及第016-2011-SA号最高法令,适用安第斯第833号决定",
+      "law_ref": "Ley 29459 (2009-11-26); DS 016-2011-SA; Decisión 833",
+      "in_force_since": "2009-11-26",
+      "latest_update": {
+        "date": "2025-06-24",
+        "what": "Andean Decision 944 (in force 2025-06-24) relaxed Spanish-translation requirements for NSO technical files and the Res. 2310 labelling regulation became mandatory 2025-12-17; the bill to ban cosmetic animal testing (PL 7688/2023-CR) cleared the Agrarian Commission in Sept 2024 but had not been passed by the plenary as of 2026.",
+        "source": "https://bvcenadim.digemid.minsa.gob.pe/index.php/noticias/543-decision-n-944-comunidad-andina-aprueba-cambios-en-la-regulacion-sanitaria-para-productos-cosmeticos"
+      },
+      "market_entry": "Pre-market NSO filed electronically with DIGEMID through the VUCE single window (procedure DGM013), valid 7 years, before import or sale.",
+      "responsible_person": "A Peruvian titular (manufacturer or importer/droguería with DIGEMID establishment registration and a technical director) obtains the NSO and is named on the label.",
+      "safety_file": "NSO dossier per Decision 833: INCI formula, organoleptic/physico-chemical/microbiological specifications, safety and efficacy substantiation, label art and GMP/free-sale evidence.",
+      "labeling_key": "Spanish labelling per Res. 2310 with NSO code, INCI ingredients, titular, origin, lot and expiry; no fragrance-allergen declaration requirement.",
+      "animal_testing": "No ban yet — bill PL 7688/2023-CR is pending before Congress.",
+      "ingredient_lists": "Andean Decision 833 reference lists (EU Annexes II–VI, US FDA, Mercosur) as applied by DIGEMID.",
+      "official_url": "https://www.digemid.minsa.gob.pe/webDigemid/normas-legales/2011/decreto-supremo-no-016-2011-sa/",
+      "sources": [
+        "https://www.digemid.minsa.gob.pe/webDigemid/normas-legales/2011/decreto-supremo-no-016-2011-sa/",
+        "https://bvcenadim.digemid.minsa.gob.pe/index.php/noticias/543-decision-n-944-comunidad-andina-aprueba-cambios-en-la-regulacion-sanitaria-para-productos-cosmeticos",
+        "https://landing.vuce.gob.pe/olce-wp/canal-de-aprendizaje/notificacion-sanitaria-obligatoria-de-productos-cosmeticos-digemid-dgm013/",
+        "https://bvcenadim.digemid.minsa.gob.pe/files/Ficha_cosmetic_08_2025F.pdf",
+        "https://comunicaciones.congreso.gob.pe/noticias/prohiben-uso-experimental-o-testeo-en-animales-con-fines-cosmeticos/",
+        "https://www.invima.gov.co/sala-de-prensa/en-2025-entrara-en-vigencia-el-reglamento-tecnico-andino-para-el-etiquetado-de"
+      ],
+      "notes": "No Peru-specific 2025–2026 cosmetics instrument was found beyond the Andean Decisions; animal-testing bill status is per reports up to April 2026."
+    }
+  ],
+  "updates_2025_2026": [
+    {
+      "date": "2025-09-01",
+      "market_id": "eu",
+      "title_en": "EU Omnibus VII (Regulation (EU) 2025/877) bans TPO and other CMRs",
+      "summary_en": "TPO (UV nail-gel photoinitiator) and other newly classified CMR substances were added to Annex II with no sell-through: products may neither be placed nor made available on the EU market from 1 September 2025.",
+      "source": "https://coslaw.eu/new-substances-will-be-banned-in-cosmetics-in-the-eu-from-1-september-2025-omnibus-act-vii/"
+    },
+    {
+      "date": "2026-05-01",
+      "market_id": "eu",
+      "title_en": "EU Omnibus VIII (Regulation (EU) 2026/78) applies",
+      "summary_en": "Published 2026-01-13, it bans nano and massive silver, restricts silver powder, hexyl salicylate and o-phenylphenol, and required withdrawal of non-compliant products by 1 May 2026 without a stock-clearance period.",
+      "source": "https://www.complifegroup.com/2026/02/03/omnibus-cosmetc-substances-permitted-prohibited/"
+    },
+    {
+      "date": "2026-05-18",
+      "market_id": "eu",
+      "title_en": "Regulation (EU) 2026/909 ('Omnibus Act 2') enters into force",
+      "summary_en": "Published 2026-04-28, it restricts fragrance allergens (benzyl salicylate, citral/geranial/neral, acetylated vetiver oil), aluminium compounds, zinc salts and several hair dyes and bans triphenyl phosphate, with a placing-on-market deadline of 2027-01-01 and sell-through to 2028-07-01 (citral 2028-08-01).",
+      "source": "https://cosmeservice.com/news/eu-cosmetics-regulation-2026-909-restrictions-deadlines/"
+    },
+    {
+      "date": "2026-07-31",
+      "market_id": "eu",
+      "title_en": "Expanded EU fragrance-allergen labelling becomes mandatory for new products",
+      "summary_en": "Regulation (EU) 2023/1545 adds 56 allergens to Annex III; products placed on the market from 31 July 2026 must name them above 0.001% (leave-on) / 0.01% (rinse-off), with existing products to comply by 31 July 2028 — Switzerland applies the same annex and Canada mirrors the list.",
+      "source": "https://single-market-economy.ec.europa.eu/sectors/cosmetics/cosmetic-products-specific-topics/fragrance-allergens-labelling_en"
+    },
+    {
+      "date": "2026-07-15",
+      "market_id": "uk",
+      "title_en": "UK SI 2026/23 and SI 2026/109 set GB-specific bans and dates",
+      "summary_en": "Great Britain bans 4-MBC and lowers the formaldehyde-releaser warning threshold to 0.001% from 15 July 2026, bans CMRs incl. TPO from 15 August 2026 (sell-through to 14 February 2027), restricts hexyl salicylate from 15 August 2026 and bans 17 more CMRs incl. nano silver from 23 March 2027, while still not adopting the EU 2023/1545 allergen expansion.",
+      "source": "https://www.legislation.gov.uk/uksi/2026/23/contents/made"
+    },
+    {
+      "date": "2026-04-12",
+      "market_id": "ca",
+      "title_en": "Canada mandates fragrance-allergen disclosure on cosmetic labels",
+      "summary_en": "Under SOR/2024-63, 24 fragrance allergens must appear in the ingredient list above 0.001% leave-on / 0.01% rinse-off from 12 April 2026, expanding to 81 allergens for new products from 1 August 2026 and all products from 1 August 2028, with compliance promotion until 11 April 2027.",
+      "source": "https://www.canada.ca/en/health-canada/services/consumer-product-safety/reports-publications/industry-professionals/labelling-cosmetics.html"
+    },
+    {
+      "date": "2025-11-28",
+      "market_id": "us",
+      "title_en": "FDA withdraws talc-asbestos testing rule while other MoCRA rules stay pending",
+      "summary_en": "FDA withdrew the December-2024 proposed talc testing rule, issued its PFAS-in-cosmetics report (2025-12-29) and draft mandatory-recall guidance (2025-12-18); GMP, fragrance-allergen and formaldehyde hair-smoothing rules missed statutory deadlines with NPRMs now targeted for November 2026, and biennial facility-registration renewals began two years after each initial registration.",
+      "source": "https://www.foley.com/insights/publications/2026/03/how-mocra-is-reshaping-fda-oversight-of-cosmetics-in-2026/"
+    },
+    {
+      "date": "2026-06-11",
+      "market_id": "br",
+      "title_en": "Brazil issues RDC 1.029/2026 and 1.030/2026 ingredient lists after 2025 bans",
+      "summary_en": "ANVISA's new Mercosur-harmonised restricted list (part 1, 24-month adaptation) and prohibited list (12-month adaptation) follow RDC 995/2025's TPO and DMPT ban in force 2025-11-03 and Law 15.183/2025's animal-testing ban from 2025-07-31; consultation 1.399/2026 on the second restricted-list tranche ran until 8 September 2026.",
+      "source": "https://agenciagov.ebc.com.br/noticias/202607/anvisa-atualiza-listas-de-substancias-para-uso-em-cosmeticos"
+    },
+    {
+      "date": "2026-05-15",
+      "market_id": "ar",
+      "title_en": "Argentina adopts Mercosur GMC 27/25, 06/25 and 07/25 lists and deregulates imports",
+      "summary_en": "Disp. 2820/2026 bans TPO and N,N-dimethyl-p-toluidine with 60 days to adapt; Disp. 2599/2026 and 2601/2026 (BO 2026-05-21) replace the 2011/2014 restricted and prohibited lists; earlier Disp. 4033/2025 removed ANMAT prior intervention on cosmetic imports from 2025-07-10 and Disp. 7939/2025 allowed establishment enabling by sworn declaration.",
+      "source": "https://www.boletinoficial.gob.ar/detalleAviso/primera/342011/20260515"
+    },
+    {
+      "date": "2025-06-24",
+      "market_id": "co-can",
+      "title_en": "Andean Decision 944, mandatory labelling regulation and Colombia's animal-testing rule",
+      "summary_en": "Decision 944 removes the blanket Spanish-translation requirement for NSO technical files; the Andean Labelling Technical Regulation (Res. 2310) became mandatory on 2025-12-17 for Colombia, Peru, Ecuador and Bolivia; Colombia's Res. 0814/2026 (May 2026) requires a first-party no-animal-testing declaration with new and renewed NSOs.",
+      "source": "https://bvcenadim.digemid.minsa.gob.pe/index.php/noticias/543-decision-n-944-comunidad-andina-aprueba-cambios-en-la-regulacion-sanitaria-para-productos-cosmeticos"
+    }
+  ]
+}

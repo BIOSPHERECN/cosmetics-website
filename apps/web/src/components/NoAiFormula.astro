@@ -1,0 +1,67 @@
+---
+/**
+ * 对客 AI 配方工具(肌肤检测 / AI 共创)关闭后的落地页 —— 2026-09-24 老板会议:
+ * AI 现编的配方没经过稳定性测试,不给客户;只从帛卉 13,000+ 个成熟配方里匹配现成的。
+ * 旧 URL 保留(外链与收录不断),页面只给口径和询盘 / 拿简报入口,不调模型、不查配方库。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+import { ORG } from '@cosmetic/core/content/org.ts';
+import { pageShell } from '../lib/shell';
+
+interface Props { eyebrowZh: string; eyebrowEn: string }
+const { eyebrowZh, eyebrowEn } = Astro.props;
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/${Astro.url.pathname.split('/').filter(Boolean).pop()}/`;
+const b2o = shell.site?.id === 'beauty2oem';
+const T = zh ? {
+  eyebrow: eyebrowZh, title: `${ORG.formulas.value} 个成熟配方,只给现成的`,
+  lead: ORG.formulas.noticeZh,
+  why: '每一个都做过稳定性测试。我们不给 AI 现编的配方:没做过稳定性测试的配方,不可以拿去生产。',
+  cta: b2o ? '提交店铺,拿简报' : '发起询盘,匹配现成配方', href: b2o ? '/zh-cn/brief/' : `/${lang}/contact/`,
+  more: '先翻翻在线配方库', moreHref: `/${lang}/formulas/`,
+} : {
+  eyebrow: eyebrowEn, title: `${ORG.formulas.value} mature formulas. We only hand over proven ones.`,
+  lead: ORG.formulas.noticeEn,
+  why: 'Every one has been through stability testing. We do not hand out AI-generated formulas: a formula without stability data is not fit for production.',
+  cta: 'Send an inquiry, get a matched formula', href: `/${lang}/contact/`,
+  more: 'Browse the online formula library', moreHref: `/${lang}/formulas/`,
+};
+---
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.lead} siteName={shell.site?.name ?? '帛卉'}
+  siteUrl={`https://${shell.site?.domain ?? 'bohui.group'}`} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{uiT(lang as any)('a11y.skip')}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} brand={shell.site?.id} />
+  <main id="main" class="wrap">
+    <p class="eyebrow">{T.eyebrow}</p>
+    <h1>{T.title}</h1>
+    <p class="lead">{T.lead}</p>
+    <p class="why">{T.why}</p>
+    <p class="acts"><a class="cta" href={T.href}>{T.cta} →</a>{!b2o && <a class="ghost" href={T.moreHref}>{T.more}</a>}</p>
+  </main>
+  <SiteFooter locale={lang} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <style>
+    .wrap { max-width: var(--ck-maxw, 72rem); margin: 0 auto; padding: clamp(2rem, 5vw, 4rem) var(--ck-gutter, 1.25rem) 3rem; }
+    .eyebrow { font-size: .75rem; letter-spacing: .2em; text-transform: uppercase; color: var(--ck-accent); margin: 0 0 .625rem; }
+    h1 { max-width: 22ch; line-height: 1.15; letter-spacing: -0.025em; font-size: clamp(1.75rem, 4vw, 2.75rem); margin: 0 0 1rem; }
+    .lead { font-size: 1.125rem; margin: 0 0 .75rem; max-width: 40rem; }
+    .why { color: var(--ck-ink-soft); margin: 0 0 2rem; max-width: 40rem; line-height: 1.7; }
+    .acts { display: flex; flex-wrap: wrap; gap: .75rem; margin: 0; }
+    .cta, .ghost { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 1.375rem; border-radius: 980px; text-decoration: none; font-weight: 600; }
+    .cta { background: var(--ck-accent); color: var(--ck-on-accent, #fff); }
+    .ghost { border: 1px solid var(--ck-line, currentColor); color: inherit; }
+  </style>
+</BaseLayout>

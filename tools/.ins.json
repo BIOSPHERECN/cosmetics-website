@@ -1,0 +1,99 @@
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProxy environment variables detected. We'll use your proxy for fetch requests.[0m
+
+
+
+ ⛅️ wrangler 4.120.0 (update available 4.129.0)
+───────────────────────────────────────────────
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1m🚧 `wrangler d1 insights` is an experimental command. Please report any issues to https://github.com/cloudflare/workers-sdk/issues/new/choose[0m
+
+
+[
+  {
+    "query": "SELECT code, type, material, capacity, neck_size, moq, lead_days, cost_band, status,\n            price_ref, price_unit,\n            (SELECT 1 FROM pack_assets a WHERE a.our_code = packaging.code AND a.reviewed = 1 LIMIT ?) has_img\n       FROM packaging WHERE status IN ('sample','active')\n      ORDER BY (SELECT COUNT(*) FROM pack_assets a2\n                 WHERE a2.our_code = packaging.code AND a2.reviewed = 1) DESC,\n               type, code\n      LIMIT ? OFFSET ?",
+    "avgRowsRead": 3922345,
+    "totalRowsRead": 231418392,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 2130.5021016949154,
+    "totalDurationMs": 125699.624,
+    "numberOfTimesRun": 59,
+    "queryEfficiency": 0.000004334141948247796
+  },
+  {
+    "query": "SELECT code, type, material, capacity, neck_size, moq, lead_days, cost_band, status,\n            price_ref, price_unit,\n            (SELECT 1 FROM pack_assets a WHERE a.our_code = packaging.code AND a.reviewed = 1 LIMIT ?) has_img\n       FROM packaging WHERE status IN ('sample','active') AND (material LIKE ?)\n      ORDER BY (SELECT COUNT(*) FROM pack_assets a2\n                 WHERE a2.our_code = packaging.code AND a2.reviewed = 1) DESC,\n               type, code\n      LIMIT ? OFFSET ?",
+    "avgRowsRead": 5060456,
+    "totalRowsRead": 10120912,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 614.8603,
+    "totalDurationMs": 1229.7206,
+    "numberOfTimesRun": 2,
+    "queryEfficiency": 0.00001185663900644527
+  },
+  {
+    "query": "SELECT p.id, p.slug, p.parent_id, i.nav_label,\n              MIN(CASE i.lang WHEN ? THEN 0 WHEN 'en' THEN 1 WHEN 'zh-cn' THEN 2 ELSE 3 END) AS pri\n         FROM pages p\n         JOIN page_i18n i ON i.page_id = p.id AND i.lang IN (?,?,?)\n        WHERE p.site_id = ? AND p.status = 'published' AND p.in_nav = 1\n        GROUP BY p.id\n        ORDER BY p.sort_order, p.id",
+    "avgRowsRead": 278,
+    "totalRowsRead": 531451,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 0.7499119559517566,
+    "totalDurationMs": 1430.0820999999999,
+    "numberOfTimesRun": 1907,
+    "queryEfficiency": 0.09712230215827339
+  },
+  {
+    "query": "SELECT lang, COUNT(*) n, SUM(mt) mt FROM block_i18n GROUP BY lang ORDER BY lang",
+    "avgRowsRead": 13854,
+    "totalRowsRead": 457182,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 38.6569303030303,
+    "totalDurationMs": 1275.6787,
+    "numberOfTimesRun": 33,
+    "queryEfficiency": 0.00122708243106684
+  },
+  {
+    "query": "SELECT code, type, material, capacity, neck_size, moq, lead_days, decoration,\n          sustainability, compat_formats, cost_band, notes_zh, trend_tags, status\n     FROM packaging WHERE status IN ('sample','active') ORDER BY type, code",
+    "avgRowsRead": 4563,
+    "totalRowsRead": 387880,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 12.65902588235294,
+    "totalDurationMs": 1076.0172,
+    "numberOfTimesRun": 85,
+    "queryEfficiency": 0.4996712689020381
+  },
+  {
+    "query": "SELECT s.id, s.domain, s.brand_color, s.variant, s.is_live, s.theme, s.contact_email,\n              i.name, i.tagline, i.description\n         FROM sites s\n         JOIN site_i18n i ON i.site_id = s.id AND i.lang = ?\n        WHERE s.domain = ?",
+    "avgRowsRead": 72,
+    "totalRowsRead": 189000,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 0.3831825096525096,
+    "totalDurationMs": 992.4426999999998,
+    "numberOfTimesRun": 2590,
+    "queryEfficiency": 0
+  },
+  {
+    "query": "SELECT COUNT(*) n FROM pack_assets WHERE kind='page'",
+    "avgRowsRead": 3752,
+    "totalRowsRead": 180141,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 0.8861499999999999,
+    "totalDurationMs": 42.535199999999996,
+    "numberOfTimesRun": 48,
+    "queryEfficiency": 0
+  },
+  {
+    "query": "SELECT COUNT(*) n FROM packaging WHERE status IN ('sample','active')",
+    "avgRowsRead": 2165,
+    "totalRowsRead": 160243,
+    "avgRowsWritten": 0,
+    "totalRowsWritten": 0,
+    "avgDurationMs": 0.5187405405405404,
+    "totalDurationMs": 38.386799999999994,
+    "numberOfTimesRun": 74,
+    "queryEfficiency": 0
+  }
+]

@@ -1,0 +1,485 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 成熟产品展示 —— 过往代工成品。创始人 2026-09-11 10:2x:「还缺一些我们自己的成熟产品的展示版块!那么就可以把我们过去给客户代工的产品上传了」。
+ * 数据就是 products 表里勾了「成熟产品展示」(is_showcase=1)的产品:后台 /bohui/products 勾一下即上;图片走 /bohui/media。
+ * 不写客户品牌(创始人红线:客户品牌只在公开资料已写明处出现),只展示品类 / 剂型 / 规格 / 卖点。
+ * 2026-10-22:加品类筛选条,1000+产品按品类分选。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { memo } from '../../../lib/memo';
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import InquiryFormLite from '@cosmetic/core/components/InquiryFormLite.astro';
+
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const siteId = shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai';
+
+const CAT_LABEL: Record<string, Record<string, string>> = {
+  'zh-cn': { skincare: '护肤', makeup: '彩妆', oral: '口腔护理', kids: '儿童护肤', body: '身体护理', hair: '洗护', haircare: '洗护', cleansing: '洁护', suncare: '防晒', fragrance: '香氛', cleanser: '洁面', toner: '爽肤水', serum: '精华', cream: '面霜乳液', mask: '面膜', 'special-care': '特护', pet: '宠物护理', all: '全部' },
+  en: { skincare: 'Skincare', makeup: 'Makeup', oral: 'Oral care', kids: 'Kids', body: 'Body care', hair: 'Hair', haircare: 'Hair care', cleansing: 'Cleansing', suncare: 'Suncare', fragrance: 'Fragrance', cleanser: 'Cleansers', toner: 'Toners', serum: 'Serums', cream: 'Creams & Lotions', mask: 'Masks', 'special-care': 'Special care', pet: 'Pet care', all: 'All' },
+};
+const catLabel = (c: string) => (CAT_LABEL[lang] ?? CAT_LABEL.en)[c] ?? c;
+
+const catFilterRaw = (Astro.url.searchParams.get('cat') ?? '').trim().slice(0, 24);
+/* 旧大类 skincare 已拆成 6 个剂型细分(2026-10-23),老收藏/已收录的 ?cat=skincare 视同全部。
+   成本#2 C2 审核:cat 先过白名单再进 memo key —— 否则任意 ?cat= 都会生成新缓存键并重跑同一查询。 */
+const CAT_OK = new Set(Object.keys(CAT_LABEL.en));
+const catFilter = catFilterRaw === 'skincare' || !CAT_OK.has(catFilterRaw) ? '' : catFilterRaw;
+
+let items: any[] = [];
+let catCounts: Array<{ category: string; n: number }> = [];
+if (db) {
+  try {
+    /* 10-22:品类筛选+产品列表走 memo(1 小时) + 边缘缓存 6 小时,爬虫复访 0 D1
+       成本#2 C2 审核:catCounts 用独立 memo(键不含 catFilter/lang),避免每个 catFilter 都重跑同一查询。 */
+    const rows = await memo(`portfolio5:${siteId}:${lang}:${catFilter}`, 3600, async () => {
+      return ((await db.prepare(
+        `SELECT p.id, p.slug, p.category, p.moq, p.cover_media, p.updated_at, i.name, i.summary
+           FROM products p LEFT JOIN product_i18n i ON i.product_id = p.id AND i.lang = ?
+          WHERE p.site_id = ? AND p.status = 'published' AND p.is_showcase = 1
+            AND (? = '' OR p.category = ?) ORDER BY p.sort_order, p.id DESC`)
+        .bind(lang, siteId, catFilter, catFilter).all().catch(() => ({ results: [] }))).results ?? []) as any[];
+    });
+    items = rows;
+    catCounts = await memo(`portfoliocat:${siteId}`, 3600, async () => {
+      const catRows = ((await db.prepare(
+        `SELECT category FROM products
+          WHERE site_id = ? AND status = 'published' AND is_showcase = 1`)
+        .bind(siteId).all().catch(() => ({ results: [] }))).results ?? []) as any[];
+      const byCat = new Map<string, number>();
+      for (const r of catRows) byCat.set(r.category, (byCat.get(r.category) ?? 0) + 1);
+      return [...byCat.entries()].map(([category, n]) => ({ category, n })).sort((a, b) => b.n - a.n);
+    });
+  } catch { items = []; }
+}
+const path = `/${lang}/portfolio/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const B = `/${lang}`;
+const nTotal = items.length;
+const T = zh ? { eyebrow: '成品', title: nTotal ? `化妆品 OEM/ODM 成熟产品库 · ${nTotal} 款` : '化妆品 OEM/ODM 成熟产品库', lede: `化妆品 OEM/ODM 代工厂的成熟产品库:${nTotal} 款已量产成品,覆盖护肤、彩妆、洗护、口腔、防晒、香氛等品类,支持品牌定制与来样打样,起订量按品类与包材议定;每款标注品类、剂型、规格与卖点。`,
+                 empty: '首批成品正在拍摄整理,近期上线。想先看某个品类的成品样例,发询盘告诉我们品类与目标市场。', moq: '起订量按品类与包材议定（书面确认）', sample: '打样通常 5–14 天（书面确认）', sampleCta: '申请样品', more: '看详情', ask: '想做类似的?告诉我们品类与目标市场。', inq: '发起询盘', all: '全部',
+                 search: '搜索产品名称、品类…', found: '找到 {n} 款', noResults: '没有找到匹配的产品，换个关键词试试',
+                 profile: '广州化妆品 OEM/ODM 工厂:20,000 ㎡ 厂房、15 条自动化产线;面膜日产能 50 万片、膏霜日产能 30 万支;在册配方 13,000+;持有 GMPC、ISO 22716:2007 与 HALAL 认证;打样 5–14 天出样;以上成品均来自该产线的量产记录,可按品牌定制,打样与交期按品类与包材以书面确认。' }
+             : { eyebrow: 'Finished products', title: nTotal ? `Cosmetics OEM/ODM product library · ${nTotal} items` : 'Cosmetics OEM/ODM product library', lede: `A ready-to-ship product library from a cosmetics OEM/ODM manufacturer: ${nTotal} mass-produced items across skincare, makeup, hair & body care, oral care, sunscreen and fragrance — private-label customization and sampling supported, MOQ agreed per category and packaging. Category, format, specs and selling points on every card.`,
+                 empty: 'The first batch is being photographed and will go live shortly. To see samples in a category now, send an inquiry with the category and target market.', moq: 'MOQ agreed per category and packaging (confirmed in writing)', sample: 'Sampling typically 5–14 days (confirmed in writing)', sampleCta: 'Request sample', more: 'Details', ask: 'Want something similar? Tell us the category and target market.', inq: 'Send an inquiry', all: 'All',
+                 search: 'Search by name, category…', found: '{n} found', noResults: 'No matching products. Try a different keyword',
+                 profile: 'Guangzhou cosmetics OEM/ODM factory: over 20,000 m² of manufacturing floor and 15 automated production lines; more than 13,000 formulations on file; GMPC, ISO 22716:2007 and HALAL certified. Every item here comes from that production line and can be customized under your brand; sampling and lead time are confirmed in writing per category and packaging.' };
+
+/* ── SEO/GEO 结构化信号(2026-10-23 三份 SEO/GEO 审计共识) ──
+   CollectionPage + ItemList(前 30 款 Product 摘要)+ FAQPage:
+   让搜索引擎与 AI 引擎能"据实"抓到这是一家代工厂的产品集,而不是空页面。
+   数据全部来自当前渲染的 items,零编造。 */
+const listItems = items.slice(0, 30).map((p: any, i: number) => ({
+  '@type': 'ListItem', position: i + 1,
+  item: {
+    '@type': 'Product',
+    name: p.name ?? p.slug,
+    url: `${origin}${B}/product/${p.slug}/`,
+    ...(p.cover_media ? { image: `${origin}/media/${p.cover_media}` } : {}),
+    ...(p.category ? { category: catLabel(p.category) } : {}),
+  },
+}));
+/* 页面最近一次真实更新:取当前列表里最新的 updated_at,不编时间 */
+const lastMod = items.reduce((m: string, p: any) => {
+  const v = String(p.updated_at ?? '').slice(0, 10);
+  return v > m ? v : m;
+}, '');
+const faqs = zh
+  ? [{ q: '这些产品能做我的品牌吗(贴牌/OEM)?', a: '可以。瓶型、料体、外盒设计均可按品牌定制,按品类与包材协商起订量。' },
+     { q: '起订量(MOQ)是多少?', a: '按品类与包材议定;每款卡片上标注了当前参考起订量。' },
+     { q: '可以先打样再下单吗?', a: '可以。打样周期按品类与包材备料情况确认,下单前可先拿样。' },
+     { q: '工厂有什么资质认证?', a: '工厂产能、体系与认证信息见「服务能力 · 工厂质量」栏目。' }]
+  : [{ q: 'Can I produce these under my own brand (OEM/ODM)?', a: 'Yes. Bottles, formula and packaging design can all be customized; MOQ is agreed by category and packaging.' },
+     { q: 'What is the MOQ?', a: 'It is set per category and packaging; the reference MOQ is shown on each product card.' },
+     { q: 'Can I get samples before ordering?', a: 'Yes. Sampling lead time depends on the category and packaging stock; order after sign-off samples.' },
+     { q: 'What certifications does the plant hold?', a: 'Capacity, systems and certifications are listed under Services · Factory quality.' }];
+const jsonLd = ldJson({
+  '@context': 'https://schema.org',
+  '@graph': [{
+    '@type': 'CollectionPage', '@id': `${origin}${path}#collection`, name: T.title, description: T.lede, url: `${origin}${path}`,
+    ...(lastMod ? { dateModified: lastMod } : {}),
+    isPartOf: { '@type': 'WebSite', '@id': `${origin}/#website` },
+    /* numberOfItems 必须与 itemListElement 实际条数一致,否则结构化数据校验会判不一致 */
+    mainEntity: { '@type': 'ItemList', numberOfItems: listItems.length, itemListElement: listItems },
+  }, {
+    '@type': 'FAQPage', '@id': `${origin}${path}#faq`, mainEntity: faqs.map((f: any) => ({
+      '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  }, {
+    '@type': 'BreadcrumbList', '@id': `${origin}${path}#breadcrumb`,
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}${B}/` },
+      { '@type': 'ListItem', position: 2, name: T.title, item: `${origin}${path}` },
+    ],
+  }],
+});
+---
+<BaseLayout locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={siteId}
+  title={T.title} description={T.lede} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <script type="application/ld+json" set:html={jsonLd} />
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+      {/* 首屏工厂画像:给 AI 引擎一句可整体引用的生产主体事实(数字与 llms.txt 同源) */}
+      <p class="brief">{T.profile}</p>
+    </header>
+    <div class="search-bar">
+      <input type="search" id="pg-search" placeholder={T.search} autocomplete="off" />
+      <span class="search-count" id="pg-count"></span>
+    </div>
+    {catCounts.length > 0 && (
+      <nav class="catbar" aria-label={T.all}>
+        <a class:list={['chip', { on: !catFilter }]} href={`${B}/portfolio/`}>
+          {T.all}（{catCounts.reduce((a, c) => a + c.n, 0)}）
+        </a>
+        {catCounts.map((c) => (
+          <a class:list={['chip', { on: catFilter === c.category }]} href={`${B}/portfolio/?cat=${encodeURIComponent(c.category)}`}>
+            {catLabel(c.category)}（{c.n}）
+          </a>
+        ))}
+      </nav>
+    )}
+    {items.length === 0 && <p class="lede">{T.empty}</p>}
+    <p class="lede pg-empty hidden" id="pg-empty" data-msg={T.noResults} hidden aria-hidden="true"></p>
+
+    {/* 手机端:按品类分区展示(电商APP风格,每品类前4款+查看全部) */}
+    <div class="cat-sections" id="cat-sections">
+      {catCounts.map((c) => {
+        const catItems = items.filter((p: any) => p.category === c.category).slice(0, 4);
+        if (!catItems.length) return null;
+        return (
+          <section class="cat-sec">
+            <a class="cat-sec-h" href={`${B}/collections/${c.category}/`}>
+              <span class="cat-sec-name">{catLabel(c.category)}</span>
+              <span class="cat-sec-n">{c.n}{zh ? '款' : ''}</span>
+              <span class="cat-sec-more">{zh ? '查看全部 →' : 'View all →'}</span>
+            </a>
+            <div class="cat-sec-grid">
+              {catItems.map((p: any, mi: number) => (
+                <a class="card mini" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`} data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
+                  {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="450" loading={mi === 0 && c === catCounts[0] ? 'eager' : 'lazy'} decoding="async" /> : <div class="ph" />}
+                  <h3>{p.name ?? p.slug}</h3>
+                  <small class="meta">{p.moq ? `${zh ? '起订' : 'MOQ'} ${p.moq}` : T.moq} · {T.sample}</small>
+                  <span class="sample" data-href={`${B}/rfq/?product_id=${encodeURIComponent(String(p.id ?? ''))}&about=${encodeURIComponent(String(p.name ?? p.slug))}&category=${encodeURIComponent(String(p.category ?? ''))}`}>{T.sampleCta}</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+
+    {/* 桌面端:平铺全部+翻页+搜索 */}
+    <ul class="grid" id="pg-grid" data-page-size="60">
+      {items.map((p, idx) => (
+        <li class="pg-item" data-idx={idx} data-id={String(p.id ?? '')} data-name={(p.name ?? p.slug).toLowerCase()} data-summary={(p.summary ?? '').toLowerCase()} data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
+          <article class="card">
+            <a class="card-main" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>
+              {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="600" loading={idx < 4 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" /> : <div class="ph" />}
+              <h2>{p.name ?? p.slug}</h2>
+              {p.summary && <p>{p.summary}</p>}
+            </a>
+            <p class="meta">{catLabel(p.category)} · {p.moq ? `${zh ? '起订量' : 'MOQ'}: ${p.moq}` : T.moq} · {T.sample}</p>
+            <div class="cta-row">
+              <a class="more" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>{T.more} →</a>
+              <a class="sample" href={`${B}/rfq/?product_id=${encodeURIComponent(String(p.id ?? ''))}&about=${encodeURIComponent(String(p.name ?? p.slug))}&category=${encodeURIComponent(String(p.category ?? ''))}`}>{T.sampleCta}</a>
+            </div>
+          </article>
+        </li>
+      ))}
+    </ul>
+    <section class="faq" aria-label={zh ? '采购常见问题' : 'Buying FAQ'}>
+      <h2>{zh ? '采购常见问题' : 'Buying FAQ'}</h2>
+      {faqs.map((f) => (
+        <details>
+          <summary>{f.q}</summary>
+          <p>{f.a}</p>
+        </details>
+      ))}
+    </section>
+    {items.length > 60 && (
+      <nav class="pager" id="pg-nav" aria-label={zh ? '翻页' : 'Pagination'}></nav>
+    )}
+    <p class="ask">{T.ask} <a href="#inquiry">{T.inq}</a></p>
+  </main>
+  <InquiryFormLite lang={lang} email={shell.email} whatsapp={((Astro.locals as any)?.contact ?? {}).whatsapp ?? null} source="portfolio" />
+  <button id="to-top" class="to-top" aria-label={zh ? '返回顶部' : 'Back to top'} title={zh ? '返回顶部' : 'Back to top'}>↑</button>
+  <SiteFooter locale={lang} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+<style>
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .hd { display: grid; gap: .75rem; margin-bottom: 1.5rem; max-width: 62rem; }
+  .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: clamp(1.625rem, 3vw, 2.25rem); line-height: 1.24; margin: 0; }
+  .lede { font-size: 1rem; line-height: 1.75; opacity: .85; margin: 0; }
+  .brief { font-size: .9375rem; line-height: 1.8; opacity: .8; margin: 0; padding: .875rem 1rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 12px; background: var(--ck-surface-alt, #f5f5f1); }
+  .catbar { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1.5rem; padding: 0; }
+  .chip { display: inline-flex; align-items: center; gap: .25rem; padding: .375rem .75rem; border-radius: 999px; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); text-decoration: none; color: inherit; font-size: .875rem; line-height: 1.4; white-space: nowrap; }
+  .chip.on { background: var(--ck-accent, #333); color: #fff; border-color: var(--ck-accent, #333); }
+  .grid { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+  .card { display: grid; gap: .5rem; height: 100%; padding: .875rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; text-decoration: none; color: inherit; }
+  .card img, .ph { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: var(--ck-surface-alt, #f3f3f1); }
+  .card h2 { font-size: 1.0625rem; margin: 0; line-height: 1.4; }
+  .card p { margin: 0; font-size: .9rem; line-height: 1.6; opacity: .75; }
+  .card small, .card .meta { margin-top: auto; opacity: .65; font-size: .8125rem; line-height: 1.5; }
+  .card .meta { margin: 0; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .25rem; }
+  .cta-row .more { font-size: .8125rem; opacity: .7; }
+  .cta-row .sample, .card.mini .sample { display: inline-flex; align-items: center; font-size: .8125rem; font-weight: 600; padding: .25rem .625rem; border-radius: 999px; border: 1px solid var(--ck-accent, #333); color: var(--ck-accent, #333); text-decoration: none; }
+  .cta-row .sample:hover { background: var(--ck-accent, #333); color: #fff; }
+  .pg-empty[hidden] { display: none !important; }
+
+  .card-main { display: grid; gap: .5rem; text-decoration: none; color: inherit; }
+  .card .more { font-size: .8125rem; opacity: .75; text-decoration: none; color: inherit; }
+
+  .ask { margin: 1.75rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
+  @media (min-width: 900px) { main { padding: 2rem 1.5rem 4rem; } }
+  /* 手机端(≤48rem):品类分区布局+双列紧凑+图片4:3 */
+  .cat-sections { display: none; }
+  @media (max-width: 48rem) {
+    /* 手机端:显示品类分区,隐藏平铺网格 */
+    .cat-sections { display: grid; gap: 1.25rem; }
+    .grid { display: none; }
+    .pager { display: none; }
+    /* 品类分区标题行 */
+    .cat-sec { border: 1px solid var(--ck-line, rgba(0,0,0,.1)); border-radius: 12px; overflow: hidden; }
+    .cat-sec-h { display: flex; align-items: center; gap: .5rem; padding: .75rem 1rem; text-decoration: none; color: inherit; background: var(--ck-surface-alt, #f5f5f1); }
+    .cat-sec-name { font-weight: 700; font-size: .9375rem; }
+    .cat-sec-n { font-size: .75rem; color: var(--ck-ink-soft, #888); background: var(--ck-bg, #fff); padding: .125rem .5rem; border-radius: 999px; }
+    .cat-sec-more { margin-left: auto; font-size: .75rem; color: var(--ck-accent, #333); white-space: nowrap; }
+    /* 品类内4卡双列 */
+    .cat-sec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; padding: .5rem; }
+    .card.mini { padding: .375rem; gap: .25rem; border: none; border-radius: 8px; }
+    .card.mini img, .card.mini .ph { aspect-ratio: 4/3; border-radius: 6px; }
+    .card.mini h3 { font-size: .75rem; line-height: 1.3; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    /* 紧凑头部+chip */
+    .hd { gap: .5rem; margin-bottom: 1rem; }
+    h1 { font-size: 1.25rem; }
+    .lede { font-size: .875rem; line-height: 1.5; }
+    .catbar { gap: .375rem; margin-bottom: 1rem; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+    .chip { font-size: .75rem; padding: .25rem .625rem; flex-shrink: 0; }
+    .search-bar { margin-bottom: .875rem; }
+    .search-bar input { height: 2.25rem; font-size: .8125rem; }
+    .pg-btn { min-width: 2rem; height: 2rem; font-size: .8125rem; padding: 0 .5rem; }
+    .faq { margin: 1.5rem auto 0; }
+    .faq h2 { font-size: 1.125rem; }
+  }
+  /* 搜索 */
+  .search-bar { display: flex; align-items: center; gap: .75rem; margin: 0 0 1.25rem; }
+  .search-bar input { flex: 1; max-width: 28rem; height: 2.75rem; padding: 0 1rem 0 2.5rem; border: 1px solid var(--ck-line, rgba(0,0,0,.15)); border-radius: 999px; background: var(--ck-surface-alt, #f3f3f1); color: inherit; font-size: .9375rem; outline: none; transition: border-color .2s; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: .875rem center; }
+  .search-bar input:focus { border-color: var(--ck-accent, #333); }
+  .search-bar input::placeholder { color: var(--ck-ink-faint, #aaa); }
+  .search-count { font-size: .8125rem; color: var(--ck-ink-soft, #888); white-space: nowrap; }
+  .pg-empty.hidden { display: none; }
+  /* 翻页 */
+  .pg-item.hidden { display: none; }
+  .pager { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; align-items: center; margin: 2rem 0; }
+  .pg-btn { min-width: 2.5rem; height: 2.5rem; padding: 0 .75rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 8px; background: transparent; color: inherit; font-size: .9375rem; cursor: pointer; transition: background .15s, border-color .15s; }
+  .pg-btn:hover { border-color: var(--ck-accent, #333); }
+  .faq { max-width: 52rem; margin: 2.5rem auto 0; }
+  .faq h2 { font-size: 1.375rem; margin-bottom: 1rem; }
+  .faq details { border: 1px solid var(--ck-line); border-radius: 10px; padding: .9rem 1.1rem; margin-bottom: .75rem; background: var(--ck-surface); }
+  .faq summary { cursor: pointer; font-weight: 600; }
+  .faq summary::marker { color: var(--ck-accent); }
+  .faq p { margin: .6rem 0 0; color: var(--ck-ink-soft, #555); }
+  .pg-btn.on {
+    background: var(--ck-accent, #333); color: #fff;
+    border-color: var(--ck-accent, #333);
+    font-weight: 700;
+    box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--ck-accent, #333) 55%, transparent);
+    transform: scale(1.12);   /* 当前页加重色+放大,一眼看出翻到第几页(创始人 2026-10-23) */
+  }
+  .pg-btn:disabled { opacity: .35; cursor: default; }
+  .pg-dots { padding: 0 .25rem; opacity: .5; }
+  .pg-jump { display: inline-flex; align-items: center; gap: .375rem; margin-inline-start: .5rem; font-size: .875rem; color: var(--ck-ink-soft, #888); white-space: nowrap; }
+  .pg-input { width: 3rem; height: 2.5rem; text-align: center; border: 1px solid var(--ck-line, rgba(0,0,0,.15)); border-radius: 8px; background: transparent; color: inherit; font-size: .9375rem; outline: none; }
+  .pg-input:focus { border-color: var(--ck-accent, #333); }
+  /* 返回顶部 */
+  .to-top { position: fixed; right: 1.25rem; bottom: 1.25rem; width: 3rem; height: 3rem; border: none; border-radius: 50%; background: var(--ck-accent, #333); color: #fff; font-size: 1.5rem; line-height: 1; cursor: pointer; opacity: 0; transform: translateY(1rem); transition: opacity .25s, transform .25s; pointer-events: none; z-index: 999; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+  .to-top.show { opacity: .85; transform: translateY(0); pointer-events: auto; }
+  .to-top:hover { opacity: 1; }
+</style>
+<script is:inline>
+  (function() {
+    var grid = document.getElementById('pg-grid');
+    var nav = document.getElementById('pg-nav');
+    var searchInput = document.getElementById('pg-search');
+    var countEl = document.getElementById('pg-count');
+    var emptyEl = document.getElementById('pg-empty');
+    if (!grid) return;
+
+    var pageSize = parseInt(grid.dataset.pageSize) || 60;
+    var allItems = Array.from(grid.querySelectorAll('.pg-item'));
+    var filtered = allItems.slice();
+    var current = 1;
+
+    function getPages() { return Math.ceil(filtered.length / pageSize); }
+
+    function renderPage(p) {
+      var pages = getPages();
+      if (p > pages) p = pages;
+      if (p < 1) p = 1;
+      current = p;
+      var start = (p - 1) * pageSize;
+      allItems.forEach(function(el) { el.classList.add('hidden'); });
+      for (var i = start; i < start + pageSize && i < filtered.length; i++) {
+        filtered[i].classList.remove('hidden');
+      }
+      renderNav();
+      if (countEl) countEl.textContent = filtered.length + (filtered.length === allItems.length ? '' : ' / ' + allItems.length);
+      if (emptyEl) {
+        var showEmpty = filtered.length === 0;
+        emptyEl.classList.toggle('hidden', !showEmpty);
+        emptyEl.hidden = !showEmpty;
+        emptyEl.setAttribute('aria-hidden', showEmpty ? 'false' : 'true');
+        if (showEmpty && !emptyEl.textContent) emptyEl.textContent = emptyEl.getAttribute('data-msg') || '';
+        if (!showEmpty) emptyEl.textContent = '';
+      }
+      if (nav) nav.style.display = pages > 1 ? '' : 'none';
+    }
+
+    function renderNav() {
+      if (!nav) return;
+      var pages = getPages();
+      if (pages <= 1) { nav.innerHTML = ''; return; }
+      nav.innerHTML = '';
+      var zh = document.documentElement.lang.indexOf('zh') === 0;
+      function btn(label, page, opts) {
+        opts = opts || {};
+        var b = document.createElement('button');
+        b.className = 'pg-btn' + (opts.active ? ' on' : '');
+        b.textContent = label;
+        if (opts.disabled) b.disabled = true;
+        else b.addEventListener('click', function() { renderPage(page); window.scrollTo({ top: grid.offsetTop - 80, behavior: 'smooth' }); });
+        return b;
+      }
+      function dots() { var d = document.createElement('span'); d.className = 'pg-dots'; d.textContent = '…'; return d; }
+
+      nav.appendChild(btn('‹', current - 1, { disabled: current === 1 }));
+
+      /* 前6页 + … + 后6页 + 跳转输入框（1688风格） */
+      var head = 6, tail = 6;
+      if (pages <= head + tail + 2) {
+        /* 页数不多，全部显示 */
+        for (var i = 1; i <= pages; i++) nav.appendChild(btn(String(i), i, { active: i === current }));
+      } else {
+        /* 前6页 */
+        for (var i = 1; i <= head; i++) nav.appendChild(btn(String(i), i, { active: i === current }));
+        /* 中间省略 — 当前页不在前后6页范围内时，显示当前页附近 */
+        if (current > head + 1 && current < pages - tail) {
+          nav.appendChild(dots());
+          var midStart = Math.max(head + 1, current - 1);
+          var midEnd = Math.min(pages - tail, current + 1);
+          for (var j = midStart; j <= midEnd; j++) nav.appendChild(btn(String(j), j, { active: j === current }));
+          nav.appendChild(dots());
+        } else if (current > head + 1) {
+          /* 当前页在后半段，前6和后6之间用省略号连接 */
+          nav.appendChild(dots());
+        } else if (current < pages - tail) {
+          /* 当前页在前半段，前6和后6之间用省略号连接 */
+          nav.appendChild(dots());
+        } else {
+          nav.appendChild(dots());
+        }
+        /* 后6页 */
+        for (var k = pages - tail + 1; k <= pages; k++) nav.appendChild(btn(String(k), k, { active: k === current }));
+      }
+
+      nav.appendChild(btn('›', current + 1, { disabled: current === pages }));
+
+      /* 页码跳转输入框 */
+      var jump = document.createElement('span');
+      jump.className = 'pg-jump';
+      jump.innerHTML = zh ? '到第' : 'Go to';
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'pg-input';
+      input.setAttribute('inputmode', 'numeric');
+      input.placeholder = String(current);
+      input.maxLength = 4;
+      var goBtn = document.createElement('button');
+      goBtn.className = 'pg-btn';
+      goBtn.textContent = zh ? '跳转' : 'Go';
+      goBtn.addEventListener('click', function() {
+        var n = parseInt(input.value);
+        if (n >= 1 && n <= pages) { renderPage(n); window.scrollTo({ top: grid.offsetTop - 80, behavior: 'smooth' }); }
+        input.value = '';
+      });
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); goBtn.click(); }
+      });
+      jump.appendChild(input);
+      jump.appendChild(document.createTextNode(zh ? '页' : ' '));
+      jump.appendChild(goBtn);
+      nav.appendChild(jump);
+    }
+
+    /* 搜索 */
+    var searchTimer = null;
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function() {
+          var q = searchInput.value.trim().toLowerCase();
+          if (!q) {
+            filtered = allItems.slice();
+          } else {
+            filtered = allItems.filter(function(el) {
+              var name = el.getAttribute('data-name') || '';
+              var sum = el.getAttribute('data-summary') || '';
+              var cat = el.getAttribute('data-category') || '';
+              var catL = el.getAttribute('data-cat-label') || '';
+              /* Serums / serum / 精华 等同义词，避免筛 Serums 空态误报 */
+              var aliases = (cat === 'serum' || catL.indexOf('serum') !== -1)
+                ? ' serum serums 精华 '
+                : '';
+              var hay = (' ' + name + ' ' + sum + ' ' + cat + ' ' + catL + aliases + ' ').toLowerCase();
+              return hay.indexOf(q) !== -1;
+            });
+          }
+          renderPage(1);
+        }, 200);
+      });
+    }
+
+    /* 手机卡 Request sample（嵌在 <a.card> 内，用 data-href 跳 RFQ） */
+    document.querySelectorAll('.card.mini .sample[data-href]').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        location.href = el.getAttribute('data-href');
+      });
+    });
+
+    /* 初始渲染 */
+    renderPage(1);
+
+    /* —— 返回顶部 —— */
+    var toTop = document.getElementById('to-top');
+    if (toTop) {
+      function onScroll() {
+        if (window.scrollY > 400) toTop.classList.add('show');
+        else toTop.classList.remove('show');
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      toTop.addEventListener('click', function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      onScroll();
+    }
+  })();
+</script>

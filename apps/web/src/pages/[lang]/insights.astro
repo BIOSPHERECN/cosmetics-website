@@ -1,0 +1,92 @@
+---
+/**
+ * BEAUTY2OEM「洞察」页(09-24 W6):市场调研对外版 v1(红线审后)原文上站,纯中文。
+ * 正文在同目录 _insights-v1.md(源:助手交付/BEAUTY2OEM/市场调研-v1/跨境美妆卖家选品与供应链洞察-对外版-v1.md,
+ * 只改两处:品牌行「帛卉(BIOSPHERE)」→「帛卉化妆品」、询盘入口 → /zh-cn/brief/)。表格与脚注靠 Astro 自带 GFM,零新依赖。
+ * 只在 beauty2oem 出;别的站 404(工厂站不挂这份,middleware 也只把 insights/ 列进 B2O 白名单)。
+ * 09-24 图文版(助手交付/beauty2oem-UI重做/定稿方向.md):主视觉 + 左吸顶目录 + 正文 65 字行宽 + 右吸顶行动条;样式在 styles/b2o.css。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../lib/shell';
+import { Content, getHeadings } from './_insights-v1.md';
+import '../../styles/b2o.css';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+if (shell.site?.id !== 'beauty2oem' || lang !== 'zh-cn') return new Response('Not found', { status: 404 });
+
+const path = `/${lang}/insights/`;
+const title = '跨境美妆卖家选品与供应链洞察(2026 秋)';
+const desc = '写给国内跨境美妆卖家:出口与平台数据、选品与选厂逻辑、17 个市场的准入要点,以及帛卉基于美国亚马逊榜单快照和各国法规原文的六条独家洞察。每个数字都有出处脚注。';
+const toc = getHeadings().filter((h) => h.depth === 2 && !/脚注|footnote/i.test(h.text));
+---
+
+<BaseLayout
+  locale={lang as any} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site!.id} title={title} description={desc} siteName={shell.site!.name}
+  siteUrl={`https://${shell.site!.domain}`} path={path}
+  indexable={shell.site!.is_live === 1} brandColor={shell.site!.brand_color} theme={shell.site!.theme ?? 'dtc'}
+>
+  <a class="ck-skip-link" href="#main">跳到正文</a>
+  <SiteHeader locale={lang as any} path={path} siteName={shell.site!.name} siteNameZh={shell.site!.tagline ?? ''}
+              nav={shell.nav} showLocaleSwitch={false} brand={shell.site!.id} />
+  <main id="main" class="ins">
+    <section class="b2o-sec b2o-ins-head">
+      <div class="b2o-wrap b2o-grid">
+        <div class="t">
+          <p class="meta">洞察 · 帛卉化妆品公开研究 v1 · 数据截至 2026-09-23</p>
+          <h1 class="b2o-h1">{title}</h1>
+          <p class="b2o-lede">出口与平台数据、选品和选厂逻辑、17 个市场的准入要点，以及六条帛卉独家洞察。每个数字都有出处脚注。</p>
+        </div>
+        <figure class="b2o-bezel pic"><div class="core b2o-ph"><img class="b2o-img-insightPool" src="/b2o/img/fd/insight-pool.webp" width="1024" height="1024" alt="戴遮阳帽和墨镜的女子在清透池水前享受阳光" loading="eager" fetchpriority="high" decoding="async" /></div></figure>
+      </div>
+    </section>
+    <section class="b2o-sec alt b2o-ins-body">
+      <div class="b2o-wrap b2o-grid">
+        <nav class="b2o-ins-toc" id="目录" aria-label="本文目录">
+          <h2>目录</h2>
+          <ol>{toc.map((h) => <li><a href={`#${h.slug}`}>{h.text}</a></li>)}</ol>
+        </nav>
+        <article class="doc"><Content /></article>
+        <aside class="b2o-ins-rail">
+          <div class="card">
+            <span class="b2o-tag accent">简报样张</span>
+            <h2>这份是行业版，你的店铺那一版只写你。</h2>
+            <ol>
+              <li>产品结构<i style="--w:86%"></i></li>
+              <li>缺口<i style="--w:64%"></i></li>
+              <li>三个方向，每个写风险<i style="--w:78%"></i></li>
+            </ol>
+            <a class="b2o-btn b2o-btn-pri" href="/zh-cn/brief/">提交店铺，拿简报<span class="ico" aria-hidden="true">→</span></a>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <SiteFooter locale={lang as any} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site!.name } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} showLocaleSwitch={false} cnOnly={true} />
+
+  <style>
+    .doc :global(p), .doc :global(li) { font-size: 1rem; line-height: 1.8; color: var(--ck-ink-soft); }
+    .doc :global(p) { margin: 0 0 1rem; }
+    .doc :global(ul), .doc :global(ol) { padding-inline-start: 1.25rem; margin: 0 0 1rem; }
+    .doc :global(strong) { color: var(--ck-ink, inherit); }
+    .doc :global(blockquote) { margin: 0 0 1.5rem; padding: .75rem 1rem; border-inline-start: 3px solid var(--ck-accent); background: var(--ck-surface); border-radius: 8px; }
+    .doc :global(blockquote p) { margin: 0; font-size: .9375rem; }
+    .doc :global(hr) { border: 0; border-top: 1px solid var(--ck-line); margin: 2.5rem 0; }
+    /* 宽表在手机上横向滚动,不撑破页面 */
+    .doc :global(table) { display: block; overflow-x: auto; border-collapse: collapse; margin: 0 0 1.25rem; font-size: .875rem; line-height: 1.6; }
+    .doc :global(th), .doc :global(td) { border: 1px solid var(--ck-line); padding: .5rem .625rem; vertical-align: top; min-width: 5rem; }
+    .doc :global(th) { background: var(--ck-surface); text-align: start; white-space: nowrap; }
+    .doc :global(a) { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+    .doc :global(sup a) { text-decoration: none; color: var(--ck-accent); padding: 0 .1em; }
+    .doc :global(.footnotes) { margin-top: 3rem; font-size: .8125rem; }
+    .doc :global(.footnotes li) { font-size: .8125rem; line-height: 1.65; overflow-wrap: anywhere; }
+  </style>
+</BaseLayout>

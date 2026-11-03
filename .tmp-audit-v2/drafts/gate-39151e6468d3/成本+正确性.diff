@@ -1,0 +1,64 @@
+diff --git a/audit_v2/ops.py b/audit_v2/ops.py
+index 1432e96..aabe3ff 100644
+--- a/audit_v2/ops.py
++++ b/audit_v2/ops.py
+@@ -416,7 +416,7 @@ def notify(a):
+ 
+ def main():
+     ap = argparse.ArgumentParser()
+-    sp = ap.add_subparsers(dest='cmd', required=True)
++    sp = ap.add_subparsers(dest='op', required=True)   # 09-25:原来叫 cmd,和 prod 的位置参数 cmd 撞名 → a.cmd 变成列表,prod 从没跑通
+     r = sp.add_parser('register'); r.add_argument('name', nargs='?'); r.add_argument('--all', action='store_true'); r.add_argument('--xml'); r.add_argument('--files', nargs='*'); r.add_argument('--note')
+     t = sp.add_parser('task'); t.add_argument('name'); t.add_argument('--note', required=True)
+     s = sp.add_parser('script'); s.add_argument('path'); s.add_argument('--note', required=True)
+@@ -427,10 +427,10 @@ def main():
+     b = sp.add_parser('baseline-task'); b.add_argument('name'); b.add_argument('--reason', required=True)
+     a = ap.parse_args()
+     try:
+-        if a.cmd == 'register':
++        if a.op == 'register':
+             return register_all(a) if a.all else register_one(a)
+         return {'task': task_review, 'script': script_review, 'prod': prod, 'gate': gate, 'unlock-guard': unlock_guard, 'notify': notify,
+-                'baseline-task': baseline_task}[a.cmd](a)
++                'baseline-task': baseline_task}[a.op](a)
+     except GateError as e:
+         print(f'[ops] 拒绝:{e}')
+         return 1
+diff --git a/audit_v2/smoke.py b/audit_v2/smoke.py
+index fd71856..315bf03 100644
+--- a/audit_v2/smoke.py
++++ b/audit_v2/smoke.py
+@@ -9,6 +9,19 @@ import argparse, datetime, io, json, os, re, subprocess, sys, time, urllib.error
+ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+ import lib
+ 
++def _probe():
++    """探针 secret 只从本机 .env 读进内存(不写文件、不打印);两站同一个值。没有就返回空,中间件不认,等于旧行为。"""
++    for p in ('F:/0cosmetic/cosmetic-sites/.env',):
++        try:
++            m = re.search(r'^\s*PROBE_SECRET\s*=\s*"?([^"\r\n]+)"?', io.open(p, encoding='utf-8').read(), re.M)
++            if m:
++                return m.group(1).strip()
++        except OSError:
++            pass
++    return ''
++
++
++PROBE = _probe()
+ UA = {'browser': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36',
+       'tool': 'curl/8.4.0'}
+ 
+@@ -25,7 +38,12 @@ def fetch(url, ua, proxy=None, fixture=None):
+             return 200, '', '<h1>ok</h1>'
+         return f.get('status', 200), f.get('location', ''), f.get('body', '')
+     op = urllib.request.build_opener(NoRedirect, urllib.request.ProxyHandler({'https': proxy, 'http': proxy} if proxy else {}))
+-    req = urllib.request.Request(url, headers={'User-Agent': UA[ua], 'Accept': 'text/html,*/*'})
++    hd = {'User-Agent': UA[ua], 'Accept': 'text/html,*/*'}
++    # 09-25:公司站(bohui-web)破缓存改靠探针头(C1 起 ?kk= 会被 301 掉;带对 secret 才不跳、不走缓存)。平台站仍用 ?kk=
++    if PROBE and re.match(r'https://(www\.)?(biosphere-ai|beauty2oem)\.com/', url) and ('?kk=' in url or '&kk=' in url):
++        hd['x-bohui-probe'] = PROBE
++        url = re.sub(r'[?&]kk=\d+$', '', url)
++    req = urllib.request.Request(url, headers=hd)
+     try:
+         with op.open(req, timeout=30) as r:
+             return r.status, r.headers.get('Location', ''), r.read(2_000_000).decode('utf-8', 'replace')

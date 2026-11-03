@@ -34,7 +34,8 @@ const { locale, path, siteName, siteNameZh, nav = [], standfirst } = Astro.props
 const tr = (k: string) => tr0(locale, k as any);
 
 const items = nav.filter((n) => n.slug !== '');
-const href = (slug: string) => `/${locale}/${slug ? slug + '/' : ''}`;
+/* 带 ? 的 slug 是货架筛选地址(「④ 包装盒」= 包材库按类型筛),后面不能再补斜杠 */
+const href = (slug: string) => `/${locale}/${slug ? (slug.includes('?') ? slug : slug + '/') : ''}`;
 const isOn = (slug: string) => path === href(slug);
 ---
 

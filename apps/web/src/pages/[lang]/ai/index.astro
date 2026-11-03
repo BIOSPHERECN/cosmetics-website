@@ -1,0 +1,233 @@
+---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * AI 工作台 —— 把散落的几个 AI 工具串成一条动线。
+ *
+ * 为什么建这一页(创始人 2026-09-05 的原话:「我们的 AI 部分太散,需要整合,要变成一个 SOP」):
+ *   之前 AI 搜索、选品链路、包装设计、AI 共创、肌肤检测各占一个导航格,
+ *   客户看到五个并列的入口,不知道该先点哪个,结果一个都不点。
+ *   工具本身没问题,问题是没有顺序。
+ *
+ * 所以这一页不是工具目录,是**一条从「我有个想法」到「发出一封带编码的询盘」的路**:
+ *   问清楚 → 定方向 → 挑包材 → 看样子 → 写出去 → 发询盘。
+ *   每一步指向一个真实能点的工具,并说明这一步做完你手上会多出什么。
+ *
+ * 肌肤检测单独放在下面:它服务的是你的终端顾客,不在这条采购动线上,
+ *   混在一起会让人以为要先做检测才能选品。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { getCounts } from '../../../lib/counts';
+import { ORG } from '@cosmetic/core/content/org.ts';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/ai/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+
+/* 底座数据的真实体量 —— 写具体数字,不写「海量」。查不到就不显示,不编。
+   09-24 C5(代码审计 P0-4):原来每次渲染 4 条 COUNT;现在只读计数文件(tools/counts-refresh.py 写),缺哪项就不显示哪项。 */
+const cn = (await getCounts(db)) ?? {};
+const num = (k: string): number | null => (typeof cn[k] === 'number' ? (cn[k] as number) : null);
+const [nPack, nTrend, nIng] = [num('pack_pages'), num('trend_active'), num('ingredients')];
+
+const T = zh ? {
+  eyebrow: 'AI 工作台',
+  title: '一条路走完:从一个想法,到一封带编码的询盘',
+  lede: `我们把站里的几个 AI 工具排成了顺序。不是五个并列的入口让你挑,
+         而是五步,每一步做完你手上会多出一样具体的东西 —— 一个答案、一份方案、
+         一个包材编码、一张效果图、一封带编码的询盘。`,
+  stepsH: '五步',
+  base: '这些工具建在什么上面',
+  baseSub: '答案不是模型现编的,是从下面这些库里检索出来的,每条都能点开核对出处。',
+  note: 'AI 给出的内容是工作稿,不是结论。配方、法规与报价一律以打样和书面确认为准;法规部分只写方向,以最新官方文本为准。',
+  open: '打开',
+  gain: '做完你会拿到',
+  steps: [
+    ['问清楚', 'AI 搜索', '/search/',
+     '把你不确定的事直接问出来 ——「这个成分在欧盟能不能用」「面膜的膜布有哪几类」。答案短,每句挂来源。',
+     '一个能核对出处的回答,不用等业务上班。'],
+    ['定方向', '选品链路', '/selector/',
+     '选品类、选市场、选预算档,六步走完。不需要先懂配方。',
+     '一份方案:配方号、可售市场、起订量、打样周期。'],
+    ['挑包材', '包材库', '/packaging/',
+     '按泵头、瓶身、软管、膏霜罐翻实物图册,看中哪一页记下编码。',
+     '一个包材编码,双方指的是同一个瓶子。'],
+    ['看样子', 'AI 包装设计', '/pack/',
+     '把你的品牌名和风格描述丢进去,先看到大致的效果,再决定要不要打样。',
+     '几版效果图,用来内部对齐审美,不用来印刷。'],
+    ['发询盘', '联系我们', '/contact/',
+     '把上面几步的编码一起发过来,我们不用再从「你想做什么」问起。',
+     '一次对齐,直接进入打样讨论。'],
+  ] as [string, string, string, string, string][],
+} : {
+  eyebrow: 'AI workbench',
+  title: 'One path: from an idea to an enquiry that carries codes',
+  lede: `We put our AI tools in order. Not five parallel entrances to choose between —
+         five steps, each one leaving you with something concrete: an answer, a proposal,
+         a packaging code, a rendering, an enquiry that carries codes.`,
+  stepsH: 'Five steps',
+  base: 'What these tools stand on',
+  baseSub: 'Answers are retrieved from the libraries below rather than invented by a model. Every one carries a source you can open.',
+  note: 'AI output is a working draft, not a conclusion. Formulas, regulatory matters and pricing are confirmed at sampling and in writing; regulatory notes describe direction only and the latest official text governs.',
+  open: 'Open',
+  gain: 'You walk away with',
+  steps: [
+    ['Ask', 'AI search', '/search/',
+     'Ask the thing you are unsure about — "is this ingredient usable in the EU", "what substrate types exist for sheet masks". Short answers, every sentence sourced.',
+     'An answer you can verify, without waiting for office hours.'],
+    ['Decide', 'Selector', '/selector/',
+     'Category, market, budget tier — six steps. No formulation knowledge required.',
+     'A proposal: formula codes, sellable markets, MOQ, sampling time.'],
+    ['Choose packaging', 'Packaging library', '/packaging/',
+     'Browse real catalogue pages by pump, bottle, tube and jar, and note the code.',
+     'A packaging code, so both sides mean the same bottle.'],
+    ['See it', 'AI packaging design', '/pack/',
+     'Drop in your brand name and a style description to see roughly how it lands before committing to a sample.',
+     'A few renderings for internal alignment — not for print.'],
+    ['Send it', 'Contact', '/contact/',
+     'Send the codes from the steps above and we skip the "so what do you want to make" round.',
+     'One alignment, straight into sampling.'],
+  ] as [string, string, string, string, string][],
+};
+
+const bases = [
+  /* 09-24 老板会议:配方总数对外用成熟配方 13,000+,不用库里在线展示的行数 */
+  [ORG.formulas.value, zh ? '个成熟配方,均经稳定性测试' : 'mature formulas, all stability-tested', `/${lang}/formulas/`],
+  [nPack, zh ? '页包材实物图册' : 'catalogue pages', `/${lang}/packaging/`],
+  [nIng, zh ? '条成分资料' : 'ingredient records', `/${lang}/search/`],
+  [nTrend, zh ? '条带出处的市场信号' : 'sourced market signals', `/${lang}/search/`],
+].filter(([n]) => typeof n === 'string' || (typeof n === 'number' && n > 0)) as [number | string, string, string][];
+
+const ld = {
+  '@context': 'https://schema.org', '@type': 'HowTo',
+  name: T.title,
+  description: T.lede.replace(/\s+/g, ' ').trim(),
+  step: T.steps.map(([name, tool, href, desc], i) => ({
+    '@type': 'HowToStep', position: i + 1, name: `${name} — ${tool}`,
+    text: desc, url: `${origin}/${lang}${href}`,
+  })),
+};
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'} title={`${T.title} · ${T.eyebrow}`} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+
+  <main id="main">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+    </header>
+
+    <section class="sec">
+      <h2>{T.stepsH}</h2>
+      <ol class="path">
+        {T.steps.map(([name, tool, href, desc, gain], i) => (
+          <li>
+            <span class="n">{String(i + 1).padStart(2, '0')}</span>
+            <div class="body">
+              <h3>{name}<span class="tool">{tool}</span></h3>
+              <p class="desc">{desc}</p>
+              <p class="gain"><span>{T.gain}</span>{gain}</p>
+            </div>
+            <a class="go" href={`/${lang}${href}`}>{T.open} →</a>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    {bases.length > 0 && (
+      <section class="sec">
+        <h2>{T.base}</h2>
+        <p class="sub">{T.baseSub}</p>
+        <ul class="base">
+          {bases.map(([n, label, href]) => (
+            <li><a href={href}><strong>{typeof n === 'number' ? n.toLocaleString() : n}</strong><span>{label}</span></a></li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <section class="sec end">
+      <p class="fine">{T.note}</p>
+    </section>
+  </main>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+
+  <script type="application/ld+json" set:html={ldJson(ld)} />
+
+  <style>
+    main { max-width: 56rem; margin: 0 auto; padding: clamp(2rem, 5vw, 3.5rem) clamp(1rem, 4vw, 2.5rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }
+    .hd { max-width: 46rem; margin-bottom: 1rem; }
+    .eyebrow { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase;
+               color: var(--ck-accent); margin: 0 0 .75rem; }
+    h1 { font-size: clamp(1.875rem, 1.3rem + 2vw, 2.875rem); line-height: 1.13; letter-spacing: -.025em;
+         margin: 0 0 1rem; text-wrap: balance; }
+    .lede { color: var(--ck-ink-soft); font-size: 1.0625rem; line-height: 1.78; margin: 0; }
+
+    .sec { padding: 2.75rem 0; border-top: 1px solid var(--dtc-line, rgb(0 0 0/.08)); margin-top: 2rem; }
+    .sec:first-of-type { margin-top: 2.5rem; }
+    h2 { font-size: 1.375rem; font-weight: 700; letter-spacing: -.015em; margin: 0 0 .5rem; }
+    .sub { font-size: var(--ck-small); color: var(--ck-ink-soft); margin: 0 0 1.5rem; max-width: 44rem; }
+    .sub.wide { font-size: .9375rem; line-height: 1.8; margin-bottom: 1.5rem; }
+
+    /* 一步一行,靠序号和细线分隔 —— 六个卡片并排会让人以为可以随便挑一个 */
+    .path { list-style: none; margin: 1.25rem 0 0; padding: 0; }
+    .path li { display: grid; grid-template-columns: 3rem 1fr auto; gap: 1rem; align-items: start;
+               padding: 1.5rem 0; border-top: 1px solid var(--dtc-line, rgb(0 0 0/.06)); }
+    .path li:first-child { border-top: 0; padding-top: 0; }
+    .n { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1rem;
+         color: var(--ck-accent); padding-top: .125rem; }
+    .path h3 { margin: 0 0 .4375rem; font-size: 1.0625rem; font-weight: 650; display: flex;
+               flex-wrap: wrap; align-items: baseline; gap: .625rem; }
+    .tool { font-size: .8125rem; font-weight: 500; color: var(--ck-ink-soft); }
+    .desc { margin: 0 0 .5rem; font-size: .9375rem; line-height: 1.72; color: var(--ck-ink-soft); }
+    .gain { margin: 0; font-size: .8125rem; line-height: 1.6; }
+    .gain span { color: var(--ck-ink-soft); margin-right: .5rem; }
+    .go { align-self: center; white-space: nowrap; text-decoration: none; font-size: .8125rem;
+          font-weight: 600; color: var(--ck-accent); }
+
+    .base { list-style: none; display: grid; gap: 1px; margin: 0; padding: 0;
+            background: var(--dtc-line, rgb(0 0 0/.09)); border: 1px solid var(--dtc-line, rgb(0 0 0/.09));
+            border-radius: var(--dtc-radius-card, 16px); overflow: hidden;
+            grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+    .base a { display: flex; flex-direction: column; gap: .25rem; padding: 1.375rem 1.25rem;
+              background: var(--dtc-paper, #fff); text-decoration: none; color: inherit; }
+    .base strong { font-size: 1.625rem; font-weight: 700; font-variant-numeric: tabular-nums;
+                   letter-spacing: -.02em; line-height: 1; }
+    .base span { font-size: .8125rem; color: var(--ck-ink-soft); }
+    .base a:hover { background: var(--dtc-sand, #f6f5f3); }
+
+    .btn { display: inline-flex; align-items: center; min-height: 48px; padding: 0 1.625rem;
+           border-radius: 980px; text-decoration: none; font-size: .9375rem; font-weight: 600;
+           border: 1px solid var(--dtc-line, rgb(0 0 0/.14)); color: var(--ck-ink); }
+    .btn:hover { border-color: var(--ck-accent); }
+    .fine { font-size: .75rem; color: var(--ck-ink-soft); line-height: 1.7; margin: 0; max-width: 44rem; }
+
+    @media (max-width: 44rem) {
+      .path li { grid-template-columns: 2.25rem 1fr; }
+      .go { grid-column: 2; justify-self: start; }
+    }
+  </style>
+</BaseLayout>

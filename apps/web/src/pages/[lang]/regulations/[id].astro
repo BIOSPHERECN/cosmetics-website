@@ -1,0 +1,122 @@
+---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { OEM_MARKETS, OEM_CATEGORIES } from '@cosmetic/core/content/oem.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 单个市场的法规页 —— 创始人 2026-09-11 10:2x:「这个你不做成独立的业务,GEO、SEO 就无法读取,我们获取流量了!」
+ * 42 个市场挤在一页,搜索引擎和 AI 只认得到一个标题;拆成一市场一页,标题就是买手会搜的那句(「欧盟化妆品法规 2026 最新修订」),
+ * 正文结论前置,带 FAQ 结构化数据。数据同 regulations / regulation_updates。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn';
+const id = String(Astro.params.id ?? '').toLowerCase().slice(0, 20);
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+let m: any = null; let ups: any[] = []; let regName = '';
+if (db && /^[a-z-]+$/.test(id)) {
+  try {
+    m = await db.prepare('SELECT * FROM regulations WHERE id = ?').bind(id).first<any>();
+    if (m) {
+      ups = ((await db.prepare('SELECT date, title_en, title_zh, summary_en, summary_zh, source FROM regulation_updates WHERE market_id = ? ORDER BY date DESC').bind(id).all<any>()).results ?? []) as any[];
+      if (m.inci_registry) { const r = await db.prepare('SELECT region, name_zh, name_en FROM inci_registry WHERE id = ?').bind(m.inci_registry).first<any>(); if (r) regName = zh ? `${r.region} · ${r.name_zh}` : `${r.region} · ${r.name_en || r.name_zh}`; }
+    }
+  } catch { m = null; }
+}
+if (!m) return new Response(null, { status: 404 });
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const B = `/${lang}`; const path = `${B}/regulations/${id}/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const pick = (k: string) => (zh ? m[`${k}_zh`] || m[`${k}_en`] : m[`${k}_en`] || m[`${k}_zh`]) || '';
+const name = zh ? m.country_zh || m.country_en : m.country_en || m.country_zh;
+const year = String(m.latest_date || m.updated_at || '').slice(0, 4);
+const srcs: string[] = (() => { try { return JSON.parse(m.sources_json || '[]'); } catch { return []; } })();
+/* GEO(创始人 2026-09-11 转来的打法第二、三步):标题改成买手真会问的整句;首段是 100 字以内的直答,
+   AI 能整段提走当摘要。直答由库里三个字段各取第一句拼成,不另写一遍、不会跟正文打架。 */
+const first = (t: string, n: number) => { const x = String(t || '').replace(/\s+/g, ' ').trim(); const cut = x.search(/[。;;.!?]/); const y = cut > 0 ? x.slice(0, cut) : x; return y.length > n ? y.slice(0, n - 1) + '…' : y; };
+const answer = zh
+  ? [first(pick('entry'), 44), pick('rp') ? `责任人:${first(pick('rp'), 26)}` : '', pick('labeling') ? `标签:${first(pick('labeling'), 24)}` : ''].filter(Boolean).join(';') + '。'
+  : [first(pick('entry'), 90), pick('rp') ? `Responsible person: ${first(pick('rp'), 60)}` : '', pick('labeling') ? `Labeling: ${first(pick('labeling'), 50)}` : ''].filter(Boolean).join('; ') + '.';
+/* 相关买手问答(2026-09-16):法规页是 AI 引用最多的内容(本周被引取回 169 次里除首页外全是 /regulations/),
+   而 27 页买手问答一次都没被引 —— 从被引的页把答案页挂出来,让引擎顺着走到问答。按市场代码匹配 notify-<id>,再加三条通用的。 */
+/* 2026-09-18 扩到 100 题后按 market 列挂(迁移 0096):本市场的题排前、按更新时间取新,再补三条通用;老库没这一列时退回只按 slug。 */
+const related = db ? (await db.prepare(
+  `SELECT slug, q_zh, q_en FROM geo_answers WHERE slug = ? OR market = ? OR slug IN ('asean-notification','halal-cosmetics','multilingual-labels','how-to-audit-oem') ORDER BY (slug = ?) DESC, (market = ?) DESC, updated_at DESC, slug LIMIT 6`)
+  .bind(`notify-${id}`, id, `notify-${id}`, id).all<any>().catch(() => db.prepare(
+  `SELECT slug, q_zh, q_en FROM geo_answers WHERE slug = ? OR slug IN ('asean-notification','halal-cosmetics','multilingual-labels','how-to-audit-oem') ORDER BY (slug = ?) DESC, slug LIMIT 5`)
+  .bind(`notify-${id}`, `notify-${id}`).all<any>().catch(() => ({ results: [] as any[] })))).results : [];
+const relI18n = (related.length && !zh && lang !== 'en' && db) ? (await db.prepare(`SELECT slug, q FROM geo_answers_i18n WHERE lang=? AND slug IN (${related.map(() => '?').join(',')})`).bind(lang, ...related.map((r: any) => r.slug)).all<any>().catch(() => ({ results: [] as any[] }))).results : [];
+const relQ = (r: any) => zh ? r.q_zh : (relI18n.find((x: any) => x.slug === r.slug)?.q || r.q_en);
+const T = zh ? {
+  title: `在${name}卖化妆品要走什么流程?${year ? `${year} 最新:` : ''}主管机构、上市路径、责任人、标签要求`,
+  h1: `在${name}卖化妆品要走什么流程?谁负责、标什么`,
+  authority: '主管机构', law: '主法规', since: '生效', latestH: '最近修订', entry: '上市路径', rp: '境内责任人', safety: '安全档案', labeling: '标签要点', animal: '动物试验', lists: '禁限用清单', official: '官方原文', src: '来源', lookup: '在本站查该目录', notes: '备注',
+  upd: '2025–2026 动态', back: '← 全部市场', note: '工厂侧整理,条文以官方原文为准,不是法律意见。', ask: `要做${name}市场?把产品类型发给我们,回你工厂侧文件清单与周期。`, inq: '发起询盘',
+  faq: [[`${name}化妆品上市前要备案还是注册?`, pick('entry')], [`在${name}卖化妆品必须有当地责任人吗?`, pick('rp')], [`${name}化妆品标签有什么硬性要求?`, pick('labeling')], [`${name}化妆品法规最近改了什么?`, `${m.latest_date} ${pick('latest_what')}`]],
+} : {
+  title: `What does it take to sell cosmetics in ${name}?${year ? ` ${year} update:` : ''} authority, market entry, responsible person, labeling`,
+  h1: `What does it take to sell cosmetics in ${name}? Entry route, responsibility, labeling`,
+  authority: 'Authority', law: 'Main regulation', since: 'In force', latestH: 'Latest change', entry: 'Market entry', rp: 'Responsible person', safety: 'Safety file', labeling: 'Labeling', animal: 'Animal testing', lists: 'Ingredient lists', official: 'Official text', src: 'Source', lookup: 'Look up this inventory here', notes: 'Notes',
+  upd: 'Changes 2025–2026', back: '← All markets', note: 'Factory-side digest; the official text prevails; not legal advice.', ask: `Entering ${name}? Send the product type and we reply with the factory-side document list and lead time.`, inq: 'Send an inquiry',
+  faq: [[`Does ${name} require notification or registration before sale?`, pick('entry')], [`Is a local responsible person mandatory in ${name}?`, pick('rp')], [`What are the labeling requirements in ${name}?`, pick('labeling')], [`What changed recently in ${name} cosmetic regulation?`, `${m.latest_date} ${pick('latest_what')}`]],
+};
+const ld = [
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}/${lang}/` },
+    { '@type': 'ListItem', position: 2, name: zh ? '各国法规' : 'Regulations', item: `${origin}${B}/regulations/` },
+    { '@type': 'ListItem', position: 3, name, item: origin + path } ] },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: T.faq.filter((f) => f[1]).map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) },
+];
+const rows: [string, string][] = [[T.authority, zh ? m.authority_zh || m.authority_en : m.authority_en || m.authority_zh], [T.law, `${m.law_ref ? m.law_ref + ' · ' : ''}${zh ? m.law_zh || m.law_en : m.law_en || m.law_zh}`], [T.since, m.in_force], [T.entry, pick('entry')], [T.rp, pick('rp')], [T.safety, pick('safety')], [T.labeling, pick('labeling')], [T.animal, pick('animal')], [T.lists, pick('lists')], [T.notes, m.notes]];
+---
+<BaseLayout locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={`${pick('entry')} ${pick('rp')}`.slice(0, 300)} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <p class="back"><a href={`${B}/regulations/`}>{T.back}</a></p>
+    <header class="hd"><p class="eyebrow">{m.region} · {name}</p><h1>{T.h1}</h1>
+      <p class="answer">{answer}</p>
+      <p class="lede"><b>{T.latestH} {m.latest_date}</b> — {pick('latest_what')} {m.latest_src && <a href={m.latest_src} rel="noopener nofollow" target="_blank">{T.src}</a>}</p>
+      <p class="note">{T.note}</p></header>
+    <dl class="facts">{rows.filter((r) => r[1]).map(([k, v]) => (<><dt>{k}</dt><dd>{v}</dd></>))}
+      {m.inci_registry && regName && (<><dt>{T.lookup}</dt><dd><a href={`${B}/inci/${m.inci_registry}/`}>{regName}</a></dd></>)}
+      {m.official_url && (<><dt>{T.official}</dt><dd><a href={m.official_url} rel="noopener nofollow" target="_blank">{m.official_url}</a></dd></>)}
+    </dl>
+    {ups.length > 0 && (<section class="upd"><h2>{T.upd}</h2><ol>{ups.map((u) => (<li><time>{u.date}</time> <b>{zh ? u.title_zh || u.title_en : u.title_en}</b><p>{zh ? u.summary_zh || u.summary_en : u.summary_en} {u.source && <a href={u.source} rel="noopener nofollow" target="_blank">{T.src}</a>}</p></li>))}</ol></section>)}
+    <section class="faq"><h2>FAQ</h2>{T.faq.filter((f) => f[1]).map(([q, a]) => (<details><summary>{q}</summary><p>{a}</p></details>))}</section>
+    {srcs.length > 0 && <p class="srcs">{T.src}: {srcs.map((s, i) => <a href={s} rel="noopener nofollow" target="_blank">{i + 1}</a>)}</p>}
+    {OEM_MARKETS.some((x) => x.id === id) && (<section class="rel"><h2>{zh ? `在${name}做代工 · 按品类` : `Manufacturing for ${name} · by category`}</h2><ul class="oemlinks">{OEM_CATEGORIES.map((c) => (<li><a href={`${B}/oem/${id}/${c.id}/`}>{zh ? `${c.zh}代工` : `${c.en.charAt(0).toUpperCase() + c.en.slice(1)} OEM / private label`}</a></li>))}</ul></section>)}
+    {related.length > 0 && (<section class="rel"><h2>{zh ? '买手问答 · 相关问题' : 'Related buyer questions'}</h2><ul>{related.map((r: any) => (<li><a href={`${B}/answers/${r.slug}/`}>{relQ(r)}</a></li>))}</ul></section>)}
+    <p class="ask">{T.ask} <a href={`${B}/contact/`}>{T.inq}</a></p>
+  </main>
+  <SiteFooter locale={lang} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+<style>
+  .rel{margin:2rem 0 1rem} .oemlinks{display:flex;flex-wrap:wrap;gap:.25rem 1.25rem;list-style:none;padding:0} .rel h2{font-size:1.125rem;margin:0 0 .5rem} .rel ul{margin:0;padding-left:1.25rem;line-height:1.8} .rel a{text-decoration:underline;text-underline-offset:.15em}
+  main { max-width: 62rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .back { margin: 0 0 .75rem; font-size: .875rem; } .back a { color: inherit; opacity: .7; text-decoration: none; }
+  .hd { display: grid; gap: .75rem; margin-bottom: 1.5rem; }
+  .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: clamp(1.5rem, 3vw, 2.125rem); line-height: 1.25; margin: 0; text-wrap: balance; }
+  .answer { font-size: 1.0625rem; line-height: 1.7; margin: 0; padding: .75rem 1rem; border-left: 3px solid var(--ck-accent, #7C4DA8); background: rgb(0 0 0/.03); border-radius: 0 10px 10px 0; }
+  .lede { font-size: 1rem; line-height: 1.75; margin: 0; } .lede a { margin-left: .375rem; font-size: .8125rem; opacity: .7; }
+  .note { font-size: .875rem; opacity: .62; margin: 0; border-left: 2px solid currentColor; padding-left: .75rem; }
+  .facts { margin: 0; display: grid; grid-template-columns: 1fr; gap: .25rem; }
+  .facts dt { font-size: .8125rem; opacity: .55; } .facts dd { margin: 0 0 .75rem; font-size: .9375rem; line-height: 1.7; word-break: break-word; }
+  .upd h2, .faq h2 { font-size: 1.25rem; margin: 2rem 0 .5rem; }
+  .upd ol { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; } .upd time { font-variant-numeric: tabular-nums; opacity: .7; margin-right: .5rem; } .upd p { margin: .25rem 0 0; font-size: .9375rem; line-height: 1.65; opacity: .8; }
+  details { border: 1px solid var(--ck-line, rgba(0,0,0,.14)); border-radius: 10px; padding: .625rem .875rem; margin: 0 0 .5rem; } summary { cursor: pointer; font-weight: 600; } details p { margin: .5rem 0 0; line-height: 1.7; }
+  .srcs { font-size: .8125rem; opacity: .7; } .srcs a { margin-right: .5rem; }
+  .ask { margin: 1.75rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
+  @media (min-width: 900px) { .facts { grid-template-columns: 9rem 1fr; gap: .25rem 1rem; align-items: baseline; } }
+</style>

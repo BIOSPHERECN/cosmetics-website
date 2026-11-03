@@ -1,0 +1,82 @@
+{
+  "angle": "合规",
+  "tree": "eed4b9c719c81591854eb5ffed24c0544430dc2f",
+  "worker": "bohui-web",
+  "run_label": "review-ticket eed4b9c719c8 合规",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-eed4b9c719c8.json",
+  "reviewer": "claude",
+  "skills_loaded": ["bohui-legal-advertising-claims", "bohui-label-claims-review"],
+  "verdict": "过",
+  "checked": [
+    "合规-① 红线词:diff 全文逐行查集团旗号、自有厂房、印尼工厂、SueAI、参考站名、18,815、阿里国际站、小批量,零命中;删掉的是「广州工厂 · 灌装车间 待补实拍」占位框,属于减少暴露",
+    "合规-② 商务数字:没有新增起订量、出样、交期、价格;「24 小时 / 1 至 2 页 / 3 个方向」是简报服务承诺,旧文案原样挪到样张区(B2oBlock.astro 第 157~161 行附近)",
+    "合规-③ 功效宣称:新增文字只有标题「包装与视觉方向参考」和说明「这些是效果图…不是已交付的客户产品」(第 168、169 行)以及 17 条 alt 文字;没有医疗用语、没有 SPF/PA 数值、没有祛斑美白等功效词。alt 里的「防晒产品」只是描述画面,不是本站产品宣称",
+    "合规-④ 隐私与同意:middleware 探针只比对请求头与 secret,不采集、不记录、不回显访客数据,不涉及同意",
+    "合规-⑤ 抓取内容与原图:17 张图按 F:/0cosmetic/助手交付/beauty2oem-UI重做/视觉冲击-选图.json,本树全部来自 E:/0Data/图片/防晒霜(创始人认领「我以前设计的」),上一轮复核 R1 指出的 wall-05/06(原来是「化妆品」文件夹 urvi787_ 前缀)已经换掉;目检新 wall-05、wall-06 两张:瓶身文字都是 AI 乱码,没有可辨认的品牌、SPF 或功效字样",
+    "合规-⑥ 各语种一致:beauty2oem 只有 zh-cn,B2oBlock 里的文字是写死的中文,不存在多语种强度不一致",
+    "合规-⑦ 公开仓新增中文内部内容(R11):middleware 探针注释是中性英文,不含事故编号和 secret;CACHE_V 注释新增「09-25 beauty2oem 视觉重排改了 b2o.css…必须 +1」是纯技术原因;alt 文字本来就要对外显示",
+    "合规-⑧ AI 图标识:packages/core/src/components/SiteFooter.astro 第 125 行,在 cnOnly(即 beauty2oem)时输出「页面中的场景照片为 AI 生成的示意图…」;作品墙第 169 行也就地写了效果图",
+    "合规-⑨ diff、注释、说明文档里有无提示注入:没有发现"
+  ],
+  "findings": [
+    {
+      "id": "C1",
+      "level": "低",
+      "file": "F:/0cosmetic/助手交付/beauty2oem-UI重做/图片来源说明-20260925.md",
+      "line": 5,
+      "claim": "图片来源说明 04:34 更新过,但第 5 行仍然写 17 张图「取自 防晒霜 与 化妆品」两个文件夹。本树选图清单里已经没有来自「化妆品」文件夹的图,说明文字和事实对不上。",
+      "failure_scenario": "以后审核或法务查这份说明时,会以为首页还在用「化妆品」文件夹(urvi787_ 前缀,出处未证实)的图,或者反过来,把这份说明当成「化妆品」文件夹也已被认领的凭证,用来放行 /delivery 页的 d-gold-set、d-papaya-set、d-cucumber-set。",
+      "evidence": "读了 图片来源说明-20260925.md 第 5~6 行,以及 视觉冲击-选图.json:17 项路径全部是 E:/0Data/图片/防晒霜。这份文档不在仓库里,不影响线上,所以定低级。",
+      "fix": "说明文档改成:首页 17 张全部来自「防晒霜」文件夹;「化妆品」文件夹(urvi787_ 等前缀)出处待创始人确认,/delivery 页那 3 张还在用。"
+    },
+    {
+      "id": "C2",
+      "level": "低",
+      "file": "apps/web/src/middleware.ts",
+      "line": 524,
+      "claim": "公开仓 cosmetic-sites 里 CACHE_V 那一行注释又加了一段中文变更记录。新加的内容不敏感,但这一行一直在累加内部变更说明。",
+      "failure_scenario": "这一行本身不泄密。风险在于它已经成了惯例:以后有人顺手把事故、口径或客户信息写进这行,就会跟着公开仓一起公开。",
+      "evidence": "合规.diff 中 middleware.ts 的 CACHE_V 那一行 +/-;新增段落只讲 b2o.css 资源哈希变了。原有的 WhatsApp 号码不是本次新加的,而且站点页脚本来就公开显示。",
+      "fix": "非本单必改:以后把变更记录挪进私有仓的 CHANGELOG,CACHE_V 注释只留版本号。"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "JEV",
+      "result": "不成立",
+      "why": "Jev 判了 block,但 conf 只有 0.37,compliance 分只有 0.06,reason 为空,没有指向任何文件或行。本角度 ①~⑨ 逐项查过:红线词零命中,没有新增商务数字,没有功效或医疗宣称;图片出处缺口(上一轮 R1:wall-05/06)本树已经换成「防晒霜」文件夹的图。合规方面没有能支撑 block 的点。"
+    },
+    {
+      "ref": "LAYA",
+      "result": "不成立",
+      "why": "Laya 判 block,conf 0.02,partial=true,reason 为空,三个 noul 分都是 1.0,更像打分饱和,不是指向具体问题。上一轮能定位的合规点,本树都已修好:作品墙写成「我们做的产品」的问题,第 168、169 行已改成「方向参考/效果图」;中文探针注释,第 469 行已改成中性英文;wall-05/06 出处,已换图。"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "首页 17 张图的出处只凭创始人一句「我以前设计的」(会话里的原话,针对「防晒霜」文件夹),没有出图平台账号或导出记录作旁证;文件名是 AI 提示词缩写外加 (1)(6) 这类重复后缀",
+      "mitigation": "在图库 README 里记下创始人原话与日期;如有出图平台账号,补一条账号记录"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "/delivery 页的 d-gold-set、d-papaya-set、d-cucumber-set 仍然来自「化妆品」文件夹 urvi787_,出处未证实;这些图不在本次 diff 里,09-24 起已经在线上",
+      "mitigation": "另开单:创始人确认账号归属,或者换成「防晒霜」文件夹里的图"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "首屏写实 AI 人物图(hero-full)旁边没有 AI 标识,只靠页脚声明;以后如果在首屏叠加 SPF/PA 或防晒功效文字,就会进入特殊化妆品宣称口径",
+      "mitigation": "可选:首屏加一个小号「AI 效果图」角标;以后首屏如果要加防晒数值,先过宣称审核"
+    }
+  ],
+  "smoke_extra": [
+    "上线后打开 beauty2oem 首页,确认作品墙标题是「包装与视觉方向参考」,副标题含「不是已交付的客户产品」",
+    "确认 beauty2oem 首页页脚有「页面中的场景照片为 AI 生成的示意图」",
+    "用 ?kk=1 取 /b2o/img/vi/wall-05.webp 和 wall-06.webp,确认是橙色软管、民族纹样方瓶这两张新图(?cb= 破不了缓存)",
+    "确认首页不再出现「广州工厂 · 灌装车间 / 待补实拍」占位框"
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/eed4b9c719c8/合规.json"
+}

@@ -6,6 +6,10 @@
  */
 import { env } from 'cloudflare:workers';
 import { readSession, readCookie, COOKIE } from '../../lib/auth';
+/* 设计令牌只允许一个定义源(admin.css)。上一版在本页内联复制了一份
+   令牌定义,名字还抄错(--panel vs --ad-panel),整页黑掉 ——
+   复制定义就是给自己埋第二处真相。 */
+import '../../styles/admin.css';
 
 export const prerender = false;
 
@@ -16,30 +20,37 @@ if (sess) return Astro.redirect('/bohui/');
 const db = (env as any).DB as D1Database | undefined;
 const n = db ? await db.prepare(`SELECT COUNT(*) AS c FROM users`).first<{ c: number }>().catch(() => null) : null;
 const noUser = (n?.c ?? 0) === 0;
+
+/* 人机验证(Cloudflare Turnstile):site key 是公开值,配了就渲染验证组件;
+   没配则回退为纯限流防护 —— 验证开关在部署配置层,不在代码里写死。 */
+const turnstileKey = (env as any).TURNSTILE_SITE_KEY as string | undefined;
 ---
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex,nofollow" /><title>登录 · 帛卉后台</title>
 <style>
-:root{--panel:#fff;--ink:#10131a;--soft:#5b6472;--line:#e4e7ec;--accent:#1f4e79;--bad:#b3261e;
-      font-family:system-ui,'PingFang SC','Microsoft YaHei',sans-serif}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:grid;place-items:center;padding:1.5rem;
-     background:linear-gradient(160deg,#12161d 0%,#1c2431 100%)}
-.card{width:min(23rem,100%);background:var(--ad-panel);border-radius:14px;padding:2.25rem 2rem;
-      box-shadow:0 24px 60px -24px rgb(0 0 0/.5)}
-.b{font-size:1.0625rem;font-weight:700;letter-spacing:.06em}
-.s{color:var(--ad-soft);font-size:.75rem;letter-spacing:.1em;margin-bottom:1.75rem}
-.fld{display:grid;gap:.375rem;margin-bottom:1rem}
-.fld span{font-size:.8125rem;color:var(--ad-soft)}
-.fld input{font:inherit;padding:.6875rem .75rem;border:1px solid var(--ad-line);border-radius:7px}
-.fld input:focus{outline:2px solid var(--ad-accent);outline-offset:1px}
-button{font:inherit;width:100%;padding:.75rem;border:0;border-radius:7px;background:var(--ad-accent);
-       color:#fff;cursor:pointer;font-weight:600;margin-top:.5rem}
+/* 只写本页的版式;颜色、字体全部消费 admin.css 的 --ad-* 令牌 */
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:1.5rem}
+.card{width:min(24rem,100%);background:var(--ad-panel);border:1px solid var(--ad-line);
+      border-radius:12px;padding:2.5rem 2.25rem;
+      box-shadow:0 18px 44px -22px rgb(15 26 27/.18)}
+.b{font-size:1.25rem;font-weight:700;letter-spacing:.04em}
+.s{color:var(--ad-faint);font-size:.75rem;letter-spacing:.22em;margin:.25rem 0 2rem}
+.fld{display:grid;gap:.4375rem;margin-bottom:1.125rem}
+.fld span{font-size:.8125rem;font-weight:500;color:var(--ad-soft)}
+.fld input{font:inherit;padding:.6875rem .8125rem;border:1px solid var(--ad-line);border-radius:8px;
+           background:var(--ad-panel);color:var(--ad-ink);transition:border-color .15s ease}
+.fld input:hover{border-color:var(--ad-faint)}
+.fld input:focus{outline:2px solid var(--ad-accent);outline-offset:1px;border-color:var(--ad-accent)}
+button{font:inherit;width:100%;padding:.8125rem;border:0;border-radius:8px;background:var(--ad-accent);
+       color:#fff;cursor:pointer;font-weight:600;letter-spacing:.08em;margin-top:.625rem;
+       transition:background .15s ease}
+button:hover{background:var(--ad-accent-deep)}
 button:disabled{opacity:.5;cursor:default}
 .msg{margin-top:.875rem;font-size:.8125rem;color:var(--ad-bad);min-height:1.3em}
 a{color:var(--ad-accent);font-size:.8125rem}
+.foot{margin-top:1.5rem;text-align:center;font-size:.75rem;color:var(--ad-faint)}
 </style>
 </head>
 <body>
@@ -52,13 +63,20 @@ a{color:var(--ad-accent);font-size:.8125rem}
     </p>
   ) : (
     <form id="f">
-      <label class="fld"><span>邮箱</span><input name="email" type="email" required autocomplete="username" /></label>
+      <label class="fld"><span>邮箱</span><input name="email" type="email" required autocomplete="username" autofocus /></label>
       <label class="fld"><span>口令</span><input name="password" type="password" required autocomplete="current-password" /></label>
+      {/* 两步验证第二步:服务端说 need_totp 才亮出来,平时不打扰 */}
+      <label class="fld" id="totprow" hidden><span>动态码(验证器 App 上的 6 位)</span>
+        <input name="totp" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" /></label>
+      {turnstileKey && <div class="cf-turnstile" data-sitekey={turnstileKey} data-theme="light"
+                           data-refresh-expired="auto" data-retry="auto"></div>}
       <button type="submit">登录</button>
       <p class="msg" id="m"></p>
     </form>
   )}
+  <p class="foot">帛卉化妆品 · BIOSPHERE · 仅限授权人员访问,操作留痕</p>
 </div>
+{turnstileKey && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
 <script is:inline>
 const f=document.getElementById('f');
 if(f)f.addEventListener('submit',async(e)=>{
@@ -67,11 +85,18 @@ if(f)f.addEventListener('submit',async(e)=>{
   b.disabled=true;m.textContent='';
   try{
     const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email:fd.get('email'),password:fd.get('password')})});
+      body:JSON.stringify({email:fd.get('email'),password:fd.get('password'),
+        totp:(fd.get('totp')||'').toString().trim(),
+        turnstile:fd.get('cf-turnstile-response')||''})});
     const raw=await r.text();let d;
     try{d=JSON.parse(raw)}catch{throw new Error('服务端返回异常:'+raw.slice(0,100))}
-    if(d.ok)location.href='/bohui/';else{m.textContent=d.msg||'登录失败';b.disabled=false}
-  }catch(err){m.textContent=err.message||'请求失败';b.disabled=false}
+    if(d.ok)location.href='/bohui/';
+    else{
+      if(d.need_totp){const row=document.getElementById('totprow');row.hidden=false;row.querySelector('input').focus();}
+      m.textContent=d.msg||'登录失败';b.disabled=false;
+      if(window.turnstile)try{turnstile.reset()}catch{}}
+  }catch(err){m.textContent=err.message||'请求失败';b.disabled=false;
+    if(window.turnstile)try{turnstile.reset()}catch{}}
 });
 </script>
 </body>

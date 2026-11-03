@@ -1,0 +1,322 @@
+{
+ "at": "2026-09-24 20:57:33",
+ "src": "F:/0cosmetic/tools-review/audit_v2",
+ "dir": "F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-205330",
+ "total": 52,
+ "fail": 5,
+ "seconds": 243,
+ "results": [
+  {
+   "id": "G1",
+   "desc": "访客页加 COUNT(*) → 拦(C1)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):2 个文件 2 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 2 · 5.7s → 拦\n   拦 C1(visitor-live-aggregate) apps/web/src/pages/x.astro:1  const r = await db.prepare(\"SELECT COUNT(*) FROM products\").first()\n"
+  },
+  {
+   "id": "G2",
+   "desc": "cron 里加 env.PHOTO.list({prefix}) → 拦(C4)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):2 个文件 2 行 · 拦 1 · 存疑 1 · 豁免 0 · 风险 1 · 7.0s → 拦\n   拦 C4(C4-r2-list) apps/web/src/pages/api/cron/y.ts:1  export const y = await env.PHOTO.list({ prefix: 'a/' })\n   疑 C4(C4-r2-list-ast) apps/web/src/pages/api/cron/y.ts:1  export const y = await env.PHOTO.list({ prefix: 'a/' })\n"
+  },
+  {
+   "id": "G3",
+   "desc": "tools 脚本加 copy_object( → 拦(C5,硬规则 exit 3)",
+   "ok": true,
+   "detail": "rc=3 == 第一关 z(ops):1 个文件 1 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 0 · 4.6s → 拦\n   拦 C5(C5-r2-copy-move) z.py:1  s3.copy_object(Bucket='b', Key='k', CopySource='x')\n"
+  },
+  {
+   "id": "G4",
+   "desc": "lib 里加 fetch('https://api.deepseek.com/…') → 拦(C7)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):2 个文件 2 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 1 · 10.6s → 拦\n   拦 C7(C7-paid-api) apps/web/src/lib/a.ts:2  export const r = fetch('https://api.deepseek.com/v1/chat')\n"
+  },
+  {
+   "id": "G5",
+   "desc": "加 const k = 'sk-…'(24 位) → 拦(S1,硬规则)",
+   "ok": true,
+   "detail": "rc=3 == 第一关 w1(build):2 个文件 2 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 1 · 5.2s → 拦\n   拦 S1(secret-literal) apps/web/src/lib/k.ts:1  export const k = 'sk-abcdefghijklmnopqrstuvwx'\n"
+  },
+  {
+   "id": "G6",
+   "desc": "zh-cn 页面加 帛卉集团/印尼工厂/自有厂房 → 拦(R1–R3,硬规则)",
+   "ok": true,
+   "detail": "rc=3 == 第一关 w1(build):2 个文件 2 行 · 拦 3 · 存疑 0 · 豁免 0 · 风险 1 · 10.5s → 拦\n   拦 R1(R1-group-branding) apps/web/src/pages/zh-cn.astro:2  <p>帛卉集团 印尼工厂 自有厂房</p>\n   拦 R3(R3-indonesia-factory) apps/web/src/pages/zh-cn.astro:2  <p>帛卉集团 印尼工厂 自有厂房</p>\n   拦 R2(R2-owned-factory) apps/web/src/pages/zh-cn.astro:2  <p>帛卉集团 印尼工厂 自有厂房</p>\n"
+  },
+  {
+   "id": "G7",
+   "desc": "后台页面加 SueAI → 拦(R4)",
+   "ok": true,
+   "detail": "rc=3 == 第一关 w1(build):2 个文件 2 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 1 · 5.4s → 拦\n   拦 R4(R4-sueai) apps/web/src/pages/bohui/x.astro:1  <p>SueAI 助手</p>\n"
+  },
+  {
+   "id": "G8",
+   "desc": "页面加「起订量 3000 件」→ 构建通过,存疑 R7",
+   "ok": true,
+   "detail": "rc=0 == 第一关 w1(build):2 个文件 2 行 · 拦 0 · 存疑 1 · 豁免 0 · 风险 1 · 6.1s → 过\n   疑 R7(R7-invented-terms) apps/web/src/pages/zh-cn.astro:2  <p>起订量 3000 件</p>\n"
+  },
+  {
+   "id": "G9",
+   "desc": "不带规则 id 和理由的 // nosemgrep → 拦(K6)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):2 个文件 2 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 1 · 5.4s → 拦\n   拦 K6(K6-bare-nosemgrep) apps/web/src/lib/a.ts:2  export const b = 2 // nosemgrep\n"
+  },
+  {
+   "id": "G10",
+   "desc": "public/ 下放 x.sql.bak → 拦(S3)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):1 个文件 1 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 0 · 0.7s → 拦\n   拦 S3(S3-public-junk) apps/web/public/x.sql.bak:0  x.sql.bak\n"
+  },
+  {
+   "id": "G11",
+   "desc": "max-width 112.5rem 改成 90rem → 拦(K1)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):2 个文件 3 行 · 拦 2 · 存疑 0 · 豁免 0 · 风险 0 · 9.8s → 拦\n   拦 K1(K1-maxw-1800) apps/web/src/styles/base.css:0  .wrap { max-width: 90rem; }\n   拦 K1(K1-maxw-gone) -:0  112.5rem 从 1 处降到 0\n"
+  },
+  {
+   "id": "G12",
+   "desc": "删掉 COUNT 后面的 LIMIT → 算新增(blob 缓存按内容判)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):2 个文件 3 行 · 拦 2 · 存疑 0 · 豁免 0 · 风险 2 · 9.8s → 拦\n   拦 C1(visitor-live-aggregate) apps/web/src/pages/search.astro:3  const n = await db.prepare(`SELECT COUNT(*) FROM (SELECT 1 FROM products WHERE name = ?)`).bind(q).first()\n   拦 C3(search-count-cap) apps/web/src/pages/search.astro:3  const n = await db.prepare(`SELECT COUNT(*) FROM (SELECT 1 FROM products WHERE name = ?)`).bind(q).first()\n"
+  },
+  {
+   "id": "G13",
+   "desc": "只改一行 CSS → 过;热跑 10 次中位数 0.6s ≤10s",
+   "ok": true,
+   "detail": "rc=0 times=[5.5, 0.6, 0.7, 0.6, 0.6, 0.7, 0.6, 0.6, 0.6, 0.7] == 第一关 w1(build):2 个文件 3 行 · 拦 0 · 存疑 0 · 豁免 0 · 风险 0 · 5.3s(缓存) → 过\n"
+  },
+  {
+   "id": "X12",
+   "desc": "误报样例 10 条不拦;印尼生产、集团旗下判存疑",
+   "ok": true,
+   "detail": "rc=0 == 第一关 w1(build):2 个文件 11 行 · 拦 0 · 存疑 2 · 豁免 0 · 风险 1 · 5.3s → 过\n   疑 R3(R3-indonesia-production-doubt) apps/web/src/pages/zh-cn.astro:5  <p>在印尼生产销售需 BPOM 注册</p>\n   疑 R1(R1-group-branding-doubt) apps/web/src/pages/zh-cn.astro:6  <p>欧莱雅集团旗下品牌</p>\n"
+  },
+  {
+   "id": "X13",
+   "desc": "// nosemgrep: C5-r2-copy-move 理由 放在 copy_object( 上 → 仍拦(strict)",
+   "ok": true,
+   "detail": "rc=3 == 第一关 w1(build):2 个文件 2 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 1 · 5.3s → 拦\n   拦 C5(C5-r2-copy-move) apps/web/src/lib/a.ts:2  export const m = s3.copy_object({}) // nosemgrep: C5-r2-copy-move 迁移脚本要用\n"
+  },
+  {
+   "id": "B0",
+   "desc": "adopt-baseline:first_base 的范围树登记成 refs/ship/w1,ship.jsonl 记 baseline",
+   "ok": true,
+   "detail": "baseline w1:refs/ship/w1 = 6549995748(树 d947afcbcd49,线上版本 v0-base)\n"
+  },
+  {
+   "id": "X1",
+   "desc": "新增 src/pages/distributors/x.astro、改被 .gitignore 吃掉的 src/data/site-counts.json → 树哈希都变",
+   "ok": true,
+   "detail": "469c44e8 a0973101 005514ef"
+  },
+  {
+   "id": "X4",
+   "desc": "assume-unchanged 后改文件 → 哈希变;filter 属性 → 拦;符号链接 → 拦",
+   "ok": true,
+   "detail": "469c44e8 37e88c37 rc=1 拦:范围内文件带 filter 属性(clean 过滤器会让哈希和磁盘不一致):['apps/web/src/lib/a.ts: filter: evil']\n469c44e8150301366fc4e92b849fdcd7cd18077e\n "
+  },
+  {
+   "id": "P1",
+   "desc": "没有审核单 → 出草稿 + Laya/Jev 机审(夹具)+ 打印工作流,退出 2 待审",
+   "ok": true,
+   "detail": "rc=2 laude/workflows/review-ticket.js 里 RULES 与报告 schema 审 F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-205330/tr/audit_v2/drafts/w1-947b2954711b/综合.diff,只写 F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-205330/tr/audit_v2/reports/w1/947b2954711b/综合.json,reviewer 写 codex\"\n"
+  },
+  {
+   "id": "P2",
+   "desc": "报告没到齐前重跑仍是待审",
+   "ok": true,
+   "detail": "rc=2"
+  },
+  {
+   "id": "T3",
+   "desc": "报告 tree 写错 / 空壳报告 → 签单拒收(待审)",
+   "ok": true,
+   "detail": "2 2 edteam-20260924-205330/tr/audit_v2/drafts/w1-947b2954711b/综合.diff,只写 F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-205330/tr/audit_v2/reports/w1/947b2954711b/综合.json,reviewer 写 codex\"\n"
+  },
+  {
+   "id": "P3",
+   "desc": "造审核单:Claude 报告 + 机审过 → 签单「过」,台账 tickets.jsonl 记一行",
+   "ok": true,
+   "detail": "rc=0 748(树 d947afcbcd49)\n== 第一关 w1(ship):2 个文件 3 行 · 拦 0 · 存疑 0 · 豁免 0 · 风险 1 · 10.1s(缓存) → 过\n-- 费用灯 green(d1_budget)\n== 合并三态:过\n   三家合并:第一关过、审核员无未推翻的拦、存疑逐条回应\n   签单:RT-20260924-2055-w1-947b2954 → F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-205330/tr/audit_v2/tickets/w1/947b2954711b.json\n"
+  },
+  {
+   "id": "V0",
+   "desc": "审核单有效 → verify(ship)通过",
+   "ok": true,
+   "detail": "[verify ship] 通过:RT-20260924-2055-w1-947b2954(L1)树 947b2954711b\n"
+  },
+  {
+   "id": "T1",
+   "desc": "签单后改一个字 → 新树没有审核单,拿旧单来验 → 第 1 步拦",
+   "ok": true,
+   "detail": "[verify ship] 拒绝:\n   没有审核单 F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-205330/tr/audit_v2/tickets/w1/a40cabec1781.json(树 a40cabec1781):先跑 ship.sh 审核\n[verify ship] 拒绝:\n   第 1 步:现在的树 a40cabec1781 ≠ 审核单的树 947b2954711b(审完又改过,要重审)\n"
+  },
+  {
+   "id": "T2",
+   "desc": "手改审核单内容 → 第 2 步拦(sha 与台账不符)",
+   "ok": true,
+   "detail": "[verify ship] 拒绝:\n   第 2 步:审核单内容被改过(content_sha256 不符)\n"
+  },
+  {
+   "id": "T4",
+   "desc": "审核单签发时间在 25 小时前 → 过期,第 3 步拦",
+   "ok": true,
+   "detail": "[verify ship] 拒绝:\n   第 3 步:审核单 2026-09-24T19:55:38+08:00 已过期\n"
+  },
+  {
+   "id": "T5",
+   "desc": "签单后 refs/ship 被挪 → 第 4 步拦;挪回来也留了 reflog 痕迹照拦;ref-reseal 追认(值须等于台账)后恢复",
+   "ok": false,
+   "detail": "[verify ship] 拒绝:\n   第 4 步:refs/ship/w1 已是 785f43f453,审核单的基准是 6549995748(中间有人上线或回退过)\n   第 4 步:refs/ship/w1 与 ship.jsonl 最后一条成功记录的快照对不上(refs 只能由 ticket.py 改)\n   第 4 步:refs/ship/w1 的 reflog 说明不是 ship/rollback/baseline:\n[verify ship] 拒绝:\n   第 4 步:refs/ship/w1 的 reflog 说明不是 ship/rollback/baseline:\n已追认 refs/ship/w1 = 6549995748\n[verify ship] 拒绝:\n   第 4 步:refs/ship/w1 的 reflog 说明不是 ship/rollback/baseline:\n"
+  },
+  {
+   "id": "T6",
+   "desc": "Jev 账本已用 199.99 万 → Jev 判存疑(额度用尽),没人回应 → 存疑;回应后 → 过",
+   "ok": true,
+   "detail": "jev={'status': '判了', 'verdict': '存疑', 'reason': '当天额度用尽(1,999,900+1,674 > 2,000,000)', 'quota': True, 'day_used': 1999900, 'partial': False} rc1=3 rc2=0  {\"decision\": null, \"conf\": null, \"noul\": null, \"co)\n   签单:RT-20260924-2055-w1-a154bdd7 → F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-205330/tr/audit_v2/tickets/w1/a154bdd7f385.json\n"
+  },
+  {
+   "id": "T7",
+   "desc": "Laya 输出 block、置信 0.3 → 判存疑,不是拦",
+   "ok": true,
+   "detail": "{'decision': 'block', 'conf': 0.3, 'noul': {'cost': 0.1, 'security': 0.05, 'compliance': 0.03}, 'correctness': 0.0, 'verdict': '存疑', 'status': '判了', 'seconds': 0, 'partial': False}"
+  },
+  {
+   "id": "T8",
+   "desc": "Jev 机审拦(0.9):审核员判过但没有反驳员 → 拦;反驳员推翻 → 过并记「推翻机审」",
+   "ok": true,
+   "detail": "rc1=1 rc2=0 8):需要一名审核员在 addressed 判「不成立」并且反驳员(refute-JEV.json)推翻\n   签单:RT-20260924-2056-w1-20eea232 → F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-205330/tr/audit_v2/tickets/w1/20eea2327723.json\n"
+  },
+  {
+   "id": "X11",
+   "desc": "Laya 夹具 CPU 90 → 缺席;Jev 夹具 402 → 缺席并当天停用;两家都缺席 → Claude 审核员升一档",
+   "ok": true,
+   "detail": "{\"laya\": {\"status\": \"缺席\", \"verdict\": null, \"reason\": \"CPU 忙 90%(夹具)\", \"partial\": false}, \"jev\": {\"status\": \"缺席\", \"verdict\": null, \"reason\": \"HTTP 402,当天停用\", \"partial\": false}}"
+  },
+  {
+   "id": "T10",
+   "desc": "急修改动 31 行 → 拒绝走急修",
+   "ok": true,
+   "detail": "== w1 审核范围树 c1aa0e6f2601 · 基准 6549995748(树 d947afcbcd49)\n== 第一关 w1(ship):2 个文件 33 行 · 拦 0 · 存疑 0 · 豁免 0 · 风险 1 · 4.8s → 过\n-- 费用灯 green(d1_budget)\n[审核单] 拒绝:急修只许 ≤30 行、≤3 个文件,这次 33 行、2 个文件 → 走常规或破窗\n"
+  },
+  {
+   "id": "S-a",
+   "desc": "ship.sh 没审核单 → 退出 2 待审,打印 review-ticket 调用",
+   "ok": true,
+   "detail": "rc=2 laude/workflows/review-ticket.js 里 RULES 与报告 schema 审 F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-205330/tr/audit_v2/drafts/w1-3cb571872996/综合.diff,只写 F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-205330/tr/audit_v2/reports/w1/3cb571872996/综合.json,reviewer 写 codex\"\n"
+  },
+  {
+   "id": "S-b",
+   "desc": "再跑 ship.sh:签单 → 构建 → 封存 → 部署(假 wrangler 先跑 build.command 验单)→ 台账 + refs/ship 快照(父 = 基线)",
+   "ok": false,
+   "detail": "rc=1 闸门 sha256:1ab541530a55 在批准清单\n== w1 审核范围树 3cb571872996 · 基准 6549995748(树 d947afcbcd49)\n== 第一关 w1(ship):2 个文件 3 行 · 拦 0 · 存疑 0 · 豁免 0 · 风险 1 · 4.7s(缓存) → 过\n-- 费用灯 green(d1_budget)\n== 合并三态:过\n   三家合并:第一关过、审核员无未推翻的拦、存疑逐条回应\n   签单:RT-20260924-2056-w1-3cb57187 → F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-205330/tr/audit_v2/tickets/w1/3cb571872996.json\n[verify ship] 拒绝:\n   第 4 步:refs/ship/w1 的 reflog 说明不是 ship/rollback/baseline:\n"
+  },
+  {
+   "id": "S-c",
+   "desc": "git log refs/ship/w1 = 上线历史(每次上线一个快照提交)",
+   "ok": false,
+   "detail": "baseline w1 v0-base source: 785f43f45331e6d622220d6663cc50f7bac72e6e time: 2026-09-24T20:55:19+08:00\n"
+  },
+  {
+   "id": "ship_walk",
+   "desc": "用例组异常",
+   "ok": false,
+   "detail": "ython312\\Lib\\subprocess.py\", line 548, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\subprocess.py\", line 1538, in _execute_child\n    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,\n                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nNotADirectoryError: [WinError 267] 目录名称无效。\n"
+  },
+  {
+   "id": "BG1",
+   "desc": "破窗:理由进 breakglass.jsonl、开红单推送(本地出口)、照样进 ship.jsonl 并挂 24 小时追审(build.command 层见 X2/X3)",
+   "ok": true,
+   "detail": "rc=0 == 第一关 w1(ship):2 个文件 3 行 · 拦 0 · 存疑 0 · 豁免 0 · 风险 1 · 5.1s → 过\nUploaded w1 (fake)\nCurrent Version ID: 6860fed0-b311-4b30-a574-cc0c0b75fcf6\n{\"ts\": \"2026-09-24T20:56:37+08:00\", \"snapshot\": \"253b3550866b66633267ca1f091ca8aa2b58244a\", \"status\": \"ok\"}\n[冒烟] w1 没配冒烟清单(第二批补),跳过\n"
+  },
+  {
+   "id": "BG4",
+   "desc": "破窗时第一关硬规则(S1 密钥)照查,不放",
+   "ok": true,
+   "detail": "== 第一关 w1(ship):2 个文件 3 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 2 · 0.5s → 拦\n   拦 S1(secret-literal) apps/web/src/lib/k.ts:1  export const k = 'sk-abcdefghijklmnopqrstuvwx'\n拒绝:第一关硬规则(S1/S2/R1–R4/C5)不过,破窗也不放\n"
+  },
+  {
+   "id": "BG2",
+   "desc": "破窗理由去空白不足 6 字 → 不收",
+   "ok": true,
+   "detail": "破窗理由去掉空白后至少 6 个字\n"
+  },
+  {
+   "id": "BG3",
+   "desc": "同一 Worker 24 小时内第 2 次破窗能走(加「需创始人」),第 3 次拒绝",
+   "ok": true,
+   "detail": "0 1 拒绝:w1 24 小时内第 3 次破窗(第 2 次已加「需创始人」)\n"
+  },
+  {
+   "id": "X2",
+   "desc": "破窗 + ticket.py 语法错误 → verify_or_bg.cmd 仍放行(部署能走到 dry-run);不破窗 → 拦",
+   "ok": true,
+   "detail": "0  / 1"
+  },
+  {
+   "id": "X3",
+   "desc": "纯中文 6 字理由「线上五百止血」astro / deploy.sh / verify_or_bg.cmd 三处都认;5 字都不认",
+   "ok": true,
+   "detail": "[('线上五百止血', True, True, True, True), ('线上五百止', False, False, False, False)]"
+  },
+  {
+   "id": "U1",
+   "desc": "急修:在 refs/ship 上开干净 worktree 打补丁 → 快审 1 名 → 上线;主工作区别线的半成品没带上;挂 24 小时追审",
+   "ok": true,
+   "detail": "f2cf5105b8/综合.diff,只写 F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-205330/tr/audit_v2/reports/w1/68f2cf5105b8/综合.json,reviewer 写 codex\"\nPreparing worktree (detached HEAD 13e785d)\n || 24-2057-w1-68f2cf51(急修)树 68f2cf5105b8\nUploaded w1 (fake)\nCurrent Version ID: c7074c6d-e529-4412-a184-cf338dd90e87\n{\"ts\": \"2026-09-24T20:57:09+08:00\", \"snapshot\": \"b381b4be9aa4284fc315386f5f7f4c8baaee5223\", \"status\": \"ok\"}\n急修补丁在 worktree 上线了;请主线把 F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-205330/fix.patch 合回主工作区。\n[冒烟] w1 没配冒烟清单(第二批补),跳过\nPreparing worktree (detached HEAD 13e785d)\n"
+  },
+  {
+   "id": "X9",
+   "desc": "急修改 middleware 20 行带【降读】→ 走急修(成本+安全);同一事故第 4 次 → 拒",
+   "ok": true,
+   "detail": "4-205330/tr/audit_v2\\ticket.py\", line 624, in check_urgent_quota\n    raise GateError(f'事故 {incident} 已急修 {groups} 次(6 小时内合并计 1 次,每个事故最多 3 次)')\nlib.GateError: 事故 INC-9 已急修 3 次(6 小时内合并计 1 次,每个事故最多 3 次)\n || [\"急修\", [\"急修 21 行 2 文件\"], [\"成本+安全\"], 21, true]\n"
+  },
+  {
+   "id": "watch_cases",
+   "desc": "用例组异常",
+   "ok": false,
+   "detail": "Traceback (most recent call last):\n  File \"F:\\0cosmetic\\tools-review\\audit_v2\\redteam\\run.py\", line 649, in main\n    fn()\n  File \"F:\\0cosmetic\\tools-review\\audit_v2\\redteam\\run.py\", line 519, in watch_cases\n    known = next(r['version_id'] for r in lmod.ledger_records('ship.jsonl') if r.get('action') == 'deploy' and r.get('status') == 'ok')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nStopIteration\n"
+  },
+  {
+   "id": "S2",
+   "desc": "smoke 夹具:两条首页 5xx → 干跑,打印「将回退到 <prev_live_version>」",
+   "ok": true,
+   "detail": "   ✗ https://s.test/:状态 503 ≠ [200]\n   ✗ https://s.test/en/:状态 502 ≠ [200]\n[冒烟 deploy] w1:1/3 过\n   关键页 2 条仍 5xx/超时,将回退到 v-prev-good\n"
+  },
+  {
+   "id": "X8",
+   "desc": "对照地址不通 → 本机网络异常不回退;部署前已 5xx → 不回退",
+   "ok": true,
+   "detail": "7 6    ✗ https://s.test/:状态 503 ≠ [200]\n   ✗ https://s.test/en/:状态 502 ≠ [200]\n[冒烟 deploy] w1:1/3 过\n   对照地址直连和 7890 都不通 → 判「本机网络异常」,不回退,只开单\n    ✗ https://s.test/:状态 503 ≠ [200]\n   ✗ https://s.test/en/:状态 502 ≠ [200]\n[冒烟 deploy] w1:1/3 过\n   关键页失败 2 条,其中 2 条部署前就坏(外部原因:D1 7500 / 上游),不回退\n"
+  },
+  {
+   "id": "D1",
+   "desc": "deploy.sh 副本 + 假 wrangler,不经 ship.sh 直接跑 → 顶部自查拦下",
+   "ok": true,
+   "detail": "拒绝:deploy.sh 只能由 ship.sh 调用,而且要有有效的审核单。线上出事见 tools-review/audit_v2/设计-v2.1.md §3\n"
+  },
+  {
+   "id": "H-deny",
+   "desc": "hook 该拒的 44 条(H1–H5、H10c、H11、H15、H17、T9、O2、SendMessage/computer-use)全部拒",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "id": "H-allow",
+   "desc": "hook 该放的 21 条(H6–H10b、H16、日常只读/构建/白名单入口)全部放",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "id": "H-speed",
+   "desc": "hook 单次 102 ms(目标 ≤300 ms)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "id": "H17+",
+   "desc": "报告:草稿列出的文件名和 refute-*/复核-* 放行,其他拒",
+   "ok": true,
+   "detail": "None | None | True\n"
+  }
+ ]
+}

@@ -1,0 +1,72 @@
+[
+ {
+  "slug": "ginseng",
+  "zh": "人参",
+  "queries": [
+   "ginseng farm field rows",
+   "Panax ginseng cultivation shade field",
+   "ginseng plantation landscape"
+  ]
+ },
+ {
+  "slug": "rose",
+  "zh": "玫瑰",
+  "queries": [
+   "Rosa damascena rose field landscape",
+   "rose valley Bulgaria field",
+   "damask rose plantation rows"
+  ]
+ },
+ {
+  "slug": "green-tea",
+  "zh": "绿茶",
+  "queries": [
+   "tea plantation landscape rows",
+   "Camellia sinensis tea garden hillside",
+   "tea terraces landscape"
+  ]
+ },
+ {
+  "slug": "aloe",
+  "zh": "芦荟",
+  "queries": [
+   "Aloe vera plantation field rows",
+   "aloe farm landscape",
+   "Aloe vera cultivation field"
+  ]
+ },
+ {
+  "slug": "centella",
+  "zh": "积雪草",
+  "queries": [
+   "Centella asiatica ground cover field",
+   "Centella asiatica growing wild patch"
+  ]
+ },
+ {
+  "slug": "artemisia",
+  "zh": "艾草",
+  "queries": [
+   "Artemisia field landscape",
+   "mugwort field growing",
+   "Artemisia annua field cultivation"
+  ]
+ },
+ {
+  "slug": "licorice",
+  "zh": "甘草",
+  "queries": [
+   "Glycyrrhiza field cultivation",
+   "licorice plantation field",
+   "Glycyrrhiza glabra growing field"
+  ]
+ },
+ {
+  "slug": "houttuynia",
+  "zh": "鱼腥草",
+  "queries": [
+   "Houttuynia cordata ground cover patch",
+   "Houttuynia cordata growing field"
+  ]
+ }
+]

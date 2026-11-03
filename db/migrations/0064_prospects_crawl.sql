@@ -1,0 +1,1 @@
+ALTER TABLE prospects ADD COLUMN crawl_ok INTEGER DEFAULT 1;

@@ -1,0 +1,538 @@
+---
+/**
+ * 货架页 —— 配方库与包材库共用同一套版式(创始人 2026-09-06:「产品库、包材库是一样的结构」)。
+ *
+ * 为什么共用:采购翻这两个库时的动作是一样的 —— 左边收窄条件,右边看一格格的单品,
+ * 看中就点进详情。两个库各写一套版式,只会做出两种手感,而且改一次要改两遍。
+ *
+ * 三条硬规矩:
+ *   · 筛选是 <a href> 不是 checkbox + JS。搜索引擎与 AI 检索要能顺着链接爬进每一个筛选面,
+ *     这是我们比同行强的地方(他们整站客户端渲染,这些面机器读不到)。
+ *   · 没有真图时用留白占位,写明「实拍整理中」,不拿不相干的图凑数。
+ *     包材库就是栽在这上面 —— 原来摊的是供应商图册整页,连别家 logo 和展会照都在上面。
+ *   · 卡片上只出现我们自己的编码,不出现供应商名。
+ */
+export interface ShelfItem {
+  code: string;
+  href: string;
+  name: string;
+  /** 卡片上方的小字归类 */
+  category?: string;
+  image?: string;
+  imageAlt?: string;
+  /** 规格标签,例如「100 g / 3.53 oz」「PET」 */
+  chips?: string[];
+  /** 右下角次要信息,例如「起订 5,000」 */
+  meta?: string;
+  /** 左上角角标,例如「可取样」「示例规格」 */
+  badge?: string;
+  /** 卡片下方的小号次要入口,例如包材库的「一键生成包装设计」。
+      不给就不渲染 —— 配方库、原料库这类没有这个入口的卡片照旧。 */
+  designHref?: string;
+  designLabel?: string;
+  /** 图片单独指向的链接(创始人 2026-09-11 19:4x:「点图片跳到设计」)。
+      给了就把图片和文字拆成两个链接:图 → imageHref,名字 → href;不给还是整张卡一个链接。 */
+  imageHref?: string;
+}
+
+export interface FacetOption { label: string; value: string; count?: number; href: string; on: boolean }
+export interface Facet { title: string; options: FacetOption[] }
+
+/** 左栏顶部的分类树(创始人 2026-09-17:「还是要好像他们(参考站)那样在左侧去排列,只是间隔需要小一点」)。
+    一级=瓶型,二级=材质;每项带数量,当前项高亮。单选链接(点一级换整棵树的根),
+    与下面多选的筛选组分工:树管「找哪一类」,筛选组管「再收窄」。 */
+export interface TreeNode { label: string; count?: number; href: string; on: boolean; children?: TreeNode[] }
+
+/** 链路上的一环。创始人 2026-09-07:「先包材,再配方,再包装盒,才有产品 —— 链路要清晰」。
+    所以这里不是三个并列的库,是一条有先后的产线:序号与箭头都是内容本身,不是装饰。 */
+export interface ShelfTab {
+  step: number;
+  label: string;
+  count?: number | string;   // 09-24:配方一环显示成熟配方总数口径 '13,000+'
+  href: string;
+  on: boolean;
+  /** 挂在这一环下面的东西,比如配方下面的原料库 */
+  sub?: { label: string; count?: number; href: string; on: boolean };
+}
+
+/** 分页条。参照 1688 的形态:共 N 页 · 页码 · 跳页框。
+    创始人 2026-09-07 指着截图说「下面的页数,也是要好像这种」。
+    「上一页 / 下一页」两个键在三千六百款、六十一页的库里是不能用的 ——
+    要翻到第 40 页得点 39 次。页码 + 跳页框才是这个体量该有的翻页方式。 */
+export interface ShelfPager {
+  page: number;
+  pages: number;
+  href: (n: number) => string;
+  /** 跳页表单的 action(纯路径,不带查询串) */
+  action: string;
+  /** 当前的筛选条件 —— GET 表单会丢掉 action 上的查询串,靠这些隐藏域带回去 */
+  hidden: { name: string; value: string }[];
+  labels: { summary: string; jumpPre: string; jumpPost: string; go: string;
+            prev: string; next: string; nav: string };
+}
+
+interface Props {
+  eyebrow: string;
+  title: string;
+  lede?: string;
+  facets?: Facet[];
+  /** 左栏顶部的分类树;不给就不渲染(配方库、原料库照旧只有筛选组) */
+  tree?: TreeNode[];
+  treeTitle?: string;
+  /** 三个库互相切换的标签条。创始人 2026-09-07:「原料库、包材库、配方库
+      建议合并到一起,不要散开」—— 合并不必动 URL,页内互通就不散了。 */
+  tabs?: ShelfTab[];
+  pager?: ShelfPager;
+  items: ShelfItem[];
+  total: number;
+  /** 已选条件,显示成可一键取消的胶囊 */
+  active?: { label: string; href: string }[];
+  clearHref?: string;
+  note?: string;
+  labels: {
+    filters: string; clearAll: string; empty: string; results: string;
+    shotPending: string;
+  };
+  /** 没有任何内容时替换整个右栏 */
+  emptyTitle?: string;
+  emptyBody?: string;
+  emptyCtas?: { label: string; href: string; primary?: boolean }[];
+}
+
+const {
+  eyebrow, title, lede, facets = [], tree = [], treeTitle, tabs = [], pager, items, total,
+  active = [], clearHref, note, labels,
+  emptyTitle, emptyBody, emptyCtas = [],
+} = Astro.props as Props;
+---
+
+<div class="shelf">
+  <header class="shead">
+    <p class="eyebrow">{eyebrow}</p>
+    <h1>{title}</h1>
+    {lede && <p class="lede">{lede}</p>}
+  </header>
+
+  {tabs.length > 0 && (
+    <nav class="chain" aria-label={title}>
+      <ol>
+        {tabs.map((t, i) => (
+          <li>
+            {i > 0 && <span class="arrow" aria-hidden="true">→</span>}
+            <a href={t.href} class={t.on ? 'on' : ''} aria-current={t.on ? 'page' : undefined}>
+              <span class="step" aria-hidden="true">{t.step}</span>
+              <span class="lb">{t.label}</span>
+              {t.count != null && <span class="tn">{typeof t.count === 'number' ? t.count.toLocaleString() : t.count}</span>}
+            </a>
+            {t.sub && (
+              <a class={`sub ${t.sub.on ? 'on' : ''}`} href={t.sub.href}
+                 aria-current={t.sub.on ? 'page' : undefined}>
+                {t.sub.label}
+                {typeof t.sub.count === 'number' && <span class="tn">{t.sub.count.toLocaleString()}</span>}
+              </a>
+            )}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  )}
+
+  <div class="cols">
+    {/* 移动端:筛选默认收起。手机上一进来就是四十行筛选,要滑过整屏才看到第一个产品 ——
+        这跟选品链路那次「页面怎么那么长」是同一个毛病。
+        用 checkbox 而不是 <details>:details 的 open 是属性,没法按视口宽度给,
+        而 checkbox + 兄弟选择器可以纯 CSS 在桌面端强制展开、移动端默认收起。 */}
+    <input type="checkbox" id="shelf-filters" class="filt-toggle" hidden />
+    <label for="shelf-filters" class="filt-btn">
+      <span>{labels.filters}</span>
+      <span class="filt-n">{active.length > 0 ? active.length : ''}</span>
+    </label>
+    <aside class="rail" aria-label={labels.filters}>
+      {/* 分类树:一级瓶型 → 二级材质,SSR 纯链接(创始人 2026-09-17:「好像参考站那样在左侧去排列」)。
+          二级只在当前一级下展开,树才不会长过一屏。 */}
+      {tree.length > 0 && (
+        <nav class="tree" aria-label={treeTitle}>
+          {treeTitle && <p class="tree-t">{treeTitle}</p>}
+          <ul>
+            {tree.map((n) => (
+              <li class={n.on ? 'on' : ''}>
+                <a href={n.href} class={n.on ? 'on' : ''} aria-current={n.on ? 'true' : undefined}>
+                  <span class="lb">{n.label}</span>
+                  {typeof n.count === 'number' && <span class="ct">{n.count}</span>}
+                </a>
+                {n.children && n.children.length > 0 && (
+                  <ul class="sub">
+                    {n.children.map((c) => (
+                      <li>
+                        <a href={c.href} class={c.on ? 'on' : ''} aria-current={c.on ? 'true' : undefined}>
+                          <span class="lb">{c.label}</span>
+                          {typeof c.count === 'number' && <span class="ct">{c.count}</span>}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+      {/* 默认收起(没有 open)。改成顶部横排之后,`open` 就成了灾难 ——
+          三块面板同时落下来压在货架上,创始人原话「直接展开,不是很好看」。
+          收起时只是一颗胶囊,点开才落面板,一次只看一组。 */}
+      {facets.map((f) => (
+        <details class="fgroup" open>
+          <summary>{f.title}</summary>
+          <ul>
+            {f.options.map((o) => (
+              <li>
+                <a href={o.href} class={o.on ? 'on' : ''} aria-current={o.on ? 'true' : undefined}>
+                  <span class="box" aria-hidden="true"></span>
+                  <span class="lb">{o.label}</span>
+                  {typeof o.count === 'number' && <span class="ct">{o.count}</span>}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ))}
+    </aside>
+
+    <div class="main">
+      {(active.length > 0 || total > 0) && (
+        <div class="bar">
+          <div class="pills">
+            {active.map((a) => (<a class="pill" href={a.href}>{a.label} <span aria-hidden="true">✕</span></a>))}
+            {active.length > 0 && clearHref && <a class="clear" href={clearHref}>{labels.clearAll}</a>}
+          </div>
+          <p class="count">{total.toLocaleString()} {labels.results}</p>
+        </div>
+      )}
+
+      {items.length === 0 ? (
+        <div class="empty">
+          {emptyTitle && <h2>{emptyTitle}</h2>}
+          <p>{emptyBody ?? labels.empty}</p>
+          {emptyCtas.length > 0 && (
+            <div class="ctas">
+              {emptyCtas.map((c) => (<a class={`btn ${c.primary ? 'pri' : ''}`} href={c.href}>{c.label}</a>))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <ul class="grid">
+          {items.map((it, i) => (
+            <li>
+              {(() => {
+                const shot = (
+                  <div class="shot">
+                    {it.image
+                      ? <img src={it.image} alt={it.imageAlt ?? it.name} loading={i < 8 ? 'eager' : 'lazy'} decoding="async" />
+                      : <span class="ph">{labels.shotPending}</span>}
+                    {it.badge && <span class="badge">{it.badge}</span>}
+                  </div>
+                );
+                const body = (
+                  <>
+                    {it.category && <p class="cat">{it.category}</p>}
+                    <p class="name">{it.name}</p>
+                    {it.chips && it.chips.length > 0 && (
+                      <p class="chips">{it.chips.map((c) => <span>{c}</span>)}</p>
+                    )}
+                    {it.meta && <p class="meta">{it.meta}</p>}
+                  </>
+                );
+                return it.imageHref
+                  ? (<div class="card split">
+                       <a class="shotlink" href={it.imageHref} aria-label={it.designLabel ?? it.name}>{shot}</a>
+                       <a class="bodylink" href={it.href}>{body}</a>
+                     </div>)
+                  : (<a class="card" href={it.href}>{shot}{body}</a>);
+              })()}
+              {/* 卡片本身已经是一个 <a>,第二个入口不能嵌在里面(HTML 不允许 <a> 嵌 <a>)——
+                  放成卡片下方并列的小按钮:不占卡片位、网格照旧。 */}
+              {it.designHref && <a class="design" href={it.designHref}>{it.designLabel}</a>}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {pager && pager.pages > 1 && (() => {
+        /* 页码窗口:首尾恒显,当前页左右各两个,断开处补省略号。
+           不做「1…61」这种只剩两端的极简版 —— 采购是按批次翻的,
+           手边要有 ±2 页可点,才不用每次都回到跳页框。 */
+        const { page: cp, pages: np } = pager;
+        const keep = new Set<number>([1, np, cp]);
+        for (let i = 1; i <= 2; i++) { keep.add(cp - i); keep.add(cp + i); }
+        if (cp <= 4) for (let i = 2; i <= 6; i++) keep.add(i);
+        if (cp >= np - 3) for (let i = np - 5; i < np; i++) keep.add(i);
+        const nums = [...keep].filter((n) => n >= 1 && n <= np).sort((a, b) => a - b);
+        const cells: (number | '…')[] = [];
+        nums.forEach((n, i) => { if (i && n - nums[i - 1] > 1) cells.push('…'); cells.push(n); });
+        return (
+          <nav class="pager" aria-label={pager.labels.nav}>
+            <span class="psum">{pager.labels.summary}</span>
+            <a class={`pnav ${cp > 1 ? '' : 'off'}`} href={cp > 1 ? pager.href(cp - 1) : undefined}
+               rel="prev" aria-label={pager.labels.prev}
+               aria-disabled={cp > 1 ? undefined : 'true'}>‹</a>
+            {cells.map((c) => (c === '…'
+              ? <span class="gap" aria-hidden="true">…</span>
+              : <a class={`pn ${c === cp ? 'on' : ''}`} href={pager.href(c)}
+                   aria-current={c === cp ? 'page' : undefined}>{c}</a>))}
+            <a class={`pnav ${cp < np ? '' : 'off'}`} href={cp < np ? pager.href(cp + 1) : undefined}
+               rel="next" aria-label={pager.labels.next}
+               aria-disabled={cp < np ? undefined : 'true'}>›</a>
+            {/* 跳页用原生 GET 表单,不写一行 JS:关了脚本也能用,
+                爬虫看到的也是普通链接与表单。隐藏域把当前筛选带过去 ——
+                少了它,跳一页等于把所有筛选清空。 */}
+            <form class="jump" method="get" action={pager.action}>
+              {pager.hidden.map((h) => <input type="hidden" name={h.name} value={h.value} />)}
+              <label for="shelf-jump">{pager.labels.jumpPre}</label>
+              <input id="shelf-jump" name="p" type="number" inputmode="numeric"
+                     min="1" max={np} placeholder={String(cp)} aria-label={pager.labels.nav} />
+              {pager.labels.jumpPost && <span>{pager.labels.jumpPost}</span>}
+              <button type="submit">{pager.labels.go}</button>
+            </form>
+          </nav>
+        );
+      })()}
+
+      {note && <p class="note">{note}</p>}
+    </div>
+  </div>
+</div>
+
+<style>
+  /* 2026-09-17 创始人:「很多都太多空余了,很不美观」「页面宽度最大 1800,不要去拉满屏」——
+     版心 112.5rem 居中不动;上下留白收到 2–3rem,标题区下边距收到 1.5rem。 */
+  .shelf { max-width: min(112.5rem, 100%); margin: 0 auto;
+           padding: clamp(1.5rem, 3vw, 2.5rem) var(--ck-gutter, 1.25rem) 3rem; }
+  .shead { max-width: 46rem; margin-bottom: 1.5rem; }
+  .eyebrow { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase;
+             color: var(--ck-accent); margin: 0 0 .5rem; }
+  h1 { font-size: clamp(1.5rem, 1.1rem + 1.4vw, 2.25rem); line-height: 1.15; letter-spacing: -.02em;
+       margin: 0 0 .625rem; text-wrap: balance; }
+  .lede { color: var(--ck-ink-soft); font-size: .9375rem; line-height: 1.65; margin: 0; }
+
+  /* ── 分类树(创始人 2026-09-17:「好像参考站那样在左侧去排列,只是间隔需要小一点」)──
+     行高 1.9rem、无多余内边距;一级粗一号,当前项用重音色 + 浅底;二级缩进一格。 */
+  .tree { border-bottom: 1px solid var(--dtc-line, rgb(0 0 0/.09)); padding-bottom: .5rem; margin-bottom: .25rem; }
+  .tree-t { margin: 0 0 .25rem; padding: .4375rem 0; font-size: .75rem; font-weight: 650;
+            letter-spacing: .06em; text-transform: uppercase; color: var(--ck-ink-soft); }
+  .tree ul { list-style: none; margin: 0; padding: 0; }
+  .tree a { display: flex; align-items: center; gap: .5rem; padding: .25rem .5rem; margin: 0 -.5rem;
+            border-radius: 6px; text-decoration: none; color: var(--ck-ink);
+            font-size: .8125rem; line-height: 1.4; font-weight: 550; }
+  .tree a:hover { color: var(--ck-accent); }
+  .tree a.on { background: var(--dtc-sand, #f5f5f7); color: var(--ck-accent); font-weight: 650; }
+  .tree .lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tree .ct { font-size: .6875rem; color: var(--ck-ink-soft); font-variant-numeric: tabular-nums; }
+  .tree .sub { padding: .125rem 0 .25rem .875rem; }
+  .tree .sub a { font-weight: 450; font-size: .78125rem; padding-block: .1875rem; }
+  .tree .sub a.on { background: none; }
+
+  /* 2026-09-11 再改回左栏(创始人:「包材的分类还是放到左侧,字体适合,间距不要太大」;
+     「目前的分类点击,经常无法选上」—— 顶部下拉面板压在粘性顶栏下面,靠上的几项点不到)。
+     左栏:12.5rem 竖排,各组默认展开,行高紧,字号 .8125rem;右侧网格照旧。 */
+  /* 2026-09-17 创始人「间隔需要小一点」:栏距 1.75rem → 1.25rem,左栏 12.5 → 13rem 装得下树的二级 */
+  .cols { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+
+  .rail { position: sticky; top: 4.5rem; max-height: calc(100vh - 5rem); overflow-y: auto;
+          display: flex; flex-direction: column; gap: .375rem; padding-right: .5rem;
+          scrollbar-width: thin; }
+  .fgroup { border-bottom: 1px solid var(--dtc-line, rgb(0 0 0/.09)); padding-bottom: .375rem; }
+  .fgroup:last-child { border-bottom: 0; }
+  .fgroup summary { cursor: pointer; list-style: none; display: flex; align-items: center;
+                    justify-content: space-between; padding: .4375rem 0; font-size: .75rem;
+                    font-weight: 650; letter-spacing: .06em; text-transform: uppercase;
+                    color: var(--ck-ink-soft); }
+  .fgroup summary::-webkit-details-marker { display: none; }
+  .fgroup summary::after { content: '−'; font-weight: 400; font-size: .875rem; line-height: 1; opacity: .6; }
+  .fgroup:not([open]) summary::after { content: '+'; }
+  .fgroup ul { list-style: none; margin: 0; padding: 0 0 .25rem; }
+  .fgroup li a { display: flex; align-items: center; gap: .4375rem; padding: .2rem 0;
+                 text-decoration: none; color: var(--ck-ink); font-size: .8125rem; line-height: 1.45; }
+  .fgroup .box { width: .8125rem; height: .8125rem; border-radius: 3px; flex: none;
+                 border: 1px solid var(--dtc-line, rgb(0 0 0/.28)); background: var(--dtc-paper, #fff); }
+  .fgroup a.on .box { background: var(--ck-accent); border-color: var(--ck-accent);
+                      box-shadow: inset 0 0 0 2px var(--dtc-paper, #fff); }
+  .fgroup a.on .lb { color: var(--ck-accent); font-weight: 600; }
+  .fgroup .lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fgroup .ct { font-size: .6875rem; color: var(--ck-ink-soft); font-variant-numeric: tabular-nums; }
+  .fgroup li a:hover .lb { color: var(--ck-accent); }
+
+  .bar { display: flex; flex-wrap: wrap; gap: .75rem 1rem; align-items: center;
+         justify-content: space-between; margin-bottom: .75rem; min-height: 2rem; }   /* 09-17 「间隔小一点」 */
+  .pills { display: flex; flex-wrap: wrap; gap: .4375rem; }
+  .pill { display: inline-flex; align-items: center; gap: .4375rem; font-size: .8125rem;
+          text-decoration: none; color: var(--ck-ink); background: var(--dtc-sand, #f5f4f2);
+          border-radius: 980px; padding: .3125rem .75rem; }
+  .pill span { color: var(--ck-ink-soft); font-size: .6875rem; }
+  .pill:hover { background: var(--ck-accent); color: var(--ck-on-accent); }
+  .clear { font-size: .8125rem; color: var(--ck-ink-soft); text-decoration: underline; align-self: center; }
+  .count { margin: 0; font-size: .8125rem; color: var(--ck-ink-soft); font-variant-numeric: tabular-nums; }
+
+  /* 网格吃满整幅:卡片下限从 13.5rem 收到 11.5rem,1800 版心下一行能多站两三款 */
+  /* 2026-09-17 创始人「间隔需要小一点」「排版规范整齐」:网格间距 1.5/1.25rem → .875/.75rem(约 16/14px),
+     卡片圆角 14px → 8px,卡片加一圈极淡边框让格子对齐成一张网,不再靠大留白分隔。 */
+  .grid { list-style: none; margin: 0; padding: 0; display: grid; gap: .875rem .75rem;
+          grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr)); }
+  .grid > li { border: 1px solid var(--dtc-line, rgb(0 0 0/.08)); border-radius: 8px; padding: .625rem;
+               display: flex; flex-direction: column; }
+  .card { display: block; text-decoration: none; color: inherit; }
+  .card.split a { text-decoration: none; color: inherit; display: block; }
+  .card.split .bodylink:hover .name { color: var(--ck-accent); }
+  .shot { position: relative; aspect-ratio: 1 / 1; border-radius: 6px;
+          overflow: hidden; background: var(--dtc-sand, #f5f4f2); display: grid; place-items: center; }
+  .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  /* 没有实拍时给一块干净留白,写明还没拍 —— 比放一张不相干的图诚实,也比破图好看 */
+  .ph { font-size: .6875rem; letter-spacing: .12em; text-transform: uppercase;
+        color: var(--ck-ink-soft); opacity: .65; text-align: center; padding: 0 1rem; }
+  .badge { position: absolute; top: .625rem; left: .625rem; font-size: .6875rem; font-weight: 600;
+           background: var(--ck-ink); color: var(--dtc-paper, #fff); border-radius: 6px;
+           padding: .1875rem .5rem; }
+  .card:hover .shot, .shotlink:hover .shot { outline: 1px solid var(--ck-accent); outline-offset: 2px; }
+
+  .cat { margin: .5rem 0 .125rem; font-size: .75rem; color: var(--ck-ink-soft); }   /* 09-17 卡内间距收紧 */
+  .name { margin: 0; font-size: .875rem; font-weight: 550; line-height: 1.4; }
+  .chips { display: flex; flex-wrap: wrap; gap: .3125rem; margin: .375rem 0 0; }
+  .chips span { font-size: .6875rem; color: var(--ck-ink-soft); background: var(--dtc-sand, #f5f4f2);
+                border-radius: 5px; padding: .125rem .4375rem; font-variant-numeric: tabular-nums; }
+  .meta { margin: .4375rem 0 0; font-size: .75rem; color: var(--ck-ink-soft);
+          font-variant-numeric: tabular-nums; }
+
+  /* 卡片下方的小号次要入口(目前只有包材库在用)——
+     比 .btn 小一号,不跟卡片本身抢视线,但还是一颗够得着的按钮,不是纯文字链接。 */
+  .design { display: inline-flex; align-items: center; justify-content: center; align-self: flex-start;
+            margin-top: auto; padding: .25rem .75rem; font-size: .75rem; font-weight: 600; /* 09-17「规范整齐」:标题两行时按钮仍贴齐同排底边 */
+            border-radius: 980px; text-decoration: none; color: var(--ck-ink-soft);
+            border: 1px solid var(--dtc-line, rgb(0 0 0/.14)); }
+  .design:hover { border-color: var(--ck-accent); color: var(--ck-accent); }
+  .grid > li > .card:has(+ .design) { margin-bottom: .5rem; }
+
+  .empty { max-width: 42rem; padding: 1rem 0 2rem; }
+  .empty h2 { font-size: 1.3125rem; letter-spacing: -.015em; margin: 0 0 .75rem; }
+  .empty p { color: var(--ck-ink-soft); line-height: 1.8; font-size: .9375rem; margin: 0 0 1.5rem; }
+  .ctas { display: flex; flex-wrap: wrap; gap: .625rem; }
+  .btn { display: inline-flex; align-items: center; min-height: 48px; padding: 0 1.625rem;
+         border-radius: 980px; text-decoration: none; font-size: .9375rem; font-weight: 600;
+         background: transparent; box-shadow: none;
+         border: 1px solid var(--dtc-line, rgb(0 0 0/.2)); color: var(--ck-ink); }
+  .btn.pri { background: var(--ck-accent); color: var(--ck-on-accent); border-color: transparent; }
+  .btn:hover { border-color: var(--ck-accent); }
+
+  .note { margin: 1.5rem 0 0; font-size: .75rem; color: var(--ck-ink-soft);
+          line-height: 1.7; max-width: 46rem; }   /* 09-17 「太多空余」:2.5 → 1.5rem */
+
+  /* 桌面端不需要这个开关 */
+  .filt-btn { display: none; }
+
+  /* ── 产线链路条 ────────────────────────────────────────────────────
+     三个库以前是导航里三个不相干的入口,采购看不出它们的关系。
+     现在按创始人给的顺序连成一条:包材 → 配方 → 包装盒 → 产品。
+     序号在这里是真信息(工序确有先后),不是拿来装饰的编号。 */
+  .chain { margin: 0 0 1.25rem; }   /* 09-17 「太多空余」:clamp(1.75–2.5rem) → 1.25rem */
+  .chain ol { list-style: none; margin: 0; padding: 0;
+              display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .25rem; }
+  .chain li { display: flex; align-items: center; gap: .25rem; }
+  .chain .arrow { color: var(--ck-ink-soft); opacity: .5; padding: 0 .375rem;
+                  font-size: .875rem; }
+  .chain a { display: inline-flex; align-items: center; gap: .5rem;
+             text-decoration: none; color: var(--ck-ink);
+             border: 1px solid var(--dtc-line, rgb(0 0 0/.14)); border-radius: 980px;
+             padding: .5rem .9375rem; font-size: .875rem; font-weight: 550;
+             background: var(--dtc-paper, #fff); min-height: 40px;
+             transition: border-color .15s, color .15s; }
+  .chain a:hover { border-color: var(--ck-accent); color: var(--ck-accent); }
+  .chain a.on { background: var(--ck-accent); border-color: var(--ck-accent);
+                color: var(--ck-on-accent); }
+  .chain .step { font-size: .6875rem; font-variant-numeric: tabular-nums;
+                 width: 1.125rem; height: 1.125rem; border-radius: 50%;
+                 display: inline-flex; align-items: center; justify-content: center;
+                 background: var(--dtc-wash, rgb(0 0 0/.055)); color: var(--ck-ink-soft); }
+  .chain a.on .step { background: rgb(255 255 255/.24); color: inherit; }
+  .chain .tn { font-size: .75rem; color: var(--ck-ink-soft);
+               font-variant-numeric: tabular-nums; }
+  .chain a.on .tn { color: inherit; opacity: .8; }
+  /* 原料挂在配方下面 —— 原料是配方的组成,不是链上单独一环 */
+  .chain .sub { font-size: .8125rem; padding: .375rem .75rem; min-height: 34px;
+                border-style: dashed; color: var(--ck-ink-soft); }
+  .chain .sub::before { content: '└'; opacity: .45; margin-right: .125rem; }
+
+  /* ── 分页条 ────────────────────────────────────────────────────────
+     形态照创始人给的 1688 截图:共 N 页 · ‹ · 页码 · › · 到 __ 页 确定。
+     全是 <a> 与原生表单,没有一行 JS —— 每一页都能被抓,关了脚本也能翻。 */
+  .pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+           gap: .375rem; margin-top: 1.75rem; font-size: .875rem; }   /* 09-17 「太多空余」 */
+  .pager .psum { color: var(--ck-ink-soft); margin-right: .5rem;
+                 font-variant-numeric: tabular-nums; }
+  .pager a { display: inline-flex; align-items: center; justify-content: center;
+             min-width: 2.375rem; min-height: 2.375rem; padding: 0 .625rem;
+             text-decoration: none; color: var(--ck-ink);
+             border: 1px solid var(--dtc-line, rgb(0 0 0/.14));
+             border-radius: var(--dtc-radius-btn, 10px);
+             background: var(--dtc-paper, #fff);
+             font-variant-numeric: tabular-nums; }
+  .pager a:hover { border-color: var(--ck-accent); color: var(--ck-accent); }
+  .pager a.on { background: var(--ck-accent); border-color: var(--ck-accent);
+                color: var(--ck-on-accent); font-weight: 600; }
+  .pager a.on:hover { color: var(--ck-on-accent); }
+  .pager .off { opacity: .35; pointer-events: none; }
+  .pager .gap { color: var(--ck-ink-soft); padding: 0 .25rem; }
+  .pager .jump { display: flex; align-items: center; gap: .375rem;
+                 margin-left: .75rem; color: var(--ck-ink-soft); }
+  .pager .jump input { width: 3.25rem; min-height: 2.375rem; text-align: center;
+                       border: 1px solid var(--dtc-line, rgb(0 0 0/.14));
+                       border-radius: var(--dtc-radius-btn, 10px);
+                       background: var(--dtc-paper, #fff); color: var(--ck-ink);
+                       font: inherit; font-variant-numeric: tabular-nums; }
+  .pager .jump button { min-height: 2.375rem; padding: 0 .875rem; cursor: pointer;
+                        border: 1px solid var(--dtc-line, rgb(0 0 0/.14));
+                        border-radius: var(--dtc-radius-btn, 10px);
+                        background: var(--dtc-paper, #fff); color: var(--ck-ink);
+                        font: inherit; }
+  .pager .jump button:hover { border-color: var(--ck-accent); color: var(--ck-accent); }
+
+  @media (max-width: 60rem) {
+    .filt-btn { display: flex; align-items: center; justify-content: space-between;
+                gap: .5rem; cursor: pointer; margin-bottom: 1rem;
+                border: 1px solid var(--dtc-line, rgb(0 0 0/.14)); border-radius: 980px;
+                padding: .75rem 1.125rem; font-size: .9375rem; font-weight: 600;
+                background: var(--dtc-paper, #fff); min-height: 48px; }
+    .filt-btn::after { content: '＋'; color: var(--ck-ink-soft); font-weight: 400; }
+    .filt-toggle:checked ~ .filt-btn::after { content: '－'; }
+    .filt-n:not(:empty) { background: var(--ck-accent); color: var(--ck-on-accent);
+                          border-radius: 980px; min-width: 1.375rem; text-align: center;
+                          font-size: .75rem; padding: .0625rem .375rem; }
+    /* 手机上左栏放不下:退回「筛选」按钮 + 折叠面板,组仍然竖排展开 */
+    .cols { display: block; }
+    .rail { display: none; position: static; max-height: none; overflow: visible; gap: 0;
+            margin-bottom: 1.5rem; padding: 0 1rem; border: 1px solid var(--dtc-line, rgb(0 0 0/.09));
+            border-radius: var(--dtc-radius-card, 14px); background: var(--dtc-paper, #fff); }
+    .filt-toggle:checked ~ .rail { display: flex; }
+    .fgroup summary { padding: .625rem 0; font-size: .8125rem; }
+    .fgroup li a { padding: .3125rem 0; font-size: .875rem; }
+    /* 手机端分类树跟筛选组一起收进顶部抽屉,行高放宽到够点 */
+    .tree { padding-top: .5rem; }
+    .tree a { font-size: .875rem; padding-block: .375rem; }
+    /* 手机上标题不必顶到 2.75rem,占掉半屏 */
+    h1 { font-size: clamp(1.5rem, 1.2rem + 2vw, 1.875rem); }
+    .shead { margin-bottom: 1.5rem; }
+    .lede { font-size: .9375rem; line-height: 1.7; }
+    /* 用 px 不用 rem:本站根字号是 18px,而媒体查询按 16px 算 ——
+       9.5rem 实算 171px,两列放不下 375px 的屏,结果手机上一行只有一个。
+       面板几何这类要跟视口对齐的尺寸,一律用 px。 */
+    .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .625rem .5rem; }   /* 09-17 间距收紧 */
+    .grid > li { padding: .5rem; }
+    /* 手机上链路条横向滚动,不折成四行占掉半屏 */
+    .chain ol { flex-wrap: nowrap; overflow-x: auto; padding-bottom: .5rem;
+                scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .chain ol::-webkit-scrollbar { display: none; }
+    .chain li { flex: 0 0 auto; }
+    .chain .tn { display: none; }
+    /* 页码在窄屏只留当前页附近 —— 六十一个格子换行成五排是没法用的 */
+    .pager .psum { width: 100%; text-align: center; margin: 0 0 .25rem; }
+    .pager .jump { width: 100%; justify-content: center; margin: .75rem 0 0; }
+    .name { font-size: .875rem; }
+  }
+</style>

@@ -1,0 +1,569 @@
+---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { t as uiT, type Locale } from '@cosmetic/core/i18n';
+/**
+ * 常见问题总表 —— AI 答案引擎的入口页。
+ *
+ * 外部 GEO 诊断(2026-09-02)给的第一条 P0:
+ *   「FAQ 散在 services 各场景下,AI 找不到集中入口 —— 新建 /faq/ 聚合,加 FAQPage schema」
+ * 诊断说得对:站上确实已经有 FAQPage 标记(services / capabilities / origin / 包材单品),
+ * 但它们分散在各自的场景里。AI 抓一个站的时候,一个集中的问答入口
+ * 比六处零散的问答块更容易被整段引用 —— 引用的是「一页」,不是「一句」。
+ *
+ * 这一页的写法按 AI 引用的偏好来,不是按人读文章的偏好:
+ *   · **直接答案写在最前面一句**。AI 摘的是第一句,不是第三段。
+ *   · 每条都落到可核对的数字或做法,不写「我们专业可靠」这类无法引用的话。
+ *   · 数字全部来自公司资料与本站数据库(包材 4,518 款、配方起订 3,000 起、
+ *     打样 3–7 天、认证清单),这里不新造一个数。
+ *   · **不写客户品牌名**:合作品牌属于客户的商业信息,不是我们的素材。
+ *   · **不写单价**:报价按询盘逐单出具;能公开的只有包材参考价区间,
+ *     而那一条已经写在包材库每一款下面。
+ *
+ * 零 D1 查询:内容是常量,外壳由 pageShell 兜底。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { CHAIN_COUNTS } from '@cosmetic/core/content/chain.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { orgJsonLd, faqJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const lang = (Astro.params.lang ?? 'zh-cn') as Locale;
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const site = shell.site;
+const origin = `https://${site?.domain ?? 'biosphere-ai.com'}`;
+const path = `/${lang}/faq/`;
+const B = `/${lang}`;
+
+const T = zh ? {
+  eyebrow: '常见问题',
+  title: '采购最常问的 20 件事',
+  lede: `按被问到的频率排。每条第一句就是答案,后面才是为什么 ——
+         你要是只看得下一句,那一句也够用。`,
+  note: `这一页只写能核对的东西。数字来自我们自己的产线与库存;
+         报价按询盘逐单出具,页面上不会出现一个假价。`,
+  groups: [
+    {
+      g: '先搞清楚在买什么',
+      items: [
+        {
+          q: 'OEM 和 ODM 到底有什么区别?',
+          a: 'OEM 是用工厂现成的配方贴你的品牌,ODM 是工厂按你的需求重新调配方。',
+          d: [
+            'OEM:你不出配方,从工厂在册的 13,000 多支里挑,省时省钱,最快 3–7 天打样。',
+            'ODM:你有明确诉求,工厂按方向调配方,需要重新做稳定性验证,周期 2–4 周。',
+            'OBM:工厂从配方一直做到品牌全包,适合从零起盘、没有供应链资源的一方。',
+            '怎么选:跨境电商首批、测款 → OEM;想做差异化大单品 → ODM;从零起盘 → OBM。',
+            '这三种走的是同一条产线、同一个质量体系,差别只在你把哪几段交出去。',
+          ],
+        },
+        {
+          q: '化妆品代工起订量一般多少?',
+          a: '常规剂型 3,000–5,000 件起;用现货包材能压到更低,开模包材通常 1 万件起。',
+          d: [
+            '为什么是这个数:一条产线换线一次要停机清洗,量太少摊不动;活性物采购也有最小批。',
+            '包材是另一本账:现货款起订量低,开模款要摊模具费,所以 1 万起。',
+            '压低起订量的办法:选现货包材 + 选常规剂型,两样都选就能谈到最低档。',
+            `我们的柔性:13,000 多支在册配方 + ${CHAIN_COUNTS.packaging.toLocaleString('en-US')} 款现货包材库,首批 3,000 件可接。`,
+          ],
+        },
+        {
+          q: 'OEM 代工价格是怎么算出来的?',
+          a: '总成本 = 料体 + 包材 + 灌装 + 检测 + 文件 + 利润,每一项都跟你的具体选项挂钩。',
+          d: [
+            '料体:由活性物档次与浓度决定。同样是透明质酸,化妆品级与医药级能差好几倍。',
+            '包材:小规格(30ml)包材占比反而最高,能到总成本一半;大规格(200ml 以上)料体占比上升。',
+            '检测:常规项目按项计费,重金属、微生物、稳定性是必做项。',
+            '文件:标签审核与法规咨询按目的地市场单算 —— 卖欧盟和卖东南亚不是一份文件。',
+            '怎么谈:先报规格、量级、目的地市场,工厂给分项报价。报价低于成本三成的,一定有别的地方找补。',
+          ],
+        },
+        {
+          q: '打样要多久?打样费怎么算?',
+          a: '现有配方 3–7 天出样;需要重新调配方的,按复杂度 2–4 周。',
+          d: [
+            '3–7 天指的是从在册配方里挑一支、灌进你选的包材、贴上你的标 —— 这一段没有研发工作量。',
+            '重新调配方要走小试、稳定性观察,时间花在等结果上,压不动。',
+            '打样费在正式下单后通常可以抵扣,具体按订单量谈。',
+          ],
+        },
+      ],
+    },
+    {
+      g: '资质与合规',
+      items: [
+        {
+          q: '你们有哪些认证?能不能看原件?',
+          a: 'GMPC、ISO 22716:2007、HALAL、FDA 工厂注册、EU CPNP、SGS。证书编号与有效期凭原件提供。',
+          d: [
+            '这些是工厂级资质,不是单个产品的检测报告 —— 两者不能互相替代。',
+            '证书编号不在网页上公开:公开编号会被拿去做无关的背书,而真正要核验的采购会直接要原件。',
+            '看证书要看三件:编号能不能查、有效期在不在、发证机构对不对。挂一张图不算。',
+          ],
+        },
+        {
+          q: '想卖欧盟,需要准备什么?',
+          a: 'EU CPNP 注册 + 安全评估报告(CPSR)+ 欧盟境内责任人(RP),缺一样都上不了架。',
+          d: [
+            '配方要先过欧盟禁限用清单 —— 有些在国内合规的成分在欧盟不能用,这一步要在定配方之前做。',
+            '标签要按欧盟格式重排,INCI 名称与警示语都有硬规定。',
+            '我们持 EU CPNP,可以按目的地市场做合规预判,把「配方定下来才发现不能用」这一步提前。',
+          ],
+        },
+        {
+          q: '想卖中东,HALAL 怎么弄?',
+          a: '我们持 HALAL 认证(2024),覆盖范围以证书为准;目标市场认不认这张证,以当地主管机构为准。货由广州基地生产出口。',
+          d: [
+            'HALAL 不只看成分,还看产线有没有交叉污染 —— 所以要看工厂本身的认证,不是一张代办的证书。',
+          ],
+        },
+        {
+          q: '产品功效可以怎么宣称?',
+          a: '以目的地市场法规与第三方检测报告为准。我们站上引用的古方研究是配方设计的输入,不是功效宣称。',
+          d: [
+            '同一句宣称在不同市场的口径不一样:国内按化妆品监管条例,欧盟按 CPNP 与宣称通用准则。',
+            '要做功效宣称,先定市场,再定检测项目 —— 顺序反了就会花冤枉钱。',
+          ],
+        },
+      ],
+    },
+    {
+      g: '产能与工厂',
+      items: [
+        {
+          q: '你们的产能是多少?',
+          a: '面膜日产 50 万片以上,乳霜类日产 30 万支以上,15 条自动化产线,十万级 GMP 洁净车间。',
+          d: [
+            '生产基地总面积 2 万㎡以上,智能仓储 1 万㎡以上。',
+            '产能数字的意义不在「大」,在于旺季能不能排进你的单 —— 排产在需求判定阶段一起锁。',
+          ],
+        },
+        {
+          q: '可以来看厂吗?',
+          a: '可以。视频连线与实地参观都行 —— 不让看厂的通常另有原因。',
+          d: [
+            '看厂要看的是洁净区更衣流程、批记录怎么填、留样柜里有没有东西,不是看大门。',
+            '研发、生产与交付都在广州基地。',
+          ],
+        },
+        {
+          q: '你们做哪些品类?',
+          a: '护肤、彩妆、口腔护理、儿童护肤、身体护理与香氛,以及授权 IP 产品。',
+          d: [
+            '护肤:精华、面霜、化妆水、面膜。彩妆:粉类、唇部、底妆。',
+            '口腔护理:牙膏、漱口水、固体牙片。儿童护肤按低刺激标准单独排产。',
+          ],
+        },
+        {
+          q: '你们的技术壁垒是什么?',
+          a: '三条:草本发酵转化、低温闪萃、生物合成。',
+          d: [
+            '草本发酵转化:稀有人参皂苷活性提升 10–20 倍,农残降解 90% 以上。',
+            '低温闪萃:0–10 ℃ 提取,热敏活性物保留率 95% 以上,萃取效率提升 40%。',
+            '生物合成:rhCOLL 重组人源化胶原蛋白,与暨南大学联合开发。',
+          ],
+        },
+      ],
+    },
+    {
+      g: '包材与配方',
+      items: [
+        {
+          q: '包材能自己选吗?有多少款?',
+          a: `${CHAIN_COUNTS.packaging.toLocaleString('en-US')} 款在线可筛,每款一个编码,报编码就能对上款。`,
+          d: [
+            '按类型、材质、容量、适配剂型筛;每款都有白底实拍,不用靠文字描述对款。',
+            'PET 泵瓶与膏霜罐一档的参考价是 $0.20–0.32 / 只(FOB 广州,起订 1 万)—— 这是量级参考,不是报价。',
+            '玻璃件、软管、纸盒暂不标价:它们的成本曲线和 PET 完全不同,套用会报低,宁可留空。',
+            '自带包材也接:告诉我们口径与容量,我们核对适配性。',
+          ],
+        },
+        {
+          q: '同一个配方能换不同包材吗?',
+          a: '能,但要先做相容性验证 —— 料体会和包材发生反应,这不是理论风险。',
+          d: [
+            '常见问题:高油相配方让 PET 变形,酸性配方腐蚀金属泵头,精油溶胀密封圈。',
+            '验证做法:料体灌进目标包材,在高温与常温下放置观察,看外观、气味、pH 与包材本身有没有变化。',
+            '选品链路上标了每款包材适配哪些剂型,先按这个筛,再做验证,能省掉大部分试错。',
+          ],
+        },
+        {
+          q: '原料从哪来?能溯源吗?',
+          a: '20 余家合作山地种植基地,覆盖贵州毕节、新疆喀什、广东清远三大产区,一批一档可调档核验。',
+          d: [
+            '分级采收:按植物生长周期与活性成分峰值定采收时点,同一味原料分级入库。',
+            '农残台账:种植环境、施肥记录、采收批次、检测报告全链路建档。',
+            '亚马逊植物双源布局支撑巴西与南美市场的本土成分需求。',
+          ],
+        },
+        {
+          q: '每批料能给检测报告吗?',
+          a: '能。活性物含量、农残、重金属按批出具;种植环境与施肥记录在溯源台账里可调档。',
+          d: [
+            '告诉我们品类与目标市场,我们把对应市场要的那几份一起备齐,不用你逐份去要。',
+          ],
+        },
+      ],
+    },
+    {
+      g: '跨境与合作方式',
+      items: [
+        {
+          q: '跨境电商品牌该怎么找代工厂?',
+          a: '三件事按顺序来:先定市场,再选包材,最后定配方 —— 顺序反了要返工。',
+          d: [
+            '市场决定成分限制:FDA、CPNP、各国监管的禁用清单不一样,配方定完才发现不能用,前面全白做。',
+            '包材决定补货速度:现货款和开模款的补货周期差一个数量级,广告一起量就见分晓。',
+            '量级决定价格档:5,000 件和 50,000 件的单价能差三成以上。',
+            '常见坑:listing 写好了包材还在开模;首批不敢多下,补货周期跟不上广告节奏。',
+          ],
+        },
+        {
+          q: '只做其中一段可以吗?',
+          a: '可以。整线代工、只做配方、只做灌装、只供包材 —— 你把哪一段交出来,我们接哪一段。',
+          d: [
+            '常见的几种:你有配方我们代工生产;你有品牌我们从配方做到成品;你只缺包材我们供货。',
+            '各段的报价与周期分开算,不打包绑定。',
+          ],
+        },
+        {
+          q: '最小起订能压到多低?',
+          a: '选现货包材 + 常规剂型,首批 3,000 件可接。',
+          d: [
+            '再往下压不是不能谈,而是单价会失去意义 —— 摊到每支上的固定成本会超过料体本身。',
+            '测款阶段的建议是:少量多款,把不同配方各下最低批,用市场数据决定放大哪一支。',
+          ],
+        },
+        {
+          q: '怎么开始?第一步做什么?',
+          a: '把三件事告诉我们:品类、目标市场、首批量级。其余我们来问。',
+          d: [
+            '有这三件,我们就能判断走 OEM 还是 ODM、包材用现货还是开模、要备哪些合规文件。',
+            '不想写字就直接发编码:看中的包材编码、想对标的剂型,比一段描述有效得多。',
+            `联系方式:WhatsApp / WeChat(填表后我们联系你),或在${' '}联系页填表,我们两个工作日内书面回复。`,
+          ],
+        },
+      ],
+    },
+  ],
+  ctaTitle: '把需求发给我们',
+  ctaBody: '品类、目标市场、首批量级 —— 三句话就够,剩下的我们来问。',
+  ctaBtn: '发起询盘',
+  wa: '不想等邮件?直接 WhatsApp',
+} : {
+  eyebrow: 'FAQ',
+  title: 'The 20 questions buyers ask most',
+  lede: `Ordered by how often we are asked. Every entry answers in the first sentence;
+         the detail comes after. If you only read one line, that line is enough.`,
+  note: `Only checkable things on this page. Figures come from our own lines and stock.
+         Quotes are issued per enquiry — you will not find an invented price here.`,
+  groups: [
+    {
+      g: 'What you are actually buying',
+      items: [
+        {
+          q: 'What is the difference between OEM and ODM?',
+          a: 'OEM puts your brand on an existing factory formula. ODM means the factory reworks a formula to your brief.',
+          d: [
+            'OEM: you pick from 13,000+ formulas on file. Fastest route — samples in 3–7 days.',
+            'ODM: you have a specific brief; the formula is adjusted and re-validated for stability. 2–4 weeks.',
+            'OBM: the factory takes it from formula through to finished brand — for teams starting from zero.',
+            'Same line, same quality system. The only difference is how many steps you hand over.',
+          ],
+        },
+        {
+          q: 'What is the minimum order quantity?',
+          a: 'Typically 3,000–5,000 units for standard formats. Stock packaging goes lower; tooled packaging usually starts at 10,000.',
+          d: [
+            'A line changeover means a full clean-down, so very small runs cannot absorb the cost.',
+            'Packaging is a separate account: stock components have a low minimum, tooled ones must amortise the mould.',
+            `Our flexibility: 13,000+ formulas on file and ${CHAIN_COUNTS.packaging.toLocaleString('en-US')} stock packaging items. First runs from 3,000.`,
+          ],
+        },
+        {
+          q: 'How is contract manufacturing priced?',
+          a: 'Bulk + packaging + filling + testing + documentation + margin. Every line moves with your choices.',
+          d: [
+            'Bulk: driven by actives grade and concentration. Cosmetic grade and pharma grade differ several times over.',
+            'Packaging: on small sizes (30 ml) packaging can be half the total; on 200 ml+ the bulk takes over.',
+            'Testing: heavy metals, microbiology and stability are not optional.',
+            'Documentation: label review and regulatory work are priced per destination market.',
+            'Send specs, volume and destination market, and you get a line-by-line quote. A quote 30% under cost is making it back somewhere else.',
+          ],
+        },
+        {
+          q: 'How long do samples take?',
+          a: '3–7 days from an existing formula. 2–4 weeks if the formula has to be reworked.',
+          d: [
+            'The 3–7 days covers filling an on-file formula into your chosen packaging with your label — no R&D time.',
+            'A reworked formula waits on stability observation. That wait cannot be compressed.',
+            'Sample fees are normally credited against the production order.',
+          ],
+        },
+      ],
+    },
+    {
+      g: 'Certification and compliance',
+      items: [
+        {
+          q: 'Which certifications do you hold?',
+          a: 'GMPC, ISO 22716:2007, HALAL, FDA facility registration, EU CPNP and SGS. Numbers and validity are shared from the originals.',
+          d: [
+            'These are facility-level credentials, not product test reports — the two are not interchangeable.',
+            'Certificate numbers are not published: a buyer who genuinely verifies will ask for the original anyway.',
+          ],
+        },
+        {
+          q: 'What do I need to sell into the EU?',
+          a: 'CPNP notification, a CPSR safety assessment and an EU-based Responsible Person. All three are mandatory.',
+          d: [
+            'Screen the formula against EU restricted lists before it is locked — some China-compliant ingredients are not allowed.',
+            'We file EU CPNP notifications per product and screen formulas against the destination market up front.',
+          ],
+        },
+        {
+          q: 'How does HALAL work for the Middle East?',
+          a: 'We hold HALAL certification (2024); its scope is as stated on the certificate, and whether your target market accepts it is decided by that market’s authority. Goods are made in Guangzhou for export.',
+          d: [
+            'HALAL covers cross-contamination on the line, not only the ingredient list — which is why the plant\'s own certification matters.',
+          ],
+        },
+        {
+          q: 'What claims can we make?',
+          a: 'Destination-market regulation and third-party testing decide. Classical-formula research informs design; it is not a claim.',
+          d: [
+            'The same sentence is judged differently in different markets. Fix the market first, then the test plan.',
+          ],
+        },
+      ],
+    },
+    {
+      g: 'Capacity and the factory',
+      items: [
+        {
+          q: 'What is your production capacity?',
+          a: '500,000+ sheet masks and 300,000+ cream units per day, 15 automated lines, class-100,000 GMP cleanrooms.',
+          d: [
+            'Over 20,000 m² across Guangzhou and Indonesia, plus 10,000 m²+ of smart warehousing.',
+            'What matters is whether your order fits the peak-season schedule — that is locked at the brief stage.',
+          ],
+        },
+        {
+          q: 'Can we visit the factory?',
+          a: 'Yes — video walkthrough or in person. A factory that will not show you the line usually has a reason.',
+          d: [
+            'Look at the gowning flow, how batch records are filled in, and whether the retention cabinet has anything in it.',
+          ],
+        },
+        {
+          q: 'Which categories do you make?',
+          a: 'Skincare, colour cosmetics, oral care, baby skincare, body care and fragrance, plus licensed IP products.',
+          d: [
+            'Baby skincare is scheduled separately against a low-irritation standard.',
+          ],
+        },
+        {
+          q: 'What is your technical edge?',
+          a: 'Three things: herbal fermentation, cold flash extraction and biosynthesis.',
+          d: [
+            'Fermentation: rare ginsenoside activity raised 10–20×, pesticide residue degraded by over 90%.',
+            'Cold flash extraction: 0–10 °C, over 95% retention of heat-sensitive actives, 40% higher yield.',
+            'Biosynthesis: rhCOLL recombinant humanised collagen, developed with Jinan University.',
+          ],
+        },
+      ],
+    },
+    {
+      g: 'Packaging and formulas',
+      items: [
+        {
+          q: 'Can we choose our own packaging?',
+          a: `${CHAIN_COUNTS.packaging.toLocaleString('en-US')} items are filterable online. Every one has a code — send the code instead of a description.`,
+          d: [
+            'Filter by type, material, capacity and compatible format. Every item has a real product shot on white.',
+            'PET pump bottles and jars run about $0.20–0.32 per piece FOB Guangzhou at 10,000 — an order of magnitude, not a quotation.',
+            'Glass, tubes and cartons are deliberately unpriced: their cost curve is nothing like PET, so a PET-based figure would understate them.',
+            'We also fill into packaging you supply — send neck size and capacity and we check compatibility.',
+          ],
+        },
+        {
+          q: 'Can one formula go into different packaging?',
+          a: 'Yes, after compatibility testing. Bulk reacts with packaging — this is not a theoretical risk.',
+          d: [
+            'Common failures: high-oil formulas deforming PET, acidic formulas attacking metal pump springs, essential oils swelling gaskets.',
+            'Each packaging item lists the formats it fits — filter on that first, then test.',
+          ],
+        },
+        {
+          q: 'Where do your botanicals come from?',
+          a: 'Over 20 cooperating mountain plots across Bijie (Guizhou), Kashgar (Xinjiang) and Qingyuan (Guangdong), documented batch by batch.',
+          d: [
+            'Harvest timing is set against the actives peak, and each grade is warehoused separately.',
+            'Growing conditions, fertiliser records, harvest batch and test reports are all on file.',
+          ],
+        },
+        {
+          q: 'Do you provide test reports per batch?',
+          a: 'Yes — actives content, pesticide residue and heavy metals, issued per batch.',
+          d: [
+            'Tell us the category and destination market and we prepare the set that market asks for.',
+          ],
+        },
+      ],
+    },
+    {
+      g: 'Cross-border and ways of working',
+      items: [
+        {
+          q: 'How should a cross-border brand pick a manufacturer?',
+          a: 'In this order: market first, packaging second, formula last. Reverse it and you rework.',
+          d: [
+            'The market decides ingredient restrictions. Locking the formula first is how projects get scrapped.',
+            'Packaging decides restock speed — stock versus tooled differ by an order of magnitude.',
+            'Volume decides the price tier: 5,000 versus 50,000 units can differ by 30%+.',
+          ],
+        },
+        {
+          q: 'Can you handle only part of the process?',
+          a: 'Yes. Full line, formula only, filling only, or packaging supply — we take whichever part you hand over.',
+          d: [
+            'Each segment is quoted and scheduled separately; nothing is bundled.',
+          ],
+        },
+        {
+          q: 'How low can the minimum go?',
+          a: 'Stock packaging plus a standard format: first runs from 3,000 units.',
+          d: [
+            'Below that the unit price stops being meaningful — fixed cost per unit exceeds the bulk itself.',
+            'For testing, run several formulas at the minimum and let the market decide which one scales.',
+          ],
+        },
+        {
+          q: 'How do we start?',
+          a: 'Tell us three things: category, destination market, first-run volume. We will ask the rest.',
+          d: [
+            'With those three we can tell you OEM or ODM, stock or tooled packaging, and which documents you will need.',
+            'Or just send codes — the packaging code you like and the format you are benchmarking beats a paragraph.',
+            'WhatsApp / WeChat (we reach out after you submit the form), or use the contact form. Written reply within two business days.',
+          ],
+        },
+      ],
+    },
+  ],
+  ctaTitle: 'Send us the brief',
+  ctaBody: 'Category, destination market, first-run volume. Three lines is enough.',
+  ctaBtn: 'Send an enquiry',
+  wa: 'Rather not wait for email? WhatsApp us',
+};
+
+const flat = T.groups.flatMap((g) => g.items);
+/* FAQPage 的答案用「直答 + 要点」拼成一段。
+   只给 a 的话 AI 摘到的是一句口号;把 d 也拼进去,引用的才是能用的答案。 */
+const faqLd = faqJsonLd(flat.map((x) => ({ q: x.q, a: [x.a, ...x.d].join(' ') })));
+const crumbs = breadcrumbJsonLd(origin, lang, path, uiT(lang as any)('nav.home'), [
+  { label: T.eyebrow, href: path },
+]);
+const orgLd = orgJsonLd(origin, site?.name ?? 'BIOSPHERE', lang, T.lede);
+const jsonLd = [orgLd, faqLd, crumbs].filter(Boolean);
+
+const title = zh
+  ? '化妆品代工常见问题 —— 起订量、价格构成、认证、打样周期'
+  : 'Cosmetics contract manufacturing FAQ — MOQ, pricing, certification, lead times';
+const desc = zh
+  ? '采购最常问的 20 个问题:OEM 与 ODM 的区别、起订量、代工价格怎么算、认证、打样周期、包材选择、跨境合规。每条第一句就是答案。'
+  : 'The 20 questions buyers ask most: OEM vs ODM, minimum order quantity, how pricing works, certification, lead times, packaging and cross-border compliance.';
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={site?.variant ?? 'v1'}
+  brand={site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={title} description={desc}
+  siteName={site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={site?.is_live === 1} brandColor={site?.brand_color} theme={site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={site?.name ?? '帛卉'}
+              siteNameZh={site?.tagline ?? ''} nav={shell.nav} />
+
+  <main id="main">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+      <p class="note">{T.note}</p>
+    </header>
+
+    {T.groups.map((g, gi) => (
+      <section class="grp">
+        <h2><span class="gn">{String(gi + 1).padStart(2, '0')}</span>{g.g}</h2>
+        <div class="qs">
+          {g.items.map((x) => (
+            <article class="q">
+              <h3>{x.q}</h3>
+              <p class="a">{x.a}</p>
+              <ul>{x.d.map((line) => <li>{line}</li>)}</ul>
+            </article>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <section class="cta">
+      <h2>{T.ctaTitle}</h2>
+      <p>{T.ctaBody}</p>
+      <p class="btns">
+        <a class="btn" href={`${B}/contact/`}>{T.ctaBtn}</a>
+        <a class="wa" href="/zh-cn/contact/">{T.wa}</a>
+      </p>
+    </section>
+  </main>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <script type="application/ld+json" set:html={ldJson(jsonLd)} is:inline />
+</BaseLayout>
+
+<style>
+  main { max-width: 112.5rem; margin: 0 auto; padding: clamp(2rem, 5vw, 4.5rem) clamp(1rem, 4vw, 3rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }
+  .hd { max-width: 46rem; margin-bottom: clamp(2.5rem, 5vw, 4rem); }
+  .eyebrow { margin: 0 0 0.75rem; font-size: max(0.75rem, 14px); letter-spacing: 0.16em;
+             text-transform: uppercase; color: var(--ck-ink-faint); }
+  h1 { margin: 0 0 1rem; font-size: clamp(1.9rem, 4.2vw, 3rem); line-height: 1.15;
+       letter-spacing: -0.02em; text-wrap: balance; }
+  .lede { margin: 0 0 0.75rem; font-size: clamp(1rem, 1.6vw, 1.125rem); line-height: 1.7;
+          color: var(--ck-ink-soft); }
+  .note { margin: 0; font-size: 0.875rem; line-height: 1.7; color: var(--ck-ink-faint); }
+
+  .grp { margin-top: clamp(2.5rem, 5vw, 4rem); }
+  .grp > h2 { display: flex; align-items: baseline; gap: 0.75rem; margin: 0 0 1.5rem;
+              font-size: clamp(1.05rem, 2vw, 1.375rem); letter-spacing: -0.01em; }
+  .gn { font-family: var(--ck-font-mono); font-size: max(0.75rem, 14px); color: var(--ck-accent);
+        letter-spacing: 0.06em; }
+
+  .qs { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr)); }
+  .q { padding: clamp(1.125rem, 2vw, 1.5rem); border: var(--ck-border-w) solid var(--ck-line);
+       border-radius: var(--ck-radius); background: var(--ck-surface); }
+  .q h3 { margin: 0 0 0.625rem; font-size: 1rem; line-height: 1.4; letter-spacing: -0.01em; }
+  /* 直答单独一段、加重 —— 这一句就是 AI 会摘走的那一句,排版上也该最先被看到 */
+  .a { margin: 0 0 0.75rem; font-size: 0.9375rem; line-height: 1.65; font-weight: 500; color: var(--ck-ink); }
+  .q ul { margin: 0; padding-left: 1.05rem; display: grid; gap: 0.375rem; }
+  .q li { font-size: max(0.8125rem, 14px); line-height: 1.65; color: var(--ck-ink-soft); }
+
+  .cta { margin-top: clamp(2rem, 4vw, 3.5rem);  /* 09-17 「太多空余」 */ padding: clamp(1.75rem, 4vw, 3rem);
+         border-radius: var(--ck-radius); background: var(--ck-surface-alt);
+         border: var(--ck-border-w) solid var(--ck-line); }
+  .cta h2 { margin: 0 0 0.5rem; font-size: clamp(1.25rem, 2.4vw, 1.75rem); letter-spacing: -0.02em; }
+  .cta p { margin: 0; color: var(--ck-ink-soft); line-height: 1.7; }
+  .btns { margin-top: 1.25rem !important; display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+  .btn { display: inline-flex; padding: 0.6875rem 1.5rem; border-radius: 999px;
+         background: var(--ck-accent); color: #fff; text-decoration: none; font-weight: 600; font-size: 0.9375rem; }
+  .wa { font-size: 0.875rem; color: var(--ck-ink-soft); }
+</style>

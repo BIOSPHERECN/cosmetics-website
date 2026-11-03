@@ -1,0 +1,258 @@
+---
+/**
+ * AI 客服知识库管理 —— 客服答什么、用什么口径,运营在这里定。
+ * 检索无缓存层:这里存,客服下一句就用 —— 所以口径改动即刻生效,
+ * 也所以**这里写错,客服立刻开始错**,发布开关要用起来。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { rank, cites, oneLine, LAYER } from '../../lib/kb-cards';
+
+export const prerender = false;
+
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+/* 知识库现在装三类东西:客服口径、角色专家经验、成分卡与专题摘要。
+   条目一多,一屏全铺开就没法用了 —— 加类别筛选与来源标注(ref_type/ref_code),
+   一眼能看出这条是人写的还是从结构化表同步过来的。 */
+const url = new URL(Astro.request.url);
+const only = (url.searchParams.get('cat') ?? '').trim();
+const { results: allRows } = await c.db.prepare(
+  `SELECT id, category, title, content, keywords, is_published, sort_order, updated_at,
+          ref_type, ref_code
+     FROM kb_entries ORDER BY category, sort_order, id`,
+).all<any>();
+const rows = only ? (allRows ?? []).filter((r: any) => r.category === only) : (allRows ?? []);
+const cats = [...new Set((allRows ?? []).map((r: any) => r.category))];
+const catCount = (x: string) => (allRows ?? []).filter((r: any) => r.category === x).length;
+const REF: Record<string, string> = { expert: '角色专家', ingredient: '成分卡', report: '专题', formula: '配方', packaging: '包材', trend: '情报' };
+
+/* C4(2026-09-24)说服卡 / 方法卡:存在 playbooks(status 非空的那几十行),这里只做「客户问 X,该调哪张卡」和人审上下线。
+   读量:playbooks 全表几十行,每次打开一次;检索在内存里打分,不再查库。0124 还没灌时 status 列不存在,退回空列表。 */
+const ask = (url.searchParams.get('ask') ?? '').trim().slice(0, 200);
+const cards = (await c.db.prepare(
+  `SELECT slug, kind, title, tags, body, source, status, reviewed_by, reviewed_at FROM playbooks WHERE status IS NOT NULL ORDER BY sort, slug`,
+).all<any>().catch(() => ({ results: [] as any[] }))).results ?? [];
+const hits = ask ? rank(ask, cards) : [];
+const isAdmin = c.sess.role === 'admin';
+const n = (kind: string, st?: string) => cards.filter((x: any) => x.kind === kind && (!st || x.status === st)).length;
+const STATUS_TIP: Record<string, string> = { 在用: '已人审 · 可对外', 待审: '待人审 · 不可对外', 下线: '已下线 · 不可对外' };
+---
+
+<AdminShell title="知识库" active="kb" email={c.sess.email}>
+  <h1>知识库</h1>
+  <p class="lead">客户问到什么,先在这里找卡。卡上每个数字都带出处;<b>只有「已人审」的卡才能拿去对外说</b>。</p>
+
+  <ol class="layers" aria-label="知识库四层">
+    <li><b>① 事实层</b><span>公司库各表(目录、法规、成分、市场产品)· 卡上数字只从这里来</span></li>
+    <li><b>② 方法层</b><span>方法卡 {n('方法卡')} 张 · 已人审 {n('方法卡', '在用')}</span></li>
+    <li><b>③ 经验层</b><span>判断记录簿 · 只追加 · 建表待拍板</span></li>
+    <li><b>④ 对外层</b><span>说服卡 {n('知识卡片')} 张 · 已人审 {n('知识卡片', '在用')} · 待审 {n('知识卡片', '待审')}</span></li>
+  </ol>
+  <p class="dim"><a href="/bohui/playbook/?s=kb-arch-v1">看完整四层架构</a> · <a href="/bohui/playbook/?s=kb-cards-guide-v1">用卡前 30 秒须知</a> · <a href="/bohui/playbook/?s=kb-usage-v1">说服客户用法</a></p>
+
+  <form class="finder" method="get">
+    <label for="ask">客户问了什么?照原话输入</label>
+    <div class="row">
+      <input id="ask" name="ask" value={ask} placeholder="如:这个成分在欧盟能用吗 / 起订量多少 / 别家更便宜" autocomplete="off" />
+      <button class="btn pri" type="submit">找卡</button>
+      {ask && <a class="btn" href="/bohui/kb/">清空</a>}
+    </div>
+  </form>
+
+  {ask && hits.length === 0 && (
+    <p class="miss">没有对上的卡。先回客户「我们确认后给您书面答复」,再把客户原话、市场、日期记下来交给主管 —— 同一个问题被问过 3 次,就要补一张卡。</p>
+  )}
+  {cards.length === 0 && <p class="miss">卡片还没导入(迁移 0124 + tools/knowledge/kb-cards-import.py)。</p>}
+
+  <div class="cards">
+    {(ask ? hits : cards.filter((x: any) => x.kind === '知识卡片')).map((x: any) => (
+      <article class="card" data-slug={x.slug}>
+        <header>
+          <span class:list={['pill', x.status === '在用' ? 'p-ok' : 'p-wait']}>{STATUS_TIP[x.status] ?? x.status}</span>
+          <b>{x.title}</b>
+          <span class="reftag">{LAYER[x.kind] ?? x.kind}</span>
+        </header>
+        {oneLine(x.body) && <p class="say">{oneLine(x.body)}</p>}
+        <div class="src">
+          <span>出处</span>
+          <ul>
+            <li>{x.source}</li>
+            {cites(x.body).map((l) => <li>{l}</li>)}
+          </ul>
+        </div>
+        <footer>
+          {x.reviewed_by && x.status === '在用' && <span class="dim">人审:{x.reviewed_by} · {String(x.reviewed_at ?? '').slice(0, 16)}</span>}
+          <a class="btn" href={`/bohui/playbook/?s=${x.slug}`}>看全文</a>
+          <a class="btn" href={`/bohui/playbook/?s=${x.slug}&edit=1`}>编辑</a>
+          {x.status !== '在用' && (isAdmin
+            ? <button class="btn pri" type="button" data-review="在用">人审通过并上线</button>
+            : <span class="dim">等管理员人审</span>)}
+          {x.status !== '下线' && <button class="btn" type="button" data-review="下线">下线</button>}
+        </footer>
+      </article>
+    ))}
+  </div>
+
+  {!ask && n('方法卡') > 0 && (
+    <details class="methods">
+      <summary>② 方法卡 {n('方法卡')} 张(判断方法,内部用)</summary>
+      <div class="mlist">
+        {cards.filter((x: any) => x.kind === '方法卡').map((x: any) => (
+          <div class="m" data-slug={x.slug}>
+            <span class:list={['pill', x.status === '在用' ? 'p-ok' : 'p-wait']}>{x.status}</span>
+            <a href={`/bohui/playbook/?s=${x.slug}`}>{x.title}</a>
+            {x.status !== '在用' && isAdmin && <button class="btn" type="button" data-review="在用">人审上线</button>}
+            {x.status !== '下线' && <button class="btn" type="button" data-review="下线">下线</button>}
+          </div>
+        ))}
+      </div>
+    </details>
+  )}
+
+  <h2 class="sec">AI 客服口径</h2>
+  <p class="lead">共 {rows?.length ?? 0} 条 · {cats.length} 类。客服按关键词检索 Top5 作答;条目改完即刻生效。下线开关比删除稳妥 —— 口径拿不准先下线。</p>
+
+  <nav class="cattabs">
+    <a class={only ? '' : 'on'} href="/bohui/kb/">全部 <span>{allRows?.length ?? 0}</span></a>
+    {cats.map((x) => (
+      <a class={only === x ? 'on' : ''} href={`/bohui/kb/?cat=${encodeURIComponent(x)}`}>{x} <span>{catCount(x)}</span></a>
+    ))}
+  </nav>
+
+  <details class="new">
+    <summary class="btn pri">+ 新增条目</summary>
+    <form class="kbform" data-id="">
+      <div class="row">
+        <input name="category" list="cats" placeholder="分类(如:打样与起订)" required />
+        <datalist id="cats">{cats.map((x) => <option value={x} />)}</datalist>
+        <input name="sort_order" type="number" value="100" style="width:6rem" title="排序" />
+      </div>
+      <input name="title" placeholder="标题(客户会怎么问)" required />
+      <input name="keywords" placeholder="检索关键词,逗号分隔(中英都放:起订,MOQ,最小订量)" />
+      <textarea name="content" rows="4" placeholder="口径正文。公司数字只写站内已发布的;拿不准的写「以书面确认为准」。" required></textarea>
+      <button class="btn pri" type="submit">保存</button>
+    </form>
+  </details>
+
+  {cats.map((cat) => (
+    <section class="grp">
+      <h2>{cat}</h2>
+      {(rows ?? []).filter((r: any) => r.category === cat).map((r: any) => (
+        <details class="kb" data-id={r.id}>
+          <summary>
+            <span class:list={['pill', r.is_published ? 'p-ok' : 'p-wait']}>{r.is_published ? '在用' : '已下线'}</span>
+            <b>{r.title}{r.ref_type ? <span class="reftag">{REF[r.ref_type] ?? r.ref_type}</span> : null}</b>
+            <span class="kw">{r.keywords}</span>
+            <time>{(r.updated_at ?? '').slice(5, 16)}</time>
+          </summary>
+          <form class="kbform" data-id={r.id}>
+            <div class="row">
+              <input name="category" value={r.category} required />
+              <input name="sort_order" type="number" value={r.sort_order} style="width:6rem" />
+            </div>
+            <input name="title" value={r.title} required />
+            <input name="keywords" value={r.keywords} />
+            <textarea name="content" rows="4" required>{r.content}</textarea>
+            <div class="ops">
+              <button class="btn pri" type="submit">保存修改</button>
+              <button class="btn" type="button" data-pub={r.is_published ? 0 : 1}>{r.is_published ? '下线' : '上线'}</button>
+              <button class="btn" type="button" data-del>删除</button>
+            </div>
+          </form>
+        </details>
+      ))}
+    </section>
+  ))}
+
+  <div id="toast" class="toast" hidden></div>
+
+  <style>
+    .cattabs { display: flex; flex-wrap: wrap; gap: .375rem; margin: 0 0 1rem; }
+    .cattabs a { font-size: .8125rem; text-decoration: none; color: var(--ad-ink, #312052);
+                 border: 1px solid var(--ad-line, rgb(0 0 0/.1)); border-radius: 980px;
+                 padding: .3125rem .75rem; background: var(--ad-side, #fff); }
+    .cattabs a.on { background: var(--ad-accent, #7C4DA8); color: #fff; border-color: transparent; }
+    .cattabs a span { opacity: .6; font-variant-numeric: tabular-nums; }
+    .reftag { margin-left: .5rem; font-size: .75rem; padding: .0625rem .4375rem; border-radius: 980px;
+              background: var(--ad-ground, #F5F5F7); color: var(--ad-ink-soft, #6b6480); }
+    .lead { margin-bottom: 1.25rem; }
+    .new { margin-bottom: 1.5rem; }
+    .new > summary { display: inline-block; cursor: pointer; list-style: none; }
+    .new > summary::-webkit-details-marker { display: none; }
+    .grp h2 { font-size: 0.9375rem; margin: 1.5rem 0 0.625rem; }
+    .kb { background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: 8px; margin-bottom: 0.5rem; }
+    .kb > summary { padding: 0.625rem 0.875rem; cursor: pointer; display: flex; gap: 0.625rem;
+                    align-items: center; list-style: none; font-size: 0.875rem; flex-wrap: wrap; }
+    .kb > summary::-webkit-details-marker { display: none; }
+    .kb[open] > summary { border-bottom: 1px solid var(--ad-line); }
+    .kw { color: var(--ad-faint); font-size: max(0.6875rem, 14px); font-family: ui-monospace, monospace; }
+    .kb time { margin-left: auto; color: var(--ad-faint); font-size: max(0.6875rem, 14px); }
+    .kbform { padding: 0.875rem; display: grid; gap: 0.5rem; }
+    .kbform input, .kbform textarea { font: inherit; font-size: max(0.8125rem, 14px); padding: 0.4375rem 0.5625rem;
+      border: 1px solid var(--ad-line); border-radius: 6px; width: 100%; }
+    .kbform textarea { resize: vertical; line-height: 1.6; }
+    .row { display: flex; gap: 0.5rem; }
+    .row input:first-child { flex: 1; }
+    .ops { display: flex; gap: 0.5rem; }
+    .toast { position: fixed; right: 1.25rem; bottom: 1.25rem; background: #10131a; color: #fff;
+             padding: 0.625rem 1rem; border-radius: 7px; font-size: max(0.8125rem, 14px); z-index: 9; }
+    [hidden] { display: none !important; }
+    .layers { list-style: none; padding: 0; margin: 0 0 .5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .5rem; }
+    .layers li { background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: 8px; padding: .625rem .75rem; display: grid; gap: .25rem; }
+    .layers b { font-size: .875rem; } .layers span { font-size: .8125rem; color: var(--ad-faint); line-height: 1.5; }
+    .dim { color: var(--ad-faint); font-size: .8125rem; }
+    .finder { margin: 1rem 0; display: grid; gap: .375rem; } .finder label { font-size: .875rem; font-weight: 600; }
+    .finder .row input { font: inherit; font-size: 1rem; padding: .625rem .875rem; border: 1px solid var(--ad-line); border-radius: 8px; }
+    .miss { background: #fef9c3; color: #854d0e; padding: .625rem .875rem; border-radius: 8px; font-size: .875rem; line-height: 1.6; }
+    .cards { display: grid; gap: .625rem; margin-bottom: 1rem; }
+    .card { background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: 9px; padding: .875rem 1rem; display: grid; gap: .5rem; }
+    .card header { display: flex; gap: .625rem; align-items: center; flex-wrap: wrap; font-size: .9375rem; }
+    .say { margin: 0; font-size: .9375rem; line-height: 1.7; }
+    .src { display: flex; gap: .5rem; font-size: .8125rem; color: var(--ad-soft, #555); }
+    .src > span { flex: none; font-weight: 600; } .src ul { margin: 0; padding-left: 1rem; display: grid; gap: .125rem; overflow-wrap: anywhere; }
+    .card footer, .m { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+    .methods { margin-bottom: 1.5rem; } .methods > summary { cursor: pointer; font-size: .875rem; font-weight: 600; padding: .375rem 0; }
+    .mlist { display: grid; gap: .375rem; margin-top: .5rem; } .m { font-size: .875rem; }
+    .sec { font-size: 1.125rem; margin: 1.75rem 0 .5rem; }
+  </style>
+
+  <script is:inline>
+    const t = document.getElementById('toast');
+    const flash = (m, reload = true) => { t.textContent = m; t.hidden = false; if (reload) setTimeout(() => location.reload(), 450); };
+    const call = (method, body) => fetch('/api/admin/kb', {
+      method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    }).then((r) => r.json());
+
+    document.querySelectorAll('[data-review]').forEach((b) => b.addEventListener('click', async () => {
+      const to = b.dataset.review;
+      if (to === '在用' && !confirm('确认已逐条核过这张卡的数字和出处,同意对外使用?')) return;
+      const d = await fetch('/api/admin/playbook', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ op: 'review', slug: b.closest('[data-slug]').dataset.slug, to }) }).then((r) => r.json()).catch(() => ({}));
+      flash(d.ok ? (to === '在用' ? '已上线' : '已下线') : (d.msg || '失败'), d.ok);
+    }));
+    document.querySelectorAll('form.kbform').forEach((f) => {
+      f.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fd = new FormData(f);
+        const d = await call('POST', {
+          id: f.dataset.id ? +f.dataset.id : undefined,
+          category: fd.get('category'), title: fd.get('title'),
+          content: fd.get('content'), keywords: fd.get('keywords'),
+          sort_order: +fd.get('sort_order') || 100,
+        });
+        flash(d.ok ? '已保存' : (d.msg || '保存失败'), d.ok);
+      });
+      f.querySelector('[data-pub]')?.addEventListener('click', async (e) => {
+        const d = await call('PATCH', { id: +f.dataset.id, is_published: +e.target.dataset.pub });
+        flash(d.ok ? '已更新' : '失败', d.ok);
+      });
+      f.querySelector('[data-del]')?.addEventListener('click', async () => {
+        if (!confirm('删除后客服将不再引用这条,确定?')) return;
+        const d = await call('DELETE', { id: +f.dataset.id });
+        flash(d.ok ? '已删除' : '失败', d.ok);
+      });
+    });
+  </script>
+</AdminShell>

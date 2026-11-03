@@ -1,0 +1,138 @@
+diff --git a/gate.sh.bak-0924-zero b/gate.sh.bak-0924-zero
+deleted file mode 100644
+index 0419ef0..0000000
+--- a/gate.sh.bak-0924-zero
++++ /dev/null
+@@ -1,132 +0,0 @@
+-# 上线闸门 v1 · 两站共用的四道检查(由各站 ship.sh source,不单独执行)
+-# 调用方先设好:REPO SITE WORKER BASELINE SCOPE(数组) 和函数 deploy(把 wrangler 输出打到 stdout)。
+-# 参数:--dry-run            只跑四道检查,不部署、不更新上线快照
+-#       --reviewed=<报告路径>  第四道要求审核时,审完带上报告重跑
+-#       --note=<说明>          本次改动说明(可带【降读】);不给就读 HEAD 提交说明
+-#       --base=<提交>          改动对比基准;默认 refs/ship/last(上次过闸上线的快照),没有就 HEAD
+-#       --baseline=<提交>      Semgrep 历史违例基线;默认各站 ship.sh 里的 BASELINE(自测时用快照隔离样例)
+-set -u
+-DRY=0; REVIEWED=""; NOTE=""; BASE=""
+-for a in "$@"; do case "$a" in
+-  --dry-run) DRY=1;; --reviewed=*) REVIEWED="${a#*=}";; --note=*) NOTE="${a#*=}";; --base=*) BASE="${a#*=}";; --baseline=*) BASELINE="${a#*=}";;
+-  *) echo "未知参数:$a"; exit 64;; esac; done
+-# 09-24 验收:--base/--baseline 只给自测用;真部署时带上就能把新违例算成历史、把大改动缩成小改动,直接拒绝
+-[ $DRY = 0 ] && [[ " $* " == *" --base"* ]] && { echo "--base/--baseline 只能和 --dry-run 一起用"; exit 64; }
+-
+-TR=F:/0cosmetic/tools-review
+-SG=F:/0cosmetic/_venv/review/Scripts/semgrep.exe
+-LPY=F:/0cosmetic/_venv/review/Scripts/python.exe
+-LOG=F:/0cosmetic/助手交付/上线闸门日志.md
+-OUT=$TR/_out; mkdir -p "$OUT"
+-export GIT_CONFIG_PARAMETERS="'core.safecrlf=false'" PYTHONUTF8=1 PYTHONIOENCODING=utf-8 SEMGREP_ENABLE_VERSION_CHECK=0 SEMGREP_SEND_METRICS=off
+-cd "$REPO" || exit 1
+-T0=$(date +%s); NOW=$(date '+%F %T')
+-PS=("${SCOPE[@]}" ':!*.bak*' ':!**/dist*/**')
+-
+-# ---- 这次改动 = 基准 → 当前工作区(含未跟踪文件;用临时索引,不碰创始人的暂存区)
+-[ -z "$BASE" ] && BASE=$(git rev-parse -q --verify refs/ship/last || git rev-parse HEAD)
+-IDX="$OUT/idx.$$"; cp "$(git rev-parse --git-dir)/index" "$IDX"
+-GIT_INDEX_FILE="$IDX" git add -A -- "${PS[@]}" 2>/dev/null
+-TREE=$(GIT_INDEX_FILE="$IDX" git write-tree); rm -f "$IDX"
+-DIFF_TXT=$(git -c core.quotepath=off diff "$BASE" "$TREE" -- "${PS[@]}")
+-HASH=$(printf '%s' "$DIFF_TXT" | sha1sum | cut -c1-10)
+-DIFF_FILE="$OUT/${WORKER}-${HASH}.diff"
+-[ -f "$DIFF_FILE" ] || printf '%s\n' "$DIFF_TXT" > "$DIFF_FILE"      # 同一改动同一文件,mtime 不变(第四道靠它)
+-STAT=$(git -c core.quotepath=off diff --stat=200 "$BASE" "$TREE" -- "${PS[@]}")
+-LINES=$(git diff --numstat "$BASE" "$TREE" -- "${PS[@]}" | awk '$1!="-"{s+=$1+$2} END{print s+0}')
+-FILES=$(git -c core.quotepath=off diff --name-only "$BASE" "$TREE" -- "${PS[@]}")
+-[ -z "$NOTE" ] && NOTE=$(git log -1 --format=%B)
+-echo "== $SITE($WORKER)上线闸门 · 基准 ${BASE:0:8} · 改动 $LINES 行 · diff $DIFF_FILE"
+-[ -z "$DIFF_TXT" ] && echo "(基准到现在没有改动)"
+-
+-FAIL=0; R1=""; R2=""; R3=""; R4=""
+-stop() { FAIL=1; [ $DRY = 1 ] || finish "拦截"; }
+-
+-finish() {  # $1 = 结果
+-  local sec=$(( $(date +%s)-T0 ))
+-  { echo; echo "## $NOW · $SITE $WORKER · $1"
+-    echo "- 版本: ${VER:--}"
+-    echo "- 改动: 基准 ${BASE:0:10} → 树 ${TREE:0:10} · $LINES 行 · diff \`$DIFF_FILE\`"
+-    echo "- 摘要: $(printf '%s' "$STAT" | tail -1 | sed 's/^ *//') · 说明: $(printf '%s' "$NOTE" | head -1 | cut -c1-80 | iconv -c -f UTF-8 -t UTF-8 2>/dev/null)"
+-    echo "- ① Semgrep: ${R1:-未跑}"; echo "- ② 费用: ${R2:-未跑}"; echo "- ③ Laya: ${R3:-未跑}"; echo "- ④ 审核: ${R4:-未跑}"
+-    echo "- 耗时: ${sec}s"; } >> "$LOG"
+-  echo "== 结果:$1(${sec}s)已记入 $LOG"
+-  [ "$1" = "已部署" ] || [ "$1" = "dry-run 通过" ] && exit 0 || exit 1
+-}
+-
+-# ---- ① Semgrep:新增违例(baseline)直接失败;历史只数数量
+-echo "-- ① Semgrep(约 3 分钟)"
+-sgcount() { python -c "import json,sys;d=json.JSONDecoder().raw_decode(open(sys.argv[1],encoding='utf-8').read().lstrip())[0];print(len(d['results']));[print('   ',r['check_id'].split('.')[-1],r['path'],r['start']['line'],file=sys.stderr) for r in d['results'][:20]]" "$1"; }
+-SGX=(--config "$TR/rules.yml" --metrics=off --json -q --exclude='dist*' --exclude=node_modules --exclude='*.bak*')
+-TGT=(); for p in apps packages; do [ -d "$p" ] && TGT+=("$p"); done
+-# 基线模式只扫「基线以来改过的文件」。Windows 上给目录当目标时 semgrep 匹配不到改动文件(扫 0 个),
+-# 所以这里显式列文件;未跟踪的新文件也列上(semgrep 默认只看 git ls-files,会漏掉新页面)。
+-mapfile -t CHG < <( { git -c core.quotepath=off diff --name-only "$BASELINE" -- "${TGT[@]}"; git -c core.quotepath=off ls-files -o --exclude-standard -- "${TGT[@]}"; }   | grep -vE '\.bak|(^|/)dist[^/]*/' | sort -u | while IFS= read -r f; do
+-      # 未跟踪文件 semgrep 一律当新增;内容和基线里同名文件一样的就不列,免得把老文件算成新违例
+-      [ -f "$f" ] && [ "$(git hash-object "$f")" != "$(git rev-parse -q --verify "$BASELINE:$f")" ] && echo "$f"; done)
+-if [ ${#CHG[@]} = 0 ]; then echo '{"results":[]}' > "$OUT/${WORKER}_sg_new.json"
+-else "$SG" scan "${SGX[@]}" --baseline-commit "$BASELINE" "${CHG[@]}" > "$OUT/${WORKER}_sg_new.json" 2> "$OUT/${WORKER}_sg_new.err"; fi
+-NEW=$(sgcount "$OUT/${WORKER}_sg_new.json")            # 新增违例明细打到屏幕
+-"$SG" scan "${SGX[@]}" "${TGT[@]}" > "$OUT/${WORKER}_sg_all.json" 2> "$OUT/${WORKER}_sg_all.err"
+-ALL=$(sgcount "$OUT/${WORKER}_sg_all.json" 2>/dev/null)
+-if ! [[ "$NEW" =~ ^[0-9]+$ && "$ALL" =~ ^[0-9]+$ ]]; then R1="Semgrep 出错(见 $OUT/${WORKER}_sg_*.err)→ 拦截"; echo "   $R1"; stop
+-elif [ "$NEW" -gt 0 ]; then R1="新增 $NEW / 历史 $((ALL>NEW ? ALL-NEW : 0))(基线 ${BASELINE:0:8})→ 拦截"; echo "   $R1"; stop
+-else R1="新增 0 / 历史 $ALL(基线 ${BASELINE:0:8})→ 通过"; echo "   $R1"; fi
+-# 09-24 行内豁免必须写成「// nosemgrep: <规则id>[, <规则id>] 理由」(命中行行尾或上一行)。
+-# 光秃秃的 nosemgrep 会放过该行全部规则,缺理由的事后没人看得懂 → 本次新增行里出现就拦
+-BADNS=$(printf '%s\n' "$DIFF_TXT" | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -iE 'nosem' \
+-        | grep -vE 'nosemgrep:[[:space:]]*[A-Za-z0-9_.-]+([[:space:]]*,[[:space:]]*[A-Za-z0-9_.-]+)*[[:space:]]+[^[:space:]]' | head -3)
+-if [ -n "$BADNS" ]; then
+-  R1="$R1;行内 nosemgrep 缺规则 id 或理由 → 拦截"; echo "   行内 nosemgrep 必须写成「nosemgrep: <规则id> 理由」:"
+-  printf '%s\n' "$BADNS" | cut -c1-140 | sed 's/^/     /'; stop
+-fi
+-
+-# ---- ② 费用:红灯只放【降读】/【安全】且 Semgrep 无新增(判断在 d1_budget.py --check-deploy,放行时它记 override 日志)
+-# 09-24:原来错调了 --check(批处理闸),红灯时连带说明的部署也拦、也不记日志
+-echo "-- ② 费用"
+-BUD=$(python F:/0cosmetic/bohui-automation/local/d1_budget.py --check-deploy --note "$NOTE" --semgrep-new "$NEW" 2>&1); BC=$?
+-BUDL=$(echo "$BUD" | tail -1 | sed 's/^ *//' | cut -c1-90 | iconv -c -f UTF-8 -t UTF-8 2>/dev/null)
+-if [ $BC = 0 ]; then R2="$BUDL → 通过"
+-else R2="红灯/未知(exit $BC:$BUDL)→ 拦截"; fi
+-echo "   $R2"; [[ "$R2" == *拦截 ]] && stop
+-
+-# ---- ③ Laya 离线判断(约 2 分钟)
+-echo "-- ③ Laya(约 2 分钟)"
+-LJ=$( { echo "Site: $SITE ($WORKER). Note: $(printf '%s' "$NOTE" | head -3)"; echo "diff --stat:"; printf '%s\n' "$STAT" | tail -40
+-        echo "changed lines:"; printf '%s\n' "$DIFF_TXT" | grep -E '^[+-]' | grep -vE '^(\+\+\+|---) ' | head -80; } \
+-      | HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 "$LPY" "$TR/laya_judge.py" 2> "$OUT/${WORKER}_laya.err"); LC=$?
+-R3="$(printf '%s' "$LJ" | tail -1)"
+-if [ $LC = 0 ]; then R3="$R3 → 通过"; elif [ $LC = 3 ]; then R3="$R3 → 拦截"; else R3="Laya 出错(exit $LC,见 $OUT/${WORKER}_laya.err)→ 拦截"; fi
+-echo "   $R3"; [[ "$R3" == *拦截 ]] && stop
+-
+-# ---- ④ 审核小弟:大改动或敏感文件,要主线派 code-reviewer + security-review 审完带报告重跑
+-echo "-- ④ 审核"
+-SENS=$(printf '%s\n' "$FILES" | grep -iE 'middleware\.ts|/lib/db\.ts|auth|guard|session|login|member/|mail|outreach|send|smtp|resend|wrangler|astro\.config|deploy|mkconfig|ship\.sh|package\.json' | head -10)
+-if [ "$LINES" -le 80 ] && [ -z "$SENS" ]; then R4="$LINES 行、无敏感文件 → 不需要"
+-elif [ -n "$REVIEWED" ] && [ -s "$REVIEWED" ] && [ ! "$REVIEWED" -ot "$DIFF_FILE" ]; then R4="需要,已审:$REVIEWED → 通过"
+-else
+-  R4="需要($LINES 行$([ -n "$SENS" ] && echo ";敏感:$(echo $SENS | tr ' ' ',')"))→ 待审"
+-  cat <<EOF
+-   ====== 请派审核员 ======
+-   改动 $LINES 行$([ -n "$SENS" ] && printf ',涉及敏感文件:\n     %s' "$(echo "$SENS" | sed 's/^/     /' | sed '1s/^ *//')")
+-   diff 文件:$DIFF_FILE
+-   请主线派 code-reviewer 和 security-review 审这份 diff,报告写成一个文件(须晚于 diff 文件生成),然后:
+-     bash $0 --reviewed=<报告路径> $([ $DRY = 1 ] && echo --dry-run)
+-   ========================
+-EOF
+-  stop
+-fi
+-echo "   $R4"
+-
+-# ---- ⑤ 部署
+-[ $FAIL = 1 ] && finish "dry-run 拦截"
+-[ $DRY = 1 ] && finish "dry-run 通过"
+-echo "-- ⑤ 部署"
+-deploy 2>&1 | tee "$OUT/${WORKER}_deploy.log"; DC=${PIPESTATUS[0]}
+-VER=$(grep -aoE 'Version ID: *[0-9a-f-]{36}' "$OUT/${WORKER}_deploy.log" | tail -1 | grep -oE '[0-9a-f-]{36}')
+-if [ $DC != 0 ] || [ -z "$VER" ]; then VER="(失败 exit $DC)"; finish "部署失败"; fi
+-# 上线快照:部署后再取一次工作区树(平台 deploy.sh 会改 CACHE_V),下次只看这之后的改动
+-IDX="$OUT/idx.$$"; cp "$(git rev-parse --git-dir)/index" "$IDX"; GIT_INDEX_FILE="$IDX" git add -A -- "${PS[@]}" 2>/dev/null
+-T2=$(GIT_INDEX_FILE="$IDX" git write-tree); rm -f "$IDX"
+-git update-ref refs/ship/last "$(git commit-tree "$T2" -p HEAD -m "ship $WORKER $VER $NOW")"
+-finish "已部署"

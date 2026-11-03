@@ -15,6 +15,12 @@ packages:
 # 只放行确实需要的三个,其余依赖的脚本一律仍拦。
 # workerd 是 wrangler 的运行时,不放行则 wrangler 装不全(CI 部署步骤会挂)。
 allowBuilds:
+  '@google/genai': set this to true or false
   esbuild: true
+  onnxruntime-node: set this to true or false
+  protobufjs: set this to true or false
   sharp: true
   workerd: true
+
+minimumReleaseAgeExclude:
+  - hyperframes@0.8.31

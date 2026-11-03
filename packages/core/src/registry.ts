@@ -61,7 +61,8 @@ export const SITES: SiteDef[] = [
   {
     id: 'beauty2oem',
     name: 'BEAUTY2OEM',
-    nameZh: '全球美妆智能制造平台',
+    /* 09-23 A7:定位改为帛卉面向国内跨境卖家的产品机会预判与共创(助手交付/beauty2oem/架构v1),页脚读这一行 */
+    nameZh: '帛卉 · 跨境产品机会预判',
     domain: 'beauty2oem.com',
     url: 'https://beauty2oem.com',
     defaultVariant: 'v1',

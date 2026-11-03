@@ -1,0 +1,56 @@
+---
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/** 爆款监控日报 · 列表:一天一期,按区域 / 平台分节;与爆款库(逐条筛)并列,创始人 2026-09-11:「报告的方式也需要有」。 */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../../lib/shell';
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn'; const zh = lang.startsWith('zh');
+const db = (env as any).DB as D1Database | undefined; const tSkip = uiT(lang as any)('a11y.skip');
+let reps: any[] = []; let heads: Record<string, string[]> = {};
+if (db) {
+  try {
+    reps = ((await db.prepare('SELECT date, title, sections, bytes FROM trend_reports ORDER BY date DESC').all<any>()).results ?? []) as any[];
+    const hs = ((await db.prepare('SELECT date, heading FROM trend_report_sections WHERE level = 3 ORDER BY date DESC, ord').all<any>()).results ?? []) as any[];
+    for (const h of hs) (heads[h.date] ??= []).push(String(h.heading).replace(/^[\d一二三四五六七八九十、.\s]+/, '').slice(0, 24));
+  } catch { reps = []; }
+}
+/* 按周归组(周一起算):周是「期」,日是「条」。创始人 2026-09-11:「监控不用分周报日报,合并到一块,文字区分就好」 */
+const weekOf = (d: string) => { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); const mon = t.toISOString().slice(0, 10); const su = new Date(t); su.setUTCDate(t.getUTCDate() + 6); return { mon, sun: su.toISOString().slice(0, 10) }; };
+const weeks = new Map<string, { mon: string; sun: string; days: any[]; heads: Set<string> }>();
+for (const r of reps) { const w = weekOf(r.date); if (!weeks.has(w.mon)) weeks.set(w.mon, { ...w, days: [], heads: new Set() }); const W = weeks.get(w.mon)!; W.days.push(r); for (const h of heads[r.date] ?? []) W.heads.add(h); }
+const list = [...weeks.values()];
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const B = `/${lang}`; const path = `${B}/trends/reports/`; const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const T = zh ? { eyebrow: '市场 · 获客', title: `爆款监控报告 · ${list.length} 周 · ${reps.length} 天`, lede: '按周归组,一天一份报告:每份按区域(东南亚 / 欧美 / 南美)与平台(Amazon、TikTok Shop、Shopee、Lazada、Qoo10)分节,榜单变化、要点洞察、跨平台对比。逐条筛选用爆款库,看结论看报告。采集自 2026-08-12 起,之前的周没有数据源,不补造。', lib: '爆款库(逐条筛)', open: '看当日报告', secs: '节', empty: '报告整理中。', week: '周报', day: '日报', days: '天', cover: '本周覆盖' }
+             : { eyebrow: 'Market · buyers', title: `Bestseller monitor · ${list.length} weeks · ${reps.length} days`, lede: 'Grouped by week, one report per day: each split by region (Southeast Asia, EU/US, South America) and platform (Amazon, TikTok Shop, Shopee, Lazada, Qoo10) with chart moves, takeaways and cross-platform comparison. Filter items in the library; read conclusions here. Collection started 2026-08-12; earlier weeks are not fabricated.', lib: 'Bestseller library', open: 'Open daily report', secs: 'sections', empty: 'Being compiled.', week: 'Week', day: 'Daily', days: 'days', cover: 'Covered this week' };
+---
+<BaseLayout locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.lede} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path} indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <header class="hd"><p class="eyebrow">{T.eyebrow}</p><h1>{T.title}</h1><p class="lede">{T.lede} <a href={`${B}/trends/`}>{T.lib} →</a></p></header>
+    {reps.length === 0 && <p class="lede">{T.empty}</p>}
+    <ol class="weeks">{list.map((w, i) => (<li class="wk">
+      <h2><span class="tag">{T.week}</span> {zh ? `第 ${list.length - i} 周` : `Week ${list.length - i}`} <span class="rng">{w.mon} → {w.sun} · {w.days.length} {T.days}</span></h2>
+      {w.heads.size > 0 && <p class="cov">{T.cover}:{[...w.heads].slice(0, 12).join(' · ')}</p>}
+      <ul class="days">{w.days.map((d) => (<li><a href={`${B}/trends/report/${d.date}/`}><span class="tag d">{T.day}</span><time>{d.date}</time> {String(d.title).replace(/^(跨境美妆)?爆款(化妆品)?监控日报\s*/, '')} <small>{d.sections} {T.secs} · {T.open} →</small></a></li>))}</ul>
+    </li>))}</ol>
+  </main>
+  <SiteFooter locale={lang} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+<style>
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .hd { display: grid; gap: .75rem; margin-bottom: 1.5rem; max-width: 62rem; } .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: clamp(1.625rem, 3vw, 2.25rem); line-height: 1.24; margin: 0; } .lede { font-size: 1rem; line-height: 1.75; opacity: .85; margin: 0; } .lede a { margin-left: .5rem; }
+  .weeks { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; }
+  .wk { padding: 1rem 1.25rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; } .wk h2 { font-size: 1.125rem; margin: 0 0 .375rem; display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; } .rng { font-weight: 400; font-size: .875rem; opacity: .65; font-variant-numeric: tabular-nums; }
+  .tag { font-size: .6875rem; letter-spacing: .08em; padding: .125rem .5rem; border-radius: 999px; background: var(--ck-ink, #111); color: var(--ck-paper, #fff); font-weight: 600; } .tag.d { background: transparent; color: inherit; border: 1px solid var(--ck-line, rgba(0,0,0,.25)); margin-right: .5rem; }
+  .cov { margin: 0 0 .625rem; font-size: .875rem; line-height: 1.6; opacity: .72; }
+  .days { list-style: none; padding: 0; margin: 0; display: grid; gap: .25rem; } .days a { text-decoration: none; color: inherit; display: block; padding: .5rem 0; border-top: 1px solid var(--ck-line, rgba(0,0,0,.08)); } .days time { font-variant-numeric: tabular-nums; opacity: .7; margin-right: .5rem; } .days small { opacity: .6; margin-left: .5rem; }
+  @media (min-width: 900px) { main { padding: 2rem 1.5rem 4rem; } }
+</style>

@@ -1,0 +1,123 @@
+{
+ "schema": "bohui-draft/2",
+ "worker": "gate",
+ "tree": "1751a8d56297c4110fcf406e61d04c6fc42543c1",
+ "repo": "F:/0cosmetic/tools-review",
+ "base": {
+  "commit": "6abee03cdacbfc3c014a1d38d283a4f10503cd7a",
+  "tree": "39151e6468d33929f8c016dcd4737de825d15db4",
+  "first_ship": false
+ },
+ "prev_ticket": null,
+ "note": "ticket.py verify 第 4 步:reflog 前缀补认 deploy。record 第 910 行按 f'{a.action} {w} …' 写 reflog,正常上线 action=deploy,而核验只认 ship/rollback/baseline/urgent/breakglass → 每次正常上线后下一次上线必被第 4 步拦(09-25 04:4x 视觉重排实测被拦)。红队 S-b 用的是 ship 前缀所以没测出",
+ "tier": "L2",
+ "tier_reasons": [
+  "4 行,无敏感文件,第一关无存疑",
+  "改闸门至少 L2(安全、正确性两名审核员必审);只改数据表用 ship_ops.sh gate --data"
+ ],
+ "angles": [
+  "成本+正确性",
+  "安全+合规"
+ ],
+ "files": {
+  "成本+正确性": {
+   "diff": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-1751a8d56297/成本+正确性.diff",
+   "files": [
+    "audit_v2/ticket.py"
+   ],
+   "lines": 3
+  },
+  "安全+合规": {
+   "diff": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-1751a8d56297/安全+合规.diff",
+   "files": [],
+   "lines": 0
+  }
+ },
+ "all_diff": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-1751a8d56297/all.diff",
+ "gate1": {
+  "result": "过",
+  "block": [],
+  "doubt": [],
+  "exceptions": [],
+  "risks": [],
+  "lines": 3,
+  "files": 1,
+  "seconds": {
+   "tree": 0.0,
+   "diff": 0.1,
+   "semgrep": 4.7,
+   "rules": 0.1,
+   "total": 4.9
+  }
+ },
+ "judges": {
+  "laya": {
+   "decision": "allow",
+   "conf": 0.07,
+   "noul": {
+    "cost": 0.99,
+    "security": 0.97,
+    "compliance": 0.0
+   },
+   "correctness": 1.2,
+   "verdict": "存疑",
+   "status": "判了",
+   "seconds": 25,
+   "partial": false
+  },
+  "jev": {
+   "status": "缺席",
+   "verdict": null,
+   "reason": "Jev 调用失败:URLError",
+   "partial": false
+  }
+ },
+ "budget": {
+  "level": "n/a",
+  "src": "闸门自身不看 D1 灯",
+  "at": "2026-09-25T04:45:36+08:00",
+  "ok": true
+ },
+ "items": [
+  {
+   "ref": "LAYA",
+   "kind": "laya 存疑",
+   "text": "{\"decision\": \"allow\", \"conf\": 0.07, \"noul\": {\"cost\": 0.99, \"security\": 0.97, \"compliance\": 0.0}, \"correctness\": 1.2, \"reason\": null}"
+  }
+ ],
+ "refute_needed": [],
+ "reports_expected": [
+  "F:/0cosmetic/tools-review/audit_v2/reports/gate/1751a8d56297/成本+正确性.json",
+  "F:/0cosmetic/tools-review/audit_v2/reports/gate/1751a8d56297/安全+合规.json"
+ ],
+ "urgent": null,
+ "kind": "worker",
+ "created_at": "2026-09-25T04:46:01+08:00",
+ "skills": {
+  "成本": [
+   "zero-r2-move",
+   "karpathy-coder"
+  ],
+  "安全": [
+   "security-review",
+   "claude-guard:guard-rules",
+   "bohui-data-security-formula-confidentiality"
+  ],
+  "合规": [
+   "bohui-legal-advertising-claims",
+   "bohui-label-claims-review"
+  ],
+  "正确性": [
+   "code-reviewer",
+   "karpathy-coder"
+  ],
+  "综合": [
+   "code-reviewer",
+   "security-review"
+  ],
+  "反驳": [],
+  "复核": [
+   "code-reviewer"
+  ]
+ }
+}

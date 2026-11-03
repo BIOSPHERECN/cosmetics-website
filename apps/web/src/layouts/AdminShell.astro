@@ -12,6 +12,8 @@
  *   都退化成浏览器默认样式就是这么来的。本文件的 <style> 只放侧栏骨架。
  */
 import '../styles/admin.css';
+import { env } from 'cloudflare:workers';
+import { readSession, readCookie, COOKIE } from '../lib/auth';
 
 export interface Props {
   title: string;
@@ -25,28 +27,117 @@ export interface Props {
    */
   tenant?: { siteId: string; siteName: string; isGroup: boolean; options: { id: string; name: string }[] };
 }
-const { title, active, email, badges = {}, tenant } = Astro.props;
+const { title, active, email, tenant } = Astro.props;
+let badges: Record<string, number> = Astro.props.badges ?? {};
 
-const NAV = [
+/* 2026-09-17 创始人:「后台登录按部门,展示的内容也相对应,而不是看到全部」。
+   v0 里「部门」就是 users.role:admin 管理层 / editor 内容运营 / sales 业务部 / lab 开发部实验室 / viewer 只读。
+   侧栏在这里自己读一次 cookie 拿角色,不改 Props —— 35 个页面一个都不用动。
+   读不到会话按 admin 处理:宁可多显示,也不能把创始人现有页面弄空。 */
+let role = 'admin';
+try {
+  const sess = await readSession(readCookie(Astro.request.headers.get('cookie'), COOKIE), (env as any).AUTH_SECRET ?? '');
+  role = sess?.role ?? 'admin';
+} catch { /* 本地预览没有 cloudflare:workers 绑定也不该白屏 */ }
+
+/* 每项的 roles = 哪些部门看得见;不写 = 只 admin / editor / viewer(管理层与内容运营的默认口径)。
+   这里只管「看不看得见」,能不能操作仍由 guard.ts 的 roleAllows 在接口层决定 —— 两层各管各的,
+   侧栏藏起来不等于接口关上了。 */
+/* 邮件未读角标(2026-09-18 邮件中心):35 个页面都不传,壳自己数一次、60 秒缓存在 isolate 里 —— 邮件中心页传的 badges.mail 优先。
+   COUNT 走 idx_mails_status,表小;别的页面一个请求最多多一次索引计数,60 秒内不再问库。 */
+const MAIL_BADGE: { at: number; n: number } = ((globalThis as any).__mailBadge ??= { at: 0, n: 0 });
+if (badges.mail === undefined) {
+  try {
+    if (Date.now() - MAIL_BADGE.at > 60_000) {
+      const db = (env as any).DB as D1Database | undefined;
+      const r = db ? await db.prepare(`SELECT COUNT(*) n FROM mails WHERE direction='in' AND status='unread'`).first<{ n: number }>() : null;
+      MAIL_BADGE.n = r?.n ?? 0; MAIL_BADGE.at = Date.now();
+    }
+    if (MAIL_BADGE.n) badges = { ...badges, mail: MAIL_BADGE.n };
+  } catch { /* 表还没建 / 本地预览没绑定:没角标而已 */ }
+}
+
+const BASE = ['admin', 'editor', 'viewer'];
+const SALES = [...BASE, 'sales'];        // 业务部:询盘、外联、CRM、周报、知识库
+const SYS = ['admin', 'viewer'];         // 系统组:内容运营不该碰账号、密钥、修订记录
+const LAB = ['admin', 'viewer', 'lab'];  // 开发部实验室:只此两项;内容运营(editor)不在其中 —— 进去也只见「没有实验室角色」,别给他们看个空门
+type NavItem = { id: string; label: string; href: string; roles?: string[]; sub?: boolean };
+const NAV: { group: string; items: NavItem[] }[] = [
+  /* 罗盘排最前:它回答的是「现在什么是坏的」。
+     2026-09-07 资讯管线停摆三天没人发现,就是因为后台首页只摆内容计数,
+     运维状态在后台里根本没有位置。 */
+  { group: '总览', items: [
+    /* 2026-09-18 创始人发来「业务协同工作台」截图:「我们的工作台也非常的重要」—— 事项五段表单 + 状态机 + 时间线 + 今日待办,总览第一项 */
+    { id: 'workbench', label: '业务协同工作台', href: '/bohui/workbench/', roles: SALES },
+    { id: 'today', label: '今日待办', href: '/bohui/today/', roles: SALES },
+    /* 2026-09-18 创始人「SEO、GEO 要真的给我们带入客户 … 看到进展」:老板看的一页,触达 / 回复 / 报价三个数 + 四行按周 */
+    { id: 'growth', label: '获客进展', href: '/bohui/growth/', roles: SALES },
+    { id: 'pulse', label: '罗盘', href: '/bohui/pulse/' },
+  ]},
   { group: '内容', items: [
     { id: 'sites', label: '站点总览', href: '/bohui/' },
     { id: 'pages', label: '页面与版块', href: '/bohui/pages/' },
     { id: 'media', label: '媒体库', href: '/bohui/media/' },
+    { id: 'suppliers', label: '包材供应商', href: '/bohui/suppliers/' },
+    /* 2026-09-09:上传要交给其他人做,入库台必须在导航里够得着 */
+    { id: 'packimport', label: '包材入库', href: '/bohui/packaging/' },
     { id: 'products', label: '产品与剂型', href: '/bohui/products/' },
     { id: 'i18n', label: '翻译中心', href: '/bohui/i18n/' },
+    { id: 'seo', label: 'SEO 与 GEO', href: '/bohui/seo/' },
   ]},
   { group: '经营', items: [
-    { id: 'inquiries', label: '询盘线索', href: '/bohui/inquiries/' },
+    { id: 'inquiries', label: '询盘线索', href: '/bohui/inquiries/', roles: SALES },
+    /* 2026-09-18 创始人「客户邮件统一在后台可以看到,并有提醒」:域名邮箱收进来的信;角标 = 未读数 */
+    { id: 'mail', label: '邮件中心', href: '/bohui/mail/', roles: SALES },
+    { id: 'prospects', label: '定向外联', href: '/bohui/prospects/', roles: SALES },
+    /* 2026-09-18 创始人「海关数据对获客是好事,抓紧进入情报系统」:公开提单 / 海关统计反推进口商(任务 K),与外联同一批人看 */
+    { id: 'brand-shopify', label: 'Shopify 品牌', href: '/bohui/brand-shopify/', roles: SALES },
+    { id: 'brand-suppliers', label: '代工厂溯源', href: '/bohui/brand-suppliers/', roles: SALES },
+    { id: 'customs', label: '海关线索', href: '/bohui/customs/', roles: SALES },
+    { id: 'companies', label: 'CRM · 客户', href: '/bohui/companies/', roles: SALES },
+    { id: 'deals', label: 'CRM · 机会看板', href: '/bohui/deals/', roles: SALES },
+    /* 2026-09-24 W3:BEAUTY2OEM 客户认同七级(SOP 03-v2 §4.1)、Amazon 快照实力 / 速度榜、机会简报草稿助手(只出稿,审批后人工发) */
+    { id: 'b2o-trust', label: '客户认同等级', href: '/bohui/b2o-trust/', roles: SALES },
+    { id: 'b2o-rank', label: '实力榜与速度榜', href: '/bohui/b2o-rank/', roles: SALES },
+    { id: 'b2o-brief', label: '机会简报助手', href: '/bohui/b2o-brief/', roles: SALES },
+    /* 2026-09-24 C3:预判引擎机会卡池(SOP 02-v2 §8.3)—— 研发签字、改状态、30/60/90 天复盘;研发(lab)也要进来签字 */
+    { id: 'b2o-pool', label: '机会卡池', href: '/bohui/b2o-pool/', roles: [...SALES, 'lab'] },
+    { id: 'playbook', label: '销售知识库', href: '/bohui/playbook/', roles: SALES },
+    { id: 'market', label: '爆款周报', href: '/bohui/market/', roles: SALES },
+    /* 2026-09-18 GPT 设计包 P004 落地:按市场×类目看成分出现频率(频率≠销量),业务部与周报同一批人看 */
+    { id: 'market-structure', label: '市场结构', href: '/bohui/market-structure/', roles: SALES },
+    /* 2026-09-18 创始人「爆款收集的不要忘记生成了!那是重要的情报分析」:按周固化的市场×品类情报(任务 I),与周报同一批人看 */
+    { id: 'market-intel', label: '爆款情报', href: '/bohui/market-intel/', roles: SALES },
+    /* 2026-09-18 创始人「把这些机制用于帛卉的规划上」:多 Agent 推演沙盘(任务 S),与周报同一批人看,实验室也要能推配方议题 */
+    { id: 'sandbox', label: '推演沙盘', href: '/bohui/sandbox/', roles: [...SALES, 'lab'] },
+    { id: 'packsource', label: '包材采集', href: '/bohui/packsource/' },
+    { id: 'kb', label: 'AI 客服知识库', href: '/bohui/kb/', roles: SALES },
+    { id: 'news', label: '行业资讯', href: '/bohui/news/' },
     { id: 'studio', label: 'AI 共创记录', href: '/bohui/studio/' },
     { id: 'formulas', label: '配方库', href: '/bohui/formulas/' },
+    { id: 'formula-lab', label: '配方实验室', href: '/bohui/formula-lab/', roles: LAB },
+    { id: 'formula-lab-wiki', label: '配方维基', href: '/bohui/formula-lab/wiki/', roles: LAB, sub: true },
   ]},
   { group: '系统', items: [
-    { id: 'models', label: '模型舰队', href: '/bohui/models/' },
+    { id: 'models', label: '模型舰队', href: '/bohui/models/', roles: SYS },
+    { id: 'design-models', label: '设计模型', href: '/bohui/design-models/', roles: SYS },
+    { id: 'gateway', label: 'AI 接入网关', href: '/bohui/gateway/', roles: SYS },
     { id: 'vision', label: '视觉模型横评', href: '/bohui/vision/' },
-    { id: 'users', label: '账号与权限', href: '/bohui/users/' },
-    { id: 'log', label: '修订记录', href: '/bohui/log/' },
+    /* 2026-09-17 创始人:「后台要有个图片转提示词」「提示词方面一定要优化」—— 开发(lab)/ 设计(editor)/ 老板(admin)都要看得见 */
+    { id: 'prompts', label: '效果图提示词', href: '/bohui/prompts/', roles: [...BASE, 'lab'] },
+    /* 2026-09-18 创始人「看看他们有没有停止」:任务心跳与 AI 成本进后台;实验室(lab)也要看得见任务有没有停 */
+    { id: 'jobs', label: '任务中心', href: '/bohui/jobs/', roles: ['admin', 'editor', 'lab'] },
+    { id: 'ai-runs', label: 'AI 调用与成本', href: '/bohui/ai-runs/', roles: ['admin', 'editor'] },
+    { id: 'users', label: '账号与权限', href: '/bohui/users/', roles: SYS },
+    /* 2026-09-23 网站会员(每天 20 / 100 条查看限额):看注册名单与今日用量,管理员改档位;业务部也要看得见 —— 注册会员就是线索 */
+    { id: 'members', label: '网站会员', href: '/bohui/members/', roles: [...SYS, 'sales'] },
+    { id: 'log', label: '修订记录', href: '/bohui/log/', roles: SYS },
   ]},
 ];
+/* 按部门过滤;过滤后空了的分组连标题一起不出 —— 实验室账号的侧栏只剩「经营」下两项 */
+const nav = NAV
+  .map((g) => ({ group: g.group, items: g.items.filter((it) => (it.roles ?? BASE).includes(role)) }))
+  .filter((g) => g.items.length > 0);
 ---
 
 <html lang="zh-CN">
@@ -55,6 +146,9 @@ const NAV = [
   <meta name="robots" content="noindex,nofollow" />
   <title>{title} · 帛卉后台</title>
   <style>
+    /* 2026-09-16 创始人:「你总是把字体搞那么小」—— 后台全是 rem,根字号一处调大,所有页一起放大。
+       18px:正文 .875rem = 15.75px、辅助 .8125rem = 14.6px、最小 .75rem = 13.5px,不再有 12px 的字。 */
+    html { font-size: 18px; }
     /* minmax(0,1fr) 而不是 1fr:栅格轨道最小宽度默认是 auto,
        内容一宽(比如模型页那张表)就会把整列顶出视口、整页横向滚动。 */
     body {
@@ -87,7 +181,7 @@ const NAV = [
       display: block;
       color: var(--ad-side-dim);
       font-family: var(--ad-mono);
-      font-size: .625rem;
+      font-size: .75rem;
       letter-spacing: .18em;
       margin-top: .1875rem;
     }
@@ -109,11 +203,11 @@ const NAV = [
 
     nav { flex: 1; overflow-y: auto; padding: .875rem 0; }
     .grp {
-      padding: .9375rem 1.375rem .375rem;
+      padding: 1rem 1.375rem .375rem;
       color: var(--ad-side-dim);
       font-family: var(--ad-mono);
-      font-size: .5625rem;
-      letter-spacing: .2em;
+      font-size: .8125rem;      /* 2026-09-16 创始人截图圈出来:分组名 10px 看不清;改 14.6px,字距收窄 */
+      letter-spacing: .12em;
       text-transform: uppercase;
     }
     a.item {
@@ -145,13 +239,15 @@ const NAV = [
       flex: none;
     }
     a.item.on .dot { opacity: 1; background: var(--ad-accent); }
+    /* 子项(配方维基挂在配方实验室下)缩进一档,字号不变 —— 缩进就够说明层级,再小字就看不清 */
+    a.item.sub { padding-left: 2.5rem; }
     .badge {
       margin-left: auto;
       background: var(--ad-accent);
       color: #fff;
       border-radius: 999px;
       padding: 0 .375rem;
-      font-size: .6875rem;
+      font-size: .75rem;
       font-weight: 600;
       min-width: 1.125rem;
       text-align: center;
@@ -170,7 +266,7 @@ const NAV = [
       text-overflow: ellipsis;
       white-space: nowrap;
       font-family: var(--ad-mono);
-      font-size: .6875rem;
+      font-size: .75rem;
     }
     .who button {
       margin-top: .5625rem;
@@ -201,6 +297,7 @@ const NAV = [
         padding: .4375rem .75rem;
       }
       a.item.on { border-left: 0; border-bottom-color: var(--ad-accent); }
+      a.item.sub { padding-left: .75rem; }   /* 横排时没有层级可缩进 */
       .who { display: flex; align-items: center; gap: .75rem; }
       .who .em { flex: 1; }
       .who button { margin-top: 0; width: auto; }
@@ -226,11 +323,11 @@ const NAV = [
       )}
     </div>
     <nav>
-      {NAV.map((g) => (
+      {nav.map((g) => (
         <>
           <div class="grp">{g.group}</div>
           {g.items.map((it) => (
-            <a class:list={['item', active === it.id && 'on']} href={it.href}>
+            <a class:list={['item', it.sub && 'sub', active === it.id && 'on']} href={it.href}>
               <span class="dot"></span>
               <span>{it.label}</span>
               {badges[it.id] ? <span class="badge">{badges[it.id]}</span> : null}

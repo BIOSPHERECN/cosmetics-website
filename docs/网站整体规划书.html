@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>帛卉集团数字平台 · 网站整体规划书</title>
+<style>
+  :root {
+    --ink: #0f1a1b; --soft: #4c5a5b; --faint: #7e8c8c;
+    --line: #e1e7e6; --accent: #0e6b62; --sand: #f4f6f5; --warn: #8a5a00;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; color: var(--ink); background: #fff;
+    font: 14px/1.75 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'PingFang SC', 'Microsoft YaHei', serif;
+  }
+  main { max-width: 46rem; margin: 0 auto; padding: 0 1rem; }
+  h1, h2, h3 { line-height: 1.3; letter-spacing: 0.02em; }
+  h2 { font-size: 1.375rem; margin: 2.5rem 0 0.75rem; padding-top: 0.75rem; border-top: 2px solid var(--ink); }
+  h2 .no { color: var(--accent); font-family: Georgia, serif; margin-right: 0.5rem; }
+  h3 { font-size: 1.0625rem; margin: 1.5rem 0 0.5rem; }
+  p { margin: 0.5rem 0; }
+  ul { margin: 0.5rem 0; padding-inline-start: 1.375rem; }
+  li { margin: 0.25rem 0; }
+  table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.8125rem; }
+  th { text-align: left; font-weight: 600; background: var(--sand); }
+  th, td { padding: 0.4375rem 0.625rem; border: 1px solid var(--line); vertical-align: top; }
+  .cover { text-align: center; padding: 7rem 0 4rem; page-break-after: always; }
+  .cover .brand { font-size: 0.8125rem; letter-spacing: 0.3em; color: var(--faint); }
+  .cover h1 { font-size: 2.25rem; margin: 1.25rem 0 0.5rem; }
+  .cover .sub { color: var(--soft); font-size: 1rem; }
+  .cover .meta { margin-top: 5rem; color: var(--faint); font-size: 0.8125rem; line-height: 2; }
+  .kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.625rem; margin: 1rem 0; }
+  .kpi div { border: 1px solid var(--line); border-radius: 6px; padding: 0.625rem 0.75rem; }
+  .kpi b { display: block; font-size: 1.375rem; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .kpi span { font-size: 0.75rem; color: var(--faint); }
+  .note { background: var(--sand); border-inline-start: 3px solid var(--accent); padding: 0.625rem 0.875rem; font-size: 0.8125rem; margin: 0.75rem 0; }
+  .warn { border-inline-start-color: var(--warn); }
+  .p0 { color: #a02b20; font-weight: 700; } .p1 { color: var(--warn); font-weight: 700; } .p2 { color: var(--accent); font-weight: 700; }
+  .foot { margin: 3rem 0 2rem; padding-top: 0.75rem; border-top: 1px solid var(--line); color: var(--faint); font-size: 0.75rem; text-align: center; }
+  @page { size: A4; }
+  h2 { page-break-after: avoid; } table, .note { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="cover">
+  <div class="brand">BOHUI GROUP · 帛卉集团</div>
+  <h1>网站整体规划书</h1>
+  <div class="sub">五站数字矩阵 · 架构 / 安全 / 内容 / 后台 / 路线图</div>
+  <div class="meta">
+    编制:数字平台建设组(AI 工程执行)<br />
+    版本:v1.2 · 2026 年 8 月 31 日(新增《行业资讯中心·专业化规划》:两档稿件、逐篇配图、采集矩阵、公众号通道方案、800–1000 量化目标)<br />
+    旗舰站:biosphere-ai.com(已开放收录)
+  </div>
+</div>
+
+<h2><span class="no">一</span>平台定位与总体现状</h2>
+<p>本平台是帛卉集团面向全球市场的 B2B 数字矩阵:以 BIOSPHERE-AI 为科技大脑与旗舰门户,BEAUTY2OEM / SKIN2OEM(代工承接)、MEDIERBA(自有品牌)、BIOSPHERE-ORALCARE(口腔线)四站分工承接,互为生态内链。当前采取「先做透第一站,再规范化复制」的推进策略:所有深化只做 biosphere-ai,其余四站保持骨架、只修缺陷。</p>
+<div class="kpi">
+  <div><b>5</b><span>站点 · 一套代码</span></div>
+  <div><b>101</b><span>页面(旗舰站 25)</span></div>
+  <div><b>17</b><span>服务语种</span></div>
+  <div><b>10</b><span>在产 SKU 已上架</span></div>
+</div>
+<p>旗舰站已具备:产品目录(品类集模式 + 详情页 + 询盘车)、AI 共创工作台、AI 肌肤检测、种植基地与古方研究叙事、资质墙(PPT 实证图)、品牌生态互链、隐私政策与法律声明(中英权威文本)、GEO 全套(结构化数据 / llms.txt / AI 爬虫放行)。</p>
+
+<h2><span class="no">二</span>技术架构</h2>
+<table>
+  <tr><th style="width:9rem">层</th><th>选型与理由</th></tr>
+  <tr><td>承载</td><td>Cloudflare Workers 全球边缘 + D1(内容/产品/询盘/账号)+ R2(媒体原件)。无服务器、零运维、全球低延迟,与目标市场(海外采购商)天然匹配。</td></tr>
+  <tr><td>应用</td><td>Astro 服务端渲染,一套组件骨架;零重型前端框架,首屏为纯 HTML —— 这是 SEO/GEO 打法的技术前提。</td></tr>
+  <tr><td>多站</td><td>「一套骨架 × 皮肤层」:站点差异全部收敛在设计令牌(色 / 字 / 版式)与内容库,不复制代码。第 5 站的成本是配置,不是工程。</td></tr>
+  <tr><td>设计系统</td><td>三层令牌:基础令牌(tokens.css)→ 学派层(8 种行业版式)→ 主题层(站点色场)。<b>纪律:每个令牌只允许一个定义源</b>,配套静态检查器强制执行(见第四节)。</td></tr>
+  <tr><td>多语言</td><td>17 语种路径 + hreflang;翻译舰队(优质模型优先,劣质回退拦截);界面与内容分层回退,任何语种缺失自动落英文,绝不空页。法务文本只发中英权威版,不机翻。</td></tr>
+  <tr><td>媒体</td><td>媒体库统一 /media/{id} 寻址;<b>缓存铁律:内容变 = 文件名变</b>,只加不改。产品/品类/剂型图统一 1:1 标准,后续批量扩品可控。</td></tr>
+</table>
+
+<h2><span class="no">三</span>安全体系(本日专项加固)</h2>
+<p>今日按「架构级防线」标准做了一轮安全加固,并有实战注脚:后台看板当天即捕获到来自 AWS 东京节点 IP 的登录爆破尝试 —— 防线不是假想敌。</p>
+<table>
+  <tr><th style="width:9rem">防线</th><th>现状</th></tr>
+  <tr><td>口令存储</td><td>PBKDF2-SHA256(6 万次迭代)+ 独立盐,库中无明文;比较采用常数时间算法,防时序侧信道。</td></tr>
+  <tr><td>人机验证</td><td>登录接入 Cloudflare Turnstile(免费 / 无谷歌依赖),校验在服务端且先于任何数据库开销;未过验证一律拒绝 —— 扫描器与脚本爆破在第一道即被挡下。</td></tr>
+  <tr><td>两步验证</td><td>管理员可自助启用 TOTP(标准 RFC 6238,兼容 Google/Microsoft Authenticator):密码之后再验 6 位动态码;先验码再激活防抄错锁死,关闭也须验码防会话被窃后拆锁;错码计入同一套限流。</td></tr>
+  <tr><td>登录限流</td><td>同 IP 15 分钟 8 次失败即锁,失败留痕可审计;错误信息统一话术 + 等耗时假哈希,防账号枚举。</td></tr>
+  <tr><td>会话</td><td>HMAC-SHA256 签名无状态会话,HttpOnly / Secure / SameSite=Lax,12 小时过期;轮换服务端密钥即可全员强制下线。</td></tr>
+  <tr><td>响应头</td><td>后台与管理接口统一注入 X-Frame-Options: DENY(防点击劫持)、nosniff、Referrer-Policy、no-store,收口在中间件单点,不逐页手写。</td></tr>
+  <tr><td>数据边界</td><td>产品内部合规备注(internal_note)物理隔离于前台查询;上游 AI 密钥只存服务端,网关分发 key 仅存哈希;越权访问全量测试通过。</td></tr>
+  <tr><td>操作审计</td><td>后台全部写操作入修订日志(谁 / 何时 / 改前改后),看板可查。</td></tr>
+</table>
+<div class="note">关于「后台路径要不要换成更隐蔽的」:换路径防的只是被扫到登录页,收益薄且会弄断全部内链与书签;真正挡破解的是上表的多层防线。结论:路径不动,防线持续加深(下一步:管理员两步验证 TOTP)。</div>
+
+<h2><span class="no">四</span>质量工程(「别又那么多 bug」的架构性回答)</h2>
+<p>零散修补不可依赖,平台已把质量关口固化为<b>可重复执行的机器检查</b>,任何一次交付前后都跑同一套:</p>
+<table>
+  <tr><th style="width:11rem">检查</th><th>覆盖</th></tr>
+  <tr><td>十项线上终检</td><td>全站页面可达 / 图片无死链 / 语种完整 / 老链接 301 / robots+sitemap+llms / <b>编造数字为零</b> / 假译文为零 / 内部字段零泄漏 / 静态死路径 / 重复标题。当前 10/10 绿。</td></tr>
+  <tr><td>CSS 变量断链检查</td><td>全仓扫描「使用了却无定义」的设计令牌 —— 今日建成,第一次运行即抓出 8 处存量隐患并全部修复(登录页整页黑掉正是此类病)。当前:137 个定义 / 124 处使用,全部接通。</td></tr>
+  <tr><td>后台探活(4 套)</td><td>后台 17 页逐页请求 + 产品增删改闭环 + 询盘链路 + AI 网关端到端,共 69 项断言。当前全绿。</td></tr>
+  <tr><td>视觉验证通道</td><td>自建无头浏览器截图 / 带登录态截图 / HTML→PDF 三件工具,不依赖任何外部平台服务 —— 每次改版都以实拍为准交付,不以「代码改了」为准。</td></tr>
+</table>
+
+<h2><span class="no">五</span>管理后台</h2>
+<p>后台(/bohui/)已具备平台级形态,19 个功能页全部实测:</p>
+<ul>
+  <li><b>经营看板</b>:询盘 14 天趋势、来源页 Top、最近修订流水、跨站缺译文统计、阻塞级待办。</li>
+  <li><b>内容</b>:页面与版块编辑(拖拽排序 + iframe 实时预览)、媒体库(上传直落 R2,上限 10MB 含视频)、翻译中心、SEO 与 GEO 实时探测。</li>
+  <li><b>经营</b>:产品管理(含合规提醒栏)、询盘线索(<b>多轮对话流</b>:五档状态流转 + 跟进时间线,换人接手不断档)、<b>AI 客服知识库</b>(条目改完客服即刻用新口径)、<b>行业资讯</b>(采集/改写/上下线/投喂)、AI 共创记录、配方库。</li>
+  <li><b>系统</b>:模型舰队、AI 接入网关(发 key / 限流 / 流水)、视觉模型横评、账号权限(<b>两步验证自助开关</b>)、修订日志。</li>
+</ul>
+<div class="note warn">对标 Shopify 尚缺:主题级视觉编辑器(现在只能改内容不能改样式)、更完整的转化漏斗看板 —— 列于路线图 P2。</div>
+
+<h2><span class="no">五-B</span>AI 获客与内容引擎(本日新增)</h2>
+<ul>
+  <li><b>AI 客服(先机器人后人工)</b>:全站右下角接待气泡。知识库检索式作答(先检索再生成,零命中即诚实说不掌握);三条红线写死 —— 绝不报价、不编数字、不做功效承诺;回复语言跟客户(英文问英文答);「转人工询盘」一步直达并自动携带对话摘要预填表单。</li>
+  <li><b>B2B 知识库</b>:六大类精编口径(合作模式 / 打样起订 / 品类工艺 / 合规质量 / 商务交付 / AI 能力),公司数字只用站内已发布口径;后台可增删改、可下线。</li>
+  <li><b>行业资讯系统</b>:详见下节《行业资讯中心 · 专业化规划》。</li>
+</ul>
+
+<h2><span class="no">五-C</span>行业资讯中心 · 专业化规划(v1.2 新增)</h2>
+<p><b>定位</b>:对标 Premium Beauty News 一类专业行业媒体 —— 不是「有个资讯栏目」,而是让 biosphere-ai 本身成为化妆品 B2B 圈层的信息节点:图文并茂、深度与快讯分级、时间轴纵深、可检索可引用(SEO/GEO 双优)。</p>
+
+<h3>1 · 内容规范(已上线)</h3>
+<ul>
+  <li><b>两档稿件</b>:有原文底料 → 深度稿(500–800 字,3–4 个小节标题,含行业语境与 B2B 采购启示);仅标题线索 → 快讯(200–300 字)。宁短勿编。</li>
+  <li><b>编辑红线</b>:只依据采集材料写作,不编数字、不编引语、不虚构人名时间;展示日期一律为新闻<b>原始发布日</b>;来源署名链接;文末规范注明「由 BIOSPHERE 编辑整理改写 · 配图为 AI 生成插画」(对齐行业惯例)。</li>
+  <li><b>逐篇配图</b>:Agnes 按主题生成编辑插画封面(六大主题各有视觉母题;无文字无 logo 无真人,品牌安全),异步配图工 15 分钟一班补齐。</li>
+  <li><b>逐篇 SEO/GEO</b>:独立 slug(按原始日期)+ NewsArticle JSON-LD(含 image / isBasedOn)+ 导语直答 + 全语种 sitemap。</li>
+</ul>
+
+<h3>2 · 采集矩阵</h3>
+<table>
+  <tr><th style="width:11rem">通道</th><th>覆盖</th><th style="width:8rem">节奏</th><th style="width:6rem">状态</th></tr>
+  <tr><td>聚合搜索(双路)</td><td>Google News + Bing News,中英 9 组主题查询,互为故障备份</td><td>每日早午两班</td><td>运行中</td></tr>
+  <tr><td>行业媒体直连 RSS</td><td>Cosmetics Business、Premium Beauty News</td><td>随聚合班次</td><td>运行中</td></tr>
+  <tr><td>历史时间轴(Wayback)</td><td>2021-01 起按月正序,4 家行业站文章存档,快照抽全文做深度稿底料</td><td>15 分钟一段</td><td>运行中</td></tr>
+  <tr><td>中文直连(crawl4ai)</td><td>聚美丽已通;化妆品财经在线等继续扩</td><td>每日两班</td><td>运行中</td></tr>
+  <tr><td>RSSHub 采集中台</td><td>社区维护的数千国内源路由(行业媒体/微博/知乎等)——「整合几十上百爬虫」的正解:用社区已整合好的</td><td>接入后并入班次</td><td>部署中</td></tr>
+  <tr><td>微信公众号</td><td>直接爬取被微信环境校验拦截(实测四篇全拒)。正式通道 = WeWe RSS(开源,基于微信读书接口)<b>,需创始人扫码授权一次</b>;临时通道 = 后台「投喂线索」贴文即发</td><td>授权后自动</td><td>待创始人</td></tr>
+  <tr><td>人工投喂</td><td>后台表单:标题+链接+要点,30 秒改写发布(小红书等无接口渠道的合规入口)</td><td>随手</td><td>运行中</td></tr>
+</table>
+
+<h3>3 · 量化目标与治理</h3>
+<ul>
+  <li><b>规模</b>:总库存 800–1000(在途,时间轴 2021 起 67 个月 × 多源);日更 30 条上限,按当日新鲜量自然封顶。</li>
+  <li><b>质量治理</b>:语义级去重(标题 3-gram,同事件双源拦截)、超 14 天旧闻不采(历史模式除外)、无可信日期不发;每轮唤醒抽 12 条人检,跑题即下线。</li>
+  <li><b>P1 · 多源综合稿</b>:同一事件命中多源时不再丢弃后到者,而是并入底料触发重写 ——「全网多收集、比对、写一个更好的」。</li>
+  <li><b>自动化矩阵</b>:采集/历史/中文/配图/缺译回填共 8 个系统级计划任务,全部独立于会话,日志落盘可查。</li>
+</ul>
+
+<h2><span class="no">六</span>本日执行清单(2026-08-30 实际交付)</h2>
+<table>
+  <tr><th style="width:3rem">#</th><th>指令 / 问题</th><th>交付</th></tr>
+  <tr><td>1</td><td>点击品类要进入产品集</td><td>?cat= 产品集模式:品类 h1 → 项圈 → 目录 → 剂型 → 询盘带,营销块让位;全语种生效</td></tr>
+  <tr><td>2</td><td>页面太乱 / 卡片竖排</td><td>撤掉皮肤层对货架的杂志式干预,产品网格回归等宽 1:1 标准</td></tr>
+  <tr><td>3</td><td>要有印刷的 AI 包装设计</td><td>20 张 1:1 包装概念图(品牌字标 + 植物线稿标签),10 产品一品一图,重复封面归零</td></tr>
+  <tr><td>4</td><td>版心 1800 / 一行 4 个 / 自适应</td><td>版心 112.5rem;1920 一行 4 卡 → 1200 三卡 → 手机单列,三档实拍验证</td></tr>
+  <tr><td>5</td><td>字体注意美感</td><td>标题接入思源宋体 + 中文排印纪律(字重 600 / 行高 1.14 / 字距 +0.02em),断网自动回落</td></tr>
+  <tr><td>6</td><td>隐私政策太简单</td><td>参照古方 AI 星图骨架重写:隐私 11 节 / 法律声明 10 节,中英双权威文本,承诺的日志保留期同步落地执行</td></tr>
+  <tr><td>7</td><td>后台登录页黑乎乎</td><td>令牌单源化重做(白卡 + 深青绿主按钮),与后台内页同一设计系统</td></tr>
+  <tr><td>8</td><td>要防破解 / 要验证码</td><td>Turnstile 人机验证上线(API 直开通)+ 安全响应头 + 密钥轮换;实测无验证码请求被拒</td></tr>
+  <tr><td>9</td><td>底部要隐私协议入口</td><td>页脚隐私政策 · 法律声明全站挂链,深底亮字实拍确认</td></tr>
+  <tr><td>10</td><td>后台搞定了吗</td><td>8 智能体复验:4 探活全绿、断链死按钮零项;看板补齐经营三件套</td></tr>
+</table>
+
+<h2><span class="no">七</span>下一阶段路线图</h2>
+<table>
+  <tr><th style="width:4.5rem">优先级</th><th>事项</th><th>说明</th></tr>
+  <tr><td class="p0">P0</td><td>译文回填收尾</td><td>缺失语种版块正在批量补齐(翻译舰队运行中),完成后重跑十项终检</td></tr>
+  <tr><td class="p0">P0</td><td>产品库扩容通道</td><td>「后面会添加大量产品」—— 录入即上架的闭环已就绪(后台录入 → 品类集 → 详情页 → JSON-LD 全自动),待真实产品资料分批录入</td></tr>
+  <tr><td class="p0">P0</td><td>配方库替换真实数据</td><td>现有 30 条为样例,AI 检索上线前必须替换(后台待办已置顶)</td></tr>
+  <tr><td class="p1">✅ 已完成</td><td>询盘对话流</td><td>五档状态流转 + 跟进时间线,当日上线并实测</td></tr>
+  <tr><td class="p1">✅ 已完成</td><td>管理员两步验证</td><td>TOTP 自助启用,RFC 官方向量与全流程实测通过</td></tr>
+  <tr><td class="p1">P1</td><td>数据看板加深</td><td>访问来源 → 询盘 → 成交的漏斗;品类点击热度,反哺选品</td></tr>
+  <tr><td class="p2">P2</td><td>主题视觉编辑器</td><td>后台可视化调整令牌(色 / 字 / 圆角),达到「运营改样式不求人」</td></tr>
+  <tr><td class="p2">P2</td><td>四站规范化复制</td><td>把旗舰站验证过的全部标准(1:1 资产 / 产品集 / 法务页 / 安全基线)按清单推广到其余四站,然后逐站开放收录</td></tr>
+  <tr><td class="p2">P2</td><td>公司视频等实拍素材</td><td>首页视频位已预留;真实车间 / 检测实拍素材到位后逐步替换概念图</td></tr>
+</table>
+
+<h2><span class="no">八</span>已知风险与欠账(如实列示)</h2>
+<ul>
+  <li>历史会话记录中曾明文出现过两家模型服务商的 API Key 与本次 Turnstile 密钥 —— 建议择期在对应平台一键轮换(轮换动作各平台后台一分钟内完成,不影响线上)。</li>
+  <li>四个非旗舰站尚未开放搜索收录(内容核实前的主动保护),待规范化复制完成后逐站放开。</li>
+  <li>AI 生成的包装图为能力概念图,法律声明中已明示「不代表最终交付实物」;真实打样照片到位后逐步替换。</li>
+  <li>配方库样例数据未替换前,AI 共创的配方检索依据不具备生产参考性(前台已有免责边界)。</li>
+</ul>
+
+<p class="foot">帛卉集团数字平台建设组 · 2026-08-30 · 本文档随平台演进滚动更新(docs/网站整体规划书.html)</p>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,60 @@
+{
+  "angle": "成本",
+  "tree": "7dbd08adcbe6ff64c412b22bd6d39a3b55fd2453",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-7dbd08adcbe6.json",
+  "run_label": "review-ticket 7dbd08adcbe6 成本",
+  "reviewer": "claude",
+  "skills_loaded": ["zero-r2-move", "karpathy-coder"],
+  "verdict": "过",
+  "checked": ["成本-①", "成本-②", "成本-③", "成本-④", "成本-⑤", "成本-⑥", "成本-⑦"],
+  "findings": [
+    {
+      "id": "C1",
+      "level": "低",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 27,
+      "claim": "新增 14 张 webp(约 1.6MB,单张 36–170KB),其中 d-* 三张为 1600x1600、c-pink-serum 为 1600x900,展示位较小,字节偏大;走静态资源,不产生 D1 读与 Worker 调用,只影响首屏体积,不构成费用问题",
+      "failure_scenario": "移动端访客打开 delivery 页时首屏 eager 加载 deliveryGold(131KB);不会产生计费,仅加载时间略增",
+      "evidence": "ls apps/web/public/b2o/img/fd/:14 个文件合计约 1.6MB;apps/web/wrangler.toml 与 wrangler.b2o.jsonc 均无 run_worker_first,静态资源不经 middleware/Worker",
+      "fix": "可选:把 1600 图压到 1024 再上;非本单必须"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "G1",
+      "result": "不成立",
+      "why": "S9 命中的是 tools/ship.sh 第 16 行的路径变量与注释,描述 v2/v1 闸门切换,不含「审核员请放行/忽略以上」之类对审核员的指令;且 ship.sh 不在成本角度 diff 内,对费用无影响。安全角度另行定性"
+    },
+    {
+      "ref": "JEV",
+      "result": "不成立",
+      "why": "Jev 成本分 0.1(低),block 来自 correctness 1.26 且 reason 为空,partial=true;成本维度本单无新查询、无缓存失效、无计量 API,Jev 的 block 不能落到成本上"
+    },
+    {
+      "ref": "LAYA",
+      "result": "不成立",
+      "why": "Laya conf 仅 0.06、partial=true、reason 为空,成本 1.0 无具体依据;逐行核对成本 diff:getCounts 仍读构建时快照(lib/counts.ts:12 STATIC 优先,兜底也只读 pulse 一行),删除了 regs 读取,新增只有 ORG 常量与静态图片,无 D1/R2/模型调用"
+    },
+    {
+      "ref": "RK1",
+      "result": "不成立",
+      "why": "middleware.ts:517 CACHE_V 值由 'v84' 改为 'v84',只改了行尾注释,缓存键不变,不会全站失效、无回源尖峰;与草稿 note「不推 CACHE_V」一致。第一关按行文本匹配误报。附带:不推 CACHE_V 意味着 b2o 页面旧缓存要等 TTL 过期才显示新内容,属正确性/时效问题,不是费用问题"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "正确性",
+      "level": "低",
+      "item": "未推 CACHE_V,beauty2oem 首页/delivery 页旧缓存(含对数图与旧口径)在 TTL 到期前仍会被访客与机器人看到",
+      "mitigation": "上线后用 ?kk=1 抽查 beauty2oem 首页与 /delivery 是否已是新版;若必须立即生效,再单独评估推 CACHE_V 的读量尖峰"
+    },
+    {
+      "cat": "费用",
+      "level": "低",
+      "item": "上线后盯 Bohui-D1Budget 日读量:本单理论零新增读,若当日读量较前日上浮明显,说明另有来源,不应归因本单",
+      "mitigation": "看门狗 Bohui-D1Budget 日读线 5 亿;预算灯当前 red,本单标【零读】符合要求"
+    }
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/7dbd08adcbe6/成本.json"
+}

@@ -1,0 +1,9 @@
+{
+ "hostname": "biosphere-ai.com",
+ "zone_id": "38eac8524706eb1f7eaa6cf5d368cc52",
+ "原绑定": "m-biosphere-ai-v2",
+ "原绑定id": "f415bf3c8dc72231b97965b5f4c355a5d1261437",
+ "新绑定": "bohui-web",
+ "回滚办法": "PUT /accounts/{acct}/workers/domains  body={zone_id,hostname,service:\"m-biosphere-ai-v2\",environment:\"production\",override_existing_origin:true}",
+ "注意": "旧 worker m-biosphere-ai-v2 保持部署状态未做任何改动,回滚即刻生效"
+}

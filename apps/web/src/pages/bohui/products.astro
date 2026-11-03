@@ -1,12 +1,18 @@
 ---
 /**
  * 产品与剂型 —— 前台产品目录的数据源。
+ *
  * 与配方库的分工:配方库是内部技术资产(不对外露配方细节),
  * 产品是对外可展示的成品形态。两者刻意分表,免得内部数据被误发到前台。
+ *
+ * 这一版把只读列表改成了完整的增删改:新建、改文案、配图、上下架、删除。
+ * 之前只能看不能改,等于运营每加一个产品都要来找工程师 ——
+ * 那样的后台上线第二周就没人用了。
  */
 import AdminShell from '../../layouts/AdminShell.astro';
 import { pageGuard } from '../../lib/guard';
-import { SITES } from '@cosmetic/core/registry';
+import { LANGS } from '../../lib/db';
+import { PRODUCT_CAT as CAT } from '../../lib/catalog';
 
 export const prerender = false;
 const c = await pageGuard(Astro.request);
@@ -14,76 +20,132 @@ if (!c) return Astro.redirect('/bohui/login/');
 
 const url = new URL(Astro.request.url);
 const q = (url.searchParams.get('q') ?? '').trim();
-const site = url.searchParams.get('site') ?? '';
 
-const where: string[] = [], bind: unknown[] = [];
-where.push('p.site_id=?'); bind.push(c.tenant.siteId);
-if (q) { where.push('(p.slug LIKE ? OR EXISTS (SELECT 1 FROM product_i18n x WHERE x.product_id=p.id AND x.name LIKE ?))'); bind.push(`%${q}%`, `%${q}%`); }
-const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
+const bind: unknown[] = [c.tenant.siteId];
+let where = 'p.site_id = ?';
+if (q) {
+  where += ` AND (p.slug LIKE ? OR EXISTS (SELECT 1 FROM product_i18n x WHERE x.product_id=p.id AND x.name LIKE ?))`;
+  bind.push(`%${q}%`, `%${q}%`);
+}
 
 const { results: rows } = await c.db.prepare(
-  `SELECT p.*, (SELECT x.name FROM product_i18n x WHERE x.product_id=p.id
-                 ORDER BY CASE x.lang WHEN 'zh-cn' THEN 0 WHEN 'en' THEN 1 ELSE 2 END LIMIT 1) AS name,
-          (SELECT COUNT(*) FROM product_i18n x WHERE x.product_id=p.id) AS langs,
-          (SELECT COUNT(*) FROM product_media m WHERE m.product_id=p.id) AS imgs
-     FROM products p ${W} ORDER BY p.site_id, p.sort_order, p.id LIMIT 200`
+  `SELECT p.*,
+          (SELECT x.name    FROM product_i18n x WHERE x.product_id=p.id AND x.lang='zh-cn') AS name,
+          (SELECT x.summary FROM product_i18n x WHERE x.product_id=p.id AND x.lang='zh-cn') AS summary,
+          (SELECT COUNT(*)  FROM product_i18n x WHERE x.product_id=p.id) AS langs,
+          (SELECT COUNT(*)  FROM product_i18n x WHERE x.product_id=p.id AND x.mt=2) AS stale,
+          (SELECT COUNT(*)  FROM product_media m WHERE m.product_id=p.id) AS imgs
+     FROM products p WHERE ${where} ORDER BY p.sort_order, p.id LIMIT 200`,
 ).bind(...bind).all<any>();
 
-const siteName = new Map(SITES.map((s) => [s.id, s.name]));
-const CAT: Record<string, string> = { skincare: '护肤', makeup: '彩妆', cleansing: '清洁', oral: '口腔', body: '身体', hair: '洗护' };
-const nMedia = (await c.db.prepare(`SELECT COUNT(*) n FROM media`).first<{ n: number }>())?.n ?? 0;
+
+const published = rows.filter((r: any) => r.status === 'published').length;
+const stale = rows.reduce((n: number, r: any) => n + (r.stale ?? 0), 0);
 ---
 
 <AdminShell title="产品与剂型" active="products" email={c.sess.email} tenant={c.tenant}>
   <h1>产品与剂型</h1>
-  <p class="lead">前台「产品目录」页读的就是这张表。共 {rows.length} 个产品。</p>
+  <p class="lead">
+    前台产品目录读的就是这张表。共 {rows.length} 个,已上架 {published} 个。
+    只写中文,其余 {LANGS.length - 1} 门语种由<a href="/bohui/i18n/">翻译中心</a>统一产出 ——
+    在这里手写英文会和机器译文打架,两份都在时谁也不知道该信哪个。
+    {stale > 0 && <b class="warn-inline"> 有 {stale} 条译文因中文改动而过期,待重翻。</b>}
+  </p>
 
   <form class="bar" method="get">
-    <input name="q" value={q} placeholder="搜产品名或路径…" style="max-width:18rem" />
-    <select name="site"><option value="">全部站点</option>
-      {SITES.map((s) => <option value={s.id} selected={s.id === site}>{s.name}</option>)}</select>
-    <button class="btn pri" type="submit">筛选</button>
-    {(q || site) && <a class="btn" href="/bohui/products/">清空</a>}
+    <input name="q" value={q} placeholder="按名称或标识搜索" />
+    <button type="submit">搜索</button>
+    <a class="btn pri" href="/bohui/product-edit/">＋ 新建产品</a>
+    <a class="btn" href="/bohui/product-import/">批量导入</a>
   </form>
 
-  {rows.length === 0 ? (
-    <div class="empty">
-      还没有产品条目。<br />
-      <span style="font-size:.8125rem">
-        产品需要真实图片与规格才有意义 —— 先去<a href="/bohui/media/">媒体库</a>上传实拍图
-        (当前 {nMedia} 张),再回来建条目。
-      </span>
-    </div>
-  ) : (
-    <table>
-      <thead><tr>
-        <th>产品</th><th style="width:9rem">站点</th><th style="width:6rem">品类</th>
-        <th style="width:6rem">起订</th><th style="width:5rem">图片</th><th style="width:5rem">语种</th>
-        <th style="width:6rem">状态</th>
-      </tr></thead>
-      <tbody>
-        {rows.map((r: any) => (
-          <tr>
-            <td>
-              <div style="font-weight:600">{r.name || '(未命名)'}</div>
-              <code style="font-size:.6875rem;color:var(--ad-faint)">/{r.slug}</code>
-              {r.is_featured ? <span class="pill p-ok" style="margin-left:.375rem">推荐</span> : null}
-            </td>
-            <td style="font-size:.8125rem">{siteName.get(r.site_id) ?? r.site_id}</td>
-            <td style="font-size:.8125rem">{CAT[r.category] ?? r.category}</td>
-            <td style="font-size:.8125rem">{r.moq ?? '—'}</td>
-            <td class="num" style={r.imgs ? '' : 'color:var(--ad-warn)'}>{r.imgs || '缺图'}</td>
-            <td class="num">{r.langs}</td>
-            <td>{r.status === 'published' ? <span class="pill p-ok">已发布</span> : <span class="pill p-warn">草稿</span>}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )}
+  <table class="plist">
+    <thead><tr>
+      <th style="width:3.5rem"></th>
+      <th>产品</th>
+      <th style="width:7rem">品类</th>
+      <th style="width:9rem">起订量</th>
+      <th style="width:6rem">图</th>
+      <th style="width:6rem">语种</th>
+      <th style="width:6rem">状态</th>
+      <th style="width:11rem"></th>
+    </tr></thead>
+    <tbody>
+      {rows.length === 0 && (
+        <tr><td colspan="8" class="empty">
+          还没有产品。点「新建产品」加第一个 —— 前台产品目录目前用的是代码里的兜底清单。
+        </td></tr>
+      )}
+      {rows.map((p: any) => (
+        <tr data-id={p.id} data-name={p.name ?? ''}>
+          <td>{p.cover_media
+            ? <img class="thumb" src={`/media/${p.cover_media}`} alt="" loading="lazy" />
+            : <span class="thumb none">无图</span>}</td>
+          <td>
+            <b>{p.name ?? '(未命名)'}</b>
+            <span class="hint">/{p.slug}{p.summary && ` · ${String(p.summary).slice(0, 34)}`}</span>
+            {/* 合规提醒必须让业务看见 —— 这些是「哪些话不能对外说」的清单。
+                前台的查询根本不选这一列,所以它不会跟着文案跑到公开页面上。 */}
+            {p.internal_note && (
+              <details class="note">
+                <summary>⚠ 合规提醒</summary>
+                <p>{p.internal_note}</p>
+              </details>
+            )}
+          </td>
+          <td>{CAT[p.category] ?? p.category}</td>
+          <td class="hint">{p.moq || '—'}</td>
+          <td>{p.imgs}</td>
+          <td>
+            {p.langs}/{LANGS.length}
+            {p.stale > 0 && <span class="pill p-bad">{p.stale} 过期</span>}
+          </td>
+          <td>{p.status === 'published'
+            ? <span class="pill p-ok">已上架</span>
+            : <span class="pill">草稿</span>}</td>
+          <td>
+            <a class="btn mini" href={`/bohui/product-edit/?id=${p.id}`}>编辑</a>
+            <button class="mini" data-act="toggle">{p.status === 'published' ? '下架' : '上架'}</button>
+            <button class="mini danger" data-act="delete">删除</button>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
 
-  <style>
-    .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
-    .bar input,.bar select{width:auto}
-    .empty a{color:var(--ad-accent)}
-  </style>
 </AdminShell>
+
+<style>
+  .bar { display: flex; gap: .625rem; margin-bottom: 1rem; }
+  .bar input { flex: 1; max-width: 22rem; }
+  .plist td { vertical-align: middle; padding: .625rem .5rem; border-top: 1px solid var(--line); }
+  .thumb { width: 3rem; height: 3rem; object-fit: cover; border-radius: 4px; display: block; }
+  .thumb.none { display: flex; align-items: center; justify-content: center; background: rgb(0 0 0 / .05);
+                font-size: .75rem; color: var(--ad-faint); }
+  .hint { color: var(--ad-faint); font-size: .75rem; display: block; margin-top: .125rem; line-height: 1.5; }
+  .empty { text-align: center; color: var(--ad-faint); padding: 2rem; }
+  .note { margin-top: .25rem; }
+  .note summary { font-size: .75rem; color: #b26a00; cursor: pointer; }
+  .note p { font-size: .75rem; line-height: 1.6; margin: .375rem 0 0; padding: .5rem .625rem;
+            background: #fff8e1; border-radius: 4px; white-space: pre-wrap; max-width: 34rem; }
+  .mini { font-size: .75rem; padding: .25rem .5rem; margin-right: .25rem; }
+  .danger { color: #c62828; }
+  .warn-inline { color: #c62828; }
+</style>
+
+<script is:inline>
+  (() => {
+    /* 新建与编辑已搬到一页式编辑(/bohui/product-edit/),这里只留上下架与删除 */
+    const post = (b) => fetch('/api/admin/product', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b),
+    }).then((r) => r.json());
+    document.querySelectorAll('button[data-act]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const tr = b.closest('tr'), id = Number(tr.dataset.id), act = b.dataset.act;
+        if (act === 'delete' && !confirm(`删除「${tr.dataset.name || '这个产品'}」?该产品的所有译文与配图关联会一并删除。`)) return;
+        const r = await post({ action: act, id });
+        if (r.ok) location.reload(); else alert(r.msg || '操作失败');
+      });
+    });
+  })();
+</script>

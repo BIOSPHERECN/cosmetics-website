@@ -1,0 +1,25 @@
+// bohui-mail —— 域名邮箱收信 Worker。与主站 bohui-web 绑同一个 D1 与 R2;主站只读 mails 表。
+// 部署:cd apps/mail-worker && (先 source ../../.env,否则落错账号) npx wrangler deploy
+// 密钥一律 wrangler secret put,不写在这里:CRON_KEY(必)、MAIL_FORWARD_TO、NOTIFY_WEBHOOK、MAIL_DIGEST_TO、MAIL_FROM;RESEND_API_KEY 只在不用 Cloudflare 发信时配
+{
+  "name": "bohui-mail",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // 09-24 暴露面:收信走 Email Routing、汇总走 cron,没有调用方用 workers.dev → 关掉(与 cf_harden.py 同步;部署时别被默认值重新打开)
+  "workers_dev": false,
+  "preview_urls": false,
+  "d1_databases": [
+    { "binding": "DB", "database_name": "bohui-cms-v2", "database_id": "ea5b0da4-7f96-48bf-8fca-dc7193a9596d" }
+  ],
+  "r2_buckets": [
+    { "binding": "PHOTO", "bucket_name": "bohui-photo" }
+  ],
+  // 发信:Cloudflare Email Sending(Beta,Workers Paid;账号级「电子邮件服务 → 电子邮件发送」)。绑定不校验域名,可先部署;
+  // 发件域名要在面板「接入域名」后 send() 才成功,之前抛 E_SENDER_NOT_VERIFIED → 代码自动退到 Resend(RESEND_API_KEY)或记「未发」。
+  // 若部署报 send_email 相关错误(账号未开通 Email Service),把下面这行注释掉即可,发信自动走备选。
+  "send_email": [{ "name": "EMAIL" }],
+  // 每天 UTC 01:00 = 北京 09:00:未处理汇总
+  "triggers": { "crons": ["0 1 * * *"] },
+  "observability": { "enabled": true }
+}

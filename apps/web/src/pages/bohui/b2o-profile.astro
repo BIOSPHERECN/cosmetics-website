@@ -1,0 +1,282 @@
+---
+/**
+ * 客户档案(C2,2026-09-24)—— BEAUTY2OEM 一个客户一页:三行(第几级 / 下一步要证明什么 / 今天做什么)、认同七级与变更历史(附证据)、
+ * 一键「记沟通」、A/B/C 分级(代码按公式算)、企业层字段、产品矩阵六角色、联系人与同意、跟进时间线。
+ * 依据 SOP执行版-v1/03-客户信息管理与CRM-全局设计-v2.md §2.2 §3 §4 §7 §9。写接口 /api/admin/b2o-profile。
+ * 读量:每次打开 ≤ 档案 1 + companies 1 + contacts ≤20 + 等级记录 ≤200 + activities ≤100 + 草稿 ≤20 行,全走主键或索引,不做统计。
+ * 个人信息不上屏:contact / wechat / phone / email 四列不读(G13)。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { TRUST, custCode } from '../../lib/b2o';
+import { FIELDS, SRC, SELLER, CAT, SCALE, TIMING, REACH, XWHY, ACTS, ROLES, gapHints, fourDone, type Sku } from '../../lib/b2o-crm';
+import { kindName } from '../../lib/b2o-auto';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+const id = Number(new URL(Astro.request.url).searchParams.get('id')) || 0;
+const boss = c.sess.role === 'admin';
+
+const COLS = `id, inquiry_id, company_id, trust_level, pool, status, brief_due_at, brief_sent_at, created_at, updated_at, contact_ref, consent_at, consent_ver, consent_via, consent_xb_at,
+  seller_type, grade, grade_score, grade_why, grade_ok_by, grade_in_json, src_json, sku_roles_json, gap_note, trust_at, proven_json, next_proof, next_action, next_due,
+  last_in_at, last_out_at, silent_n, public_ok, ${FIELDS.map((f) => f.k).join(', ')}`;
+let p: Record<string, any> | null = null, err = '';
+try { p = id ? await c.db.prepare(`SELECT ${COLS} FROM b2o_profiles WHERE id=?`).bind(id).first() : null; }
+catch (e) { err = String((e as Error)?.message ?? e).slice(0, 160); }
+
+const KIND: Record<string, string> = { wecom: '企业微信', wechat: '工作号微信', visit: '拜访', show: '展会', call: '电话', note: '备注', system: '系统', status: '状态', sample: '寄样', quote: '报价', email: '邮件' };
+const DST: Record<string, string> = { draft: '待审', approved: '已批准待发', gen: '生成中', failed: '生成失败', rejected: '退回', sent: '已发' };
+const KL: Record<string, string> = { up: '升级', down: '降级', nurture: '进培育', revive: '回到在跟', drop: '放弃', dnd: '勿扰' };
+const POOL: Record<string, string> = { active: '在跟', nurture: '培育', dropped: '放弃', dnd: '勿扰' };
+type Log = { id: number; from_lv: number; to_lv: number; kind: string; evidence_type: string; evidence: string; trig: string | null; by_uid: number | null; confirmed_by: number | null; pending: number; at: string };
+type Ev = { at: string; what: string; body: string; tag?: string };
+let logs: Log[] = [], contacts: any[] = [], owner: number | null = null, timeline: Ev[] = [];
+if (p) {
+  logs = (await c.db.prepare(`SELECT id, from_lv, to_lv, kind, evidence_type, evidence, trig, by_uid, confirmed_by, pending, at FROM b2o_trust_log WHERE profile_id=? ORDER BY id DESC LIMIT 200`).bind(id).all<Log>()).results;
+  if (p.company_id) {
+    owner = (await c.db.prepare(`SELECT owner_uid FROM companies WHERE id=?`).bind(p.company_id).first<{ owner_uid: number | null }>())?.owner_uid ?? null;
+    contacts = (await c.db.prepare(`SELECT id, contact_ref, role, is_decision, consent_at, dnd_at, created_at FROM contacts WHERE company_id=? ORDER BY id LIMIT 20`).bind(p.company_id).all()).results;
+    const acts = (await c.db.prepare(`SELECT kind, text, evidence, created_at FROM activities WHERE company_id=? ORDER BY id DESC LIMIT 100`).bind(p.company_id).all<any>()).results;
+    timeline.push(...acts.map((a) => ({ at: a.created_at, what: KIND[a.kind] ?? a.kind, body: a.text + (a.evidence ? `\n证据:${a.evidence}` : '') })));
+  } else if (p.inquiry_id) {   // 没挂 company_id、询盘已转成别人名下客户:同样只读(和写接口同一口径)
+    owner = (await c.db.prepare(`SELECT owner_uid FROM companies WHERE source='inquiry' AND source_id=?`).bind(p.inquiry_id).first<{ owner_uid: number | null }>())?.owner_uid ?? null;
+  }
+  const drafts = (await c.db.prepare(`SELECT kind, status, created_at, sent_at FROM b2o_auto_drafts WHERE profile_id=? ORDER BY id DESC LIMIT 20`).bind(id).all<any>().catch(() => ({ results: [] as any[] }))).results;
+  timeline.push(...drafts.map((d) => ({ at: d.sent_at ?? d.created_at, what: kindName(d.kind), body: d.sent_at ? '已在企业微信发出' : `草稿:${DST[d.status] ?? d.status}` })));
+  timeline.push(...logs.map((l) => ({ at: l.at, what: '认同等级', body: `${lvName(l.from_lv)} → ${lvName(l.to_lv)}(${KL[l.kind] ?? l.kind})· ${l.evidence}`, tag: pendTag(l) })));
+  if (p.brief_sent_at) timeline.push({ at: p.brief_sent_at, what: '机会简报', body: '简报已发' });
+  timeline.push({ at: p.created_at, what: '建档', body: `来源:${p.source_channel ?? '—'}` });
+  timeline.sort((a, b) => (a.at < b.at ? 1 : -1));
+}
+function lvName(l: number) { return TRUST[l]?.name ?? `L${l}`; }
+function pendTag(l: Log) { return l.pending === 1 ? '待主管确认(未落级)' : l.pending === 2 ? '主管驳回' : !l.confirmed_by && (l.to_lv >= 5 || l.kind === 'down') ? '待主管确认' : ''; }
+const j = <T,>(t: unknown, d: T): T => { try { return JSON.parse(String(t ?? '')) ?? d; } catch { return d; } };
+const gi = j<Record<string, any>>(p?.grade_in_json, {}), src = j<Record<string, string>>(p?.src_json, {}), skus = j<Sku[]>(p?.sku_roles_json, []), proven = j<string[]>(p?.proven_json, []);
+const lv = Number(p?.trust_level ?? 0), four = p ? fourDone(p) : false;
+const canEdit = !!p && (boss || !owner || owner === c.sess.uid) && c.sess.role !== 'viewer';
+const pendings = logs.filter((l) => pendTag(l).startsWith('待主管'));
+const miss = p ? [
+  !p.company && '公司名', !p.source_channel && '来源渠道', !(p.store_url || p.hero_urls) && '店铺或核心商品链接', !p.contact_ref && '联系人内部编号', !p.consent_at && '同意记录',
+].filter(Boolean) as string[] : [];
+const groups = [...new Set(FIELDS.map((f) => f.g))];
+const d16 = (x: string | null) => (x ?? '').slice(0, 16);
+---
+
+<AdminShell title="客户档案" active="b2o-trust" email={c.sess.email} tenant={c.tenant}>
+  <p class="dim"><a href="/bohui/b2o-trust/">← 客户认同等级</a></p>
+  {!p ? <div class="empty">{err ? `档案表读不到(需要迁移 0121):${err}` : '没有这个客户档案。从「客户认同等级」列表点公司名进来。'}</div> : (
+  <>
+    <h1>客户档案 · {custCode(p as any)}</h1>
+    <p class="lead">{p.company ?? '(未填公司名)'} · {SELLER.find(([k]) => k === p!.seller_type)?.[1] ?? '类型待选'} · 分级 <b>{p.grade ?? '—'}</b>{p.grade_ok_by ? '' : p.grade ? '(未确认)' : ''} · 池子 {POOL[p.pool] ?? p.pool}
+      {!canEdit && <span class="pill p-wait">只读{owner && owner !== c.sess.uid ? ':这家归别的顾问' : ''}</span>}</p>
+    {miss.length > 0 && <p class="note warn">建档还缺:{miss.join('、')}。缺了也不挡寄样、报价、发方案,补齐就行。</p>}
+    {lv >= 3 && !p.gap_note && <p class="note warn">到 L3 了还没写组合缺口判断(升 L4 前要有,方案照发)。</p>}
+
+    <section class="three">
+      <div><span class="k">现在第几级</span><b>{lvName(lv)}</b><span class="s">{TRUST[lv]?.mind}{p.trust_at ? ` · 进入于 ${d16(p.trust_at)}` : ''}</span></div>
+      <div><span class="k">下一步要证明什么</span><b>{p.next_proof || TRUST[lv]?.proof}</b></div>
+      <div><span class="k">今天做什么</span><b>{p.next_action || '—'}</b><span class="s">{p.next_due ? `截止 ${p.next_due}` : ''}{!p.brief_sent_at && p.brief_due_at ? ` · 简报应发 ${d16(p.brief_due_at)}(UTC)` : ''}</span></div>
+    </section>
+
+    <!-- ① 认同七级 -->
+    <h2>认同七级</h2>
+    <ol class="steps">{TRUST.map((t) => <li class:list={[{ on: t.lv === lv, done: t.lv < lv }]} title={`下一步证明:${t.proof}`}>{t.name}</li>)}</ol>
+    <p class="dim">已认同:{proven.length ? proven.join(' → ') : '还没有'} · 客户最后回应 {d16(p.last_in_at) || '—'} · 我方最后触达 {d16(p.last_out_at) || '—'} · 连续无回应 {p.silent_n ?? 0} 次</p>
+    {pendings.length > 0 && (
+      <div class="note warn">有 {pendings.length} 条等级变更待主管确认(L5 及以上、降级)。
+        {boss ? <span> <button class="btn pri" data-op="confirm" type="button">确认</button> <button class="btn" data-op="reject" type="button">驳回</button></span> : ' 请业务负责人(未指定前老板)确认,不挡业务动作。'}
+      </div>
+    )}
+    {canEdit && (
+      <form class="panel" data-op="trust">
+        <b>记沟通 · 客户这次做了什么?</b>
+        <label>客户动作<select name="act" required><option value="">— 选一个 —</option>{Object.entries(ACTS).map(([k, a]) => <option value={k}>{a.label}</option>)}</select></label>
+        <p class="dim" id="hint">选了以后这里显示系统建议。</p>
+        <div class="row">
+          <label>证据类型<select name="evidence_type"><option value="quote">客户原话</option><option value="action">客户动作</option></select></label>
+          <label>在哪沟通的<select name="channel"><option value="wecom">企业微信</option><option value="wechat">公司工作号微信</option><option value="visit">线下拜访</option><option value="show">展会</option><option value="call">电话</option></select></label>
+        </div>
+        <label>证据(必填,4–100 字:贴客户原话摘要,或写清客户做了什么。不写手机号、微信号、姓名)<textarea name="evidence" rows="2" maxlength="100" minlength="4" required></textarea></label>
+        <p><button class="btn pri" type="submit">记下来</button> <span class="st dim"></span></p>
+      </form>
+    )}
+    {logs.length === 0 ? <p class="dim">还没有等级变更记录。</p> : (
+      <table>
+        <thead><tr><th>时间</th><th>变更</th><th>证据</th><th>触发</th><th>确认</th></tr></thead>
+        <tbody>{logs.map((l) => (
+          <tr class:list={[{ back: l.evidence.startsWith('补记') }]}>
+            <td class="dim">{d16(l.at)}</td>
+            <td>{lvName(l.from_lv)} → {lvName(l.to_lv)} <span class="pill">{KL[l.kind] ?? l.kind}</span></td>
+            <td>{l.evidence_type === 'quote' ? '原话:' : l.evidence_type === 'action' ? '动作:' : '系统:'}{l.evidence}</td>
+            <td class="dim">{l.trig ?? '—'}</td>
+            <td>{pendTag(l) ? <span class="pill p-warn">{pendTag(l)}</span> : l.confirmed_by ? <span class="pill p-ok">已确认</span> : '—'}</td>
+          </tr>
+        ))}</tbody>
+      </table>
+    )}
+
+    <!-- ② 下一步 -->
+    {canEdit && (
+      <form class="panel row" data-op="next">
+        <label>下一步要证明什么<input name="next_proof" maxlength="100" value={p.next_proof ?? ''} placeholder={TRUST[lv]?.proof} /></label>
+        <label>今天 / 下一步做什么<input name="next_action" maxlength="200" value={p.next_action ?? ''} /></label>
+        <label>截止<input name="next_due" type="date" value={p.next_due ?? ''} /></label>
+        <p><button class="btn" type="submit">保存下一步</button> <span class="st dim"></span></p>
+      </form>
+    )}
+
+    <!-- ③ 分级 + 企业层 -->
+    <h2>A/B/C 分级 <span class="dim">系统按评分卡算,销售只确认;阈值是初值,待校准</span></h2>
+    <p><span class="pill">{p.grade ?? '—'}</span> {p.grade_score !== null && p.grade_score !== undefined ? `${p.grade_score} 分 · ` : ''}{p.grade_why ?? '还没算(选卖家类型后保存)'}
+      {four ? ' · 首聊四问已齐' : ' · 首聊四问未齐(按初评)'}
+      {canEdit && p.grade && !p.grade_ok_by && <button class="btn" type="button" data-op="grade-ok">确认分级</button>}
+      {p.grade_ok_by && <span class="pill p-ok">已确认</span>}</p>
+
+    <form class="panel" data-op="save">
+      <fieldset disabled={!canEdit}>
+        <div class="row">
+          <label>卖家类型<select name="seller_type">{SELLER.map(([k, v]) => <option value={k} selected={k === (p!.seller_type ?? '')}>{v}</option>)}</select></label>
+          <label>② 品类<select name="gi.cat">{CAT.map(([k, v]) => <option value={k} selected={k === (gi.cat ?? '')}>{v}</option>)}</select></label>
+          <label>④ 时机<select name="gi.timing">{TIMING.map(([k, v]) => <option value={k} selected={k === (gi.timing ?? '')}>{v}</option>)}</select></label>
+          <label>⑤ 对接人<select name="gi.reach">{REACH.map(([k, v]) => <option value={k} selected={k === (gi.reach ?? '')}>{v}</option>)}</select></label>
+          <label>X 不接<select name="gi.x">{XWHY.map(([k, v]) => <option value={k} selected={k === (gi.x ?? '')}>{v}</option>)}</select></label>
+        </div>
+        <div class="checks">③ 规模信号:{SCALE.map(([k, v]) => <label class="ck"><input type="checkbox" name="gi.scale" value={k} checked={(gi.scale ?? []).includes(k)} /> {v}</label>)}
+          <label class="ck"><input type="checkbox" name="gi.small_only" checked={!!gi.small_only} /> 只要极小量试单、没有放量计划(最高 C)</label></div>
+
+        {groups.map((g) => (
+          <fieldset class="grp"><legend>{g}</legend>
+            {FIELDS.filter((f) => f.g === g).map((f) => (
+              <label class:list={[{ wide: f.t === 'area' || f.k === 'money_model' }]}>{f.label}{src[f.k] === 'A' && <span class="pill p-warn">推测</span>}
+                <span class="in">
+                  {f.t === 'area' ? <textarea name={`f.${f.k}`} rows="2" maxlength="500" placeholder={f.hint}>{p![f.k] ?? ''}</textarea>
+                    : f.t === 'sel' ? <select name={`f.${f.k}`}>{f.opts!.map(([k, v]) => <option value={k} selected={k === (p![f.k] ?? '')}>{v}</option>)}</select>
+                    : <input name={`f.${f.k}`} maxlength="500" value={p![f.k] ?? ''} placeholder={f.hint} />}
+                  <select name={`src.${f.k}`} class="src" title="这个字段从哪来">{SRC.map(([k, v]) => <option value={k} selected={k === (src[f.k] ?? '')}>{v}</option>)}</select>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        ))}
+        {canEdit && <p><button class="btn pri" type="submit">保存档案并重算分级</button> <span class="st dim"></span></p>}
+      </fieldset>
+    </form>
+
+    <!-- ④ 产品矩阵 -->
+    <h2>产品矩阵六角色 <span class="dim">每个在售款标一个角色:{ROLES.join(' / ')}。平台店铺不由机器抓,销售粘贴或按客户截图填</span></h2>
+    <form class="panel" data-op="sku">
+      <table class="sku"><thead><tr><th>商品</th><th>链接</th><th>角色</th><th>价格</th><th>备注</th><th></th></tr></thead>
+        <tbody id="skus">{(skus.length ? skus : [{ sku: '', role: '' } as Sku]).map((x) => (
+          <tr><td><input name="sku" value={x.sku} maxlength="120" /></td><td><input name="url" value={x.url ?? ''} maxlength="300" /></td>
+            <td><select name="role"><option value="">—</option>{ROLES.map((r) => <option selected={r === x.role}>{r}</option>)}</select></td>
+            <td><input name="price" value={x.price ?? ''} maxlength="30" /></td><td><input name="note" value={x.note ?? ''} maxlength="120" /></td>
+            <td><button class="btn" type="button" data-del>删</button></td></tr>
+        ))}</tbody></table>
+      {gapHints(skus).map((h) => <p class="note">缺口提示(推测):{h}</p>)}
+      <label>组合缺口判断(研发或销售写)<textarea name="gap_note" rows="2" maxlength="500">{p.gap_note ?? ''}</textarea></label>
+      {canEdit && <p><button class="btn" type="button" id="addsku">加一款</button> <button class="btn pri" type="submit">保存矩阵</button> <span class="st dim"></span></p>}
+    </form>
+
+    <!-- ⑤ 联系人与同意 -->
+    <h2>联系人与同意 <span class="dim">后台只存内部编号(如 C9001-选品);手机号、微信、姓名只放企业微信</span></h2>
+    <div class="panel">
+      <p>档案同意快照:{p.consent_at ? <span class="pill p-ok">处理同意 {d16(p.consent_at)}</span> : <span class="pill p-wait">处理同意未记录</span>}
+        {' '}{p.consent_xb_at ? <span class="pill p-ok">出境单独同意 {d16(p.consent_xb_at)}</span> : <span class="pill p-wait">出境单独同意未记录</span>}
+        <span class="dim"> · 方式 {p.consent_via ?? '—'} · 告知版本 {p.consent_ver ?? '—'} · 可公开客户名称:{p.public_ok ? '是(有书面同意)' : '否'}</span></p>
+      {contacts.length === 0 ? <p class="dim">还没有联系人。</p> : (
+        <table><thead><tr><th>内部编号</th><th>角色</th><th>决策人</th><th>同意</th><th>勿扰</th></tr></thead>
+          <tbody>{contacts.map((x) => <tr><td>{x.contact_ref ?? '—'}</td><td>{x.role ?? '—'}</td><td>{x.is_decision ? '是' : ''}</td>
+            <td>{x.consent_at ? d16(x.consent_at) : <span class="pill p-wait">未记录</span>}</td><td>{x.dnd_at ? <span class="pill p-bad">勿扰 {d16(x.dnd_at)}</span> : ''}</td></tr>)}</tbody></table>
+      )}
+      {canEdit && (
+        <div class="row">
+          <form class="row" data-op="contact">
+            <label>加联系人 · 内部编号<input name="contact_ref" required maxlength="30" placeholder={`${custCode(p as any)}-选品`} pattern="[A-Za-z0-9]{2,12}-(老板|选品|产品|供应链|运营|采购|其他)[0-9]?" /></label>
+            <label class="ck"><input type="checkbox" name="is_decision" /> 新品决策人</label>
+            <label class="ck"><input type="checkbox" name="consent" /> 已取得处理同意</label>
+            <p><button class="btn" type="submit">加上</button> <span class="st dim"></span></p>
+          </form>
+          <form class="row" data-op="consent">
+            <label>记同意 · 方式<select name="via" required><option value="">—</option><option value="wecom-first-msg">企业微信首条告知</option><option value="web-checkbox">网页勾选</option><option value="paper">书面</option><option value="verbal-noted">口头告知后记下</option></select></label>
+            <label>告知版本<input name="ver" maxlength="40" placeholder="pi-2026-09-v1" /></label>
+            <label class="ck"><input type="checkbox" name="xb" /> 出境单独同意</label>
+            <p><button class="btn" type="submit">记同意</button> <span class="st dim"></span></p>
+          </form>
+        </div>
+      )}
+    </div>
+
+    <!-- ⑥ 时间线 -->
+    <h2>跟进时间线</h2>
+    <ul class="tl">{timeline.map((e) => <li><span class="dim">{d16(e.at)}</span> <b>{e.what}</b>{e.tag && <span class="pill p-warn">{e.tag}</span>}<div class="body">{e.body}</div></li>)}</ul>
+    <p class="dim">起订量、交期、价格、样品费一律「待业务确认」,只按工厂口径页走报价审批。时间为 UTC。</p>
+  </>
+  )}
+
+  <script is:inline define:vars={{ id, ACTS }}>
+    const post = async (body, st) => {
+      st && (st.textContent = '保存中…');
+      try {
+        const r = await fetch('/api/admin/b2o-profile', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, ...body }) });
+        const j = await r.json();
+        if (st) st.textContent = j.msg || (j.ok ? '已保存' : '失败');
+        else alert(j.msg || (j.ok ? '好了' : '失败'));
+        if (j.ok) setTimeout(() => location.reload(), 900);
+      } catch { st ? (st.textContent = '网络出错,稍后再试') : alert('网络出错,稍后再试'); }
+    };
+    const act = document.querySelector('form[data-op="trust"] select[name="act"]');
+    act?.addEventListener('change', () => {
+      const a = ACTS[act.value], h = document.getElementById('hint');
+      if (!a) { h.textContent = ''; return; }
+      h.textContent = a.pool ? '等级不变,改池子。' : a.down ? '降一级,要主管确认。' : a.to === undefined ? '等级不变,只记一条沟通。'
+        : `建议升到 L${a.to}(只升不降,跳过的级会用同一条证据补记)${a.to >= 5 ? ';L5 及以上要主管确认' : ''}${a.hard ? ' · 硬信号,直接落级' : ' · 软信号'}`;
+    });
+    document.querySelectorAll('form[data-op]').forEach((f) => f.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const op = f.dataset.op, st = f.querySelector('.st'), fd = new FormData(f), o = { op };
+      if (op === 'save') {
+        o.f = {}; o.src = {}; o.gi = { scale: [] };
+        for (const [k, v] of fd) {
+          const [a, b] = k.split('.');
+          if (a === 'f') o.f[b] = v; else if (a === 'src') o.src[b] = v;
+          else if (k === 'gi.scale') o.gi.scale.push(v); else if (a === 'gi') o.gi[b] = b === 'small_only' ? true : v; else o[k] = v;
+        }
+      } else if (op === 'sku') {
+        o.skus = [...f.querySelectorAll('#skus tr')].map((tr) => Object.fromEntries(['sku', 'url', 'role', 'price', 'note'].map((k) => [k, tr.querySelector(`[name=${k}]`).value])));
+        o.gap_note = fd.get('gap_note');
+      } else { for (const [k, v] of fd) o[k] = v === 'on' ? true : v; }
+      post(o, st);
+    }));
+    document.querySelectorAll('button[data-op]').forEach((b) => b.addEventListener('click', () => {
+      if (b.dataset.op === 'reject' && !confirm('驳回这些待确认的等级变更?记录会保留。')) return;
+      post({ op: b.dataset.op }, null);
+    }));
+    const tb = document.getElementById('skus');
+    document.getElementById('addsku')?.addEventListener('click', () => { const tr = tb.lastElementChild.cloneNode(true); tr.querySelectorAll('input').forEach((i) => (i.value = '')); tr.querySelector('select').value = ''; tb.appendChild(tr); });
+    tb?.addEventListener('click', (e) => { const d = e.target.closest('[data-del]'); if (d && tb.children.length > 1) d.closest('tr').remove(); else if (d) d.closest('tr').querySelectorAll('input').forEach((i) => (i.value = '')); });
+  </script>
+
+  <style>
+    .dim{color:var(--ad-faint);font-size:.75rem} h2{font-size:1rem;margin:1.5rem 0 .5rem} h2 .dim{font-weight:400}
+    .panel{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:1rem 1.125rem;margin-bottom:.75rem;display:grid;gap:.75rem}
+    .panel p{margin:0} label{display:grid;gap:.25rem;font-size:.875rem} textarea,input,select{width:100%;font-size:.875rem}
+    .row{display:flex;flex-wrap:wrap;gap:.75rem;align-items:end} .row>label{flex:1 1 12rem}
+    .three{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:.75rem;margin:1rem 0}
+    .three>div{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:.875rem 1rem;display:grid;gap:.25rem}
+    .three .k{color:var(--ad-faint);font-size:.75rem} .three b{font-size:1.0625rem} .three .s{color:var(--ad-faint);font-size:.75rem}
+    .steps{display:flex;flex-wrap:wrap;gap:.25rem;list-style:none;padding:0;margin:0 0 .5rem}
+    .steps li{padding:.25rem .625rem;border:1px solid var(--ad-line);border-radius:999px;font-size:.8125rem;color:var(--ad-faint)}
+    .steps li.done{color:inherit} .steps li.on{background:var(--ad-accent);border-color:var(--ad-accent);color:#fff;font-weight:600}
+    fieldset{border:0;padding:0;margin:0;display:grid;gap:.75rem;min-width:0}
+    fieldset.grp{border:1px solid var(--ad-line);border-radius:9px;padding:.75rem;grid-template-columns:repeat(auto-fill,minmax(16rem,1fr))}
+    legend{font-weight:600;font-size:.875rem;padding:0 .25rem} label.wide{grid-column:1/-1}
+    .in{display:flex;gap:.375rem} .in select.src{flex:0 0 6.5rem;font-size:.75rem}
+    .checks{display:flex;flex-wrap:wrap;gap:.5rem 1rem;font-size:.875rem;align-items:center} label.ck{display:flex;gap:.375rem;align-items:center}
+    label.ck input{width:auto} table.sku input,table.sku select{min-width:5rem}
+    tr.back td{color:var(--ad-faint)} td{font-size:.875rem;vertical-align:top}
+    .tl{list-style:none;padding:0;margin:0;display:grid;gap:.5rem} .tl li{border-left:2px solid var(--ad-line);padding-left:.75rem;font-size:.875rem}
+    .tl .body{white-space:pre-wrap}
+    @media (max-width:640px){.in{flex-direction:column}.in select.src{flex:auto}}
+  </style>
+</AdminShell>

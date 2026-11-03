@@ -1,0 +1,87 @@
+{
+ "angle": "成本+正确性",
+ "tree": "c03e18f62468817d772ef6ec17c12dce0ded255d",
+ "worker": "gate",
+ "run_label": "review-ticket c03e18f62468 成本+正确性",
+ "reviewer": "claude",
+ "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-c03e18f62468.json",
+ "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/gate/c03e18f62468/成本+正确性.json",
+ "skills_loaded": ["zero-r2-move", "karpathy-coder", "code-reviewer"],
+ "verdict": "过",
+ "checked": ["成本-①", "成本-②", "成本-③", "成本-④", "成本-⑤", "成本-⑥", "成本-⑦", "正确性-①", "正确性-②", "正确性-③", "正确性-④", "正确性-⑤", "正确性-⑥", "正确性-⑦"],
+ "findings": [
+  {
+   "id": "C1",
+   "level": "低",
+   "file": "gate.sh",
+   "line": 90,
+   "claim": "NEWQ 新正则仍有漏数:sql`...` 这类标签模板(无括号)、小写 SQL 字符串交给自定义函数名(如 fetchList(env,'select ...'))都不计数;只有配套的 .prepare/.all 出现在同一次 diff 新增行里才会被数到。",
+   "failure_scenario": "D1 红灯时,某次改动只新增一行 `const rows = await listItems(env, 'select * from big_table')`(封装函数在旧文件里),NEWQ=0,说明写【零读】即可放行,实际新增了读量。",
+   "evidence": "本地用 Git Bash GNU grep 跑 7 行样例:`one(sql\\`select ...\\`)` 靠 one( 命中,单独 sql\\` 不命中;小写 select 不命中;注释行被正确排除。计数 5/7 与预期一致。d1_budget.py:349 只把 --new-queries 用于【零读】判断(ZERO_MARK,第 25 行),所以漏数只影响红灯期间的【零读】放行,不影响绿灯。",
+   "fix": "可接受现状;若要补,再加 `sql\\s*\\`` 与小写 `\\bselect\\b.+\\bfrom\\b`。不阻断本次。"
+  },
+  {
+   "id": "C2",
+   "level": "低",
+   "file": "gate.sh",
+   "line": 90,
+   "claim": "NEWQ 误报偏多:Promise.all( / 任意 .run( / 中文文案里的大写 UPDATE / 通用函数名 q( one( 都会计入,纯文案或前端改动也常常 NEWQ>0,使【零读】通道在 JS 改动上几乎用不上。",
+   "failure_scenario": "D1 红灯期间改一处带 `await Promise.all([...])` 的纯前端代码,NEWQ=1,【零读】说明无效,部署被拦,只能改走【降读】/破窗。",
+   "evidence": "样例中 `foo.run(3)`、`<p>请 UPDATE 你的资料</p>` 均被计数。旧正则同样匹配 .all(,不是本次引入的回归;方向是偏严,不产生费用。",
+   "fix": "排除 `Promise\\.all`;不阻断本次。"
+  },
+  {
+   "id": "C3",
+   "level": "低",
+   "file": "audit_v2/交付说明.md",
+   "line": 76,
+   "claim": "第八节删除线只盖住括号那一句,后面加粗的「红:beauty2oem.com/zh-cn/ 线上写着『广州自有工厂』…这是硬规则…破窗也不放」仍以现行口径出现,与本次改动和第一节自相矛盾。",
+   "failure_scenario": "创始人或下一条线读交付说明,以为 B2oBlock.astro:322 仍需整改,去删了创始人明确说『保持不动,不许删』的那句。",
+   "evidence": "读 diff 第 76 行:`~~(09-24 22:5x 作废…)~~ **红:…**`,删除线闭合在括号后。",
+   "fix": "把整条红项都放进删除线,或改写为『已作废』一行。"
+  },
+  {
+   "id": "C4",
+   "level": "低",
+   "file": "audit_v2/register_watch_task.ps1",
+   "line": 12,
+   "claim": "超时 5→10 分钟的改动实际不生效:同一份交付说明第九节已写明 run-hidden.vbs 立即返回,任务超时与 IgnoreNew 都管不到真正的巡查进程;注释写的理由会误导。",
+   "failure_scenario": "巡查卡死时,读注释的人以为 10 分钟后会被杀掉,实际不会,只能靠日报心跳发现。",
+   "evidence": "diff 第 3/12 行与 交付说明.md 第九节『计划任务经 run-hidden.vbs 启动后立刻返回…超时和不叠跑设置实际不起作用』。",
+   "fix": "注释补一句『vbs 立即返回,此超时只约束 wscript 本身』。无费用、无正确性回归。"
+  },
+  {
+   "id": "C5",
+   "level": "低",
+   "file": "audit_v2/rules-v2-strict.yml",
+   "line": 92,
+   "claim": "同时删掉了英文 `own(ed) factory|facility` 硬规则;中文放宽『自有工厂』与英文对应,方向一致,但英文『owned facility』偏厂房义,已不再被拦。属合规口径问题,交安全+合规角度确认。",
+   "failure_scenario": "英文页写 'owned facility / not leased-free' 类产权主张时不再被第一关拦。",
+   "evidence": "diff 第 92 行 pattern-regex 由三段缩为 '自有厂房|非租赁';memory feedback-no-group-branding.md 09-24 22:5x 更正只说中文『自有工厂可以写』。",
+   "fix": "若创始人认为 'owned facility' 等于厂房,补回 `(?i)\\bowned\\s+facility\\b`。"
+  }
+ ],
+ "addressed": [
+  {
+   "ref": "JEV",
+   "result": "不成立",
+   "why": "Jev 判拦置信 0.64(<0.8,不触发反驳员),reason 为空,没有给出文件/行号。本角度逐文件核对:5 个文件都是闸门本机工具与文档,无访客路径、无 D1/R2/付费 API、无 CACHE_V 变化;gate.sh 正则改动已用样例实测,只有 C1/C2 两条低级漏/误报;gate1 缓存键含 rules_hash 与 gate_hash(lib.py:411、gate1.py:399,sites.json 属 GATE_EXT 计入 gate_hash),规则改动不会命中旧缓存。找不到支持『拦』的证据。"
+  },
+  {
+   "ref": "LAYA",
+   "result": "不成立",
+   "why": "Laya 判 allow 但置信 0.04,本身不构成放行依据,也不构成风险;本角度独立复核结论同上,只有低级发现(C1–C5)。"
+  }
+ ],
+ "risks": [
+  {"cat": "费用", "level": "低", "item": "本次无访客请求路径、无 D1 查询、无 R2 列目录/复制、无模型/KV/Vectorize 调用、无 CACHE_V 变化、无 GitHub Actions;唯一计划任务 Bohui-AuditWatch 频率不变(每小时 :47,本机运行)。", "mitigation": "上线后看 Jev 日用量与巡查单次耗时(日报『巡查心跳』)。"},
+  {"cat": "正确性", "level": "低", "item": "NEWQ 计数仍可被封装函数+小写 SQL 绕过(C1),且 Promise.all 等误报使【零读】通道偏难用(C2)。", "mitigation": "只影响 D1 红灯期间【零读】放行;盯 d1_budget override 日志里【零读】放行条目,逐条人工复看。"},
+  {"cat": "回归", "level": "低", "item": "放宽『自有工厂』只在本单批准、gate_approved 副本更新后生效;在此之前 cache/gate_approved 里仍是旧规则,公司站含 B2oBlock.astro:322 的构建会继续被拦。", "mitigation": "批准后确认 cache/gate_approved/audit_v2/rules-v2-strict.yml 与 sites.json 已同步为新版。"},
+  {"cat": "合规", "level": "低", "item": "英文 own(ed) factory/facility 规则一并删除(C5)。", "mitigation": "交安全+合规角度与创始人确认英文口径。"}
+ ],
+ "smoke_extra": [
+  "https://beauty2oem.com/zh-cn/?kk=1 (含『广州自有工厂』,巡查红线词不应再报红)",
+  "第一关样例:新增行含『自有工厂』应过、含『自有厂房』『非租赁』应拦",
+  "gate.sh NEWQ 样例:纯文案 diff 应为 0;含 env.DB.prepare 换行写法应 ≥1"
+ ]
+}

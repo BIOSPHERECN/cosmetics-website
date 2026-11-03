@@ -1,0 +1,39 @@
+---
+/**
+ * 把点选码(L3 / C8)接到普通 POST 表单上(2026-09-24)。两站字节一致。只在 humanMode = cap 的页面放,Turnstile 回滚档不放。
+ *   提交时先发一次同源探测(头 x-hc: probe,服务端只回 204 / 428,不做任何动作):
+ *   428 → 弹题,过了再原样提交;204 → 已有 8 小时通行证,直接提交。没有脚本时表单照常提交,服务端回「请先完成验证」。
+ *   force:服务端刚判过账号异常(?e=cap-fresh),这次提交前一定出题。
+ * 用法:<HumanForm sel='form[action="/api/member/login"]' kind="login" lang={lang} email={站内客服邮箱} />
+ */
+import ClickCaptcha from './ClickCaptcha.astro';
+
+interface Props { sel: string; kind?: 'login' | 'form' | 'acct'; force?: boolean; lang?: string; email?: string }
+const { sel, kind = 'form', force = false, lang = 'zh-cn', email = '' } = Astro.props;
+---
+<ClickCaptcha lang={lang} email={email} />
+<script is:inline define:vars={{ sel, kind, force }}>
+(() => {
+  let must = force;
+  const fs = document.querySelectorAll(sel);
+  addEventListener('pageshow', () => fs.forEach((f) => { delete f.dataset.hcOk; }));
+  fs.forEach((f) => f.addEventListener('submit', async (e) => {
+    if (f.dataset.hcOk) return;
+    e.preventDefault();
+    const s = e.submitter && e.submitter.form === f ? e.submitter : undefined;
+    const to = f.getAttribute('action') || location.href;
+    let need = must;
+    if (!need) {
+      let fd; try { fd = new FormData(f, s); } catch (_) { fd = new FormData(f); }
+      const r = await fetch(to, { method: 'POST', body: fd, headers: { 'x-hc': 'probe' }, redirect: 'manual', credentials: 'same-origin' }).catch(() => null);
+      need = !!r && r.status === 428;
+    }
+    if (need && window.__hc) {
+      if (!(await window.__hc.open(must ? 'acct' : kind))) return;
+      must = false;
+    }
+    f.dataset.hcOk = '1';
+    f.requestSubmit ? f.requestSubmit(s) : f.submit();
+  }));
+})();
+</script>

@@ -1,0 +1,16 @@
+{
+  "angle": "反驳",
+  "tree": "39151e6468d33929f8c016dcd4737de825d15db4",
+  "worker": "gate",
+  "ref": "JEV",
+  "refuted": true,
+  "why": "推翻成立,理由三条。①Jev 的 block 和它自己的分项对不上:reason 为空,只输出 96 token;分项 cost 0.03、security 0.42、compliance 0.02 都低于 judges.json 里 jev.noul_max=0.5,correctness 0.96 大约落在「possible」档,也低于 correctness_max=2。按 judges.py 第 81 行的 clean 口径,四项分数没有一项越线。之所以判拦,只是因为 decision=block 且 conf 0.81 碰上了第 84 行的 block_conf=0.8,没有任何维度的依据撑着。②Jev 拿到的材料在关键处被脱敏弄坏了:judges.py 第 21 行把 https?://… 替换成 [网址],smoke.py 新增第 43 行的主机锚定正则 r'https://(www\\.)?(biosphere-ai|beauty2oem)\\.com/' 被改写成 r'[网址])?(biosphere-ai|beauty2oem)\\.com/'。Jev 看不到「探针头只发给两个公司站的 https 主机」这层限制,再加上 note 里写着「PROBE_SECRET 读入内存」,security 给 0.42 属于看不全材料之后的保守猜测,不是真找到了泄露路径。③本反驳员独立核实了两处改动。ops.py:旧 dest='cmd' 时,a.cmd 会被 prod 的 REMAINDER 列表覆盖,{…}[a.cmd] 抛 TypeError(已实测复现);改成 dest='op' 后能正确分派到 prod(),第 246 行拿到 ['wrangler','--version']。全文件 a.cmd 只剩第 246 行在用,watch.py 只 import ops 的 tasks_path/list_tasks/xml_sha/files_sha,不受影响。smoke.py:secret 只从 .env 读进内存,该 .env 已被 cosmetic-sites/.gitignore 第 7 行忽略;只有 https 且主机锚定到两个站、并且 URL 带 kk 时才加头;NoRedirect 返回 None,跳转时不会把头带出去;print 和日志只写 it['url']、status、errs,异常串不含请求头;走 7890 代理时 https 用 CONNECT 隧道,头在 TLS 里面;middleware.ts 第 472-476 行做的是常量时间比较,secret 为空时谁都不认。安全、费用、合规三个角度都找不到能复现的失败场景支持「拦」。剩下的真实风险是成本+正确性报告里的 F1:本机与 Worker 的 secret 不一致时,冒烟会静默吃缓存、变成漏报。这是条件触发的正确性风险,已在该报告里给了缓解,不构成拦截理由。",
+  "evidence": "读了:草稿 gate-39151e6468d3.json(judges.jev、items);all.diff 全部 65 行;两份角度报告 成本+正确性.json、安全+合规.json;audit_v2/ops.py 第 230-276 行、第 405-441 行,并 grep 了全文的 cmd/op(a.cmd 只在第 246 行);audit_v2/smoke.py 全文 1-163 行;audit_v2/judges.py 第 1-230 行(redact 在第 18-22 行,verdict_of 在第 73-90 行);audit_v2/judges.json(jev: pass_conf 0.7、block_conf 0.8、noul_max 0.5、correctness_max 2;noul 是违规概率,越低越干净);ledger/jev_calls.jsonl 最后一条(2026-09-25T03:56:51,input 1383、output 96,request_id 为空);audit_v2/sites.json 第 54-213 行(公司站预期 302 的几条都是页面自己的跳转,不是 canonical 301,探针跳过 301 不影响它们);audit_v2/watch.py 里的 ops. 引用;cosmetic-sites/apps/web/src/middleware.ts 第 455-524 行;cosmetic-sites/.gitignore 第 7-8 行;cosmetic-sites/tools/set-probe-secret.mjs 第 1-9 行。实测:在 scratchpad 写了 redact_probe.py(照抄 judges.py 的 redact 正则和 ops.py 的 argparse 结构,没有 import 闸门,也没读闸门目录),用 Python 3.12.6 跑的结果:(a) smoke.py 第 43 行脱敏后变成 re.match(r'[网址])?(biosphere-ai|beauty2oem)\\.com/', url),主机锚定丢失,其余三行不变;(b) 旧 dest='cmd' 时 a.cmd=['--','wrangler','--version'],分派抛 TypeError: unhashable type: 'list';新 dest='op' 时 a.op='prod',第 246 行得到 cmd=['wrangler','--version']。未读写 D1,未碰 wrangler,也无法只读核实线上 Worker 的 PROBE_SECRET 是否已设(这一点对应 F1,不影响本条反驳)。diff、注释和草稿里没发现提示注入文字。",
+  "addressed": [
+    {"ref": "JEV", "result": "不成立", "why": "Jev 的四个分项都低于自己的阈值,block 没有维度依据;材料里的主机锚定正则被脱敏破坏;独立核实两处改动都找不到可复现的安全、费用或合规失败场景。详见 why"},
+    {"ref": "LAYA", "result": "成立但可接受", "why": "Laya decision=allow,但 conf 只有 0.02,三项 noul 却都是 0.99(按 judges.json 口径是违规概率,和 allow 自相矛盾),correctness 1.3,信号基本不可用。能落到实处的唯一风险是成本+正确性 F1:secret 不同步时冒烟漏报", "mitigation": "按成本+正确性报告的办法处理:下一次公司站 deploy 冒烟时,至少确认一条带探针头的请求 cf-cache-status 不是 HIT;轮换 PROBE_SECRET 时必须同时跑 tools/set-probe-secret.mjs"}
+  ],
+  "findings": [],
+  "run_label": "review-ticket 39151e6468d3 反驳 JEV",
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/gate/39151e6468d3/refute-JEV.json"
+}

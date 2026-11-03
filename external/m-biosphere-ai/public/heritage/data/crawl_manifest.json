@@ -1,0 +1,192 @@
+{
+  "total_recipes": 213,
+  "sources": [
+    {
+      "source": "中医网-外台秘要-卷第三十二(美容专卷)",
+      "base_url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/",
+      "chapters_count": 34,
+      "recipes_count": 213,
+      "encoding": "utf-8(站点meta为utf-8)",
+      "proxy": "127.0.0.1:1082",
+      "chapter_detail": [
+        {
+          "section": "卷第三十二·面膏面脂兼疗面病方一十三首",
+          "count": 13,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27330.html"
+        },
+        {
+          "section": "卷第三十二·洗面药方二首",
+          "count": 1,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27331.html"
+        },
+        {
+          "section": "卷第三十二·面色光悦方五首",
+          "count": 5,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27332.html"
+        },
+        {
+          "section": "卷第三十二·令面色白方四首",
+          "count": 4,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27333.html"
+        },
+        {
+          "section": "卷第三十二·面方十三首",
+          "count": 13,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27334.html"
+        },
+        {
+          "section": "卷第三十二·面黯方二十一首",
+          "count": 20,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27335.html"
+        },
+        {
+          "section": "卷第三十二·面方一十五首",
+          "count": 15,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27336.html"
+        },
+        {
+          "section": "卷第三十二·面渣方一十三首",
+          "count": 12,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27337.html"
+        },
+        {
+          "section": "卷第三十二·面粉滓方四首",
+          "count": 4,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27338.html"
+        },
+        {
+          "section": "卷第三十二·化面方二首",
+          "count": 2,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27339.html"
+        },
+        {
+          "section": "卷第三十二·杂疗面方六首",
+          "count": 6,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27340.html"
+        },
+        {
+          "section": "卷第三十二·头风白屑方四首",
+          "count": 4,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27341.html"
+        },
+        {
+          "section": "卷第三十二·沐头去风方五首",
+          "count": 5,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27342.html"
+        },
+        {
+          "section": "卷第三十二·头风白屑兼生发方八首",
+          "count": 8,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27343.html"
+        },
+        {
+          "section": "卷第三十二·生发膏方一十一首",
+          "count": 10,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27344.html"
+        },
+        {
+          "section": "卷第三十二·生眉毛方二首",
+          "count": 2,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27345.html"
+        },
+        {
+          "section": "卷第三十二·令发黑方八首",
+          "count": 7,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27346.html"
+        },
+        {
+          "section": "卷第三十二·拔白发良日并方三首",
+          "count": 3,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27347.html"
+        },
+        {
+          "section": "卷第三十二·变白发染发方五首",
+          "count": 4,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27348.html"
+        },
+        {
+          "section": "卷第三十二·发黄方三首",
+          "count": 3,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27349.html"
+        },
+        {
+          "section": "卷第三十二·头发秃落方一十九首",
+          "count": 19,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27350.html"
+        },
+        {
+          "section": "卷第三十二·白秃方一十二首",
+          "count": 12,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27351.html"
+        },
+        {
+          "section": "卷第三十二·赤秃方三首",
+          "count": 3,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27352.html"
+        },
+        {
+          "section": "卷第三十二·令发不生方三首",
+          "count": 3,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27353.html"
+        },
+        {
+          "section": "卷第三十二·鬼舐头方二首",
+          "count": 2,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27354.html"
+        },
+        {
+          "section": "卷第三十二·澡豆方八首",
+          "count": 8,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27355.html"
+        },
+        {
+          "section": "卷第三十二·手膏方三首",
+          "count": 3,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27356.html"
+        },
+        {
+          "section": "卷第三十二·口脂方三首",
+          "count": 3,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27357.html"
+        },
+        {
+          "section": "卷第三十二·烧甲煎法六首",
+          "count": 5,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27358.html"
+        },
+        {
+          "section": "卷第三十二·造胭脂法一首",
+          "count": 1,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27359.html"
+        },
+        {
+          "section": "卷第三十二·造水银霜法二首",
+          "count": 2,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27360.html"
+        },
+        {
+          "section": "卷第三十二·鹿角桃花粉方二首",
+          "count": 2,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27361.html"
+        },
+        {
+          "section": "卷第三十二·薰衣湿香方五首",
+          "count": 5,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27362.html"
+        },
+        {
+          "section": "卷第三十二·衣干香方五首",
+          "count": 4,
+          "url": "http://cdn.zhongyi.com/book/wai-tai-mi-yao/27363.html"
+        }
+      ]
+    }
+  ],
+  "quality_assessment": {
+    "raw": "字段为页面原文全文拼接，保真度高",
+    "ingredients": "组成原文提取（上X味之前），已100%填充",
+    "prep_usage": "启发式切分：以'上X味'为界，从最后使用动词处切分，部分条目切分点可能略偏，可对照raw校对",
+    "effect": "自动提取功效短语，约76%条目为空（原文未明确功效表述），需人工补充或直接使用raw",
+    "建议": "上线展示前建议对重点类别(面脂/澡豆/口脂)抽20条人工校对"
+  }
+}

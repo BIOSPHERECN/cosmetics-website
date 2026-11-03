@@ -85,7 +85,7 @@ html[data-marvis][data-brand] {
   --ck-border-w: 1px;
 
   /* 版块留白:实测 5rem 上下 */
-  --ck-section-py: clamp(3rem, 6vw, 5rem);
+  --ck-section-py: clamp(2rem, 4vw, 4rem);  /* 09-17 创始人「很多都太多空余了」:节距统一 3–4rem,移动端 2rem */
   --ck-maxw: 80rem;
   --ck-gutter: 1.5rem;
 }
@@ -191,7 +191,7 @@ html[data-marvis][data-brand] .ck-section > .ck-wrap > .head {
 }
 .mv-switch button {
   font: inherit;
-  font-size: 0.75rem;
+  font-size: max(0.75rem, 14px);
   font-family: var(--ck-font-body);
   color: var(--mv-fd);
   background: transparent;
@@ -219,7 +219,7 @@ html[data-marvis] body:has(> .mv-switch) { padding-top: 4.5rem; }
 
 @media (max-width: 30rem) {
   .mv-switch { top: 10px; padding: 0.25rem; }
-  .mv-switch button { font-size: 0.6875rem; padding: 0.375rem 0.625rem; }
+  .mv-switch button { font-size: max(0.6875rem, 14px); padding: 0.375rem 0.625rem; }
 }
 
 /* ── 极简白下的 banner:遮罩改浅、文字改深 ─────────────────

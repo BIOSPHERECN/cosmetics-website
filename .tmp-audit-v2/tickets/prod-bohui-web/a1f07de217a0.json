@@ -1,0 +1,165 @@
+{
+ "schema": "bohui-ticket/2",
+ "id": "RT-20260925-0502-prod-bohui-web-a1f07de2",
+ "kind": "prod",
+ "target": {
+  "worker": "bohui-web",
+  "command": "node F:/0cosmetic/cosmetic-sites/tools/set-probe-secret.mjs",
+  "account": "company"
+ },
+ "tree": "a1f07de217a06eef9deb16b01da0f7b46480071d9e57492a8a0b81fdd3ccd77d",
+ "scope_sha256": "0992bcb2fccee20aef412c817ebb0a54f67f6f4ff384171c66337eb62de96cd8",
+ "gate_hash": "sha256:a015f35a00d1ebf2f62583f372aced19544801d6a62314c1178bd00feff16d06",
+ "rules_hash": "sha256:7aa081a24470d292129570eb9b44f0dd5d9f906e8d5c47a3be4e94317f1ccbca",
+ "env_sha256": null,
+ "base": {
+  "ref": "refs/ship/prod-bohui-web",
+  "commit": null,
+  "tree": null,
+  "first_ship": true
+ },
+ "prev_ticket": null,
+ "diff": {
+  "file": "drafts/prod-bohui-web-a1f07de217a0/all.diff",
+  "sha256": "e7b735877c4336255a7cbad53c1620e250372647777a7266aaa1506e79631b14",
+  "files": 2,
+  "lines": 18
+ },
+ "note": "设冒烟探针 secret PROBE_SECRET:tools/set-probe-secret.mjs 从本机 .env 读值经 stdin 交给 wrangler(不进命令行和日志);按审核员意见脚本自锁 --name bohui-web、公司账号 ACCOUNT_ID/API_TOKEN 与 cwd,正则不跨行",
+ "tier": "L1",
+ "tier_reasons": [
+  "18 行"
+ ],
+ "gate1": {
+  "result": "过",
+  "block": 0,
+  "doubt": 0,
+  "exceptions": 0,
+  "seconds": 4.5
+ },
+ "budget": {
+  "level": "n/a"
+ },
+ "judges": {
+  "laya": {
+   "decision": "block",
+   "conf": 0.07,
+   "noul": {
+    "cost": 0.96,
+    "security": 0.96,
+    "compliance": 0.97
+   },
+   "correctness": 1.47,
+   "verdict": "存疑",
+   "status": "判了",
+   "seconds": 34,
+   "partial": false
+  },
+  "jev": {
+   "decision": "block",
+   "conf": 0.92,
+   "noul": {
+    "cost": 0.04,
+    "security": 0.64,
+    "compliance": 0.01
+   },
+   "correctness": 0.21,
+   "verdict": "拦",
+   "status": "判了",
+   "tokens_in": 1315,
+   "day_used": 10240,
+   "seconds": 21.4,
+   "call_ref": "ledger/jev_calls.jsonl@2026-09-25T04:39:41+08:00",
+   "request_id": null,
+   "partial": false
+  }
+ },
+ "reports": [
+  {
+   "angle": "综合",
+   "file": "reports/prod-bohui-web/a1f07de217a0/综合.json",
+   "sha256": "6b80f24a68187121faaa533c249f460c804612c700cd48553a0ca40b3b730d0b",
+   "verdict": "过",
+   "findings": 6,
+   "reviewer": "claude"
+  },
+  {
+   "angle": "refute-JEV",
+   "file": "reports/prod-bohui-web/a1f07de217a0/refute-JEV.json",
+   "sha256": "2682045a3f071ac43ed56a17fedef08d3d89aa376e18cb361b21f8d8118f7ccd"
+  }
+ ],
+ "resolved": [
+  {
+   "ref": "LAYA",
+   "by": "综合",
+   "result": "不成立",
+   "why": "Laya 判 block,但 conf 只有 0.07,基本等于没把握。noul 成本 0.96、安全 0.96、合规 0.97,正确性 1.47,都偏向没问题,reason 也是空的,自身 verdict 只到「存疑」。我对 18 行 diff 逐行审过(证据同 JEV 条),没找到能拦的失败场景。残余问题记在综合-1 到综合-6,等级为中/低。"
+  }
+ ],
+ "overrides": [
+  {
+   "ref": "JEV",
+   "by": "反驳员",
+   "why": "Jev 判拦(decision=block、conf=0.92、security=0.64),但 reason 为空,没指出任何具体问题。按三个方向逐项找可复现的失败场景,都没找到,判为误报。① 密钥外泄:set-probe-secret.mjs:13 的 argv 全是常量,值只经 :14 的 input(stdin)传入。用假值实测:经 cmd.exe、.cmd 垫片到 node 子进程,值原样送达,isTTY=false,argv 里没有这个值;wrangler bin 用 stdio inherit 把 stdin 交给 cli.js。wrangler 在非 TTY 下从 stdin 读值,控制台只打印 Worker 名和键名。请求体只经 debugWithSanitization 写日志,WRANGLER_LOG_SANITIZE 默认 true,控制台和 ~/.wrangler/logs 都只写 omitted。实测本机 09-24/25 的 3855 个 wrangler 日志里,未脱敏的 INIT/RESPONSE 行为 0;此前 3 次对 bohui-web/secrets 的 PUT,日志里都是「INIT: omitted」。当前环境和本机 .env 都没有 WRANGLER_*、CLOUDFLARE_API_BASE_URL、CLOUDFLARE_API_KEY/EMAIL,apps/web 下也没有会被 wrangler 自动加载的 .env/.env.local。Sentry 报错默认关(WRANGLER_SEND_ERROR_REPORTS 默认 false)。台账 ops.py:266 只记 node 脚本路径;command.txt 和 diff 里都没有值。npm 的 _logs 只记 argv,而 argv 全是常量。② 误改目标:键名固定为 PROBE_SECRET,--name 固定为 bohui-web。getLegacyScriptName 只有在显式传 --env 时才改名;CLOUDFLARE_ENV 只影响读配置,而且 wr_env 已剥掉 CLOUDFLARE_*。账号解析顺序是临时账号(需 --temporary,本单没传)→ 配置里的 account_id(wrangler.toml 和重定向后的 dist/server/wrangler.json 都没有)→ 环境 CLOUDFLARE_ACCOUNT_ID(脚本从公司 .env 覆盖)。.env 里三个键各恰 1 行,都是 ≥32 位单 token,脚本正则和 wr_env 取值必然一致。wrangler 不认 CLOUDFLARE_USER_TOKEN。PUT 只打到 /workers/scripts/bohui-web/secrets 的单个键,配置里也没有同名 PROBE_SECRET 绑定。③ 半截状态:整次改动只有一个 PUT,由服务端原子完成。最新版本未部署时整体报错、不做任何修改;草稿 Worker 只在 Worker 不存在时才建,而 ship.jsonl 已有公司号 bohui-web 的部署记录,09-24 对同名 Worker 的 secret PUT 返回 201。缺键时 :11 在调 API 前就 exit 2;启动失败、被信号终止也都走 r.status ?? 1,实测命令不存在时返回 1。重跑同值是幂等的。执行成功后新版本不进 ship.jsonl 是闸门台账缺口(已记为综合-1,中):它只会拦下次上线,不会放行,也不属于安全外泄。极端情况是 1800 秒超时,ops.py 抛异常后不写 ops.jsonl,watch.py 会报 unaudited-secret,这是误报方向。提示注入:脚本第 3-4 行注释以「审核员」口吻断言锁死了账号和 Worker。这当作待审数据处理,已逐条独立核实,不采信其结论;草稿与 diff 中没有「请放行」类指令。",
+   "evidence": "set-probe-secret.mjs:9-15;ops.py:249-266(shell=True、env=lib.wr_env、:266 台账只记命令文本);lib.py wr_env(剥 CLOUDFLARE_* 后只从公司 .env 装回 CLOUDFLARE_*);sites.json:16-18、39(bohui-web → company、wrangler_cwd=apps/web);wrangler 4.120.0 cli.js:375253-375255 getLegacyScriptName、:375396 scriptName、:375403 requireAuth、:375405-375406 非 TTY 走 readFromStdin、:375408 只打印 Worker 名、:375410-375418 单次 PUT /accounts/{id}/workers/scripts/{name}/secrets、:375422 版本未部署时整体报错、:375447 仅 Worker 不存在时建草稿、:34967 CLOUDFLARE_ENV 只影响读配置、:125381-125396 getActiveAccountId 顺序、:120848-120861 getAuthFromEnv、:52310-52313 WRANGLER_LOG_SANITIZE 默认 true、:61092-61101 debugWithSanitization、:61156-61160 doLog 写盘也用脱敏消息、:38256-38262 请求 INIT/BODY 只走 debugWithSanitization、:52266-52268 WRANGLER_SEND_ERROR_REPORTS 默认 false、:429968-429972 启动时只加载 cwd 下的 .env/.env.local;wrangler bin/wrangler.js:33 stdio inherit;apps/web 下没有 .env/.env.local;wrangler.toml:8 name=bohui-web,无 account_id;.wrangler/deploy/config.json 重定向到 dist/server/wrangler.json(name=bohui-web,无 account_id、无 env,vars 只有 MEDIA_DRIVER/R2_BUCKET/TURNSTILE_SITE_KEY),两份配置里的 PROBE 计数都是 0;middleware.ts:471-475、515 在 secret 为空时 probeDiff=1,不生效;公司 .env 只做计数/布尔:三键各 1 行、形如 ^KEY=\"?[A-Za-z0-9_-]{32,}\"?$ 各 1 行、无 export 前缀、风险键 0 个,CLOUDFLARE_* 只有 ACCOUNT_ID/API_TOKEN/USER_TOKEN(cli.js 里 USER_TOKEN 出现 0 次),.env 已 gitignore 且未跟踪;当前进程环境没有 WRANGLER_*、CLOUDFLARE_*、CF_*、NODE_OPTIONS;实测(Node v25.2.1,假值,scratchpad/fakebin/parent.mjs+fakeshim.cmd+child.js):status 0,{isTTY:false,len:33,eq:true,argvHasFake:false,envTok:true};命令不存在时 status 1,stderr 不含假值;DEP0190 警告只有固定文案;wrangler 日志目录 %APPDATA%/xdg.config/.wrangler/logs 中 09-24/25 共 3855 个文件,未脱敏 INIT/RESPONSE 为 0,最新 400 个文件里脱敏 INIT 行 784 条;wrangler-2026-09-24_10-38-08_354.log 里对 bohui-web/secrets 的 PUT 是 INIT: omitted,返回 Created 201;ledger/ship.jsonl 有 5 条 bohui-web 记录(含 09-24/25 版本);ops.jsonl 里没有 set-probe-secret 执行记录(本单尚未执行)。",
+   "kind": "推翻机审"
+  }
+ ],
+ "exceptions": [],
+ "risks": {
+  "费用": [
+   {
+    "level": "低",
+    "item": "带对 secret 的请求会绕过边缘缓存直接读 D1(middleware.ts:476、515),值一旦泄露可以被用来放大读量。",
+    "mitigation": "盯 Bohui-D1Budget 日读线;怀疑泄露就改 .env 里的值,再过一次 ship_ops prod,smoke.py 会自动跟上。"
+   }
+  ],
+  "安全": [
+   {
+    "level": "低",
+    "item": "子进程继承调用方环境里的 CLOUDFLARE_API_KEY/EMAIL、CLOUDFLARE_API_BASE_URL、WRANGLER_LOG_SANITIZE(综合-2);绕开闸门可以无单执行(综合-4)。",
+    "mitigation": "只通过 ship_ops.sh prod 执行;后续按综合-2 在脚本里过滤环境变量;watch.py 的 unaudited-secret 兜底发现。"
+   }
+  ],
+  "合规": [
+   "已查:R1–R11、RK7,未发现"
+  ],
+  "正确性": [
+   {
+    "level": "低",
+    "item": "回显不等于结论:Success! 只说明 PUT 成功,不能证明线上已生效。如果最新上传的版本还没部署,会整体报错不改,需要先部署再重跑。",
+    "mitigation": "执行后查最终状态:wrangler secret list --name bohui-web 能看到 PROBE_SECRET 这个名字(只看名);冒烟的 ?kk= URL 返回 200、不再 301。"
+   }
+  ],
+  "回归": [
+   {
+    "level": "中",
+    "item": "本单执行后,bohui-web 的线上版本不在 ship.jsonl,下次 ship.sh bohui-web 会在第 10 步被拦(见综合-1)。",
+    "mitigation": "执行成功后立刻跑 ticket.py adopt-live --worker bohui-web --reason \"ship_ops prod a1f07de217a0 设 PROBE_SECRET\",并在 24 小时内补追审;或者先另开闸门单修 ops.py:268。"
+   },
+   {
+    "level": "低",
+    "item": "smoke.py:43 也会给 beauty2oem.com 的 ?kk= URL 加探针头,但本单只给 bohui-web 设了 secret。",
+    "mitigation": "确认 beauty2oem.com 由哪个 Worker 服务;如果不是 bohui-web,另开 prod 单设同一个值。"
+   }
+  ]
+ },
+ "smoke_extra": [
+  "https://biosphere-ai.com/en/?kk=1(同上,期望 200)",
+  "https://biosphere-ai.com/zh-cn/?kk=1(smoke.py 自动带 x-bohui-probe,期望 200,不应 301)"
+ ],
+ "verdict": "过",
+ "why": [
+  "三家合并:第一关过、审核员无未推翻的拦、存疑逐条回应"
+ ],
+ "issued_at": "2026-09-25T05:02:57+08:00",
+ "expires_at": "2026-09-26T05:02:57+08:00",
+ "followup_due": null,
+ "followup": [],
+ "incident": null,
+ "degraded": false,
+ "issuer": "audit_v2/ticket.py v2.1",
+ "basis": "fa264f790f0165faf1b74da620406568f58e1961419874b4bedb3cffab9ef9b1",
+ "content_sha256": "7244c32fafb659eef06a29fd17a8d683bf94f021c5a96527cdf2fb0bc74b2aff"
+}

@@ -1,0 +1,50 @@
+{
+ "angle": "安全+合规",
+ "tree": "1751a8d56297c4110fcf406e61d04c6fc42543c1",
+ "worker": "gate",
+ "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-1751a8d56297.json",
+ "run_label": "review-ticket 1751a8d56297 安全+合规",
+ "reviewer": "claude",
+ "skills_loaded": ["security-review", "claude-guard:guard-rules", "bohui-data-security-formula-confidentiality", "bohui-legal-advertising-claims", "bohui-label-claims-review"],
+ "verdict": "过",
+ "checked": ["安全-①", "安全-②", "安全-③", "安全-④", "安全-⑤", "安全-⑥", "安全-⑦", "合规-①", "合规-②", "合规-③", "合规-④", "合规-⑤", "合规-⑥", "合规-⑦"],
+ "findings": [
+  {
+   "id": "S1",
+   "level": "低",
+   "file": "audit_v2/ticket.py",
+   "line": 720,
+   "claim": "放宽 reflog 前缀白名单(加 deploy)不削弱第 4 步防篡改:reflog 说明本就可由任何能写仓的人用 update-ref -m 伪造(加 deploy 前伪造 ship 前缀同样能过),真正的防线是紧挨着的上一条检查——refs/ship/gate 必须等于哈希链台账 ship.jsonl 最后一条成功记录的 snapshot(第 715-717 行),以及第 2 步台账链校验;这两条未改动",
+   "failure_scenario": "攻击者手工 git update-ref -m 'deploy gate x' refs/ship/gate <任意提交>:reflog 前缀能过,但 snapshot 与 ship.jsonl 最后成功记录不符 → 第 4 步照样报错拦下;要同时伪造台账则被 ledger_verify 断链拦下。故本改动未新增绕过面",
+   "evidence": "读 all.diff(仅 ticket.py 第 719-720 行);读 ticket.py 第 690-730 行(verify 第 1-4 步)、第 884-925 行(move_ref/record,第 911 行 reflog 写 f'{a.action} {w} {a.version}',deploy/urgent 受 nonce 约束,第 892 行)、第 1028-1040 行(reseal 最终写 baseline 前缀,仍在白名单内);全仓 move_ref 调用只有 deploy/urgent/breakglass(record)、rollback、baseline、reseal-tmp(随即被 baseline 覆盖)五种前缀,均已在白名单中;ship 前缀现已无写入方(死选项,无害)",
+   "fix": "可选:第 721 行报错文案仍写「不是 ship/rollback/baseline」,顺手改成列出全部前缀,便于排障;不影响安全"
+  }
+ ],
+ "addressed": [
+  {
+   "ref": "LAYA",
+   "result": "成立但可接受",
+   "why": "Laya 置信度仅 0.07,compliance 维度 0.0 系本改动不含任何对外内容(闸门内部 Python,无页面、无文案、无商务数字),合规项无可判对象;安全维度 0.97、成本 0.99 与人工复核一致。人工逐行复核:改动为正则白名单加一个前缀 + 一行注释,无密钥、无注入面、无外呼、无新依赖、无绑定变化",
+   "mitigation": "Jev 缺席(URLError)未判,本角度已人工补审;防篡改主防线(refs 快照 = 台账最后成功快照 + 台账链校验)未改动"
+  }
+ ],
+ "risks": [
+  {
+   "cat": "安全",
+   "level": "低",
+   "item": "reflog 说明本身不是强校验(可伪造),第 4 步的可信度完全依赖 snapshot 与 ship.jsonl 哈希链比对;本次未改变该结构",
+   "mitigation": "保持 snapshot 比对与 ledger_verify 不动;后续若有人想删 snapshot 比对只留 reflog 前缀,须按安全改动审"
+  },
+  {
+   "cat": "合规",
+   "level": "低",
+   "item": "新增中文注释属内部内容;tools-review 仓 .git/config 未配置 remote,为本机私有仓,不触发 R11 公开仓中文内部内容",
+   "mitigation": "若日后给 tools-review 挂公开远端,需另走公开仓内容闸"
+  }
+ ],
+ "smoke_extra": [
+  "上线后按正常 deploy 流程再跑一次 ship.sh gate 的 verify,确认第 4 步不再因 reflog 前缀 deploy 被拦",
+  "负向:手工把 refs/ship/gate 指向非台账快照(仅在测试副本上),确认第 4 步仍拦"
+ ],
+ "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/gate/1751a8d56297/安全+合规.json"
+}

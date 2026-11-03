@@ -1,0 +1,282 @@
+---
+/**
+ * 单品详情页 —— 配方与包材共用(创始人 2026-09-06:「产品库、包材库是一样的结构」)。
+ *
+ * 形态学的是电商单品页,但按钮不是「加入购物车」,是「索取样品 / 定制这一款」。
+ *
+ * 从同行那份包材详情页(rbh01-148塑料膏霜瓶)学到最有用的一条:**部件级参数表**。
+ * 他把盖子和瓶身分开列,各自给编码、材质、外径、高度、重量。
+ * 采购要的就是这个 —— 一个笼统的「100g 膏霜瓶」没法下单,拆到部件才对得上模具。
+ * 所以这里留了 parts 这一段;没有部件数据时整段不出现,不拿空表充数。
+ *
+ * 三条纪律:
+ *   · 不出现价格。我们不在页面上报价,成本只给档位。
+ *   · 容量写双单位(100 g / 3.53 oz)—— 出海客户两套单位都要用。
+ *   · 示例规格必须挂明确标记,不能让人误以为是已确认的在产参数。
+ */
+export interface SpecRow { k: string; v: string }
+export interface PartSpec { title: string; code?: string; rows: SpecRow[] }
+export interface RelatedItem { code: string; href: string; name: string; image?: string; chip?: string }
+
+interface Props {
+  breadcrumb: { label: string; href?: string }[];
+  eyebrow?: string;
+  code: string;
+  name: string;
+  /** 一句话卖点,可省 */
+  headline?: string;
+  images?: { src: string; alt: string }[];
+  /** 没有图时整块不渲染。原料这类本来就没有产品照,留一个空方块在手机上要占掉大半屏 */
+  hideEmptyGallery?: boolean;
+  /** 顶部几个最关键的数,横排 */
+  keyFacts: SpecRow[];
+  ctas: { label: string; href: string; primary?: boolean }[];
+  ctaNote?: string;
+  /** 部件级参数表 */
+  parts?: PartSpec[];
+  /** 其余分组参数 */
+  sections?: { title: string; rows: SpecRow[] }[];
+  faq?: [string, string][];
+  related?: RelatedItem[];
+  note: string;
+  labels: {
+    shotPending: string; specs: string; parts: string;
+    related: string; faq: string; partCode: string;
+  };
+}
+
+const {
+  breadcrumb, eyebrow, code, name, headline, images = [], hideEmptyGallery = false, keyFacts,
+  ctas, ctaNote, parts = [], sections = [], faq = [], related = [], note, labels,
+} = Astro.props as Props;
+---
+
+<article class="item">
+  <nav class="bc">
+    {breadcrumb.map((b, i) => (
+      <>
+        {i > 0 && <span aria-hidden="true"> · </span>}
+        {b.href ? <a href={b.href}>{b.label}</a> : <span>{b.label}</span>}
+      </>
+    ))}
+  </nav>
+
+  <div class={`top${images.length === 0 && hideEmptyGallery ? ' nogal' : ''}`}>
+    {!(images.length === 0 && hideEmptyGallery) && (
+    <div class="gallery">
+      <div class="main-shot">
+        {images.length > 0
+          ? <img src={images[0].src} alt={images[0].alt} loading="eager" decoding="async" />
+          : <span class="ph">{labels.shotPending}</span>}
+      </div>
+      {images.length > 1 && (
+        <ul class="thumbs">
+          {images.slice(0, 6).map((im) => (
+            <li><img src={im.src} alt={im.alt} loading="lazy" decoding="async" /></li>
+          ))}
+        </ul>
+      )}
+    </div>
+    )}
+
+    <div class="info">
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+      <h1>{name}</h1>
+      <p class="code">{code}</p>
+      {headline && <p class="headline">{headline}</p>}
+
+      <dl class="facts">
+        {keyFacts.map((f) => (<div><dt>{f.k}</dt><dd>{f.v}</dd></div>))}
+      </dl>
+
+      <div class="ctas">
+        {ctas.map((c) => (<a class={`btn ${c.primary ? 'pri' : ''}`} href={c.href}>{c.label}</a>))}
+      </div>
+      {ctaNote && <p class="fine">{ctaNote}</p>}
+    </div>
+  </div>
+
+  {/* 页面插在规格段之前的内容(2026-09-23 原料页的会员门控卡);没传就什么都不出 */}
+  <slot />
+
+  {parts.length > 0 && (
+    <section class="sec">
+      <h2>{labels.parts}</h2>
+      <div class="parts">
+        {parts.map((p) => (
+          <div class="part">
+            <h3>{p.title}{p.code && <span class="pcode">{labels.partCode} {p.code}</span>}</h3>
+            <dl>
+              {p.rows.map((r) => (<div><dt>{r.k}</dt><dd>{r.v}</dd></div>))}
+            </dl>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  {sections.map((s) => (
+    <section class="sec">
+      <h2>{s.title}</h2>
+      {/* 键为空的行是整段说明(配伍禁忌、稳定性这类),不该留出 10rem 的空栏 */}
+      {s.rows.every((r) => !r.k)
+        ? s.rows.map((r) => <p class="para">{r.v}</p>)
+        : (
+          <dl class="spec">
+            {s.rows.map((r) => (<><dt>{r.k}</dt><dd>{r.v}</dd></>))}
+          </dl>
+        )}
+    </section>
+  ))}
+
+  {faq.length > 0 && (
+    <section class="sec">
+      <h2>{labels.faq}</h2>
+      <ul class="qa">
+        {faq.map(([q, a]) => (<li><details><summary>{q}</summary><p>{a}</p></details></li>))}
+      </ul>
+    </section>
+  )}
+
+  {related.length > 0 && (
+    <section class="sec">
+      <h2>{labels.related}</h2>
+      <ul class="rel">
+        {related.map((r) => (
+          <li>
+            <a href={r.href}>
+              <span class="rshot">
+                {r.image ? <img src={r.image} alt={r.name} loading="lazy" decoding="async" />
+                         : <span class="ph sm">{labels.shotPending}</span>}
+              </span>
+              <span class="rname">{r.name}</span>
+              {r.chip && <span class="rchip">{r.chip}</span>}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  <section class="sec end">
+    <div class="ctas">
+      {ctas.map((c) => (<a class={`btn ${c.primary ? 'pri' : ''}`} href={c.href}>{c.label}</a>))}
+    </div>
+    <p class="fine">{note}</p>
+  </section>
+</article>
+
+<style>
+  .item { max-width: min(75rem, 100%); margin: 0 auto;
+          padding: 1.5rem var(--ck-gutter, 1.25rem) 3rem   /* 09-17 「太多空余」 */; }
+  .bc { font-size: .75rem; color: var(--ck-ink-soft); margin-bottom: 2rem; }
+  .bc a { color: inherit; text-decoration: none; }
+  .bc a:hover { text-decoration: underline; }
+
+  .top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+         gap: clamp(1.75rem, 4vw, 3.5rem); align-items: start; }
+  .top.nogal { grid-template-columns: 1fr; max-width: 46rem; }
+
+  .main-shot { aspect-ratio: 1 / 1; border-radius: var(--dtc-radius-card, 16px); overflow: hidden;
+               background: var(--dtc-sand, #f5f4f2); display: grid; place-items: center; }
+  .main-shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ph { font-size: .6875rem; letter-spacing: .12em; text-transform: uppercase;
+        color: var(--ck-ink-soft); opacity: .65; text-align: center; padding: 0 1.5rem; }
+  .ph.sm { font-size: .5625rem; letter-spacing: .08em; }
+  .thumbs { list-style: none; display: flex; gap: .5rem; margin: .625rem 0 0; padding: 0; }
+  .thumbs li { width: 4.5rem; aspect-ratio: 1; border-radius: 8px; overflow: hidden;
+               background: var(--dtc-sand, #f5f4f2); }
+  .thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .eyebrow { font-size: .6875rem; letter-spacing: .18em; text-transform: uppercase;
+             color: var(--ck-accent); margin: 0 0 .625rem; }
+  h1 { font-size: clamp(1.5rem, 1.15rem + 1.5vw, 2.25rem); line-height: 1.18; letter-spacing: -.022em;
+       margin: 0 0 .5rem; text-wrap: balance; }
+  .code { margin: 0 0 1rem; font-size: .875rem; font-weight: 600; color: var(--ck-ink-soft);
+          font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+  .headline { margin: 0 0 1.5rem; font-size: 1rem; line-height: 1.7; color: var(--ck-ink-soft); }
+
+  /* 关键数横排:容量、材质、起订、打样 —— 采购一眼就要看到的四件 */
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+           gap: 1px; margin: 0 0 1.75rem; background: var(--dtc-line, rgb(0 0 0/.09));
+           border: 1px solid var(--dtc-line, rgb(0 0 0/.09)); border-radius: 12px; overflow: hidden; }
+  .facts > div { background: var(--dtc-paper, #fff); padding: .875rem 1rem; }
+  .facts dt { font-size: .6875rem; color: var(--ck-ink-soft); margin-bottom: .25rem; }
+  .facts dd { margin: 0; font-size: .9375rem; font-weight: 600; font-variant-numeric: tabular-nums;
+              line-height: 1.35; overflow-wrap: anywhere; }
+
+  .ctas { display: flex; flex-wrap: wrap; gap: .625rem; }
+  /* 次要按钮必须显式写 background: transparent —— 全站按钮样式会给底色,
+     不压回去的话主次两个按钮长得一模一样,等于没有主次。 */
+  .btn { display: inline-flex; align-items: center; min-height: 48px; padding: 0 1.625rem;
+         border-radius: 980px; text-decoration: none; font-size: .9375rem; font-weight: 600;
+         background: transparent; box-shadow: none;
+         border: 1px solid var(--dtc-line, rgb(0 0 0/.2)); color: var(--ck-ink); }
+  .btn.pri { background: var(--ck-accent); color: var(--ck-on-accent); border-color: transparent; }
+  .btn:hover { border-color: var(--ck-accent); }
+  .fine { font-size: .75rem; color: var(--ck-ink-soft); line-height: 1.7; margin: 1rem 0 0; max-width: 44rem; }
+
+  .sec { padding: 2.75rem 0 0; margin-top: 2.75rem;
+         border-top: 1px solid var(--dtc-line, rgb(0 0 0/.08)); }
+  h2 { font-size: 1.25rem; font-weight: 700; letter-spacing: -.015em; margin: 0 0 1.375rem; }
+
+  /* 部件级参数:盖子一块、瓶身一块,各自一张小表 */
+  .parts { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); }
+  .part { border: 1px solid var(--dtc-line, rgb(0 0 0/.09)); border-radius: 12px; padding: 1.125rem 1.25rem; }
+  .part h3 { margin: 0 0 .75rem; font-size: 1rem; font-weight: 650; display: flex;
+             flex-wrap: wrap; align-items: baseline; gap: .625rem; }
+  .pcode { font-size: .75rem; font-weight: 500; color: var(--ck-ink-soft);
+           font-variant-numeric: tabular-nums; }
+  .part dl { margin: 0; display: grid; gap: 0; }
+  .part dl > div { display: flex; justify-content: space-between; gap: 1rem; padding: .4375rem 0;
+                   border-top: 1px solid var(--dtc-line, rgb(0 0 0/.06)); font-size: .875rem; }
+  .part dl > div:first-child { border-top: 0; }
+  .part dt { color: var(--ck-ink-soft); }
+  .part dd { margin: 0; font-variant-numeric: tabular-nums; text-align: right; }
+
+  .para { margin: 0 0 1rem; font-size: .9375rem; line-height: 1.8; color: var(--ck-ink-soft);
+           max-width: 46rem; }
+  .para:last-child { margin-bottom: 0; }
+  .spec { display: grid; grid-template-columns: 10rem 1fr; margin: 0; font-size: .9375rem; }
+  .spec dt { color: var(--ck-ink-soft); padding: .8125rem 0;
+             border-top: 1px solid var(--dtc-line, rgb(0 0 0/.06)); }
+  .spec dd { margin: 0; padding: .8125rem 0; line-height: 1.65;
+             border-top: 1px solid var(--dtc-line, rgb(0 0 0/.06)); }
+  .spec dt:first-of-type, .spec dd:first-of-type { border-top: 0; }
+
+  .qa { list-style: none; margin: 0; padding: 0; }
+  .qa li { border-top: 1px solid var(--dtc-line, rgb(0 0 0/.08)); }
+  .qa li:first-child { border-top: 0; }
+  .qa summary { cursor: pointer; padding: 1.125rem 0; font-size: .9375rem; font-weight: 500;
+                list-style: none; display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
+  .qa summary::-webkit-details-marker { display: none; }
+  .qa summary::after { content: '＋'; color: var(--ck-ink-soft); font-weight: 400; font-size: .875rem; }
+  .qa details[open] summary::after { content: '－'; }
+  .qa p { margin: 0 0 1.125rem; color: var(--ck-ink-soft); line-height: 1.75;
+          font-size: .9375rem; max-width: 44rem; }
+
+  .rel { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.25rem 1rem;
+         grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); }
+  .rel a { display: block; text-decoration: none; color: inherit; }
+  .rshot { display: grid; place-items: center; aspect-ratio: 1; border-radius: 10px; overflow: hidden;
+           background: var(--dtc-sand, #f5f4f2); }
+  .rshot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .rname { display: block; margin-top: .5rem; font-size: .8125rem; line-height: 1.45; }
+  .rchip { display: block; margin-top: .1875rem; font-size: .6875rem; color: var(--ck-ink-soft);
+           font-variant-numeric: tabular-nums; }
+  .rel a:hover .rshot { outline: 1px solid var(--ck-accent); outline-offset: 2px; }
+
+  @media (max-width: 52rem) {
+    .top { grid-template-columns: 1fr; }
+    /* 同上:根字号 18px 而媒体查询按 16px,rem 会算出比预期大的格子 */
+    .facts { grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); }
+    .rel { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    .parts { grid-template-columns: 1fr; }
+    h1 { font-size: clamp(1.375rem, 1.1rem + 2vw, 1.75rem); }
+    .item { padding-top: 1.25rem; }
+    .bc { margin-bottom: 1.25rem; }
+    .spec { grid-template-columns: 1fr; }
+    .spec dt { padding-bottom: 0; }
+    .spec dd { padding-top: .25rem; border-top: 0; }
+  }
+</style>

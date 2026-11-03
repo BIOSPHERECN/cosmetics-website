@@ -1,0 +1,22 @@
+---
+/**
+ * /selector/ → /chain/ 永久跳转。
+ *
+ * 创始人 2026-09-07:「选品链路需要优化,目前的太死板了」。
+ * 旧版实测 2,861,182 字节、3,856 个 <button>、六步顺序写死。
+ * 新版「链位工作台」在 /chain/,48 KB —— 小 60 倍,而且状态在 URL 里。
+ *
+ * 站内有 10 处在发 /selector/?formula=XXX 与 ?pack=XXX,
+ * 而旧 selector 全文 searchParams 出现 0 次 —— 链接铺好了、落地被吞回第一步。
+ * 这里把那两个参数直接翻成链位地址,那 10 处链接**第一次真的接上**。
+ *
+ * 旧文件留作 selector-old.astro.bak,确认新版稳定一周后再删。
+ */
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn';
+const u = new URL(Astro.request.url);
+const codes = ['formula', 'pack', 'code']
+  .map((k) => (u.searchParams.get(k) ?? '').trim().toUpperCase())
+  .filter((c) => /^[A-Z]{2,4}-[A-Z0-9-]{1,20}$/.test(c));
+return Astro.redirect(`/${lang}/chain/${codes.length ? codes.join('+') + '/' : ''}`, 301);
+---

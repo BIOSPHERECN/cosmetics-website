@@ -1,0 +1,117 @@
+{
+ "schema": "bohui-ticket/2",
+ "id": "RT-20260924-2156-gate-d408c549",
+ "kind": "gate",
+ "target": {
+  "worker": "gate",
+  "repo": "F:/0cosmetic/tools-review",
+  "account": "none"
+ },
+ "tree": "d408c5495ce9dba589ec2902575ee02506c50bc4",
+ "scope_sha256": "efa2554b9e7bbbc7f00cf4e81d330e3a080eefdfc328590edd5ca39b367d5ea9",
+ "gate_hash": "sha256:68c2d1d5d49d762bf9f002f8425e4e1eeb7d287f53fd82c60828c94d04a08a07",
+ "rules_hash": "sha256:21ea2f39ec91180b6436262b09fba288b35156388a18c3f17b72623a30bacf50",
+ "env_sha256": null,
+ "base": {
+  "ref": "refs/ship/gate",
+  "commit": null,
+  "tree": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+  "first_ship": true
+ },
+ "prev_ticket": null,
+ "diff": {
+  "files": 40,
+  "lines": 9406
+ },
+ "note": "审核部 v2.1 第一版闸门(三道关 + 审核单 + 紧急通道 + 存版回退 + 巡查 + 零付费看门狗 + hook)",
+ "tier": "引导",
+ "tier_reasons": [
+  "批准清单为空,第一版闸门只能引导批准:红队全过 + Laya/Jev 机审留痕;Claude 审核员 24 小时内追审(ticket.py followup --worker gate)"
+ ],
+ "gate1": {
+  "result": "过",
+  "block": 0,
+  "doubt": 1,
+  "exceptions": 1,
+  "seconds": 4.8
+ },
+ "budget": {
+  "level": "n/a"
+ },
+ "judges": {
+  "laya": {
+   "decision": "block",
+   "conf": 0.13,
+   "noul": {
+    "cost": 0.98,
+    "security": 0.94,
+    "compliance": 0.97
+   },
+   "correctness": 1.22,
+   "verdict": "存疑",
+   "status": "判了",
+   "seconds": 37,
+   "partial": true
+  },
+  "jev": {
+   "decision": "block",
+   "conf": 0.87,
+   "noul": {
+    "cost": 0.19,
+    "security": 0.49,
+    "compliance": 0.04
+   },
+   "correctness": 0.09,
+   "verdict": "拦",
+   "status": "判了",
+   "tokens_in": 3116,
+   "day_used": 12440,
+   "seconds": 16.4,
+   "call_ref": "ledger/jev_calls.jsonl@2026-09-24T21:56:29+08:00",
+   "request_id": null,
+   "partial": true
+  }
+ },
+ "reports": [],
+ "resolved": [],
+ "overrides": [],
+ "exceptions": [
+  {
+   "rule": "C4",
+   "id": "C4-r2-list",
+   "file": "audit_v2/watch.py",
+   "line": 213,
+   "reason": "这是 GraphQL 用量统计里 R2 A 类操作名的清单(只数次数),不是列目录调用"
+  }
+ ],
+ "risks": {
+  "费用": [
+   "Jev 按量付费(每天 200 万 token 硬上限,约 0.084 美元)"
+  ],
+  "安全": [
+   "同一 Windows 用户下本地签名防不了蓄意伪造(§6.4),靠每小时对账兜底"
+  ],
+  "合规": [
+   "已查:本批不含对外文案"
+  ],
+  "正确性": [
+   "急修 worktree 的 pnpm install --offline 未在真仓实测"
+  ],
+  "回归": [
+   "两站 ship.sh 切到 v2 后首次上线是 L3 大审"
+  ]
+ },
+ "smoke_extra": [],
+ "verdict": "过",
+ "why": [
+  "引导批准"
+ ],
+ "issued_at": "2026-09-24T21:56:49+08:00",
+ "expires_at": "2026-09-25T21:56:49+08:00",
+ "followup_due": "2026-09-25T21:56:49+08:00",
+ "followup": [],
+ "incident": null,
+ "degraded": true,
+ "issuer": "audit_v2/ticket.py v2.1",
+ "content_sha256": "a98384121e3136ec35bc980c28e536750415f63110e01d21e98bb935c7827e0e"
+}

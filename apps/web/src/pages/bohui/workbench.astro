@@ -1,0 +1,300 @@
+---
+/**
+ * 业务协同工作台 v0(2026-09-18 创始人发来截图:「我们的工作台也非常的重要」)。
+ * 吸收的是机制,界面是我们自己的 Apple 层(两色底、胶囊、系统字体):
+ *   左 2/3:新增事项(五段折叠:客户 / 需求 / 跟进 / 财务 / 其他;草稿 / 提交 / 保存后继续)+ 最近事项表
+ *   右 1/3:四张数字卡 + 选中事项的状态机与「现在该做什么」+ 跨事项跟进时间线 + 今日待办(与 today 页同一段推导 SQL)
+ * 铁令:金额三项只显示人填的数,空就是「—」;数据范围 admin/editor 全部,其他人只看自己负责/跟进/创建的。
+ * 日期口径:事项的「今天」按北京时间(date('now','+8 hours')),因为截止日 / 下次跟进都是人按本地日历填的。
+ */
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { STATUS, FLOW, KINDS, PRIORITY, LOG_KINDS, INVOICE, SOURCES, money } from '../../lib/matters';
+import { loadToday } from '../../lib/today';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+const url = new URL(Astro.request.url);
+const open = Number(url.searchParams.get('open')) || 0;
+const uid = c.sess.uid, role = String(c.sess.role ?? '');
+const seeAll = role === 'admin' || role === 'editor';
+const canWrite = role === 'admin' || role === 'editor' || role === 'sales';
+const SC = seeAll ? '1=1' : '(m.owner_uid=? OR m.follower_uid=? OR m.created_by=?)';
+const B = seeAll ? [] : [uid, uid, uid];
+const T = `date('now','+8 hours')`;
+const first = async (sql: string, ...bind: unknown[]) => c.db.prepare(sql).bind(...bind).first<any>().catch(() => null);
+const all = async (sql: string, ...bind: unknown[]) => (await c.db.prepare(sql).bind(...bind).all<any>().catch(() => ({ results: [] as any[] }))).results;
+
+/* 四张卡 */
+const kToday = (await first(`SELECT COUNT(*) n FROM matters m WHERE ${SC} AND m.is_draft=0 AND m.status NOT IN ('done','paid','lost') AND (date(m.next_follow_at) <= ${T} OR m.due_date <= ${T})`, ...B))?.n ?? 0;
+const kDue = (await first(`SELECT COUNT(*) n FROM matters m WHERE ${SC} AND m.is_draft=0 AND m.status NOT IN ('done','paid','lost') AND m.due_date BETWEEN ${T} AND date('now','+8 hours','+3 days')`, ...B))?.n ?? 0;
+const kRecv = await all(`SELECT COALESCE(m.currency,'USD') cur, COUNT(*) n, SUM(m.receivable) s FROM matters m WHERE ${SC} AND m.status='done' AND m.receivable > 0 GROUP BY cur ORDER BY n DESC`, ...B);
+/* 本周新增客户 = companies + matters 本周新建,按名字去重;较上周 %。周一起算,北京时间。 */
+const WK = `date('now','+8 hours','-6 days','weekday 1')`, LWK = `date('now','+8 hours','-13 days','weekday 1')`;
+const coSc = seeAll ? '1=1' : 'owner_uid=?', coB = seeAll ? [] : [uid];
+const weekNew = async (lo: string, hi: string | null) => (await first(
+  `SELECT COUNT(DISTINCT lower(n)) n FROM (
+     SELECT name n FROM companies WHERE ${coSc} AND (tags IS NULL OR tags NOT LIKE '%import:%') AND datetime(created_at,'+8 hours') >= ${lo}${hi ? ` AND datetime(created_at,'+8 hours') < ${hi}` : ''}
+     UNION ALL SELECT m.company_name FROM matters m WHERE ${SC} AND m.company_name IS NOT NULL AND m.is_draft=0 AND datetime(m.created_at,'+8 hours') >= ${lo}${hi ? ` AND datetime(m.created_at,'+8 hours') < ${hi}` : ''})`, ...coB, ...B))?.n ?? 0;
+const kWeek = await weekNew(WK, null), kLastWeek = await weekNew(LWK, WK);
+const weekDelta = kLastWeek > 0 ? `${kWeek >= kLastWeek ? '+' : ''}${Math.round((kWeek - kLastWeek) / kLastWeek * 100)}% 较上周` : `上周 ${kLastWeek} 家,不算百分比`;
+
+/* 最近事项(选中的排最前)、跨事项时间线、负责人下拉、今日待办 */
+const rows = await all(`SELECT m.*, u.email AS owner_email, u.display_name AS owner_name FROM matters m LEFT JOIN users u ON u.id=m.owner_uid WHERE ${SC}
+  ORDER BY CASE WHEN m.id=? THEN 0 ELSE 1 END, m.updated_at DESC LIMIT 20`, ...B, open);
+const logs = await all(`SELECT l.id, l.at, l.kind, l.text, l.to_status, m.id AS mid, m.code, m.company_name, u.email AS who_email, u.display_name AS who_name
+  FROM matter_logs l JOIN matters m ON m.id=l.matter_id LEFT JOIN users u ON u.id=l.uid WHERE ${SC} ORDER BY l.id DESC LIMIT 8`, ...B);
+const users = await all(`SELECT id, email, display_name FROM users ORDER BY id`);
+const uname = (u: any) => (u?.display_name || String(u?.email || '').replace(/@.*$/, '') || '—');
+const who = (r: any, k = 'owner') => r[`${k}_name`] || String(r[`${k}_email`] || '').replace(/@.*$/, '') || '—';
+const { groups: todo, total: todoTotal } = await loadToday(c.db);
+const todayBJ = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+const sel = rows[0] ?? null;
+const data = { rows, users: users.map((u: any) => ({ id: u.id, name: uname(u) })), status: STATUS, flow: FLOW, logKinds: LOG_KINDS, canWrite, uid, today: todayBJ };
+---
+
+<AdminShell title="业务协同工作台" active="workbench" email={c.sess.email} tenant={c.tenant} badges={{ today: todoTotal, workbench: kToday }}>
+  <h1>业务协同工作台</h1>
+  <p class="lead">一条事项 = 客户 + 需求 + 跟进 + 财务。状态机 待确认 → 跟进中 → 执行中 → 已完成 → 已回款,每一步都告诉你现在该做什么;金额只由人填,空就是「—」。{!seeAll && <b>你只看到自己负责、跟进或创建的事项。</b>}</p>
+
+  <div class="wb">
+    <div class="l">
+      <section class="panel">
+        <h2>新增业务事项 <span class="dim">五段都可折叠;客户名称与事项名称必填,其余随时补</span></h2>
+        <form id="nf" class="mf" autocomplete="off"></form>
+        <div class="acts">
+          <button class="btn" type="button" data-w data-mode="draft" form="nf">保存草稿</button>
+          <button class="btn" type="button" data-w data-mode="more" form="nf">保存后继续新建</button>
+          <button class="btn pri" type="button" data-w data-mode="submit" form="nf">提交</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>最近事项 <span class="dim">点一行看进度;「查看」改资料推状态,「复制」生成一条新草稿</span></h2>
+        {rows.length === 0 ? <p class="dim">还没有事项。上面填一条,或去询盘 / 机会页点「转为事项」。</p> : (
+          <div class="tw"><table>
+            <thead><tr><th>编号</th><th>客户</th><th>事项</th><th>负责人</th><th>截止</th><th>状态</th><th></th></tr></thead>
+            <tbody>
+              {rows.map((r: any) => (
+                <tr data-id={r.id} class:list={[sel && sel.id === r.id && 'sel']}>
+                  <td class="mono">{r.code}</td>
+                  <td><b>{r.company_name || '—'}</b>{r.contact ? <span class="dim"> · {r.contact}</span> : null}</td>
+                  <td>{r.kind ? <span class="k">{r.kind}</span> : null}{r.title || '—'}{r.priority === 'urgent' || r.priority === 'high' ? <span class="pill p-bad">{PRIORITY[r.priority]}</span> : null}</td>
+                  <td>{who(r)}</td>
+                  <td class:list={['mono', r.due_date && r.due_date < todayBJ && !['done', 'paid', 'lost'].includes(r.status) && 'late']}>{r.due_date || '—'}</td>
+                  <td>{r.is_draft ? <span class="pill p-wait">草稿</span> : <span class:list={['pill', STATUS[r.status]?.[1] ?? 'p-wait']}>{STATUS[r.status]?.[0] ?? r.status}</span>}</td>
+                  <td class="ops"><button class="btn xs" data-view>查看</button><button class="btn xs" data-w data-copy>复制</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+        )}
+      </section>
+    </div>
+
+    <div class="r">
+      <div class="stats">
+        <div class="stat"><b>{kToday}</b><span>今日待处理</span><i>下次跟进或截止 ≤ 今天,且未完成</i></div>
+        <div class="stat"><b>{kWeek}</b><span>本周新增客户</span><i>{weekDelta}</i></div>
+        <div class:list={['stat', kDue > 0 && 'warn']}><b>{kDue}</b><span>即将到期</span><i>3 天内截止且未完成</i></div>
+        <div class="stat"><b>{kRecv.reduce((s: number, x: any) => s + x.n, 0)} 笔</b><span>待回款</span><i>{kRecv.length ? kRecv.map((x: any) => money(x.s, x.cur)).join(' · ') : '—'}</i></div>
+      </div>
+
+      <section class="panel" id="prog">
+        <h2>事项进度</h2>
+        <div class="stage" id="stage">{FLOW.map((k) => <span data-k={k}>{STATUS[k][0]}</span>)}</div>
+        <p class="who" id="stage-who">{sel ? `${sel.code} · ${sel.company_name || ''} · ${sel.title || ''}` : '还没有事项'}</p>
+        <p class="tip" id="stage-tip">{sel ? STATUS[sel.status]?.[2] : '新建一条事项后,这里告诉你现在该做什么。'}</p>
+        <div class="acts left"><button class="btn xs" id="stage-open" disabled={!sel}>打开事项</button></div>
+      </section>
+
+      <section class="panel">
+        <h2>最近跟进记录</h2>
+        {logs.length === 0 ? <p class="dim">还没有记录。</p> : (
+          <ol class="tl">{logs.map((l: any) => (
+            <li class:list={[l.kind]} data-id={l.mid}>
+              <span class="meta"><time data-utc={l.at}>{String(l.at).slice(5, 16)}</time> · {who(l, 'who')} · {l.code}{l.company_name ? ` · ${l.company_name}` : ''}</span>
+              <span class="tx"><i class="k">{LOG_KINDS[l.kind] ?? l.kind}</i>{l.text}</span>
+            </li>
+          ))}</ol>
+        )}
+      </section>
+
+      <section class="panel">
+        <h2>今日待办 <span class="n">{todoTotal}</span> <a class="dim" href="/bohui/today/">全部 →</a></h2>
+        {todo.filter((g) => g.key !== 'market').map((g) => (
+          <div class="tg">
+            <b>{g.label} {g.n}</b>
+            {g.items.slice(0, 4).map((r) => <a class:list={['todo', r.late && 'late']} href={r.href}><b>{r.title}</b><span>{r.text}</span></a>)}
+            {g.items.length === 0 && <p class="dim">{g.empty}</p>}
+            {g.items.length > 4 && <a class="dim more" href="/bohui/today/">还有 {g.items.length - 4} 条 →</a>}
+          </div>
+        ))}
+      </section>
+    </div>
+  </div>
+
+  {/* 五段表单只写一次:新建表单与详情弹窗都从这个 template 克隆 */}
+  <template id="ftpl">
+    <details class="seg" open><summary>客户信息</summary><div class="g">
+      <label>客户名称 *<input name="company_name" maxlength="200" placeholder="公司或品牌名" /></label>
+      <label>联系人<input name="contact" maxlength="120" /></label>
+      <label>联系电话 / WhatsApp<input name="phone" maxlength="60" /></label>
+      <label>所属行业<input name="industry" maxlength="60" placeholder="护肤品牌 / 贸易商 / 连锁…" /></label>
+    </div></details>
+    <details class="seg" open><summary>需求事项</summary><div class="g">
+      <label>需求类型<select name="kind">{KINDS.map((k) => <option value={k}>{k}</option>)}</select></label>
+      <label>事项名称 *<input name="title" maxlength="200" placeholder="如:洗发水 5,000 支打样" /></label>
+      <label>负责人<select name="owner_uid">{users.map((u: any) => <option value={u.id} selected={u.id === uid}>{uname(u)}</option>)}</select></label>
+      <label>优先级<select name="priority">{Object.entries(PRIORITY).map(([k, v]) => <option value={k} selected={k === 'normal'}>{v}</option>)}</select></label>
+      <label>截止日期<input name="due_date" type="date" /></label>
+    </div></details>
+    <details class="seg"><summary>跟进信息</summary><div class="g">
+      <label>下次跟进时间<input name="next_follow_at" type="datetime-local" /></label>
+      <label class="w2">备注<input name="note" maxlength="4000" placeholder="客户说了什么、卡在哪" /></label>
+    </div></details>
+    <details class="seg"><summary>财务信息 <i>只填人确认过的数</i></summary><div class="g">
+      <label>币种<select name="currency">{['USD', 'EUR', 'CNY', 'IDR', 'MYR', 'AED'].map((x) => <option>{x}</option>)}</select></label>
+      <label>合作金额<input name="amount" type="number" min="0" step="0.01" placeholder="—" /></label>
+      <label>已收<input name="received" type="number" min="0" step="0.01" placeholder="—" /></label>
+      <label>待收<input name="receivable" type="number" min="0" step="0.01" placeholder="—" /></label>
+      <label>发票状态<select name="invoice_status"><option value="">—</option>{INVOICE.map((x) => <option>{x}</option>)}</select></label>
+    </div></details>
+    <details class="seg"><summary>其他</summary><div class="g">
+      <label>来源渠道<select name="source"><option value="">—</option>{SOURCES.map((x) => <option>{x}</option>)}</select></label>
+      <label>跟进人<select name="follower_uid"><option value="">同负责人</option>{users.map((u: any) => <option value={u.id}>{uname(u)}</option>)}</select></label>
+      <label class="w2">内部备注<input name="internal_note" maxlength="4000" placeholder="只给自己人看的" /></label>
+    </div></details>
+  </template>
+
+  <dialog id="dlg">
+    <div class="dh"><b id="d-code" class="mono"></b><span id="d-st" class="pill"></span><span id="d-links"></span><button class="btn xs" id="d-close" type="button">关闭</button></div>
+    <div class="db">
+      <div>
+        <form id="df" class="mf" autocomplete="off"></form>
+        <div class="acts"><button class="btn xs" type="button" data-w id="d-submit" hidden>提交(不再是草稿)</button><button class="btn pri xs" type="button" data-w id="d-save">保存资料</button></div>
+      </div>
+      <div class="side">
+        <b class="h">推进</b>
+        <p class="tip" id="d-tip"></p>
+        <div class="acts left" id="d-moves"></div>
+        <b class="h">跟进记录</b>
+        <form id="lf" class="lf"><select name="kind">{Object.entries(LOG_KINDS).filter(([k]) => k !== 'status').map(([k, v]) => <option value={k}>{v}</option>)}</select><input name="text" maxlength="4000" placeholder="一句话:打了电话、寄了样、客户说…" /><button class="btn pri xs" data-w>记录</button></form>
+        <ol class="tl" id="d-logs"></ol>
+      </div>
+    </div>
+  </dialog>
+  <div id="toast" class="toast" hidden></div>
+  <script type="application/json" id="wbd" is:inline set:html={ldJson(data)} />
+
+  <style>
+    .wb{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:1rem} @media (max-width:70rem){.wb{grid-template-columns:1fr}}
+    .panel{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:18px;padding:1rem 1.125rem;box-shadow:0 2px 8px rgb(0 0 0/.04),0 8px 24px rgb(0 0 0/.06);margin-bottom:1rem}
+    .panel h2{font-size:.9375rem;margin:0 0 .75rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap} .panel h2 .dim{font-weight:400}
+    .dim{color:var(--ad-faint);font-size:.75rem;text-decoration:none} .mono{font-family:var(--ad-mono);font-size:.75rem} .late{color:var(--ad-bad);font-weight:600}
+    .n{font-size:.75rem;background:var(--ad-ink);color:#fff;border-radius:980px;padding:.0625rem .5rem}
+    .wb .btn,dialog .btn{border-radius:980px} .btn.xs{font-size:.75rem;padding:.25rem .625rem} .btn:active{transform:scale(.97)}
+    /* 五段表单 */
+    .mf{display:grid;gap:.5rem} .seg{border:1px solid var(--ad-line-soft);border-radius:12px;background:var(--ad-sunk)} .seg summary{cursor:pointer;padding:.5rem .75rem;font-size:.8125rem;font-weight:600;list-style:none;display:flex;gap:.5rem;align-items:center}
+    .seg summary::before{content:'';width:.375rem;height:.375rem;border-radius:50%;background:var(--ad-accent);opacity:.4} .seg[open] summary::before{opacity:1} .seg summary i{font-style:normal;font-weight:400;color:var(--ad-faint);font-size:.75rem}
+    .seg .g{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem .625rem;padding:.25rem .75rem .75rem} @media (max-width:56rem){.seg .g{grid-template-columns:1fr 1fr}}
+    .seg label{display:grid;gap:.125rem;font-size:.75rem;color:var(--ad-faint)} .seg label.w2{grid-column:span 2} .seg input,.seg select{font-size:.875rem;background:var(--ad-panel)}
+    .acts{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.75rem;flex-wrap:wrap} .acts.left{justify-content:flex-start}
+    /* 表 */
+    .tw{overflow-x:auto} table{box-shadow:none;border-radius:12px} td{font-size:.8125rem} tr[data-id]{cursor:pointer} tr.sel td{background:var(--ad-accent-soft)} td .k{font-size:.75rem;color:var(--ad-accent-deep);background:var(--ad-accent-soft);border-radius:980px;padding:0 .4375rem;margin-right:.375rem} td .pill{margin-left:.375rem} td.ops{white-space:nowrap} td.ops .btn+ .btn{margin-left:.25rem}
+    /* 四张卡 */
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem} .stat{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:18px;padding:.875rem 1rem;display:grid;gap:.0625rem;box-shadow:0 2px 8px rgb(0 0 0/.04),0 8px 24px rgb(0 0 0/.06)}
+    .stat b{font-size:1.5rem;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.15} .stat span{font-size:.8125rem;color:var(--ad-soft)} .stat i{font-style:normal;font-size:.75rem;color:var(--ad-faint)} .stat.warn b{color:var(--ad-warn)}
+    /* 状态机横条 */
+    .stage{display:flex;gap:.25rem} .stage span{flex:1;text-align:center;font-size:.75rem;padding:.375rem .125rem;border-radius:980px;background:var(--ad-sunk);color:var(--ad-faint);white-space:nowrap} .stage span.done{background:var(--ad-accent-soft);color:var(--ad-accent-deep)} .stage span.on{background:var(--ad-accent);color:#fff;font-weight:600} .stage.lost span{background:var(--ad-bad-soft);color:var(--ad-bad)}
+    .who{font-size:.8125rem;margin:.625rem 0 0;color:var(--ad-ink)} .tip{font-size:.8125rem;color:var(--ad-soft);margin:.25rem 0 0;line-height:1.6} .tip::before{content:'→ ';color:var(--ad-accent)}
+    /* 时间线 */
+    .tl{list-style:none;margin:0;padding:0;display:grid;gap:.5rem} .tl li{display:grid;gap:.125rem;font-size:.8125rem;border-inline-start:2px solid var(--ad-line);padding-inline-start:.625rem;cursor:pointer} .tl li.status{border-inline-start-color:var(--ad-accent)} .tl li.payment{border-inline-start-color:var(--ad-ok)}
+    .tl .meta{font-size:.75rem;color:var(--ad-faint)} .tl .tx{white-space:pre-wrap;line-height:1.5} .tl .k{font-style:normal;font-size:.75rem;color:var(--ad-faint);margin-right:.375rem}
+    /* 今日待办 */
+    .tg{margin-bottom:.625rem} .tg>b{display:block;font-size:.75rem;color:var(--ad-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem}
+    .todo{display:grid;gap:.0625rem;padding:.375rem .5rem;border-radius:8px;text-decoration:none;color:inherit;border:1px solid transparent} .todo:hover{border-color:var(--ad-line);background:var(--ad-sunk)} .todo b{font-size:.8125rem} .todo span{font-size:.75rem;color:var(--ad-soft)} .todo.late{border-inline-start:3px solid var(--ad-bad)} .more{display:block;padding:.25rem .5rem}
+    /* 详情弹窗 */
+    dialog{width:min(64rem,94vw);border:0;border-radius:18px;padding:0;box-shadow:0 24px 64px rgb(0 0 0/.25);color:var(--ad-ink)} dialog::backdrop{background:rgb(49 32 82/.35);backdrop-filter:blur(6px)}
+    .dh{display:flex;gap:.625rem;align-items:center;padding:.875rem 1.125rem;border-bottom:1px solid var(--ad-line)} .dh b{font-size:.875rem} .dh #d-links{margin-left:auto;display:flex;gap:.5rem;font-size:.75rem} .dh #d-links a{color:var(--ad-accent)}
+    .db{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:1rem;padding:1rem 1.125rem;max-height:80vh;overflow:auto} @media (max-width:56rem){.db{grid-template-columns:1fr}}
+    .side .h{display:block;font-size:.75rem;color:var(--ad-faint);text-transform:uppercase;letter-spacing:.04em;margin:.75rem 0 .375rem} .side .h:first-child{margin-top:0}
+    .lf{display:grid;grid-template-columns:auto 1fr auto;gap:.375rem;margin-bottom:.625rem} .lf select,.lf input{font-size:.8125rem}
+    #d-moves .btn.back{color:var(--ad-soft)} #d-moves .btn.lost{color:var(--ad-bad)}
+  </style>
+  <script is:inline>
+    const D = JSON.parse(document.getElementById('wbd').textContent);
+    const $ = (s, r = document) => r.querySelector(s); const t = $('#toast');
+    const say = (m, bad) => { t.textContent = m; t.className = 'toast' + (bad ? ' bad' : ''); t.hidden = false; setTimeout(() => { t.hidden = true; }, 2200); };
+    const call = async (body) => (await fetch('/api/admin/matters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json().catch(() => ({ ok: false, msg: '网络错误' }));
+    const get = async (id) => (await fetch('/api/admin/matters?op=get&id=' + id)).json().catch(() => ({ ok: false }));
+    const nm = (id) => (D.users.find((u) => u.id === +id) || {}).name || '—';
+    // 五段表单克隆两份:新建 + 详情
+    const tpl = $('#ftpl').content; $('#nf').append(tpl.cloneNode(true)); $('#df').append(tpl.cloneNode(true));
+    if (!D.canWrite) document.querySelectorAll('[data-w]').forEach((b) => { b.disabled = true; b.title = '只读账号'; });
+    const read = (f) => { const o = {}; new FormData(f).forEach((v, k) => { o[k] = v; }); return o; };
+    const fill = (f, m) => { for (const el of f.elements) { if (!el.name) continue; const v = m[el.name]; el.value = v == null ? '' : el.type === 'datetime-local' ? String(v).slice(0, 16).replace(' ', 'T') : v; } };
+
+    // ── 右栏状态机 ──
+    let cur = D.rows[0] || null;
+    const showStage = (m) => {
+      cur = m; const st = $('#stage'); st.classList.toggle('lost', m.status === 'lost'); const i = D.flow.indexOf(m.status);
+      st.querySelectorAll('span').forEach((s, j) => { s.className = j < i ? 'done' : j === i ? 'on' : ''; });
+      $('#stage-who').textContent = `${m.code} · ${m.company_name || ''} · ${m.title || ''}${m.is_draft ? '(草稿)' : ''}${m.status === 'lost' ? ' · 已终止' : ''}`;
+      $('#stage-tip').textContent = (D.status[m.status] || [])[2] || ''; $('#stage-open').disabled = false;
+      document.querySelectorAll('tr[data-id]').forEach((tr) => tr.classList.toggle('sel', +tr.dataset.id === m.id));
+    };
+    if (cur) showStage(cur);
+    document.querySelectorAll('tr[data-id]').forEach((tr) => tr.addEventListener('click', (e) => { if (e.target.closest('button')) return; const m = D.rows.find((r) => r.id === +tr.dataset.id); if (m) showStage(m); }));
+    $('#stage-open').addEventListener('click', () => cur && openDetail(cur.id));
+    document.querySelectorAll('.tl li[data-id]').forEach((li) => li.addEventListener('click', () => openDetail(+li.dataset.id)));
+
+    // ── 新建:草稿 / 提交 / 保存后继续 ──
+    document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', async () => {
+      const mode = b.dataset.mode, f = $('#nf'); const o = read(f);
+      if (mode !== 'draft' && (!o.company_name.trim() || !o.title.trim())) { say('客户名称与事项名称必填;没填全可以先「保存草稿」', true); f.elements[o.company_name.trim() ? 'title' : 'company_name'].focus(); return; }
+      b.disabled = true; const d = await call({ op: 'create', ...o, is_draft: mode === 'draft' ? 1 : 0 }); b.disabled = false;
+      if (!d.ok) return say(d.msg || '失败', true);
+      if (mode === 'more') { say(`已保存 ${d.code},继续填下一条`); f.reset(); f.querySelector('[name=company_name]').focus(); return; }
+      location.assign('/bohui/workbench/?open=' + d.id);
+    }));
+
+    // ── 详情弹窗 ──
+    const dlg = $('#dlg'); let cid = 0;
+    async function openDetail(id) {
+      const d = await get(id); if (!d.ok) return say(d.msg || '打不开', true);
+      const m = d.matter; cid = m.id; fill($('#df'), m);
+      $('#d-code').textContent = m.code; const st = D.status[m.status] || [m.status, 'p-wait', '']; $('#d-st').textContent = m.is_draft ? '草稿' : st[0]; $('#d-st').className = 'pill ' + (m.is_draft ? 'p-wait' : st[1]);
+      $('#d-submit').hidden = !m.is_draft; $('#d-tip').textContent = st[2];
+      const links = []; if (m.company_id) links.push(`<a href="/bohui/companies/?open=${m.company_id}">客户档案</a>`); if (m.inquiry_id) links.push(`<a href="/bohui/inquiries/?q=${encodeURIComponent(m.contact || m.company_name || '')}">来自询盘 #${m.inquiry_id}</a>`); if (m.deal_id) links.push(`<a href="/bohui/deals/?co=${m.company_id || ''}">来自机会 #${m.deal_id}</a>`);
+      links.push(`<span class="dim">负责 ${nm(m.owner_uid)}${m.follower_uid ? ' · 跟进 ' + nm(m.follower_uid) : ''}</span>`); $('#d-links').innerHTML = links.join('');
+      // 可走的状态:前进一格 / 回退一格 / 终止(lost 只能回 pending)
+      const i = D.flow.indexOf(m.status), mv = [];
+      if (m.status === 'lost') mv.push(['pending', '重新激活', 'back']);
+      else { if (i < D.flow.length - 1) mv.push([D.flow[i + 1], '推进到「' + D.status[D.flow[i + 1]][0] + '」', 'pri']); if (i > 0) mv.push([D.flow[i - 1], '退回「' + D.status[D.flow[i - 1]][0] + '」', 'back']); if (m.status !== 'paid') mv.push(['lost', '终止', 'lost']); }
+      $('#d-moves').innerHTML = mv.map(([to, label, cls]) => `<button class="btn xs ${cls}" data-to="${to}" ${D.canWrite ? '' : 'disabled'}>${label}</button>`).join('');
+      $('#d-moves').querySelectorAll('[data-to]').forEach((b) => b.addEventListener('click', async () => {
+        const to = b.dataset.to; const text = to === 'lost' ? prompt('终止原因(一句话):') : prompt('这一步做了什么(可空):'); if (text === null) return;
+        let r = await call({ op: 'set_status', id: cid, to, text });
+        if (!r.ok && r.need_force && confirm(r.msg + '\n\n确认已回款、直接标「已回款」?')) r = await call({ op: 'set_status', id: cid, to, text, force: 1 });
+        r.ok ? (say('已推进:' + r.tip), location.assign('/bohui/workbench/?open=' + cid)) : say(r.msg || '失败', true);
+      }));
+      $('#d-logs').innerHTML = d.logs.map((l) => `<li class="${l.kind}"><span class="meta">${String(l.at).slice(5, 16)} · ${l.who_name || String(l.who_email || '系统').replace(/@.*$/, '')}</span><span class="tx"><i class="k">${D.logKinds[l.kind] || l.kind}</i>${String(l.text || '').replace(/[<>&]/g, (ch) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' })[ch])}</span></li>`).join('') || '<li class="dim">还没有记录</li>';
+      if (!dlg.open) dlg.showModal();
+    }
+    document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => openDetail(+b.closest('tr').dataset.id)));
+    $('#d-close').addEventListener('click', () => dlg.close());
+    $('#d-save').addEventListener('click', async () => { const d = await call({ op: 'update', id: cid, ...read($('#df')) }); d.ok ? (say('已保存'), location.assign('/bohui/workbench/?open=' + cid)) : say(d.msg || '失败', true); });
+    $('#d-submit').addEventListener('click', async () => { const d = await call({ op: 'update', id: cid, ...read($('#df')), is_draft: 0 }); d.ok ? (say('已提交'), location.assign('/bohui/workbench/?open=' + cid)) : say(d.msg || '失败', true); });
+    $('#lf').addEventListener('submit', async (e) => { e.preventDefault(); const o = read(e.target); if (!o.text.trim()) return; const d = await call({ op: 'log', id: cid, ...o }); if (!d.ok) return say(d.msg || '失败', true); e.target.reset(); say('已记录'); openDetail(cid); });
+    // 复制 = 同样的五段内容生成一条新草稿;金额也照抄,人再改
+    document.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
+      const d = await get(+b.closest('tr').dataset.id); if (!d.ok) return say(d.msg || '失败', true);
+      const m = d.matter; const o = {}; for (const k of ['company_id', 'company_name', 'contact', 'phone', 'industry', 'kind', 'title', 'owner_uid', 'priority', 'due_date', 'next_follow_at', 'note', 'amount', 'received', 'receivable', 'currency', 'invoice_status', 'source', 'follower_uid', 'internal_note']) o[k] = m[k];
+      o.title = (m.title || '') + '(复制)'; const r = await call({ op: 'create', ...o, is_draft: 1 }); r.ok ? location.assign('/bohui/workbench/?open=' + r.id) : say(r.msg || '失败', true);
+    }));
+    if (location.search.includes('open=') && cur && new URLSearchParams(location.search).get('open') == cur.id && location.hash === '#detail') openDetail(cur.id);
+  </script>
+</AdminShell>

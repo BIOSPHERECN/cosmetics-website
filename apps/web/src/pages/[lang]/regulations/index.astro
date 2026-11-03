@@ -1,0 +1,278 @@
+---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+/**
+ * 各国化妆品法规 —— 一个市场一条:主管机构、主法规、最近一次修订、上市路径、责任人、安全档案、标签、禁限用清单。
+ *
+ * 由来(创始人 2026-09-11 00:4x):「你只写了东南亚的,还有全球的各国法规,还需要去收集最新的法规规定,那才是更全面的。」
+ * 站上原来的「各国备案索引」只有东南亚六国的通报账号门槛。买手做一个市场先问三件事:
+ * 谁管、走什么路径进、最近改了什么 —— 这一页按市场把三件事写在同一张卡上,并把能对上本站
+ * 目录的禁限用清单直接挂过去(欧盟 CosIng / 中国技术规范 / 日本基準 / 韩国安全基准 / 东盟附录 / 加拿大 Hotlist / 美国色素 / 巴西 RDC)。
+ *
+ * 数据在 D1 的 regulations / regulation_updates,由 tools/regulations-load.py 从调研 JSON 灌入;每条都带来源链接。
+ * **只写有来源的,拿不准的写在 notes;条文以各国官方原文为准,这里不是法律意见。**
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'zh-cn';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const url = new URL(Astro.url);
+const fRegion = (url.searchParams.get('r') ?? '').trim().slice(0, 20);
+
+const REGION_ZH: Record<string, string> = {
+  'East Asia': '东亚', 'Southeast Asia': '东南亚', 'South Asia': '南亚', 'Oceania': '大洋洲', 'Europe': '欧洲',
+  'Eurasia': '欧亚', 'North America': '北美', 'Latin America': '拉美', 'Middle East': '中东', 'Africa': '非洲',
+};
+const REGION_ORDER = Object.keys(REGION_ZH);
+
+let markets: any[] = [];
+let updates: any[] = [];
+let regNames: Record<string, string> = {};
+if (db) {
+  try {
+    markets = ((await db.prepare('SELECT * FROM regulations ORDER BY sort_order, id').all<any>()).results ?? []) as any[];
+    updates = ((await db.prepare('SELECT date, market_id, title_en, title_zh, summary_en, summary_zh, source'
+      + ' FROM regulation_updates ORDER BY date DESC, id LIMIT 40').all<any>()).results ?? []) as any[];
+    const rs = ((await db.prepare('SELECT id, region, name_zh, name_en FROM inci_registry').all<any>()).results ?? []) as any[];
+    for (const r of rs) regNames[String(r.id)] = zh ? `${r.region} · ${r.name_zh}` : `${r.region} · ${r.name_en || r.name_zh}`;
+  } catch { markets = []; updates = []; }
+}
+const regions = REGION_ORDER.filter((r) => markets.some((m) => m.region === r));
+const shown = fRegion ? markets.filter((m) => m.region === fRegion) : markets;
+const byRegion = new Map<string, any[]>();
+for (const m of shown) {
+  if (!byRegion.has(m.region)) byRegion.set(m.region, []);
+  byRegion.get(m.region)!.push(m);
+}
+const nameOf = (m: any) => (zh ? m.country_zh || m.country_en : m.country_en || m.country_zh);
+const countryById = new Map(markets.map((m) => [String(m.id), nameOf(m)]));
+const pick = (m: any, k: string) => (zh ? m[`${k}_zh`] || m[`${k}_en`] : m[`${k}_en`] || m[`${k}_zh`]) || '';
+const latest = markets.map((m) => String(m.updated_at ?? '')).sort().pop()?.slice(0, 10) ?? '';
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/regulations/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const B = `/${lang}`;
+
+const T = zh ? {
+  eyebrow: '合规',
+  title: '各国化妆品法规与最新修订',
+  lede: `${markets.length} 个市场,每个市场一张卡:谁主管、走通报还是注册、境内责任人是谁、安全档案要什么、标签怎么写、最近一次改了什么。能对上本站目录的禁限用清单直接点过去查。`,
+  note: `每条都挂官方或行业机构来源;条文以各国官方原文为准,本页是工厂侧的整理,不是法律意见。数据更新于 ${latest || '—'}。`,
+  all: '全部地区', updH: '2025–2026 最新动态', updNote: '按日期倒序,只列已生效或已公布生效日期的。',
+  authority: '主管机构', law: '主法规', since: '生效', latestH: '最近修订', entry: '上市路径', rp: '境内责任人', safety: '安全档案',
+  labeling: '标签要点', animal: '动物试验', lists: '禁限用清单', official: '官方原文', src: '来源', lookup: '在本站查该目录', notes: '备注',
+  chainH: '这一页在链路上的位置',
+  chainNote: '⑥ 质检·合规:原料先在各国目录里对账,配方定了看这里的市场规则,出货前走质检体系与合规文件;东南亚六国的通报账号门槛单独一页。',
+  links: [
+    { href: `${B}/regulations/changes/`, label: '法规变化速览(每月一期)' },
+    { href: `${B}/inci/`, label: '各国原料目录' }, { href: `${B}/qc/`, label: '质检体系' }, { href: `${B}/quality/`, label: '质量与合规' },
+    { href: `${B}/compliance/`, label: '东南亚通报账号' }, { href: `${B}/answers/eu-cpnp-cpsr/`, label: '欧盟 CPNP 与 CPSR 怎么办' },
+    { href: `${B}/answers/us-mocra/`, label: '美国 MoCRA 要做什么' }, { href: `${B}/answers/china-filing/`, label: '中国备案流程' },
+  ],
+  ask: '要做哪个市场?把目的市场和产品类型发给我们,回你该市场的工厂侧文件清单与周期。',
+  empty: '数据整理中。',
+} : {
+  eyebrow: 'Compliance',
+  title: 'Cosmetic regulations by market, with the latest amendments',
+  lede: `${markets.length} markets, one card each: the authority, notification vs registration, who must be the local responsible person, what the safety file needs, key labeling rules, and the most recent change. Where a market's banned/restricted list is in our inventories, it links straight through.`,
+  note: `Every entry cites an official or industry source; the official text of each market prevails and this is a factory-side digest, not legal advice. Data updated ${latest || '—'}.`,
+  all: 'All regions', updH: 'Latest changes, 2025–2026', updNote: 'Newest first; only changes in force or with a published date.',
+  authority: 'Authority', law: 'Main regulation', since: 'In force', latestH: 'Latest change', entry: 'Market entry', rp: 'Responsible person',
+  safety: 'Safety file', labeling: 'Labeling', animal: 'Animal testing', lists: 'Ingredient lists', official: 'Official text', src: 'Sources',
+  lookup: 'Look up this inventory here', notes: 'Notes',
+  chainH: 'Where this sits in the chain',
+  chainNote: 'Stage 6, QC & compliance: check ingredients against each market inventory first, read the market rules here once the formula is set, then run QC and the compliance file before shipping. ASEAN notification accounts have their own page.',
+  links: [
+    { href: `${B}/regulations/changes/`, label: 'Monthly regulatory changes digest' },
+    { href: `${B}/inci/`, label: 'Ingredient inventories' }, { href: `${B}/qc/`, label: 'QC system' }, { href: `${B}/quality/`, label: 'Quality & compliance' },
+    { href: `${B}/compliance/`, label: 'ASEAN notification accounts' }, { href: `${B}/answers/eu-cpnp-cpsr/`, label: 'EU CPNP and CPSR' },
+    { href: `${B}/answers/us-mocra/`, label: 'US MoCRA' }, { href: `${B}/answers/china-filing/`, label: 'China filing' },
+  ],
+  ask: 'Which market are you entering? Send the destination and product type and we reply with the factory-side document list and lead time.',
+  empty: 'Data being compiled.',
+};
+
+const ld = [
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${origin}/${lang}/` },
+      { '@type': 'ListItem', position: 2, name: T.title, item: origin + path },
+    ],
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'ItemList', name: T.title, description: T.lede,
+    itemListElement: markets.slice(0, 60).map((m, i) => ({
+      '@type': 'ListItem', position: i + 1, name: `${nameOf(m)} · ${m.law_ref || m.law_en}`, url: `${origin}${path}#${m.id}`,
+    })),
+  },
+];
+---
+
+<BaseLayout
+  locale={lang as any} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1 && !fRegion} brandColor={shell.site?.brand_color}
+  theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
+  <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <header class="hd">
+      <p class="eyebrow">{T.eyebrow}</p>
+      <h1>{T.title}</h1>
+      <p class="lede">{T.lede}</p>
+      <p class="note">{T.note}</p>
+    </header>
+
+    {updates.length > 0 && (
+      <section class="upd" aria-labelledby="upd-h">
+        <h2 id="upd-h">{T.updH}</h2>
+        <p class="intro">{T.updNote}</p>
+        <ol class="tl">
+          {updates.map((u) => (
+            <li>
+              <time datetime={u.date}>{u.date}</time>
+              <div>
+                <p class="tlt"><b>{countryById.get(String(u.market_id)) ?? u.market_id}</b> · {zh ? u.title_zh || u.title_en : u.title_en}</p>
+                {(zh ? u.summary_zh || u.summary_en : u.summary_en) && <p class="tls">{zh ? u.summary_zh || u.summary_en : u.summary_en}</p>}
+                {u.source && <a class="srcl" href={u.source} rel="noopener nofollow" target="_blank">{T.src}</a>}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+    )}
+
+    <nav class="tabs" aria-label={T.all}>
+      <a class:list={['chip', { on: !fRegion }]} href={path}>{T.all} <i>{markets.length}</i></a>
+      {regions.map((r) => (
+        <a class:list={['chip', { on: fRegion === r }]} href={`${path}?r=${encodeURIComponent(r)}`}>
+          {zh ? REGION_ZH[r] : r} <i>{markets.filter((m) => m.region === r).length}</i>
+        </a>
+      ))}
+    </nav>
+
+    {markets.length === 0 && <p class="intro">{T.empty}</p>}
+
+    {[...byRegion.entries()].map(([region, list]) => (
+      <section class="region" id={region.replace(/\s+/g, '-').toLowerCase()}>
+        <h2>{zh ? REGION_ZH[region] : region} <span class="n">{list.length}</span></h2>
+        <ul class="cards">
+          {list.map((m) => {
+            const srcs: string[] = (() => { try { return JSON.parse(m.sources_json || '[]'); } catch { return []; } })();
+            return (
+              <li class="card" id={m.id}>
+                <p class="who">{zh ? m.authority_zh || m.authority_en : m.authority_en || m.authority_zh}</p>
+                <h3><a href={`${B}/regulations/${m.id}/`}>{nameOf(m)}</a></h3>
+                <p class="law"><b>{m.law_ref}</b>{m.law_ref && ' · '}{zh ? m.law_zh || m.law_en : m.law_en}</p>
+                <dl>
+                  {m.in_force && (<><dt>{T.since}</dt><dd>{m.in_force}</dd></>)}
+                  {(m.latest_date || pick(m, 'latest_what')) && (<>
+                    <dt>{T.latestH}</dt>
+                    <dd class="latest"><time datetime={m.latest_date}>{m.latest_date}</time> {pick(m, 'latest_what')}
+                      {m.latest_src && <a class="srcl" href={m.latest_src} rel="noopener nofollow" target="_blank">{T.src}</a>}</dd>
+                  </>)}
+                  {pick(m, 'entry') && (<><dt>{T.entry}</dt><dd>{pick(m, 'entry')}</dd></>)}
+                  {pick(m, 'rp') && (<><dt>{T.rp}</dt><dd>{pick(m, 'rp')}</dd></>)}
+                  {pick(m, 'safety') && (<><dt>{T.safety}</dt><dd>{pick(m, 'safety')}</dd></>)}
+                  {pick(m, 'labeling') && (<><dt>{T.labeling}</dt><dd>{pick(m, 'labeling')}</dd></>)}
+                  {pick(m, 'animal') && (<><dt>{T.animal}</dt><dd>{pick(m, 'animal')}</dd></>)}
+                  {(pick(m, 'lists') || m.inci_registry) && (<>
+                    <dt>{T.lists}</dt>
+                    <dd>{pick(m, 'lists')}
+                      {m.inci_registry && regNames[String(m.inci_registry)] && (
+                        <a class="reg" href={`${B}/inci/${m.inci_registry}/`}>{T.lookup}: {regNames[String(m.inci_registry)]}</a>
+                      )}
+                    </dd>
+                  </>)}
+                  {m.notes && (<><dt>{T.notes}</dt><dd class="muted">{m.notes}</dd></>)}
+                </dl>
+                <p class="foot">
+                  {m.official_url && <a href={m.official_url} rel="noopener nofollow" target="_blank">{T.official}</a>}
+                  {srcs.slice(0, 4).map((s, i) => <a href={s} rel="noopener nofollow" target="_blank">{T.src} {i + 1}</a>)}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    ))}
+
+    <section class="chain">
+      <h2>{T.chainH}</h2>
+      <p class="intro">{T.chainNote}</p>
+      <ul class="links">{T.links.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
+    </section>
+    <p class="ask">{T.ask} <a href={`${B}/contact/`}>{zh ? '发询盘' : 'Send an inquiry'}</a></p>
+  </main>
+  <SiteFooter locale={lang as any} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  .hd { display: grid; gap: .75rem; margin-bottom: 1.5rem; max-width: 62rem; }
+  .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0; }
+  h1 { font-size: clamp(1.625rem, 3vw, 2.25rem); line-height: 1.24; margin: 0; text-wrap: balance; }
+  .lede { font-size: 1rem; line-height: 1.75; opacity: .85; margin: 0; }
+  .note { font-size: .875rem; line-height: 1.7; opacity: .62; margin: 0; border-left: 2px solid currentColor; padding-left: .75rem; }
+  .intro { margin: 0 0 1rem; font-size: .9375rem; line-height: 1.7; opacity: .72; max-width: 60rem; }
+  .upd { margin: 0 0 2rem; padding: 1.25rem; border-radius: 14px; border: 1px solid var(--ck-line, rgba(0,0,0,.14)); }
+  .upd h2 { font-size: 1.25rem; margin: 0 0 .375rem; }
+  .tl { list-style: none; margin: 0; padding: 0; display: grid; gap: .625rem; }
+  .tl li { display: grid; grid-template-columns: 6.5rem 1fr; gap: .75rem; align-items: baseline; }
+  .tl time { font-variant-numeric: tabular-nums; font-size: .875rem; opacity: .7; }
+  .tlt { margin: 0; font-size: .9375rem; line-height: 1.6; }
+  .tls { margin: .125rem 0 0; font-size: .875rem; line-height: 1.65; opacity: .75; }
+  .srcl { font-size: .8125rem; margin-left: .5rem; opacity: .7; }
+  .tabs { display: flex; flex-wrap: wrap; gap: .375rem; margin: 0 0 1.5rem; }
+  .chip { min-height: 44px; display: inline-flex; align-items: center; gap: .375rem; padding: 0 .875rem; font-size: .9375rem;
+          border-radius: 999px; text-decoration: none; color: inherit; border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
+  .chip i { font-style: normal; font-size: .8125rem; opacity: .6; font-variant-numeric: tabular-nums; }
+  .chip.on { background: var(--ck-ink, #111); color: var(--ck-paper, #fff); }
+  .region { margin: 0 0 2rem; }
+  .region h2 { font-size: 1.25rem; margin: 0 0 .75rem; scroll-margin-top: 3.5rem;  /* 09-17 「太多空余」 */ }
+  .region .n { font-size: .875rem; opacity: .55; margin-left: .375rem; font-variant-numeric: tabular-nums; }
+  .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; }
+  .card { padding: 1rem 1.125rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 12px; scroll-margin-top: 3.5rem;  /* 09-17 「太多空余」 */ }
+  .who { margin: 0; font-size: .8125rem; letter-spacing: .04em; opacity: .6; }
+  .card h3 { font-size: 1.125rem; margin: .125rem 0 .375rem; line-height: 1.35; } .card h3 a { color: inherit; }
+  .law { margin: 0 0 .75rem; font-size: .9375rem; line-height: 1.6; }
+  .card dl { margin: 0; display: grid; grid-template-columns: 1fr; gap: .25rem; }
+  .card dt { font-size: .8125rem; opacity: .55; }
+  .card dd { margin: 0 0 .5rem; font-size: .9375rem; line-height: 1.7; }
+  .card dd.muted { opacity: .65; font-size: .875rem; }
+  .latest time { font-variant-numeric: tabular-nums; font-weight: 600; margin-right: .375rem; }
+  .reg { display: inline-block; margin-top: .375rem; font-size: .875rem; padding: .125rem .625rem; border-radius: 999px;
+         border: 1px solid var(--ck-line, rgba(0,0,0,.18)); text-decoration: none; color: inherit; }
+  .foot { margin: .5rem 0 0; display: flex; flex-wrap: wrap; gap: .75rem; font-size: .8125rem; opacity: .75; }
+  .chain { margin: 2.5rem 0 0; padding: 1.25rem; border-radius: 14px; border: 1px solid var(--ck-line, rgba(0,0,0,.14)); }
+  .chain h2 { font-size: 1.125rem; margin: 0 0 .375rem; }
+  .links { list-style: none; padding: 0; margin: .75rem 0 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .links a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 .875rem; font-size: .9375rem; border-radius: 10px;
+             text-decoration: none; color: inherit; border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
+  .ask { margin: 1.75rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
+  @media (min-width: 900px) {
+    main { padding: 2rem 1.5rem 4rem; }
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card dl { grid-template-columns: 7rem 1fr; gap: .25rem .875rem; align-items: baseline; }
+    .card dd { margin: 0 0 .375rem; }
+  }
+  @media (min-width: 1400px) { .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+</style>

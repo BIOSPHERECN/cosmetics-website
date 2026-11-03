@@ -1,0 +1,18 @@
+# C8 放行域名:新增的对外请求(fetch / requests / urlopen / httpx / axios)只要域名在这里就不报存疑。
+# 审核员判「免费/可接受」后加进来;改本表走 ship_ops.sh gate --data。
+biosphere-ai.com
+www.biosphere-ai.com
+gateway.biosphere-ai.com
+beauty2oem.com
+www.beauty2oem.com
+beauty2ai.com
+www.beauty2ai.com
+api.cloudflare.com
+www.cloudflare.com
+challenges.cloudflare.com
+api.github.com
+github.com
+raw.githubusercontent.com
+sctapi.ftqq.com
+127.0.0.1
+localhost

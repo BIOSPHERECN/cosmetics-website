@@ -1,0 +1,45 @@
+Site worker: gate. Tier: L2. Note: ①ops.py:子命令 dest 从 cmd 改 op,修 prod 位置参数撞名(a.cmd 变列表→TypeError,prod 通道从未跑通,红队也没覆盖);②smoke.py:公司站(biosphere-ai/beauty2oem)deploy 冒烟改用探针头 x-bohui-probe(值从本机 .env PROBE_SECRET 读入内存)代替 ?kk= 破缓存,因 C1 起 ?kk=
+diff --stat:
+ audit_v2/ops.py   |  6 +++---
+ audit_v2/smoke.py | 20 +++++++++++++++++++-
+ 2 files changed, 22 insertions(+), 4 deletions(-)
+Gate-1 hits: 
+Risks: 
+Changed lines:
+
+diff --git a/audit_v2/ops.py b/audit_v2/ops.py
+--- a/audit_v2/ops.py
++++ b/audit_v2/ops.py
+@@ -418,3 +418,3 @@ def main():
+-    sp = ap.add_subparsers(dest='cmd', required=True)
++    sp = ap.add_subparsers(dest='op', required=True)   # 09-25:原来叫 cmd,和 prod 的位置参数 cmd 撞名 → a.cmd 变成列表,prod 从没跑通
+@@ -429,6 +429,6 @@ def main():
+-        if a.cmd == 'register':
++        if a.op == 'register':
+-                'baseline-task': baseline_task}[a.cmd](a)
++                'baseline-task': baseline_task}[a.op](a)
+diff --git a/audit_v2/smoke.py b/audit_v2/smoke.py
+--- a/audit_v2/smoke.py
++++ b/audit_v2/smoke.py
+@@ -11,2 +11,15 @@ import lib
++def _probe():
++    """探针 secret 只从本机 .env 读进内存(不写文件、不打印);两站同一个值。没有就返回空,中间件不认,等于旧行为。"""
++    for p in ('F:/0cosmetic/cosmetic-sites/.env',):
++        try:
++            m = re.search(r'^\s*PROBE_SECRET\s*=\s*"?([^"\r\n]+)"?', io.open(p, encoding='utf-8').read(), re.M)
++            if m:
++                return m.group(1).strip()
++        except OSError:
++            pass
++    return ''
++
++
++PROBE = _probe()
+@@ -27,3 +40,8 @@ def fetch(url, ua, proxy=None, fixture=None):
+-    req = urllib.request.Request(url, headers={'User-Agent': UA[ua], 'Accept': 'text/html,*/*'})
++    hd = {'User-Agent': UA[ua], 'Accept': 'text/html,*/*'}
++    # 09-25:公司站(bohui-web)破缓存改靠探针头(C1 起 ?kk= 会被 301 掉;带对 secret 才不跳、不走缓存)。平台站仍用 ?kk=
++    if PROBE and re.match(r'[网址])?(biosphere-ai|beauty2oem)\.com/', url) and ('?kk=' in url or '&kk=' in url):
++        hd['x-bohui-probe'] = PROBE
++        url = re.sub(r'[?&]kk=\d+$', '', url)
++    req = urllib.request.Request(url, headers=hd)

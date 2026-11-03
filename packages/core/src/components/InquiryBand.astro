@@ -13,6 +13,13 @@ export interface Props {
 }
 
 const { inquiry, href, email } = Astro.props;
+
+/* 按钮文案兼容两个键名。
+   组件历史上读 `button`,而后台版块编辑器和后来的播种脚本写的是 `ctaText` ——
+   键一错配,按钮文字为空,padding 把它撑成一颗**纯白空胶囊**挂在深色询盘条上
+   (创始人截图抓到的就是它)。两个键都认;真的一个都没有就整个不渲染:
+   一颗没有字的按钮比没有按钮更糟。 */
+const label = (inquiry as any).button ?? (inquiry as any).ctaText ?? '';
 ---
 
 <section class="band" aria-label={inquiry.title}>
@@ -22,7 +29,7 @@ const { inquiry, href, email } = Astro.props;
       {inquiry.body && <p class="body">{inquiry.body}</p>}
     </div>
     <div class="acts">
-      <a class="cta" href={href}>{inquiry.button}</a>
+      {label && <a class="cta" href={href}>{label}</a>}
       {email && <a class="mail" href={`mailto:${email}`}>{email}</a>}
     </div>
   </div>

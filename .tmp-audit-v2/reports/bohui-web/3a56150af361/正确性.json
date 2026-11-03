@@ -1,0 +1,98 @@
+{
+  "angle": "正确性",
+  "tree": "3a56150af3611f26c2c0bfce1ae04eaeeca61d07",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-3a56150af361.json",
+  "run_label": "review-ticket 3a56150af361 正确性",
+  "reviewer": "claude",
+  "skills_loaded": ["code-reviewer", "karpathy-coder"],
+  "verdict": "存疑",
+  "checked": ["正确性-①", "正确性-②", "正确性-③", "正确性-④", "正确性-⑤", "正确性-⑥", "正确性-⑦"],
+  "findings": [
+    {
+      "id": "C1",
+      "level": "中",
+      "file": "apps/web/src/middleware.ts",
+      "line": 517,
+      "claim": "公开页 beauty2oem 首页结构与 b2o.css 都改了,但 CACHE_V 仍是 v84(与 base 2da5ffc5 相同,未 +1)。边缘 Cache API 里的旧 HTML 按 s-maxage=3600 最多再出 1 小时;旧 HTML 引用的是旧哈希的 /_astro/b2o.<旧哈希>.css,本次 CSS 内容变了哈希必变,若新版本部署后旧哈希资产不再可取,则缓存命中的访客拿到无 b2o 样式的页面。",
+      "failure_scenario": "部署后 1 小时内,某机房已缓存的 https://beauty2oem.com/zh-cn/ 命中旧键(__cv=v84)→ 返回旧首页 HTML → 浏览器请求旧 b2o.*.css → 若 Workers 静态资产不保留上一版本文件则 404 → 首页/洞察页等 b2o 页面裸奔。同时冒烟走 x-bohui-probe 头(不读缓存),看到的是新版本,测不出访客实际拿到的缓存版(与 09-07「?cb= 绕缓存看着正常、创始人看的是缓存坏页」同一类)。",
+      "evidence": "读了 middleware.ts:466-530(探针与 cacheable)、:517 CACHE_V='v84';git show 2da5ffc5:apps/web/src/middleware.ts 同为 v84;middleware.ts:661-676 注释「要立刻生效就改 CACHE_V」及默认 s-maxage=3600;dist/client/_astro/b2o.Cb3W8Mn-.css 说明 b2o.css 是带内容哈希的独立 chunk,由 pages/[...path].astro:51 与 [lang]/insights.astro:15 引入。缺的证据:Workers 静态资产在新版本部署后是否仍能返回上一版的 /_astro/ 文件——若能返回,本条降为「最多 1 小时看旧版」可接受。草稿 note 标【零读】且预算 red,不 bump 应是有意取舍。",
+      "fix": "二选一:① 接受最多 1 小时旧版,但部署后冒烟额外对 https://beauty2oem.com/zh-cn/ 做一次不带探针头的普通请求,检查返回 HTML 里的 b2o.*.css 链接可 200;② 预算允许时 bump CACHE_V(成本角度定)。"
+    },
+    {
+      "id": "C2",
+      "level": "低",
+      "file": "apps/web/src/styles/b2o.css",
+      "line": 80,
+      "claim": "新加的 .b2o-sec:not(.b2o-hero):not(.b2o-close) 把中间版块强制改成浅色令牌,但只覆盖了 bg/ink/line/beauty/shell/img-filter,没覆盖 --b2o-green / --b2o-green-soft / --b2o-red / --b2o-on-green / --b2o-shadow*;另外 --ck-* 在 html 上用 var(--b2o-*) 定义,已在 html 层按暗色算好再继承,section 上改 --b2o-* 不会影响 --ck-*。",
+      "failure_scenario": "系统暗色模式访客:白底版块里 .b2o-row .no、.b2o-link、.b2o-sheet 序号、.b2o-tl .when、.b2o-bform .note.ok 用的是暗色主题的 #4cc38a 浅绿,白底上对比度约 2:1 看不清;fx_brief 表单(FactoryBlock 吃 --ck-*)输入框仍是暗色面+浅色字,嵌在白卡片里,整体深浅混搭。亮色模式不受影响。",
+      "evidence": "读了 b2o.css:11-66(令牌、prefers-color-scheme dark、data-theme=dark 两段)、:80-85 新覆盖块、:344-362 表单样式;B2oBlock.astro:417-425 表单在 .b2o-sec.b2o-bform 内;grep 显示 FactoryBlock.astro 用 var(--ck-*) 23 处。",
+      "fix": "在同一覆盖块补上 --b2o-green:#16794a; --b2o-green-soft:#e9f4ee; --b2o-on-green:#fff; --b2o-red/--b2o-red-soft 与阴影的亮色值,并在该块重写 --ck-bg/--ck-surface/--ck-ink 等引用 var(--b2o-*) 的令牌与 color-scheme: light。"
+    },
+    {
+      "id": "C3",
+      "level": "低",
+      "file": "apps/web/src/middleware.ts",
+      "line": 472,
+      "claim": "探针逻辑本身正确(secret 为空时恒不成立、长度不等恒不成立、逐字符异或),但只有 Worker 配了 PROBE_SECRET 且 smoke.py 的 PROBE 环境变量同值时才生效;本 diff 未见 secret 配置步骤,未配前公司站冒烟的 ?kk= 仍会被 301,4/23 误报不会消失。",
+      "failure_scenario": "上线后 PROBE_SECRET 未 put → probe 恒 false → smoke.py 带 ?kk= 的 URL 继续吃 301 → 冒烟误报被当成真故障或被习惯性忽略。",
+      "evidence": "读了 middleware.ts:469-477;tools-review/audit_v2/smoke.py:42-44 仅在 PROBE 非空且 URL 带 kk 时加头。",
+      "fix": "上线步骤里明确 wrangler secret put PROBE_SECRET(先 source 公司 .env)并在本机 smoke 环境设同值;属配置不属代码,不阻塞。"
+    },
+    {
+      "id": "C4",
+      "level": "低",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 67,
+      "claim": "旧键 hero/methodTrend/methodJudge/methodVerify/methodLaunch 已无引用,b2o.css 里 .b2o-img-methodVerify 等 object-position 规则成死代码;.b2o-sec 覆盖块也作用于 insights 页(b2o-ins-head / b2o-ins-body),改动面比 note 写的「首页」大。",
+      "failure_scenario": "无运行错误;insights 页暗色模式同样变成白底,属未声明的视觉变更。",
+      "evidence": "grep src 下 methodTrend 仅剩 IMG 定义与 b2o.css:138;pages/[lang]/insights.astro:40,50 使用 .b2o-sec。",
+      "fix": "下次清理时删未用键与对应 CSS;insights 页上线后顺带目测。"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "LAYA",
+      "result": "不成立",
+      "why": "Laya 判 block 但 conf 仅 0.03、reason 为 null,没有给出任何可复核的具体缺陷。人工逐项核对:img() 用到的 heroFull、wall01–wall12、m1–m4 在 IMG 表里都有且 public/b2o/img/vi/ 下 17 个 webp 齐全,不会因 IMG[k] 未定义抛错被 catch-all 吞成 404;探针比较逻辑正确;无新表/字段;无构建配置改动。本角度找到的最高问题是 C1(缓存版本号未 bump,中),与 Laya 的判定无对应关系。"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "回归",
+      "level": "中",
+      "item": "CACHE_V 未 bump,上线后最多 1 小时访客看旧首页;若旧哈希 CSS 不可取则旧页裸奔,探针冒烟测不出",
+      "mitigation": "冒烟加一次不带探针头的首页请求并校验 b2o css 链接 200"
+    },
+    {
+      "cat": "回归",
+      "level": "高",
+      "item": "middleware.ts 所有请求都经过(第一关 RK2);本次只加探针分支,secret 未配时行为与原来一致",
+      "mitigation": "冒烟跑全表,两站首页各加一条"
+    },
+    {
+      "cat": "正确性",
+      "level": "低",
+      "item": "暗色模式下白底版块强调色与表单令牌未随之切换(C2)",
+      "mitigation": "补齐覆盖块令牌"
+    },
+    {
+      "cat": "正确性",
+      "level": "低",
+      "item": "任务说明里的复核原报告路径是 reports/.../undefined.json,目录下不存在,属编排脚本变量未填;本报告为首审,未依赖该文件",
+      "mitigation": "编排脚本修正 angle 变量"
+    }
+  ],
+  "smoke_extra": [
+    "https://beauty2oem.com/zh-cn/",
+    "https://beauty2oem.com/zh-cn/insights/",
+    "https://beauty2oem.com/zh-cn/delivery/",
+    "https://beauty2oem.com/b2o/img/vi/hero-full.webp",
+    "https://beauty2oem.com/b2o/img/vi/wall-01.webp",
+    "https://beauty2oem.com/b2o/img/vi/wall-12.webp",
+    "https://beauty2oem.com/b2o/img/vi/m4.webp",
+    "https://beauty2oem.com/zh-cn/(不带探针头的普通请求,校验返回 HTML 中 /_astro/b2o.*.css 为 200)",
+    "https://biosphere-ai.com/(middleware 回归)"
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/3a56150af361/正确性.json"
+}

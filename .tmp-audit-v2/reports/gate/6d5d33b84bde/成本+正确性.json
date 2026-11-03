@@ -1,0 +1,48 @@
+{
+  "angle": "成本+正确性",
+  "tree": "6d5d33b84bde60937d51f4778f621567d9657fa4",
+  "worker": "gate",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-6d5d33b84bde.json",
+  "run_label": "review-ticket 6d5d33b84bde 成本+正确性",
+  "reviewer": "claude",
+  "skills_loaded": ["zero-r2-move", "karpathy-coder", "code-reviewer"],
+  "verdict": "过",
+  "checked": ["成本-①", "成本-②", "成本-③", "成本-④", "成本-⑤", "成本-⑥", "成本-⑦", "正确性-①", "正确性-②", "正确性-③", "正确性-④", "正确性-⑤", "正确性-⑥", "正确性-⑦"],
+  "findings": [
+    {
+      "id": "C1",
+      "level": "中",
+      "file": "audit_v2/gate1.py",
+      "line": 467,
+      "claim": "new_queries 的正则只认 .prepare/.all 等调用、大写 SELECT/INSERT/UPDATE/DELETE 和几个封装名;只改已有查询里的 WHERE/FROM/JOIN/LIKE/LIMIT 行,或写小写 SQL,都数成 0。这样【零读】能让实际改了查询的改动在红灯下放行。",
+      "failure_scenario": "费用灯红时,有人把多行模板字符串里已有查询的一行 `WHERE name = ?` 改成 `WHERE name LIKE ?`,或删掉 `LIMIT 50`,或加一行 `JOIN inci i ON ...`。.prepare( 那一行不在新增行里,于是 new_queries=0;说明里带上【零读】就过了第 8 步,访客路径上的读量随之放大。",
+      "evidence": "读了草稿 diff、gate1.py 第 386-475 行、ticket.py 第 71-93、560-585、700-755 行、gate_approved 里的 gate.sh 第 87-90 行(v1 用的是同一条正则)。本地用 python 拿同一 qrx 实测:'+      WHERE name LIKE ? '、'+  FROM products p JOIN inci i ON i.id=p.id'、'+  select * from t'、'+ LIMIT 20000' 全部不命中,只有 '+ const r = await db.prepare(sql)' 命中。",
+      "fix": "关键词加上 FROM|JOIN|WHERE|LIKE|LIMIT|OFFSET|GROUP\\s+BY|ORDER\\s+BY|COUNT\\s*\\(,并对 SQL 关键词开 re.I;或者规定删除行(-)里的 SQL 行也要计数。宁可多数(多数只会让【零读】不生效,回退到【降读】这条老路)"
+    },
+    {
+      "id": "C2",
+      "level": "低",
+      "file": "audit_v2/gate1.py",
+      "line": 469,
+      "claim": "codeext 没覆盖 .jsx/.mts/.cts/.vue/.svelte;文件名带空格时,git 会在 +++ 行末尾补一个 TAB,导致 `\\.ts$` 匹配不上,整份文件被跳过。",
+      "failure_scenario": "新增一个 `src/components/Foo.jsx`,里面有 env.DB.prepare(...);或者文件名是 `src/lib/new query.ts`。这两种文件的新增行都不计数,new_queries=0。",
+      "evidence": "python 实测 codeext.search('src/a b.ts\\t') 和 codeext.search('src/x.jsx') 都返回 False。GIT_C 已经带 core.quotepath=off(lib.py 第 22 行),所以中文路径没问题。",
+      "fix": "取 curf 时先 .rstrip('\\t');扩展名改为 (m|c)?[jt]sx?|astro|vue|svelte|py|sql|sh|ps1"
+    }
+  ],
+  "addressed": [
+    {"ref": "JEV", "result": "成立但可接受", "why": "Jev 判 allow,置信度 0.29,reason 为空,本身不带任何具体问题。人工复核后找到的实质问题是正则漏数(C1/C2),都会让判断偏向放行。但改动前红灯只靠说明里写【降读】【安全】【急修】这几个自由文本标记就能放行,完全不核验;【零读】额外要求第一关数出 0,比现有标记更严,不是放宽。", "mitigation": "按 C1/C2 补关键词和扩展名;上线后抽查 src 带【零读】的上线单,看 diff 里有没有 SQL 行改动"},
+    {"ref": "LAYA", "result": "成立但可接受", "why": "Laya 的 conf=0.0,各项分数都没有给理由,不能当证据。本角度独立核过:没有 D1/R2/模型/KV 调用,也没有定时任务,成本面是零;正确性方面有 C1/C2 两处漏数,理由同 JEV。", "mitigation": "同 JEV"}
+  ],
+  "risks": [
+    {"cat": "费用", "level": "中", "item": "【零读】放行靠正则计数,只改已有 SQL 的 WHERE/JOIN/LIMIT 行时数不出来,红灯日可能放过加读量的改动", "mitigation": "上线后盯 Bohui-D1Budget 的日读行数,以及 ship.jsonl 里 src 含「·零读」的条目,对每条都人工看一眼 diff"},
+    {"cat": "正确性", "level": "低", "item": "gate_hash 随 gate1.py 改变,旧的 gate1 缓存键会全部失效,第一次跑全量重算(本机 semgrep 约 10 秒一次,不涉及云端费用)", "mitigation": "无需处理"},
+    {"cat": "回归", "level": "低", "item": "check_files(ops 模式)的结果没有 new_queries 字段,按设计判为不放行(fail-closed)。这不是回归,只是【零读】对定时脚本不起作用", "mitigation": "需要时再给 check_files 补计数"}
+  ],
+  "smoke_extra": [
+    "本地:费用灯红 + 说明带【零读】+ 只改 .astro 文案 → prepare 显示「·零读」并放行",
+    "本地:费用灯红 + 说明带【零读】+ 新增一行 env.DB.prepare → prepare 返回 1",
+    "本地:verify 在 T != tk.tree 时 g1=None → 第 8 步按不放行报错"
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/gate/6d5d33b84bde/成本+正确性.json"
+}

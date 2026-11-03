@@ -1,0 +1,25 @@
+# 试验版 —— 与生产的 m-biosphere-ai **完全隔离**:
+#   · 独立的 Worker(m-biosphere-ai-v2)
+#   · 独立的 KV 命名空间(生产那套只读复制了一份图过来,一个字节都没往回写)
+#   · 独立的 secrets
+# 验完再切,切的方式是把 biosphere-ai.com 的路由指过来,或者把代码发到原 Worker。
+name = "m-biosphere-ai-v2"
+main = "index.js"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+# 未命中静态文件时交给 Worker 处理(登录、接口、/assets/ 取图都靠这个)
+not_found_handling = "none"
+run_worker_first = true
+
+[[kv_namespaces]]
+binding = "ASSETS_BUCKET"
+id = "d39c5fe23f7d4a878f2c699c79a08810"
+
+# 图片存储:绑了 R2 就走 R2(流式、强一致),没绑自动退回 KV。
+# 试验阶段先不绑,专心验安全;确认没问题再加,老图两边都读得到。
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "m-biosphere-media"

@@ -1,0 +1,71 @@
+{
+  "angle": "合规",
+  "tree": "3a56150af3611f26c2c0bfce1ae04eaeeca61d07",
+  "worker": "bohui-web",
+  "run_label": "review-ticket 3a56150af361 合规",
+  "reviewer": "claude",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-3a56150af361.json",
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/3a56150af361/合规.json",
+  "skills_loaded": ["bohui-legal-advertising-claims", "bohui-label-claims-review"],
+  "verdict": "拦",
+  "checked": ["合规-①", "合规-②", "合规-③", "合规-④", "合规-⑤", "合规-⑥", "合规-⑦"],
+  "findings": [
+    {
+      "id": "C1",
+      "level": "高",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 168,
+      "claim": "作品墙标题「我们做出来的产品」+副标「从配方、包材到成品,这些是按品牌方需求做出来的样子」(168-169 行)把 12 张 AI 效果图说成帛卉实际生产交付的产品,属于虚假/误导性商业宣传",
+      "failure_scenario": "访客(跨境卖家/品牌方)在 beauty2oem 首页看到作品墙,以为这些是帛卉真实代工过的成品,询盘时要求『做跟第 3 张一样的』或索要该品牌/客户案例;对方一旦看出包装上文字是乱码、并不存在这些品牌,即可举报为虚假商业宣传(反不正当竞争法虚假宣传方向、广告法虚假广告方向,后果区间:整改/下架/行政处罚,不预测金额),同时直接损伤『早发现·深判断·共验证』的可信度",
+      "evidence": "目检 apps/web/public/b2o/img/vi/wall-01..12.webp、m1..m4.webp 拼图:包装上的品牌名与说明文字全部是不可读的伪字(如 'seonn'、'ccaum'、'SPA' 残形),是生成式图像的典型特征,不是实拍成品;草稿 note 称来源为『创始人图库』,仓库内无任何客户授权/实拍记录;B2oBlock.astro 48-64 行 alt 也只描述陈列画面,未提任何真实客户。口径出处:feedback-crawled-content-must-be-rewritten.md(对外只放真实或自有素材)、技能 bohui-legal-advertising-claims『背书/案例类拿不出原始依据直接删或降级』",
+      "fix": "只改文案不动图:标题改为「包装与视觉方向示意」一类,副标写明「效果图,用于讨论方向,非已交付客户产品」;或在拿到真实已交付成品实拍+客户同意展示前,整块下线。改后再过一次合规"
+    },
+    {
+      "id": "C2",
+      "level": "低",
+      "file": "apps/web/src/middleware.ts",
+      "line": 469,
+      "claim": "公开仓 BIOSPHERECN/cosmetics-website 新增中文内部运维注释(冒烟探针机制、请求头名 x-bohui-probe、secret 名 PROBE_SECRET、『冒烟 4/23 误报』)(R11)",
+      "failure_scenario": "推到公开仓后外人可读到探针头名与绕缓存机制;因校验需与 secret 常量时间比对且 secret 原文不在代码中,单凭头名无法利用,影响限于暴露内部流程",
+      "evidence": "git remote origin = https://github.com/BIOSPHERECN/cosmetics-website.git;middleware.ts 469-474 行;未见密钥原文",
+      "fix": "注释压成一行英文中性描述,去掉内部事故编号;不阻塞本次"
+    },
+    {
+      "id": "C3",
+      "level": "低",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 130,
+      "claim": "首屏满屏图为泳装模特涂防晒的画面,本次未配任何 SPF/防晒功效文字,当前不构成功效宣称;但若后续叠加『防晒/SPF/PA』文字,即落入特殊化妆品宣称口径",
+      "failure_scenario": "后续有人在首屏大图上加 'SPF50' 或『防晒』字样而没有对应注册与人体测试报告",
+      "evidence": "diff 中 hero 区文案只有 d.title/d.sub 与『提交店铺,24 小时内拿到一份 1 至 2 页的机会简报』;alt 写『展示防晒产品』属于画面描述",
+      "fix": "无需改;记录为后续改首屏文案的注意点"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "LAYA",
+      "result": "成立",
+      "why": "Laya 判 block 但置信度 0.03、reason 为空、compliance 分 1.0,本身无可引用依据;本审独立在合规角度找到可定位的问题 C1(B2oBlock.astro 168-169 行把 AI 效果图称作『我们做出来的产品』),结论与 Laya 的 block 方向一致,但依据以本报告 C1 为准,不以 Laya 数字为准"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "合规",
+      "level": "高",
+      "item": "作品墙把效果图表述为已生产产品(C1),属误导性商业宣传",
+      "mitigation": "改标题/副标为『效果图示意』或整块下线后再上线"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "公开仓新增中文内部注释(C2)",
+      "mitigation": "注释改英文中性一行"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "其余检查项:红线词(集团旗号/自有厂房/印尼工厂/SueAI/参考站名/18,815/阿里国际站/小批量)diff 内零命中;无新增起订量/出样/交期/价格数字(『24 小时/1 至 2 页/3 个方向』是简报服务承诺,旧文案原样挪位,非工厂商务条款);无医疗用语;无隐私收集改动;删除『广州工厂·灌装车间 待补实拍』占位属减少风险;B2oBlock 文案仍为硬编码中文,beauty2oem 目前只上 zh-cn,语种一致性无新增差异",
+      "mitigation": "上线后仍需人工看一眼 zh-cn 首页渲染"
+    }
+  ]
+}

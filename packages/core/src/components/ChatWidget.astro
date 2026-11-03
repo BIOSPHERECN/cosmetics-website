@@ -1,0 +1,210 @@
+---
+/**
+ * AI 客服气泡 ——「先机器人、后人工」的第一道接待(创始人对标 GitHub 支持机器人)。
+ *
+ * 位置在**右侧垂直居中**(2026-10-23 创始人:「放到页面的中间,这样就不会被回到顶端的按钮挡住了」;
+ * 原右下角与返回顶部按钮重叠)。右下角浮层从下往上:询盘车 → 返回顶部;
+ * WhatsApp 留右下(回到顶部之上),互不遮挡。
+ * 面板层级压过吸顶导航(50)与询盘车球(60),低于购物抽屉(80)。
+ * 「转人工询盘」常驻面板底部 —— 机器人是接待,不是墙,
+ * 人工入口永远一步可达;交接时对话摘要经 sessionStorage 预填进询盘表单。
+ * 消息一律 textContent 渲染,不走 innerHTML —— 模型输出也是不可信输入。
+ */
+interface Props { locale: string; site: string }
+const { locale, site } = Astro.props;
+const zh = locale === 'zh-cn' || locale === 'zh-tw';
+/* 09-21 获客:WhatsApp 直达号码来自 middleware 注入的 locals.contact(与页脚同源);没有号码就不渲染 */
+const _wa = String(((Astro.locals as any)?.contact ?? {}).whatsapp ?? '').replace(/\D/g, '');
+/* 09-24 BEAUTY2OEM(国内站):不出 WhatsApp 浮钮;开场白用本站名,推荐问题不碰起订量、价格、交期 */
+const b2o = site === 'beauty2oem';
+const waHref = _wa && !b2o ? `https://wa.me/${_wa}?text=${encodeURIComponent(zh ? '你好,我在看 BIOSPHERE 的网站,想了解代工。' : 'Hi, I am looking at the BIOSPHERE site and would like to discuss OEM/ODM.')}` : '';
+const T = zh ? {
+  open: 'AI 客服', title: 'AI 客服', sub: '即时答疑 · 随时可转人工',
+  hello: '您好!我是 BIOSPHERE-AI 的 AI 客服,可以即时回答品类、起订、打样流程等问题。涉及报价会为您转人工专员。',
+  ph: '输入您的问题…', send: '发送', human: '转人工询盘',
+  chips: ['可做哪些品类?', '起订量怎么算?', '如何拿样品?'],
+  busy: '客服繁忙,请稍后再试或直接转人工询盘。', handoffLead: '来自 AI 客服对话的交接:',
+} : {
+  open: 'Chat', title: 'AI Assistant', sub: 'Instant answers · human handoff anytime',
+  hello: 'Hi! I can answer questions about categories, MOQs and sampling. For quotations I will hand you to a human specialist.',
+  ph: 'Type your question…', send: 'Send', human: 'Talk to a human',
+  chips: ['What categories do you make?', 'How do MOQs work?', 'How do I get samples?'],
+  busy: 'The assistant is busy — please retry or start an inquiry.', handoffLead: 'Handoff from AI chat:',
+};
+if (b2o) Object.assign(T, {
+  hello: '您好!我是 BEAUTY2OEM 的 AI 客服,可以即时回答选品方向、可做品类、机会简报怎么拿等问题。涉及商务细节会为您转人工专员。',
+  chips: ['可做哪些品类?', '机会简报包含什么?', '怎么判断一个产品方向值不值得做?'],
+});
+---
+
+<button id="bh-chat-fab" type="button" aria-expanded="false" aria-controls="bh-chat-panel">
+  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 3C6.9 3 3 6.5 3 10.8c0 2.4 1.2 4.5 3.2 5.9L5 21l4.6-2.1c.8.2 1.6.3 2.4.3 5.1 0 9-3.5 9-7.8S17.1 3 12 3Z"/></svg>
+  <span>{T.open}</span>
+</button>
+
+<section id="bh-chat-panel" hidden aria-label={T.title}>
+  <header>
+    <div><b>{T.title}</b><small>{T.sub}</small></div>
+    <button type="button" id="bh-chat-x" aria-label="close">×</button>
+  </header>
+  <div id="bh-chat-log" data-hello={T.hello}></div>
+  <div id="bh-chat-chips">
+    {T.chips.map((c) => <button type="button" class="chip">{c}</button>)}
+  </div>
+  <form id="bh-chat-form">
+    <input type="text" maxlength="500" placeholder={T.ph} autocomplete="off" />
+    <button type="submit" class="go">{T.send}</button>
+  </form>
+  <a id="bh-chat-human" href={`/${locale}/contact/`}>{T.human} →</a>
+</section>
+{waHref && <a id="bh-wa-fab" href={waHref} target="_blank" rel="noopener" aria-label="WhatsApp"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4.1c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg><span>WhatsApp</span></a>}
+
+<script is:inline define:vars={{ locale, site, busyMsg: T.busy, handoffLead: T.handoffLead }}>
+(() => {
+  const fab = document.getElementById('bh-chat-fab');
+  const panel = document.getElementById('bh-chat-panel');
+  const log = document.getElementById('bh-chat-log');
+  const form = document.getElementById('bh-chat-form');
+  const input = form.querySelector('input');
+  const KEY = 'bh-chat-log';
+
+  let msgs = [];
+  try { msgs = JSON.parse(sessionStorage.getItem(KEY) || '[]'); } catch {}
+
+  const paint = (role, text) => {
+    const d = document.createElement('div');
+    d.className = 'm ' + role;
+    d.textContent = text;                 // 永不 innerHTML
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+    return d;
+  };
+  const save = () => { try { sessionStorage.setItem(KEY, JSON.stringify(msgs.slice(-12))); } catch {} };
+
+  const render = () => {
+    log.textContent = '';
+    paint('assistant', log.dataset.hello);
+    msgs.forEach((m) => paint(m.role, m.content));
+  };
+
+  let busy = false;
+  const ask = async (q) => {
+    if (busy || !q.trim()) return;
+    busy = true;
+    msgs.push({ role: 'user', content: q.trim() }); save();
+    paint('user', q.trim());
+    const wait = paint('assistant', '…');
+    try {
+      const r = await fetch('/api/chat', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ messages: msgs, lang: locale, site }),
+      });
+      const j = await r.json();
+      const text = j.ok ? j.reply : (j.msg || busyMsg);
+      wait.textContent = text;
+      /* 09-24 C10:客服接口改为只给会员用 —— 没登录时在回复后面给一个登录链接(登录后回到当前页) */
+      if (j.need === 'login' && j.href) { const a = document.createElement('a'); a.href = j.href; a.textContent = String(locale).startsWith('zh') ? ' 去登录 →' : ' Sign in →'; wait.appendChild(a); }
+      if (j.ok) { msgs.push({ role: 'assistant', content: text }); save(); }
+    } catch { wait.textContent = busyMsg; }
+    busy = false;
+  };
+
+  fab.addEventListener('click', () => {
+    const open = panel.hidden;
+    panel.hidden = !open;
+    /* 面板与按钮同处右侧垂直居中,打开时按钮让位,关闭再回来 */
+    fab.hidden = open;
+    fab.setAttribute('aria-expanded', String(open));
+    if (open) { render(); input.focus(); }
+  });
+  document.getElementById('bh-chat-x').addEventListener('click', () => {
+    panel.hidden = true; fab.hidden = false; fab.setAttribute('aria-expanded', 'false');
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const q = input.value; input.value = '';
+    ask(q);
+  });
+  document.querySelectorAll('#bh-chat-chips .chip').forEach((b) =>
+    b.addEventListener('click', () => ask(b.textContent)));
+
+  /* 转人工:把最近对话装进 sessionStorage,询盘表单落地时预填(见 InquiryForm) */
+  document.getElementById('bh-chat-human').addEventListener('click', () => {
+    if (!msgs.length) return;
+    const brief = msgs.slice(-6).map((m) => (m.role === 'user' ? '客户:' : 'AI:') + m.content).join('\n');
+    try { sessionStorage.setItem('bh-chat-handoff', handoffLead + '\n' + brief.slice(0, 1500)); } catch {}
+  });
+})();
+</script>
+
+<style>
+  /* 09-21 获客:WhatsApp 直达按钮,放在 AI 客服左边;号码来自 middleware 注入的 locals.contact */
+  #bh-wa-fab { position: fixed; inset-inline-end: 1.25rem; bottom: 4.5rem; z-index: 64; display: inline-flex; align-items: center; gap: .375rem; padding: .5rem .875rem; border-radius: 999px; background: #25D366; color: #fff; text-decoration: none; font: inherit; font-size: var(--ck-small); font-weight: 600; box-shadow: 0 10px 26px -12px rgb(0 0 0 / .45); }
+  #bh-wa-fab:hover { background: #1ebe5b; }
+  #bh-chat-panel:not([hidden]) ~ #bh-wa-fab { display: none; }
+  #bh-chat-fab {
+    position: fixed; inset-inline-end: 1.25rem; top: 50%; transform: translateY(-50%); z-index: 64;
+    display: inline-flex; align-items: center; gap: 0.4375rem;
+    padding: 0.6875rem 1.0625rem; border: 0; border-radius: 999px; cursor: pointer;
+    background: var(--ck-accent); color: var(--ck-on-accent);
+    font: inherit; font-size: var(--ck-small); font-weight: 600;
+    box-shadow: 0 10px 26px -12px rgb(0 0 0 / 0.45);
+  }
+  #bh-chat-fab:hover { background: var(--ck-accent-deep); }
+  /* 面板打开时按钮自己让位(hidden 必须显式压回 display:none,同面板的坑) */
+  #bh-chat-fab[hidden] { display: none !important; }
+  /* [hidden] 必须显式压回 display:none —— 下面的 display:flex 是作者样式,
+     优先级高于 UA 对 hidden 属性的处理。询盘车当年同一个坑(见 InquiryCart 注释),
+     这次自己又踩了一遍:面板没点就常开压在页脚上。 */
+  #bh-chat-panel[hidden] { display: none !important; }
+  #bh-chat-panel {
+    position: fixed; inset-inline-end: 1.25rem; top: 50%; transform: translateY(-50%); z-index: 65;
+    width: min(23rem, calc(100vw - 2.5rem));
+    max-height: calc(100dvh - 2.5rem);
+    display: flex; flex-direction: column;
+    background: var(--ck-surface); color: var(--ck-ink);
+    border: 1px solid var(--ck-line); border-radius: 14px; overflow: hidden;
+    box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.35);
+  }
+  #bh-chat-panel header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.75rem 1rem; border-bottom: 1px solid var(--ck-line);
+  }
+  #bh-chat-panel header b { font-size: 0.9375rem; }
+  #bh-chat-panel header small { display: block; color: var(--ck-ink-faint); font-size: max(0.6875rem, 14px); }
+  #bh-chat-x { border: 0; background: none; font-size: 1.25rem; cursor: pointer; color: var(--ck-ink-faint); }
+  #bh-chat-log { height: min(20rem, 45vh); overflow-y: auto; padding: 0.875rem; display: grid; gap: 0.5rem; align-content: start; }
+  #bh-chat-log :global(.m) {
+    max-width: 88%; padding: 0.5rem 0.6875rem; border-radius: 10px;
+    font-size: max(0.8125rem, 14px); line-height: 1.6; white-space: pre-wrap; overflow-wrap: break-word;
+  }
+  #bh-chat-log :global(.m.user) { justify-self: end; background: var(--ck-accent); color: var(--ck-on-accent); }
+  #bh-chat-log :global(.m.assistant) { justify-self: start; background: var(--ck-surface-alt); }
+  #bh-chat-chips { display: flex; flex-wrap: wrap; gap: 0.375rem; padding: 0 0.875rem 0.5rem; }
+  .chip {
+    font: inherit; font-size: max(0.6875rem, 14px); cursor: pointer;
+    padding: 0.25rem 0.625rem; border-radius: 999px;
+    border: 1px solid var(--ck-line); background: var(--ck-surface); color: var(--ck-ink-soft);
+  }
+  .chip:hover { border-color: var(--ck-accent); color: var(--ck-accent); }
+  #bh-chat-form { display: flex; gap: 0.5rem; padding: 0.625rem 0.875rem; border-top: 1px solid var(--ck-line); }
+  #bh-chat-form input {
+    flex: 1; font: inherit; font-size: max(0.8125rem, 14px); padding: 0.5rem 0.625rem;
+    border: 1px solid var(--ck-line); border-radius: 8px;
+    background: var(--ck-surface); color: var(--ck-ink);
+  }
+  #bh-chat-form .go {
+    font: inherit; font-size: max(0.8125rem, 14px); font-weight: 600; cursor: pointer;
+    padding: 0.5rem 0.875rem; border: 0; border-radius: 8px;
+    background: var(--ck-accent); color: var(--ck-on-accent);
+  }
+  #bh-chat-human {
+    display: block; text-align: center; padding: 0.5625rem;
+    border-top: 1px solid var(--ck-line);
+    font-size: max(0.75rem, 14px); color: var(--ck-accent); text-decoration: none; font-weight: 600;
+  }
+  #bh-chat-human:hover { background: var(--ck-surface-alt); }
+  @media (max-width: 40rem) {
+    #bh-chat-panel { inset-inline: 0.75rem; width: auto; }
+  }
+</style>

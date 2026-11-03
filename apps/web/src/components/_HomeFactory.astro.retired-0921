@@ -1,0 +1,270 @@
+---
+/**
+ * 工厂版首页(2026-09-21 19:3x)—— 创始人:「要参考 beauty2AI.com 的版式进行 biosphere-ai.com 的大幅度调整」
+ * 「把 beauty2AI 上那些配方也同步到 biosphere-ai.com,用 biosphere-ai.com 这个发邮件」。
+ * 版式照平台首页六屏(巨大主张 + 搜索框 / 六项能力 / 今天什么值得做 / 看到一个产品就交给工厂 / 在库配方基底 / 需求到交付),
+ * 定位保持**工厂**:不写平台、会员、Beauty2AI;数字全部读库(pulse counts / pulse opps / formulas / market_products),
+ * 起订、价格、交期一个字不写(lib/terms.ts 铁令),唯一可写「出样通常 5–14 天」。
+ * 只在 biosphere-ai / beauty2oem 两站首页启用([...path].astro 里判);medierba / oralcare 占位站不碰(09-21 创始人:「不要混乱」)。
+ */
+import { CAT_LABEL, formulaName } from '../lib/catalog';
+import { decoderPath } from '../lib/decoder';
+import { getCounts } from '../lib/counts';
+import { OEM_MARKETS, OEM_CATEGORIES } from '@cosmetic/core/content/oem.ts';
+import { ORG } from '@cosmetic/core/content/org.ts';
+
+interface Props { lang: string; db: D1Database | undefined; siteName: string; email: string; whatsapp?: string | null; blocks?: any[] }
+const { lang, db, siteName, email, whatsapp, blocks = [] } = Astro.props;
+/* 20:2x 创始人:「首页没有可以替换图片的功能」—— 图片一律从首页 CMS 版块读(后台「站点 → 首页 → 版块」换图即生效),这里不写死任何图:
+   幻灯片版块 → 首屏四图;「生产实力」网格 → 工厂实拍;「资质」网格 → 证书条;「你想做哪个品类」网格 → 基底品类卡缩略图;「爆款产品」货架 → 工厂样品。
+   先按版块 id 找(首页这几块的 id 固定),找不到再按标题关键词兜底;都没有就不出那一段。 */
+const byId = (id: number) => blocks.find((b) => Number(b.id) === id);
+const byType = (type: string, re?: RegExp) => blocks.find((b) => b.type === type && (!re || re.test(String(b.data?.title ?? ''))));
+const slides: any[] = ((byType('slideshow')?.data?.slides ?? []) as any[]).filter((x) => x?.image).slice(0, 1);   // 幻灯片是 2.5:1 的横幅(字在图里),切成 2×2 会把字裁掉 —— 只取第一张整幅放首屏下方
+const shots: any[] = (((byId(348) ?? byType('procgrid', /实力|實力|production|workshop|factory/i))?.data?.items ?? []) as any[]).filter((x) => x?.image).slice(0, 6);
+const certPics: any[] = (((byId(402) ?? byType('procgrid', /认证|認證|资质|cert/i))?.data?.items ?? []) as any[]).filter((x) => x?.image).slice(0, 6);
+const catPicItems: any[] = (((byId(670) ?? byType('procgrid', /品类|品類|categor/i))?.data?.items ?? []) as any[]).filter((x) => x?.image);
+const catPic = (category: string) => catPicItems.find((x) => new RegExp(`[?&]cat=${category}(&|$)`).test(String(x.href ?? '')))?.image ?? '';
+const shelf: any[] = ((byType('shelf')?.data?.items ?? []) as any[]).filter((x) => x?.image).slice(0, 8);
+const zh = lang.startsWith('zh');
+const B = `/${lang}`;
+const fmt = (n: number) => n.toLocaleString('en-US');
+const counts = (await getCounts(db)) ?? {};
+const N = (k: string, fb: number) => Number((counts as any)[k] ?? fb);
+const lines = ORG.figures.find((f) => f.nameEn === 'Automated production lines')?.value ?? '15';
+const certs = ORG.certs.slice(0, 3).join(' / ');
+
+let latest: any[] = []; let opps: any = null; let cats: Array<{ category: string; n: number; samples: any[] }> = [];
+if (db) {
+  try {
+    const raw = ((await db.prepare(`SELECT id, brand, title, title_zh, country, img FROM market_products WHERE img <> '' AND inci IS NOT NULL AND length(inci) > 30 ORDER BY id DESC LIMIT 60`).all<any>()).results ?? []) as any[];
+    const seen = new Set<string>();
+    for (const r of raw) { const b = String(r.brand ?? '').toLowerCase(); if (seen.has(b)) continue; seen.add(b); latest.push(r); if (latest.length >= 6) break; }
+    const op = await db.prepare(`SELECT json, updated_at FROM pulse WHERE k = 'opps'`).first<any>();
+    if (op?.json) { try { opps = JSON.parse(op.json); opps.updated_at = op.updated_at; } catch { opps = null; } }
+    /* 在库配方基底:每品类计数 + 3 条样例(code 可点进 /formula/<code>/)。317 条一次读完再分组,比 9 次 COUNT 便宜 */
+    const fr = ((await db.prepare(`SELECT code, category, format, benefits FROM formulas WHERE status IN ('sample','active') ORDER BY category, updated_at DESC`).all<any>()).results ?? []) as any[];
+    const g = new Map<string, any[]>();
+    for (const r of fr) { if (!g.has(r.category)) g.set(r.category, []); g.get(r.category)!.push(r); }
+    cats = [...g.entries()].map(([category, rows]) => ({ category, n: rows.length, samples: rows.slice(0, 3) })).sort((a, b) => b.n - a.n);
+  } catch { /* 库抖动:段落按空处理 */ }
+}
+const clean = (t: string) => String(t ?? '').split(/\s[|,–—]\s|,|\|/)[0].slice(0, 60);
+const catLabel = (c: string) => (CAT_LABEL[c] ? (zh ? CAT_LABEL[c][0] : CAT_LABEL[c][1]) : c);
+/* 机会卡 → 本站落点:市场 × 品类都在意图页集里就进 /oem/<market>/<category>/,否则进配方库按品类 */
+const OEM_CAT_BY_ZH: Array<[RegExp, string]> = [[/护肤|精华|面霜|面膜|乳液|爽肤|眼霜/, 'skincare'], [/彩妆|底妆|口红|唇|眼影|粉底/, 'makeup'], [/防晒/, 'sun-care'], [/洗发|护发|头皮|洗护/, 'hair-care'], [/洁面|清洁|卸妆|沐浴/, 'cleansing'], [/身体|润肤|护手|香水|香氛/, 'body-care']];
+const FORMULA_CAT_BY_ZH: Array<[RegExp, string]> = [[/牙|口腔/, 'oral'], [/香水|香氛/, 'fragrance'], [/儿童|婴/, 'kids']];
+const oppHref = (c: any) => {
+  const cat = String(c.cat ?? '');
+  const oc = OEM_CAT_BY_ZH.find(([re]) => re.test(cat))?.[1];
+  const mk = String(c.market_code ?? '').toLowerCase();
+  if (oc && OEM_MARKETS.some((m) => m.id === mk)) return `${B}/oem/${mk}/${oc}/`;
+  const fc = FORMULA_CAT_BY_ZH.find(([re]) => re.test(cat))?.[1] ?? OEM_CATEGORIES.find((x) => x.id === oc)?.cats[0];
+  return fc ? `${B}/formulas/?c=${fc}` : `${B}/formulas/`;
+};
+const stars = (n: number) => '★'.repeat(Math.max(0, Math.min(5, n))) + '☆'.repeat(5 - Math.max(0, Math.min(5, n)));
+const wa = String(whatsapp ?? '').replace(/\D/g, '');
+const waHref = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(zh ? `你好,我在看 ${siteName} 的网站,想了解代工。` : `Hi, I am looking at the ${siteName} site and would like to discuss OEM/ODM.`)}` : '';
+
+const T = zh ? {
+  eyebrow: `广州化妆品 OEM / ODM 工厂 · ${lines} 条自动化产线 · ${certs}`,
+  h1: ['先找到值得做的产品,', '再由我们把它做出来。'],
+  lead: `从一个产品想法,到一批可以卖到目标市场的成品。找同款、拆全成分、匹配在库配方基底、寄样、合规资料、包装、试产、大货,由 ${siteName} 的工厂团队完成;你的品牌与客户始终是你的。`,
+  searchPh: '例:玻尿酸精华、SPF50 轻薄防晒、氨基酸洁面、烟酰胺身体乳', searchBtn: '找同款',
+  paths: [[`#opps`, '找产品机会', '不知道下一款做什么?看今天的机会卡'], [`${B}/formulas/`, '我有产品想法', '在库配方基底按品类 / 剂型 / 功效筛'], [waHref || `${B}/contact/`, '已有产品要代工', '发全成分表或样品,工厂直接出方案']],
+  pathHint: '你只说目标。找同款、配方、包材、法规、打样、生产由工厂负责。',
+  s0: '不是口号:六项能力,每项都有证据', s0lead: '预判落到生产:帛卉自有产线和成熟配方,加上公开市场与法规数据。',
+  six: [
+    ['全球产品配方库', `${fmt(N('products', 0))} 款全成分真实产品 · ${fmt(N('summaries', 0))} 条配方视角解读`, '看别人怎么做:同类产品的成分结构、主打活性物、宣称边界,再决定你的产品怎么做。', `${B}/decoder/`],
+    ['在库配方基底', `${fmt(N('formulas', 0))} 条可直接打样的配方基底 · ${fmt(N('classics', 0))} 条古方文献数字化`, '不是从零研发:按品类、剂型、功效、目标市场匹配基底,改活性物与肤感,寄样评估。', `${B}/formulas/`],
+    ['工厂与产线', `${lines} 条自动化产线 · ${ORG.certs.join(' / ')}`, '护肤 / 身体 / 洗护 / 防晒 / 彩妆 / 口腔;欢迎验厂,证书复印件与产线视频随时给。', `${B}/about/`],
+    ['包材款式库', `${fmt(N('packaging', 0))} 款包材可选`, '瓶、罐、软管、泵头等款式库:先按剂型选结构,再确认供应与定制方案。', `${B}/packaging/`],
+    ['法规与合规', `${N('regs', 0)} 个市场准入要点 · ${fmt(N('inci', 0))} 条原料目录`, '印尼 BPOM、马来 NPRA、沙特 SFDA、美国 MoCRA、欧盟 CPNP:配方阶段先核限用与禁用,不做返工。', `${B}/regulations/`],
+    ['目标市场落地', `${OEM_MARKETS.length} 个市场 × ${OEM_CATEGORIES.length} 个品类代工页`, `${OEM_MARKETS.map((m) => m.zh).join(' / ')}:每个市场的备案路径、责任方、标签要点与买手问答。`, `${B}/oem/`],
+  ] as Array<[string, string, string, string]>,
+  s2: '今天,什么产品值得做?', s2lead: (d: string) => `按跨境爆款榜、同类产品库与目标市场法规每日生成 · 更新 ${d} · 星级是相对定性,不是测算数字。`, s2none: '机会卡每日生成;先看配方库或直接说你的处境。',
+  oppLabels: ['市场需求', '竞争程度', '价格空间', '供应链可行性'], oppBtn: '让工厂给方案', s2more: '没有你要的?发一句话说你的处境,工厂按目标市场给方向',
+  s3: '看到一个产品,就交给工厂做', s3lead: '输入产品名:先在公开市场产品情报中找同款、拆全成分结构,再匹配在库基底、核目标市场法规,然后寄样。成本与起订按项目由工厂报,页面不估数。',
+  s3flow: ['找同款', '拆全成分', '匹配在库基底', '寄样评估', '试产与大货'], s3latest: '最新入库的全球产品',
+  s5: '在库配方基底:按品类看真产品', s5lead: '每一条都有编号、剂型与功效标签,点编号看基底说明;寄样通常 5–14 天。这里列的是基底,不是你的最终配方 —— 活性物、肤感、香型按你的品牌改。',
+  s5all: '看全部', s5count: (n: number) => `${n} 条基底`,
+  s4: '从需求到交付,一个项目里完成', s4lead: '你不需要自己找配方师、包材厂、检测机构、报关行;每一步在同一个项目里,由同一个对接人跟到底。',
+  steps: [['需求', '品类 / 目标市场 / 首批数量 / 参考产品或全成分表'], ['匹配基底', '从在库基底里选 2–3 条,定活性物与肤感方向'], ['寄样', '通常 5–14 天;评估后修改再寄'], ['合规资料', '目标市场备案 / 通报路径与责任方,标签与宣称核对'], ['包装', '现货包材选型或定制,包装稿逐字核对'], ['试产', '小批量走一遍产线,确认稳定性与灌装'], ['大货与放行', '按 QC 项目检测,放行报告随货']],
+  s6: '开始一个项目', s6lead: `把你的全成分表、目标市场、首批数量发给我们,工厂两个工作日内回方案与寄样安排。`, s6wa: 'WhatsApp 直接聊', s6mail: '发邮件',
+  s7: '实拍与证书:欢迎验厂', s7lead: '车间、产线、检测与证书原件,验厂时都能看到;下面是现场实拍与证书扫描件。', s7certs: '证书',
+  s8: '我们做过的样品', s8lead: '按客户需求从在库基底改出的样品与效果图;你的产品也从这里开始。', s8more: '看全部产品',
+} : {
+  eyebrow: `Guangzhou cosmetics OEM / ODM factory · ${lines} automated lines · ${certs}`,
+  h1: ['Find the product worth making.', 'Then let our factory make it.'],
+  lead: `From a product idea to finished goods that can sell in your target market. Lookalike search, ingredient decoding, matching an in-house formulation base, sampling, compliance dossier, packaging, pilot run and bulk production, done by the ${siteName} factory team; your brand and your customers stay yours.`,
+  searchPh: 'e.g. hyaluronic serum, SPF50 lightweight sunscreen, amino-acid cleanser, niacinamide body lotion', searchBtn: 'Find lookalikes',
+  paths: [[`#opps`, 'Find a product opportunity', 'Not sure what to make next? See today’s cards'], [`${B}/formulas/`, 'I have a product idea', 'Browse in-house bases by category, format and claim'], [waHref || `${B}/contact/`, 'I have a product to manufacture', 'Send the INCI list or a sample; the factory replies with a plan']],
+  pathHint: 'You state the goal. Lookalikes, formula, packaging, regulations, sampling and production are on the factory.',
+  s0: 'Not slogans: six capabilities, each with evidence', s0lead: 'Before you hand a project to a factory, see why it can deliver. Every number below is read from this site’s database and can be checked item by item.',
+  six: [
+    ['Global product and formula library', `${fmt(N('products', 0))} real products with full INCI · ${fmt(N('summaries', 0))} formulation-view summaries`, 'See how others make it: ingredient structure, hero actives and claim boundaries of peer products, before deciding yours.', `${B}/decoder/`],
+    ['In-house formulation bases', `${fmt(N('formulas', 0))} bases ready for sampling · ${fmt(N('classics', 0))} digitised classical formulas`, 'Not from scratch: match a base by category, format, claim and target market, adjust actives and skin feel, then sample.', `${B}/formulas/`],
+    ['Factory and lines', `${lines} automated lines · ${ORG.certs.join(' / ')}`, 'Skincare / body / hair / sun / colour / oral. Audits welcome; certificate copies and line videos on request.', `${B}/about/`],
+    ['Stock packaging', `${fmt(N('packaging', 0))} stock packaging items`, 'Bottles, jars, tubes, pumps, cartons: pick the structure by format first, then customise.', `${B}/packaging/`],
+    ['Regulations and compliance', `${N('regs', 0)} market entry summaries · ${fmt(N('inci', 0))} registry entries`, 'Indonesia BPOM, Malaysia NPRA, Saudi SFDA, US MoCRA, EU CPNP: restricted and prohibited lists are checked at formula stage, not after.', `${B}/regulations/`],
+    ['Target-market landing', `${OEM_MARKETS.length} markets × ${OEM_CATEGORIES.length} categories OEM pages`, `${OEM_MARKETS.map((m) => m.en.replace(/^the /, '')).join(' / ')}: notification path, responsible party, label points and buyer FAQ per market.`, `${B}/oem/`],
+  ] as Array<[string, string, string, string]>,
+  s2: 'What is worth making today?', s2lead: (d: string) => `Generated daily from cross-border bestseller boards, the peer product library and target-market regulations · updated ${d} · stars are relative, not measured figures.`, s2none: 'Opportunity cards are generated daily; browse the formula library or tell us your situation.',
+  oppLabels: ['Demand', 'Competition', 'Price headroom', 'Supply-chain feasibility'], oppBtn: 'Get a factory plan', s2more: 'Not what you need? One line about your situation and the factory replies with directions for your market',
+  s3: 'See a product, hand it to the factory', s3lead: 'Type a product name: we find lookalikes in the real product library, decode the ingredient structure, match an in-house base, check target-market regulations, then sample. Cost and MOQ are quoted per project; the page never estimates them.',
+  s3flow: ['Find lookalikes', 'Decode INCI', 'Match a base', 'Sample and evaluate', 'Pilot and bulk'], s3latest: 'Newest global products in the library',
+  s5: 'In-house formulation bases: real products by category', s5lead: 'Each base has a code, format and claim tags; open the code for the base notes. Sampling usually takes 5–14 days. These are bases, not your final formula: actives, skin feel and fragrance are adjusted for your brand.',
+  s5all: 'See all', s5count: (n: number) => `${n} bases`,
+  s4: 'From brief to delivery, inside one project', s4lead: 'You never source a formulator, a packaging supplier, a test lab or a broker yourself; every step sits in one project with one contact who follows it through.',
+  steps: [['Brief', 'Category / target market / first-run quantity / reference product or INCI list'], ['Match a base', 'Pick 2–3 in-house bases, set the actives and skin-feel direction'], ['Sample', 'Usually 5–14 days; revise and resend after evaluation'], ['Compliance dossier', 'Notification path and responsible party for the market, label and claim check'], ['Packaging', 'Stock selection or custom, artwork proofread line by line'], ['Pilot run', 'A small batch through the line to confirm stability and filling'], ['Bulk and release', 'Tested against the QC items, release report ships with the goods']],
+  s6: 'Start a project', s6lead: 'Send your INCI list, target market and first-run quantity; the factory replies with a plan and sampling schedule within two working days.', s6wa: 'Chat on WhatsApp', s6mail: 'Email us',
+  s7: 'On the floor, and on paper: audits welcome', s7lead: 'Workshops, lines, testing and the original certificates are all open during an audit; below are floor photos and certificate scans.', s7certs: 'Certificates',
+  s8: 'Samples we have made', s8lead: 'Samples and renders adjusted from in-house bases to client briefs; your product starts the same way.', s8more: 'See all products',
+};
+const cards: any[] = Array.isArray(opps?.cards) ? opps.cards.slice(0, 6) : [];
+const oppDate = String(opps?.date || opps?.updated_at || '').slice(0, 10);
+---
+<div class="home">
+  <section class:list={['s1', { 'has-pics': slides.length > 0 }]}>
+   <div class="s1-text">
+    <p class="eyebrow">{T.eyebrow}</p>
+    <h1>{T.h1.map((line) => <span class="ln">{line}</span>)}</h1>
+    <p class="lead">{T.lead}</p>
+    <form class="search" method="get" action={`${B}/decoder/`}>
+      <div class="row"><input type="search" name="q" placeholder={T.searchPh} maxlength="60" required aria-label={T.searchPh} autocomplete="off" /><button type="submit" class="btn">{T.searchBtn} →</button></div>
+    </form>
+    <ul class="paths">
+      {T.paths.map(([href, label, hint], i) => <li><a href={href} class:list={[`p${i + 1}`]}><b>{label}</b><small>{hint}</small></a></li>)}
+    </ul>
+    <p class="hint">{T.pathHint}</p>
+   </div>
+   {slides.length > 0 && <ul class="s1-pics">{slides.map((x) => <li><img src={x.image} alt={x.alt || ''} loading="eager" decoding="async" /></li>)}</ul>}
+  </section>
+
+  <section class="s0">
+    <header class="sh"><h2>{T.s0}</h2><p>{T.s0lead}</p></header>
+    <ul class="six">{T.six.map(([h, e, d, href]) => <li><a href={href}><b>{h}</b><span class="e">{e}</span><span class="d">{d}</span></a></li>)}</ul>
+  </section>
+
+  {(shots.length > 0 || certPics.length > 0) && (
+  <section class="s7">
+    <header class="sh"><h2>{T.s7}</h2><p>{T.s7lead}</p></header>
+    {shots.length > 0 && <ul class="shots">{shots.map((x) => <li><img src={x.image} alt={x.label || ''} loading="lazy" decoding="async" /><b>{x.label}</b>{x.note && <span>{x.note}</span>}</li>)}</ul>}
+    {certPics.length > 0 && (<><p class="sub">{T.s7certs}</p><ul class="certs">{certPics.map((x) => <li><img src={x.image} alt={x.label || ''} loading="lazy" decoding="async" /><b>{x.label}</b></li>)}</ul></>)}
+  </section>)}
+
+  <section class="s2" id="opps">
+    <header class="sh"><h2>{T.s2}</h2><p>{cards.length ? T.s2lead(oppDate) : T.s2none}</p></header>
+    {cards.length > 0 && (
+      <ul class="opps">
+        {cards.map((c) => {
+          const sc: number[] = Array.isArray(c.scores) ? c.scores : [3, 3, 3, 3];
+          const s100 = Number(c.score100 ?? c.s100 ?? 0) || Math.round(((sc[0] + (6 - sc[1]) + sc[2] + sc[3]) / 20) * 100);
+          return (
+            <li class="opp">
+              <p class="mk">{zh ? c.label : (c.label_en || c.label)}<b class="score">{s100}<small>/100</small></b></p>
+              <h3>{zh ? c.cat : (c.cat_en || c.cat)}</h3>
+              <dl>{T.oppLabels.map((l, i) => (<><dt>{l}</dt><dd>{stars(Number(sc[i] ?? 3))}</dd></>))}</dl>
+              <p class="why">{zh ? c.why : (c.why_en || c.why)}</p>
+              {c.evidence && <p class="ev">{zh ? '依据' : 'Evidence'}: {c.evidence}{c.confidence && <> · {zh ? '置信度' : 'confidence'} {c.confidence}</>}</p>}
+              <a class="btn" href={oppHref(c)}>{T.oppBtn} →</a>
+            </li>
+          );
+        })}
+      </ul>
+    )}
+    <p class="more"><a href={waHref || `${B}/contact/`}>{T.s2more} →</a></p>
+  </section>
+
+  <section class="s3">
+    <header class="sh"><h2>{T.s3}</h2><p>{T.s3lead}</p></header>
+    <ol class="flow3">{T.s3flow.map((s, i) => <li><i>{i + 1}</i>{s}</li>)}</ol>
+    {latest.length > 0 && (<>
+      <p class="sub">{T.s3latest}</p>
+      <ul class="prods">{latest.map((r) => (
+        <li><a href={decoderPath(lang, r.id, r.brand, r.title)}>
+          <img src={r.img} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+          <span class="br">{String(r.brand || '').length > 2 ? r.brand : String(r.title || '').split(/\s+/).slice(0, 2).join(' ')}{r.country ? ` · ${String(r.country).toUpperCase()}` : ''}</span>
+          <span class="ti">{clean((zh && r.title_zh) ? r.title_zh : r.title)}</span>
+        </a></li>
+      ))}</ul>
+    </>)}
+  </section>
+
+  <section class="s5">
+    <header class="sh"><h2>{T.s5}</h2><p>{T.s5lead}</p></header>
+    <ul class="cats">{cats.map((c) => (
+      <li class:list={[{ 'has-pic': !!catPic(c.category) }]}>
+        {catPic(c.category) && <img class="cp" src={catPic(c.category)} alt="" loading="lazy" decoding="async" />}
+        <p class="ch"><b>{catLabel(c.category)}</b><span>{T.s5count(c.n)}</span></p>
+        <ul class="fx">{c.samples.map((r: any) => <li><a href={`${B}/formula/${encodeURIComponent(r.code)}/`}>{formulaName(r, zh)}</a></li>)}</ul>
+        <a class="all" href={`${B}/formulas/?c=${encodeURIComponent(c.category)}`}>{T.s5all} →</a>
+      </li>
+    ))}</ul>
+  </section>
+
+  {shelf.length > 0 && (
+  <section class="s8">
+    <header class="sh"><h2>{T.s8}</h2><p>{T.s8lead}</p></header>
+    <ul class="shelf">{shelf.map((x) => <li><a href={x.href || `${B}/products/`}><img src={x.image} alt={x.name || ''} loading="lazy" decoding="async" /><span class="nm">{x.name}</span>{x.note && <span class="nt">{x.note}</span>}</a></li>)}</ul>
+    <p class="more"><a href={`${B}/products/`}>{T.s8more} →</a></p>
+  </section>)}
+
+  <section class="s4">
+    <header class="sh"><h2>{T.s4}</h2><p>{T.s4lead}</p></header>
+    <ol class="steps">{T.steps.map(([h, d], i) => <li><i>{i + 1}</i><b>{h}</b><span>{d}</span></li>)}</ol>
+  </section>
+
+  <section class="s6">
+    <header class="sh"><h2>{T.s6}</h2><p>{T.s6lead}</p></header>
+    <p class="more">
+      {waHref && <a class="btn" href={waHref} target="_blank" rel="noopener">{T.s6wa} →</a>}
+      <a class="btn ghost" href={`mailto:${email}`}>{T.s6mail}: {email}</a>
+    </p>
+  </section>
+</div>
+
+<style>
+  .home { max-width: 112.5rem; margin: 0 auto; padding: 0 1rem 3rem; }
+  .home section { padding: 2.75rem 0; border-bottom: 1px solid var(--ck-line, rgba(0,0,0,.08)); }
+  .sh { max-width: 62rem; margin-bottom: 1.25rem; } .sh h2 { font-size: clamp(1.5rem, 2.6vw, 2.125rem); margin: 0 0 .5rem; line-height: 1.22; } .sh p { margin: 0; opacity: .78; line-height: 1.7; }
+  .btn { min-height: 46px; display: inline-flex; align-items: center; padding: 0 1.25rem; border-radius: 999px; background: var(--ck-accent, #7C4DA8); color: #fff; text-decoration: none; font-weight: 600; border: 0; cursor: pointer; font: inherit; font-weight: 600; }
+  .btn.ghost { background: #fff; color: inherit; border: 1px solid var(--ck-line, rgba(0,0,0,.18)); }
+  .more { margin: 1.25rem 0 0; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; } .more a:not(.btn) { color: inherit; font-weight: 600; }
+  .s1 { padding-top: 3.75rem; } .s1 .eyebrow { font-size: .8125rem; letter-spacing: .1em; text-transform: uppercase; opacity: .65; margin: 0 0 .875rem; }
+  .s1 h1 { font-size: clamp(2rem, 5vw, 4.25rem); line-height: 1.12; margin: 0 0 1rem; letter-spacing: -.015em; } .s1 h1 .ln { display: block; }
+  .s1 .lead { font-size: clamp(1rem, 1.5vw, 1.3125rem); line-height: 1.7; opacity: .85; max-width: 56rem; margin: 0 0 1.5rem; }
+  .search { max-width: 56rem; margin: 0 0 .875rem; } .search .row { display: flex; gap: .5rem; } .search input { flex: 1; min-height: 52px; padding: 0 1rem; border-radius: 14px; border: 1px solid var(--ck-line, rgba(0,0,0,.18)); font: inherit; font-size: 1rem; background: #fff; }
+  .paths { list-style: none; padding: 0; margin: 0 0 .75rem; display: grid; gap: .625rem; max-width: 56rem; }
+  .paths a { display: grid; gap: .125rem; min-height: 64px; padding: .625rem 1rem; border-radius: 14px; border: 1px solid var(--ck-line, rgba(0,0,0,.14)); background: #fff; text-decoration: none; color: inherit; } .paths a b { font-size: 1rem; } .paths a small { opacity: .65; }
+  .paths .p1 { border-color: var(--ck-accent, #7C4DA8); box-shadow: 0 0 0 1px var(--ck-accent, #7C4DA8) inset; }
+  @media (min-width: 700px) { .paths { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .hint { margin: 0; font-size: .875rem; opacity: .6; max-width: 56rem; }
+  .six { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; } .six a { display: grid; gap: .375rem; padding: 1.125rem 1.25rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 16px; background: #fff; text-decoration: none; color: inherit; height: 100%; box-shadow: 0 2px 10px rgba(0,0,0,.04); }
+  .six b { font-size: 1.0625rem; } .six .e { font-size: .875rem; color: var(--ck-accent, #7C4DA8); font-weight: 600; line-height: 1.5; } .six .d { font-size: .875rem; opacity: .72; line-height: 1.6; }
+  .opps { list-style: none; padding: 0; margin: 0; display: grid; gap: .875rem; } .opp { padding: 1.25rem 1.375rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 18px; background: #fff; display: grid; gap: .5rem; align-content: start; box-shadow: 0 2px 10px rgba(0,0,0,.04); }
+  .opp .mk { margin: 0; font-size: .875rem; opacity: .7; display: flex; justify-content: space-between; align-items: baseline; } .opp .score { font-size: 1.375rem; color: var(--ck-accent, #7C4DA8); font-variant-numeric: tabular-nums; opacity: 1; } .opp .score small { font-size: .75rem; opacity: .6; }
+  .opp h3 { margin: 0; font-size: 1.25rem; } .opp dl { margin: .25rem 0; display: grid; grid-template-columns: auto 1fr; gap: .25rem .75rem; font-size: .875rem; } .opp dt { opacity: .65; } .opp dd { margin: 0; letter-spacing: .08em; color: #b8860b; }
+  .opp .why { margin: 0 0 .5rem; font-size: .9rem; line-height: 1.6; opacity: .85; } .opp .ev { margin: 0 0 .5rem; font-size: .75rem; opacity: .55; line-height: 1.5; }
+  .flow3 { list-style: none; padding: 0; margin: 0 0 1.5rem; display: flex; flex-wrap: wrap; gap: .5rem; } .flow3 li { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .875rem; border-radius: 999px; background: #fff; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); font-size: .9375rem; }
+  .flow3 i, .steps i { font-style: normal; font-variant-numeric: tabular-nums; width: 1.5rem; height: 1.5rem; display: inline-grid; place-items: center; border-radius: 999px; background: var(--ck-accent, #7C4DA8); color: #fff; font-size: .7rem; flex: none; }
+  .sub { margin: 0 0 .75rem; font-size: .875rem; opacity: .65; }
+  .prods { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .prods a { display: grid; gap: .25rem; text-decoration: none; color: inherit; } .prods img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; background: rgba(0,0,0,.05); }
+  .prods .br { font-size: .75rem; opacity: .6; letter-spacing: .04em; text-transform: uppercase; } .prods .ti { font-size: .9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cats { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; } .cats > li { padding: 1rem 1.125rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 16px; background: #fff; display: grid; gap: .5rem; align-content: start; }
+  .cats .ch { margin: 0; display: flex; justify-content: space-between; align-items: baseline; } .cats .ch b { font-size: 1.0625rem; } .cats .ch span { font-size: .8125rem; color: var(--ck-accent, #7C4DA8); font-weight: 600; }
+  .fx { list-style: none; padding: 0; margin: 0; display: grid; gap: .25rem; } .fx a { font-size: .875rem; color: inherit; text-decoration: none; opacity: .85; } .fx a:hover { text-decoration: underline; }
+  .cats .all { font-size: .875rem; font-weight: 600; color: var(--ck-accent, #7C4DA8); text-decoration: none; }
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: .625rem; } .steps li { display: grid; grid-template-columns: auto 1fr; gap: .25rem .75rem; padding: .875rem 1rem; border: 1px solid var(--ck-line, rgba(0,0,0,.1)); border-radius: 14px; background: #fff; } .steps b { font-size: 1rem; } .steps span { grid-column: 2; font-size: .875rem; opacity: .72; line-height: 1.55; }
+  .s1-pics { list-style: none; padding: 0; margin: 1.75rem 0 0; display: grid; gap: .625rem; } .s1-pics img { width: 100%; aspect-ratio: 5 / 2; object-fit: cover; border-radius: 16px; background: rgba(0,0,0,.05); display: block; }
+  .shots, .certs, .shelf { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shots li, .certs li { display: grid; gap: .25rem; } .shots img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; background: rgba(0,0,0,.05); } .shots b { font-size: .9375rem; } .shots span { font-size: .8125rem; opacity: .65; line-height: 1.5; }
+  .certs { margin-top: .25rem; } .certs img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 10px; background: #fff; border: 1px solid var(--ck-line, rgba(0,0,0,.1)); } .certs b { font-size: .8125rem; text-align: center; }
+  .shelf a { display: grid; gap: .25rem; text-decoration: none; color: inherit; } .shelf img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; background: rgba(0,0,0,.05); } .shelf .nm { font-size: .9rem; line-height: 1.4; } .shelf .nt { font-size: .75rem; opacity: .6; }
+  .cats .cp { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; background: rgba(0,0,0,.05); margin-bottom: .25rem; }
+  @media (min-width: 900px) { .shots, .certs { grid-template-columns: repeat(6, minmax(0, 1fr)); } .shelf { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (min-width: 1400px) { .shelf { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+  @media (min-width: 900px) { .home { padding: 0 1.5rem 4rem; } .six, .opps, .cats { grid-template-columns: repeat(3, minmax(0, 1fr)); } .prods { grid-template-columns: repeat(6, minmax(0, 1fr)); } .steps { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (min-width: 1400px) { .steps { grid-template-columns: repeat(7, minmax(0, 1fr)); } .steps li { grid-template-columns: 1fr; } .steps span { grid-column: 1; } }
+</style>

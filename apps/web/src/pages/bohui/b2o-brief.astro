@@ -1,0 +1,134 @@
+---
+/**
+ * 机会简报生成助手(2026-09-24 W3)—— 选客户档案 → 机器按《客户产品机会简报》v2 模板出草稿 → 顾问核、创始人审 → 人工在企业微信发。
+ * 本页只出草稿,不落库、不发送(04-v2 §一 审批点 1a)。接口:/api/admin/b2o-brief(免费白名单模型,送模型只有客户代号)。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { TRUST, custCode } from '../../lib/b2o';
+import { kindName } from '../../lib/b2o-auto';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+type P = { id: number; company: string | null; platforms: string | null; trust_level: number };
+let list: P[] = [];
+try { list = (await c.db.prepare(`SELECT id, company, platforms, trust_level FROM b2o_profiles ORDER BY trust_level DESC, updated_at DESC LIMIT 300`).all<P>()).results; } catch { /* 表没建:下拉为空 */ }
+const pre = Number(new URL(Astro.request.url).searchParams.get('id')) || 0;
+/* 09-24 C1:自动草稿(P03 简报 / P04 再触达)。待处理的全列,已发 / 失败只列最近 20 条。读量 = 一次索引扫描,几十行 */
+type D = { id: number; profile_id: number; kind: string; status: string; body: string | null; flags: string | null; model: string | null; tries: number;
+  created_at: string; approved_by: string | null; sent_at: string | null; contact_ref: string | null };
+let drafts: D[] = [];
+try {
+  drafts = (await c.db.prepare(`SELECT d.id, d.profile_id, d.kind, d.status, d.body, d.flags, d.model, d.tries, d.created_at, d.approved_by, d.sent_at, p.contact_ref
+      FROM b2o_auto_drafts d LEFT JOIN b2o_profiles p ON p.id=d.profile_id
+      WHERE d.status IN ('draft','approved','gen') OR d.id IN (SELECT id FROM b2o_auto_drafts WHERE status IN ('sent','failed') ORDER BY updated_at DESC LIMIT 20)
+      ORDER BY CASE d.status WHEN 'approved' THEN 0 WHEN 'draft' THEN 1 WHEN 'gen' THEN 2 WHEN 'failed' THEN 3 ELSE 4 END, d.id DESC LIMIT 80`).all<D>()).results;
+} catch { /* 0117 没灌:不显示这一段 */ }
+const openId = Number(new URL(Astro.request.url).searchParams.get('draft')) || 0;
+const isAdmin = c.sess.role === 'admin';
+const ST: Record<string, string> = { draft: '待审(顾问核 → 管理员批)', approved: '已批准 · 待发', gen: '生成中', failed: '生成失败', sent: '已发' };
+const CAT: Record<string, string> = { beauty: '美妆总榜', 'skin-care': '护肤', face: '面部护肤', 'face-cleansers': '洁面', sunscreen: '防晒', 'hair-care': '洗护发', 'shampoo-conditioner': '洗发水/护发素', 'hair-masks': '发膜', 'hair-oils': '护发油', scalp: '头皮护理', makeup: '彩妆总榜', 'makeup-face': '底妆', 'makeup-eyes': '眼妆', 'makeup-lips': '唇妆', 'lip-care': '唇部护理' };
+---
+
+<AdminShell title="机会简报助手" active="b2o-brief" email={c.sess.email} tenant={c.tenant}>
+  <h1>机会简报助手</h1>
+  <p class="lead notice">机器只出<b>草稿</b>。发给客户前:产品顾问核对每个数字的出处、补齐 {'{待顾问补}'},再交创始人审批;审批前不得发出。起订量、交期、价格一律不写。</p>
+
+  <section id="auto">
+    <h2>自动草稿 <span class="dim">客户提交店铺后几分钟内出简报草稿;简报「已发」后第 3 / 7 / 14 天出再触达草稿。审批前不能复制、不能发;批准只给管理员。</span></h2>
+    {drafts.length === 0 && <p class="dim">现在没有自动草稿。</p>}
+    {drafts.map((d) => { const fl: string[] = (() => { try { return JSON.parse(d.flags || '[]'); } catch { return []; } })(); return (
+      <details class:list={['panel', 'dr', `s-${d.status}`]} open={d.id === openId} data-id={d.id}>
+        <summary><b>{kindName(d.kind)}</b> · {custCode({ id: d.profile_id, contact_ref: d.contact_ref })} · {ST[d.status] ?? d.status} <span class="dim">#{d.id} · {d.created_at.slice(5, 16)}{d.model ? ` · ${d.model}` : ''}{d.status === 'failed' ? ` · 已试 ${d.tries} 次` : ''}</span></summary>
+        {fl.map((x) => <p class:list={['note', /^(疑似|禁词)/.test(x) ? 'warn' : '']}>{x}</p>)}
+        {d.body && <textarea rows="16" readonly={d.status !== 'draft'}>{d.body}</textarea>}
+        <p class="acts">
+          {d.status === 'draft' && <button class="btn" type="button" data-op="save">保存修改</button>}
+          {d.status === 'draft' && isAdmin && <button class="btn pri" type="button" data-op="approve">批准</button>}
+          {['draft', 'approved'].includes(d.status) && isAdmin && <button class="btn" type="button" data-op="reject">退回</button>}
+          {d.status === 'approved' && <button class="btn" type="button" data-op="copy">复制</button>}
+          {d.status === 'approved' && <button class="btn pri" type="button" data-op="sent">已在企业微信发出</button>}
+          {['sent', 'approved'].includes(d.status) && <button class="btn" type="button" data-op="replied">客户回了</button>}
+          {d.status === 'draft' && !isAdmin && <span class="dim">改完告诉管理员来批。</span>}
+          <span class="st dim"></span>
+        </p>
+      </details>
+    ); })}
+  </section>
+
+  <h2>手工出稿</h2>
+  <form id="f" class="panel">
+    <label>客户档案
+      <select name="id" required>
+        <option value="">选一个客户</option>
+        {list.map((p) => <option value={p.id} selected={p.id === pre}>{custCode(p)} · {p.company ?? '—'} · {TRUST[p.trust_level]?.name ?? `L${p.trust_level}`}{p.platforms ? ` · ${p.platforms}` : ''}</option>)}
+      </select>
+    </label>
+    <label>附带 Amazon 美国站类目数据(只给做 Amazon 美国站的客户)
+      <select name="cat"><option value="">不附带</option>{Object.entries(CAT).map(([k, v]) => <option value={k}>{v}</option>)}</select>
+    </label>
+    <label>顾问补充(店铺前 20 款标题和价格、在售款数、前三款评论数、取数日期;不要写联系人姓名、微信、手机)
+      <textarea name="notes" rows="6" maxlength="3000"></textarea>
+    </label>
+    <button class="btn pri" type="submit">生成草稿</button> <span id="st" class="dim"></span>
+  </form>
+
+  <section id="out" class="panel" hidden>
+    <div id="flags"></div>
+    <textarea id="draft" rows="28"></textarea>
+    <p><button class="btn" type="button" id="cp">复制草稿</button> <span id="mdl" class="dim"></span></p>
+  </section>
+
+  <script>
+    const f = document.getElementById('f') as HTMLFormElement, st = document.getElementById('st')!;
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const d = new FormData(f), btn = f.querySelector('button')!;
+      btn.disabled = true; st.textContent = '生成中,约 20–60 秒…';
+      try {
+        const r = await fetch('/api/admin/b2o-brief', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id: Number(d.get('id')), cat: d.get('cat'), notes: d.get('notes') }) });
+        const j: any = await r.json();
+        if (!j.ok) { st.textContent = j.msg || '生成失败'; return; }
+        st.textContent = '';
+        (document.getElementById('draft') as HTMLTextAreaElement).value = j.draft;
+        document.getElementById('mdl')!.textContent = `客户代号 ${j.code} · 模型 ${j.model}`;
+        const fl = document.getElementById('flags')!;
+        fl.innerHTML = '';
+        for (const x of (j.flags?.length ? j.flags : ['机检未发现禁词和商务数字(仍需人工逐条核出处)'])) {
+          const p = document.createElement('p'); p.className = j.flags?.length ? 'note warn' : 'note'; p.textContent = x; fl.appendChild(p);
+        }
+        document.getElementById('out')!.hidden = false;
+      } catch { st.textContent = '网络出错,稍后再试'; } finally { btn.disabled = false; }
+    });
+    document.querySelectorAll<HTMLElement>('details.dr').forEach((box) => box.addEventListener('click', async (e) => {
+      const b = (e.target as HTMLElement).closest('button[data-op]') as HTMLButtonElement | null;
+      if (!b) return;
+      const op = b.dataset.op!, ta = box.querySelector('textarea') as HTMLTextAreaElement | null, st = box.querySelector('.st')!;
+      if (op === 'copy') { await navigator.clipboard.writeText(ta?.value ?? ''); st.textContent = '已复制'; return; }
+      b.disabled = true; st.textContent = '处理中…';
+      try {
+        const r = await fetch('/api/admin/b2o-brief', { method: 'PUT', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ draft: Number(box.dataset.id), op, body: ta?.value }) });
+        const j: any = await r.json();
+        st.textContent = j.msg || (j.ok ? '已保存' : '失败');
+        if (j.ok && op !== 'save') setTimeout(() => location.reload(), 900);
+      } catch { st.textContent = '网络出错,稍后再试'; } finally { b.disabled = false; }
+    }));
+    document.getElementById('cp')!.addEventListener('click', () => navigator.clipboard.writeText((document.getElementById('draft') as HTMLTextAreaElement).value));
+  </script>
+
+  <style>
+    .notice{border-left:3px solid var(--ad-warn);padding-left:.75rem}
+    .panel{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:1rem 1.125rem;margin-bottom:.75rem;display:grid;gap:.75rem}
+    label{display:grid;gap:.25rem;font-size:.875rem}
+    textarea{width:100%;font-size:.875rem;line-height:1.6}
+    .dim{color:var(--ad-faint);font-size:.75rem}
+    .note.warn{color:var(--ad-warn)} .panel[hidden]{display:none}
+    h2{font-size:1rem;margin:1.25rem 0 .5rem} h2 .dim{font-weight:400}
+    details.dr summary{cursor:pointer;font-size:.875rem} details.dr.s-approved{border-color:var(--ad-ok)} details.dr.s-failed{border-color:var(--ad-bad)}
+    .acts{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:0}
+  </style>
+</AdminShell>

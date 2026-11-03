@@ -6,8 +6,16 @@
 #    若在此处写死 main,Cloudflare 的 vite 插件会在构建**前**去校验该文件是否存在,
 #    而它要构建完才生成 —— 形成鸡生蛋死锁,构建直接失败。
 name = "bohui-web"
+# 09-24 安全:workers.dev 与带版本号的预览地址会绕过正式域名上的全部防火墙规则,直接读生产库。
+# 已在后台关掉;这里钉死,防止下次部署又自动打开。本地验证一律打正式域名。
+workers_dev = false
+preview_urls = false
 compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
+# 09-24 C1:自定义入口 = Astro 适配器的 fetch + Cloudflare Cron(BEAUTY2OEM 自动草稿 / 心跳)。
+# 指向 src 里的源文件(构建前就存在),不是 dist 产物,所以不撞上面说的「构建前校验 main」死锁。
+# 回滚:删掉这一行和下面 [triggers] 两行,重新构建部署即回到适配器默认入口。
+main = "./src/worker.ts"
 
 # 内容库:5 站 × 4 语 × 页面/版块/产品/媒体/询盘
 [[d1_databases]]
@@ -15,14 +23,84 @@ binding = "DB"
 database_name = "bohui-cms-v2"
 database_id = "ea5b0da4-7f96-48bf-8fca-dc7193a9596d"
 
+# 图片桶 —— 原生绑定。2026-09-07 起桶迁到本账号,不再走跨账号 S3 签名。
+# 原生绑定比 S3 快(免一次签名与外部 HTTP)、免密钥、也不再有跨账号泄密面。
+# 迁移期间两条路并存:R2_BUCKET/MEDIA_DRIVER 那套仍在,切干净后再撤。
+[[r2_buckets]]
+binding = "PHOTO"
+bucket_name = "bohui-photo"
+
+# 访问打点 —— Analytics Engine。
+# 为什么不用 Cloudflare Web Analytics:它靠页面里的 JS 信标统计,
+# 而**AI 爬虫不执行 JS** —— 我们最想看的那部分流量它恰恰看不见。
+# 也不用 zone 级 GraphQL:那需要给 token 加 zone.analytics.read 权限,
+# 而账号级 token 一旦进了 Worker,泄漏面就是整个账号。
+# AE 是原生绑定,不带任何凭据,写入按请求计,读取走账号级 GraphQL(现有 token 就够)。
+[[analytics_engine_datasets]]
+binding = "PULSE"
+dataset = "bohui_pulse"
+
 # Astro 会话存储(适配器要求存在此绑定)
 [[kv_namespaces]]
 binding = "SESSION"
 id = "a461419944d4422cb81e374a391632ce"
 
+# 09-24 安全 L3 自家点选码题库(lib/captcha.ts、api/cap/*):题图 + 加密答案,每周由私有仓 capbank/rotate.py 轮换。
+# 没绑或 CAP_SECRET 没设时 /api/cap/new 回 503(fail closed)。同一 id 记在本机 .env 的 CAPBANK_KV_ID。
+[[kv_namespaces]]
+binding = "CAPBANK"
+id = "cf5cc6d044e748d684181e20a411f6a7"
+
+# ── 发信(2026-09-18 邮件中心)────────────────────────────────────
+# Cloudflare Email Sending(Beta,账号级「电子邮件服务 → 电子邮件发送」,Workers Paid;每月含 3,000 封,之后 $0.35/千封)。
+# 绑定本身不校验域名,可先部署;创始人在面板「接入域名 biosphere-ai.com」(自动加 DKIM/SPF/DMARC)后 send() 才成功,
+# 之前会抛 E_SENDER_NOT_VERIFIED,lib/mail.ts 自动退到 Resend(RESEND_API_KEY,secret)或把按钮置灰。
+# 若部署报 send_email 相关错误(账号没开通 Email Service),注释掉下面两行即可,发信自动走备选。
+[[send_email]]
+name = "EMAIL"
+
+# ── 知识库检索 ────────────────────────────────────────────────────
+# 2026-09-08。选品台此前是「大模型解析出关键词 → SQL 精确匹配 + LIKE」——
+# 客户说「适合油痘肌、夏天用不闷的清爽精华」,我们只能压成
+# benefits=['oil-control'] 去查表,语义全丢了。
+#
+# 这一层解的是**站内检索**,与 GEO 无关:外部 AI 抓不到向量库,
+# 它们读的是公开 HTML。两条线不要混。
+#
+# 1024 维对应 @cf/baai/bge-m3(多语言,中英混排的配方名与包材名都吃得下);
+# 换模型必须重建索引 —— 维度不同的向量放在同一个索引里,检索结果是噪音。
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "bohui-kb"
+
+# Workers AI —— 只用来做 embedding。生成类调用仍走舰队:
+# 2026-09-02 实测 Agnes 的出图接口从 Worker 调必 429(共享出口 IP)。
+[ai]
+binding = "AI"
+
 [vars]
 MEDIA_DRIVER = "r2-s3"
 R2_BUCKET = "bohui-photo"
+# Turnstile 的 site key 是公开值(会渲染进登录页 HTML),放明文没问题;
+# 配了它登录页才出验证组件,secret 端的校验开关是 TURNSTILE_SECRET(wrangler secret)。
+TURNSTILE_SITE_KEY = "0x4AAAAAAEh9PTvpt4eaYV_q"
+# 费用熔断保险丝(2026-10-22,lib/fuse.ts + middleware 缓存 miss 处):
+# 当日「缓存 miss → 渲染」次数超过此值 → 非会员/非后台请求一律 429,不再渲染、不再查 D1、不再花钱。
+# 默认 30 万 ≈ 3000 万行读/天,仅为免费额度(250 亿/月)的 3.6%;正常日渲染 <10 万,远碰不到。
+# 改 0 = 用 lib/fuse.ts 的内置默认;改 -1 = 等价极大约束(实际禁用,但留代码路径在)。
+FUSE_RENDER_CAP = "300000"
+# 付费 AI 全站日预算(2026-11-02,lib/fuse.ts aiDailyCheck):ecom-set/pack/video/chat/design 每次请求
+# 按折算的模型调用次数累计(4 张图记 4、读图+出图记 2、一次对话记 1),超过此值当天一律 503、次日零点恢复。
+# 为什么需要它:ratelimit 的配额全是 per-IP,换 IP 就绕过;而模型池是全站共享的 —— 这条是"总闸"。
+# 2000 次/天 ≈ 日常业务量的几十倍,正常永远碰不到,只在脚本狂刷或前端死循环时才触发。
+# 改 0 = 用内置默认(也是 2000);会被 aiDailyCheck 当作非法值回落默认。
+AI_DAILY_CAP = "2000"
 
 # 说明:R2 走 S3 兼容接口而非绑定 —— 桶在创始人主账号、站点在 BIOSPHERECN 账号,
 # 绑定只能同账号。凭据用 `wrangler secret put` 注入,不写在本文件。
+
+# 09-24 C1:每 10 分钟跑一次 BEAUTY2OEM 第一期自动化(src/lib/b2o-auto.ts:简报兜底 + 第 3/7/14 天再触达 + jobs 心跳)。
+# 10-09 获客:整点跑一次云端客户挖掘(prospect-mine.ts:按 UTC 时区选市场 → fetch 榜单 → AI 抽品牌 → 写 D1)
+# 10-23 爆款监控云端正环:0 4 采集+日报;0 8 * * 1 每周一生成周报(每周必交)
+[triggers]
+crons = ["*/10 * * * *", "0 * * * *", "0 2 * * *", "0 3 * * *", "0 4 * * *", "5 4 * * *", "0 5 * * *", "0 6 * * *", "0 8 * * 1"]

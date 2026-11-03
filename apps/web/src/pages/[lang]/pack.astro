@@ -1,0 +1,882 @@
+---
+/**
+ * AI 包装设计工作台 v2 —— 对标莱诺鸟专业体验。
+ *
+ * 三步流程(莱诺鸟式):
+ *   ① 选瓶型/包材 —— 从包材库选,或上传自己的样品照
+ *   ② 定风格 —— 风格预设卡 + 自由文本简报
+ *   ③ 出方案 —— AI 读图 + 文字方案 + 参考图 + 定制图
+ *
+ * 同时内嵌:
+ *   - 3D 瓶身预览(BottlePreview3D)—— 实时看瓶型+颜色+标签
+ *   - 画布编辑器(DesignEditor)—— 在产品图上叠 logo+文字,导出 PNG
+ *
+ * 设计理念:莱诺鸟的工具是"按部门拆能力中台",包装设计是其中一环;
+ * 我们的单页把这些串起来:选瓶型 → 看效果 → 出方案 → 改方案 → 发询盘。
+ */
+import { t as uiT, type Locale } from '@cosmetic/core/i18n';
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import BottlePreview3D from '@cosmetic/core/components/BottlePreview3D.astro';
+import DesignEditor from '@cosmetic/core/components/DesignEditor.astro';
+import { pageShell } from '../../lib/shell';
+import { PACK_SHELF } from '@cosmetic/core/generated/pack-shelf.ts';
+import '@cosmetic/core/styles/tool.css';
+
+export const prerender = false;
+
+const lang = (Astro.params.lang ?? 'zh-cn') as Locale;
+const tSkip = uiT(lang)('a11y.skip');
+const zh = lang.startsWith('zh');
+const db = (env as any).DB as D1Database | undefined;
+
+const qp = Astro.url.searchParams;
+const packCode = String(qp.get('pack') ?? '').toUpperCase().slice(0, 24);
+const packType = String(qp.get('type') ?? '').slice(0, 60);
+const packMaterial = String(qp.get('material') ?? '').slice(0, 60);
+const packCapacity = String(qp.get('capacity') ?? '').slice(0, 60);
+const packShot = packCode && PACK_SHELF.find((x) => x.code === packCode)?.hasImg ? `/pack/${packCode}` : '';
+
+const caps = db
+  ? await db.prepare(
+      `SELECT SUM(can_vision) v, SUM(can_image) i FROM providers WHERE enabled=1 AND api_keys<>''`
+    ).first<{ v: number; i: number }>().catch(() => null)
+  : null;
+const canSee = (caps?.v ?? 0) > 0;
+const canDraw = (caps?.i ?? 0) > 0;
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/pack/`;
+
+const T = zh ? {
+  eyebrow: 'AI 包装设计',
+  title: '包装设计工作台',
+  lead: '选瓶型、定风格、出方案 —— 三步拿到可带回去开会的包装设计提案。3D 预览实时看效果,画布编辑器叠 logo 和文字,方案直接转询盘。',
+
+  step1: '选瓶型',
+  step2: '定风格',
+  step3: '出方案',
+  stripTitle: '1164 款已量产成品（部分）',
+  stripMore: '看全部成品',
+  shopTitle: '这座工厂在生产什么',
+  shopMore: '看产线能力',
+
+  tabBottle: '包材库',
+  tabUpload: '上传样品照',
+  tab3d: '3D 预览',
+
+  pickFromShelf: '从包材库选一支瓶型',
+  shelfHint: '点击选用,3D 预览会同步切换',
+  uploadHint: '拖图到这里、Ctrl+V 粘贴,或点这里选图',
+  uploadOver: '松开即可放入',
+  reshoot: '点击可换成你自己的样品照',
+  loading: '正在装入这支瓶子的实拍…',
+  viewFull: '看原图',
+  thumbsHint: '点缩略图切换要分析的那一张',
+  badFile: '这张图读不出来,请换一张',
+
+  styleLabel: '风格方向',
+  styleLuxury: '黑金奢华',
+  styleEco: '环保牛皮纸',
+  styleMinimal: '极简白',
+  styleBotanical: '草本插画',
+  styleTech: '科技感',
+  styleCustom: '自定义',
+  briefLabel: '你想要的外包装(写得越具体,图越准)',
+  briefPh: '例:黑金奢华风,深色磨砂硬盒,盒面留烫金 logo 位,面向中东高端市场',
+  consent: '同意用这张照片做一次分析(照片不保存)',
+  go: '生成包装方案',
+  running: '正在读图与出图,约 20–40 秒…',
+  noSee: 'AI 读图能力暂未就绪,请稍后再试或直接发询盘。',
+  noDraw: '当前只能出文字方案,外观参考图暂不可用。',
+
+  factsTitle: '读到的瓶子信息',
+  planTitle: '外包装方案',
+  renderTitle: '外观参考图',
+  renderFine: '以上为风格方向参考,用于对齐沟通,不作为打样稿。实际打样以确认的结构图与色卡为准。',
+  fine: '照片在你的浏览器里压缩后只用于这一次分析,不保存、不用于训练。方案为设计建议,最终以打样确认为准。',
+  customTitle: '为你这支瓶子定制的外观图',
+  customWait: '已排队出图,云端工人每 30 分钟领一次单;出好会自动显示在这里。',
+  customFail: '定制图这次没出成,上面的风格方向仍然可用。',
+  cta: '带着这份方案发询盘',
+  picked: '已选包材',
+  packPrefix: '包材:',
+  swap: '换一款',
+  dropHint: '拖图到这里、Ctrl+V 粘贴,或点这里选图(可多张)',
+  elapsed: '用时',
+  sec: '秒',
+  timeout: '等了 150 秒还没回音,服务可能正忙,请稍后再试',
+  netErr: '网络异常,请检查连接后重试',
+  httpErr: '服务暂时不可用(HTTP {s}),请稍后再试',
+  emptyTitle: '方案会显示在这里',
+  emptyLead: '上方选瓶型或上传样品照,选风格方向,点「生成包装方案」后这里依次出现:读到的瓶子信息、外包装方案、定制外观图、风格参考图。',
+
+  canvasTab: '画布编辑器',
+  canvasHint: '在产品图上叠 logo 和文字,导出 PNG 方案图',
+} : {
+  eyebrow: 'AI Packaging Design',
+  title: 'Packaging Design Workbench',
+  lead: 'Pick a bottle, set the style, get the plan — three steps to a packaging proposal you can take to a meeting. 3D preview in real time, canvas editor for logo and text overlay, results go straight to inquiry.',
+
+  step1: 'Pick a bottle',
+  step2: 'Set the style',
+  step3: 'Get the plan',
+  stripTitle: '1164 mass-produced items (sample)',
+  stripMore: 'See the full showcase',
+  shopTitle: 'What this plant runs',
+  shopMore: 'See production lines',
+
+  tabBottle: 'Packaging Library',
+  tabUpload: 'Upload Sample',
+  tab3d: '3D Preview',
+
+  pickFromShelf: 'Pick a bottle from the library',
+  shelfHint: 'Click to select — 3D preview syncs automatically',
+  uploadHint: 'Drop images here, paste (Ctrl+V), or click to choose',
+  uploadOver: 'Release to add',
+  reshoot: 'Click to replace with your own sample photo',
+  loading: 'Loading this bottle photo…',
+  viewFull: 'View full size',
+  thumbsHint: 'Click a thumbnail to pick the one to analyse',
+  badFile: 'Could not read this image, please try another',
+
+  styleLabel: 'Style Direction',
+  styleLuxury: 'Black & Gold Luxury',
+  styleEco: 'Kraft Eco',
+  styleMinimal: 'Minimal White',
+  styleBotanical: 'Botanical Illustration',
+  styleTech: 'Tech Forward',
+  styleCustom: 'Custom',
+  briefLabel: 'The packaging you want (the more specific, the closer the render)',
+  briefPh: 'e.g. black & gold luxury, matte dark rigid box with a foil logo area, for Middle East premium retail',
+  consent: 'Use this photo for one analysis (not stored)',
+  go: 'Generate packaging plan',
+  running: 'Reading the bottle and rendering, 20–40s…',
+  noSee: 'Image understanding is not ready. Please try later or send an inquiry.',
+  noDraw: 'Text plan only for now — reference renders are unavailable.',
+
+  factsTitle: 'What the AI saw',
+  planTitle: 'Packaging plan',
+  renderTitle: 'Reference renders',
+  renderFine: 'Renders are AI-generated to align on direction, not production artwork.',
+  fine: 'Your photo is compressed in the browser, used once for this analysis, never stored or used for training.',
+  customTitle: 'A render made for your bottle',
+  customWait: 'Queued for rendering; our cloud worker picks up jobs every 30 minutes.',
+  customFail: 'The custom render did not come through this time.',
+  cta: 'Send an inquiry with this plan',
+  picked: 'Selected packaging',
+  packPrefix: 'Packaging: ',
+  swap: 'change',
+  dropHint: 'Drop images here, paste (Ctrl+V), or click to choose (multiple OK)',
+  elapsed: 'took',
+  sec: 's',
+  timeout: 'No reply after 150s — the service may be busy, please try again later',
+  netErr: 'Network error, check your connection and retry',
+  httpErr: 'Service unavailable (HTTP {s}), please try again later',
+  emptyTitle: 'Your plan will appear here',
+  emptyLead: 'Pick a bottle or upload a sample above, set the style direction, click Generate — results appear here.',
+
+  canvasTab: 'Canvas Editor',
+  canvasHint: 'Overlay logo and text on your product photo, export PNG',
+};
+
+const packLine = packCode
+  ? T.packPrefix + [packCode, packType, packMaterial, packCapacity].filter(Boolean).join(' · ') + '\n'
+  : '';
+
+// 风格预设:每个对应一段简报模板,点击自动填入
+const STYLES = [
+  { id: 'luxury', label: T.styleLuxury, brief: '黑金奢华风,深色磨砂硬盒,盒面留烫金logo位,丝绒内衬,面向中东/东南亚高端市场。' },
+  { id: 'eco', label: T.styleEco, brief: '牛皮纸环保风,本色纸盒,手绘草本插画,麻绳系扣,极简印刷,面向欧美有机/天然品牌。' },
+  { id: 'minimal', label: T.styleMinimal, brief: '极简白底,大面积留白,单色线框logo,无多余装饰,北欧/日系品牌调性。' },
+  { id: 'botanical', label: T.styleBotanical, brief: '草本插画风,水彩植物插图主视觉,柔和大地色系,文艺自然,面向中草药/植物护肤定位。' },
+  { id: 'tech', label: T.styleTech, brief: '科技感,银灰金属质感,几何切割面,UV局部亮光,面向功效型/生物科技定位。' },
+];
+/* 页头实拍带：取自成品库（1164 款已量产），按品类各挑一款 */
+const STRIP = [
+  { id: 8726, zh: 'VC 玻尿酸精华', en: 'VC hyaluronic serum' },
+  { id: 8705, zh: '祛痘修护霜', en: 'Acne clear cream' },
+  { id: 9127, zh: '鱼子酱撕拉面膜', en: 'Caviar peel-off mask' },
+  { id: 8757, zh: 'VC 焕亮洁面', en: 'VC glow cleanser' },
+  { id: 8884, zh: 'VC 唇部精华', en: 'VC lip serum' },
+  { id: 8745, zh: 'VC 防晒喷雾', en: 'VC sunscreen spray' },
+  { id: 9012, zh: '烟酰胺美白牙膏', en: 'Niacinamide toothpaste' },
+  { id: 9555, zh: '蓝调香水', en: 'Blue perfume' },
+  { id: 8828, zh: '点痘凝胶', en: 'Spot gel' },
+];
+/* 页底车间实拍：称量间 / 乳化大厅 / 灌装线 / 研发 */
+const SHOP = [
+  { id: 99, zh: '称量间', en: 'Weighing room' },
+  { id: 101, zh: '乳化大厅', en: 'Emulsifying hall' },
+  { id: 103, zh: '灌装线', en: 'Filling line' },
+  { id: 105, zh: '研发办公室', en: 'R&D office' },
+];
+
+---
+
+<BaseLayout
+  locale={lang}
+  school={shell.variant?.school ?? 'atelier'}
+  variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? 'biosphere-ai'}
+  title={T.title}
+  description={T.lead}
+  siteName={shell.site?.name ?? '帛卉'}
+  siteUrl={`https://${shell.site?.domain ?? 'biosphere-ai.com'}`}
+  path={path}
+  indexable={shell.site?.is_live === 1}
+  brandColor={shell.site?.brand_color}
+  theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+
+  {/* 首屏：工厂灌装线铺满 + 渐变遮罩 + 标题叠加（2026-10-30 视觉升级）
+     用 /media/103（灌装线 1536x1024），图片在说话，不是文字在说话 */}
+  <section class="pk-hero" aria-label={T.title}>
+    <div class="pk-hero-bg" style={`background-image:url('/media/103')`}></div>
+    <div class="pk-hero-content">
+      <p class="pk-hero-eyebrow">{T.eyebrow}</p>
+      <h1 class="pk-hero-title">{T.title}</h1>
+      <p class="pk-hero-lead">{T.lead}</p>
+      {!canSee && <p class="pk-hero-warn">{T.noSee}</p>}
+      {canSee && !canDraw && <p class="pk-hero-warn soft">{T.noDraw}</p>}
+    </div>
+  </section>
+
+  <main id="main" class="tw pk dtc-wrap-wide">
+    {/* 步骤条浮在 hero 底部边缘 */}
+    <nav class="steps" aria-label="steps">
+      <span class="step on" data-step="1">{T.step1}</span>
+      <i class="arrow">→</i>
+      <span class="step" data-step="2">{T.step2}</span>
+      <i class="arrow">→</i>
+      <span class="step" data-step="3">{T.step3}</span>
+    </nav>
+
+    {/* 成品实拍带 */}
+    <section class="strip" aria-label={T.stripTitle}>
+      <div class="strip-head">
+        <h2>{T.stripTitle}</h2>
+        <a class="strip-more" href={`/${lang}/portfolio/`}>{T.stripMore} →</a>
+      </div>
+      <ul class="strip-rail">
+        {STRIP.map((s) => (
+          <li>
+            <img src={`/media/${s.id}`} alt={zh ? s.zh : s.en} loading="lazy" width="368" height="480" />
+            <span class="strip-name">{zh ? s.zh : s.en}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <div class="body">
+      <!-- 左栏:输入区 -->
+      <section class="panel" id="panel" aria-label={T.eyebrow}>
+
+        <!-- 步骤1: 选瓶型 —— 三个子标签 -->
+        <div class="sub-tabs" id="bottleTabs">
+          <button type="button" class="sub-tab on" data-subtab="shelf">{T.tabBottle}</button>
+          <button type="button" class="sub-tab" data-subtab="upload">{T.tabUpload}</button>
+        </div>
+
+        <!-- ① 包材库选择(横向滚动卡片) -->
+        <div class="sub-panel" data-subpanel="shelf">
+          <p class="sub-hint">{T.pickFromShelf} · {T.shelfHint}</p>
+          <div class="shelf" id="shelf">
+            {PACK_SHELF.slice(0, 24).map((p) => (
+              <button type="button" class="shelf-card" data-code={p.code} data-type={p.type ?? ''} data-material={p.material ?? ''} data-capacity={p.capacity ?? ''}>
+                <span class="shelf-code">{p.code}</span>
+                <span class="shelf-type">{p.type ?? ''}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <!-- ② 上传样品照 -->
+        <div class="sub-panel" data-subpanel="upload" hidden>
+          {packCode && (
+            <p class="picked"><a href={`/${lang}/packaging/${packCode}/`}>{T.picked} {packCode}</a> · <a href={`/${lang}/packaging/`}>{T.swap}</a></p>
+          )}
+          <div class="drop" id="drop" data-shot={packShot}>
+            <span class="ph" id="ph">{packShot ? T.loading : T.uploadHint}</span>
+            <img id="preview" alt="" hidden />
+            <span class="hint" id="hint" hidden>{T.reshoot}</span>
+            <button type="button" class="zoom" id="zoom" hidden>{T.viewFull}</button>
+            <input id="pick" type="file" accept="image/*" multiple hidden />
+          </div>
+          <div class="thumbs" id="thumbs" hidden title={T.thumbsHint}></div>
+        </div>
+
+        <!-- 步骤2: 风格选择 -->
+        <div class="style-zone" id="styleZone">
+          <label class="fld-label">{T.styleLabel}</label>
+          <div class="style-grid" id="styleGrid">
+            {STYLES.map((s) => (
+              <button type="button" class="style-card" data-brief={s.brief}>{s.label}</button>
+            ))}
+          </div>
+
+          <label class="fld">
+            <span>{T.briefLabel}</span>
+            <textarea id="brief" rows="3" maxlength="600" placeholder={T.briefPh}>{packLine}</textarea>
+          </label>
+        </div>
+
+        <!-- 步骤3: 生成 -->
+        <label class="consent">
+          <input type="checkbox" id="consent" />
+          <span>{T.consent}</span>
+        </label>
+
+        <button id="go" class="dtc-btn primary" disabled>{T.go}</button>
+        <div class="bar" id="bar" hidden><i></i></div>
+        <p class="msg" id="msg" role="status" aria-live="polite"></p>
+        <p class="fine">{T.fine}</p>
+      </section>
+
+      <!-- 主区:3D 预览(主视觉) + 结果 -->
+      <div class="main-col">
+      <BottlePreview3D locale={lang} />
+
+      <section class="out" id="out" aria-live="polite">
+        <div class="empty" id="empty">
+          <h2>{T.emptyTitle}</h2>
+          <p>{T.emptyLead}</p>
+        </div>
+        <div class="block" id="factsBox" hidden>
+          <h2>{T.factsTitle}</h2>
+          <p class="facts" id="facts"></p>
+        </div>
+        <div class="block" id="planBox" hidden>
+          <h2>{T.planTitle}</h2>
+          <div class="plan" id="plan"></div>
+        </div>
+        <div class="block" id="customBox" hidden>
+          <h2>{T.customTitle}</h2>
+          <p class="why" id="customMsg"></p>
+          <div class="renders one" id="customWrap"></div>
+        </div>
+        <div class="block" id="renderBox" hidden>
+          <h2>{T.renderTitle}</h2>
+          <p class="why" id="why" hidden></p>
+          <div class="renders" id="renders"></div>
+          <p class="fine">{T.renderFine}</p>
+        </div>
+        <a class="dtc-btn primary" id="cta" href={`/${lang}/contact/`} hidden>{T.cta}</a>
+      </section>
+      </div>
+    </div>
+
+    <!-- 底部:画布编辑器(可折叠) -->
+    <details class="canvas-section" id="canvasSection">
+      <summary>{T.canvasTab} <span class="canvas-hint">{T.canvasHint}</span></summary>
+      <DesignEditor locale={lang} source="pack-page" />
+    </details>
+
+    <dialog class="lb" id="lb"><img id="lbImg" alt="" /></dialog>
+    {/* 车间实拍：把「工厂是真的」放在工具页底部 */}
+    <section class="shop" aria-label={T.shopTitle}>
+      <div class="strip-head">
+        <h2>{T.shopTitle}</h2>
+        <a class="strip-more" href={`/${lang}/about/plants/`}>{T.shopMore} →</a>
+      </div>
+      <ul class="shop-rail">
+        {SHOP.map((s) => (
+          <li>
+            <img src={`/media/${s.id}`} alt={zh ? s.zh : s.en} loading="lazy" width="480" height="320" />
+            <span>{zh ? s.zh : s.en}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </main>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+
+  <script is:inline>
+    (function prefillFromQuery() {
+      try {
+        const q = new URLSearchParams(location.search);
+        const b = q.get('brief');
+        if (!b) return;
+        const el = document.querySelector('#brief');
+        if (!el) return;
+        el.value = b.slice(0, 600);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.focus();
+      } catch { }
+    })();
+  </script>
+</BaseLayout>
+
+<style>
+  /* /pack 工作台 —— Ant Design 规格（2026-10-30 重做）
+     小圆角(6/8)、浅边框(#f0f0f0)、轻阴影、单色主按钮、32/40 控件高度。
+     只改视觉，不动结构与 JS。token 来自 @cosmetic/core/styles/tool.css */
+  .pk {
+    padding-block: 0 clamp(2.5rem, 5vw, 4rem);
+    background: var(--tw-bg-layout, #f5f5f7);
+    color: var(--tw-text, rgb(0 0 0 / .88));
+    font-size: 14px;
+    line-height: 1.5714;
+  }
+  .pk [hidden] { display: none !important; }
+
+  /* —— 页头 —— */
+  .head { max-width: 60ch; }
+  .head h1 {
+    margin: .375rem 0 0; color: var(--tw-text);
+    font-size: clamp(1.5rem, 1rem + 1.6vw, 2rem);
+    font-weight: 600; line-height: 1.28; letter-spacing: -.01em; text-wrap: balance;
+  }
+  .lead { margin: .5rem 0 0; color: var(--tw-text-2); line-height: 1.7; font-size: 15px; }
+  .warn { margin: 1rem 0 0; max-width: 48ch; padding: .625rem .875rem; border-radius: 6px;
+          background: #fff2f0; color: #a8071a; border: 1px solid #ffccc7; font-size: 13px; }
+  .warn.soft { background: #fffbe6; color: #ad6800; border-color: #ffe58f; }
+
+  /* —— 步骤条：Ant Steps 的极简版 —— */
+  .steps { display: flex; align-items: center; gap: .375rem; margin-top: 1.5rem;
+           padding: .75rem 1rem; background: #fff; border: 1px solid var(--tw-border-2);
+           border-radius: 8px; box-shadow: var(--tw-shadow-sm); font-size: 13px; flex-wrap: wrap; }
+  .step { display: inline-flex; align-items: center; gap: .5rem; color: var(--tw-text-3); padding: .25rem .375rem; }
+  .step::before { content: ''; width: 1.25rem; height: 1.25rem; border-radius: 50%;
+                  border: 1px solid var(--tw-border); background: #fff; flex: none; }
+  .step.on { color: var(--tw-text); font-weight: 600; }
+  .step.on::before { border-color: var(--tw-primary); background: var(--tw-primary);
+                     box-shadow: inset 0 0 0 4px #fff; }
+  .step.done::before { border-color: var(--tw-primary); background: var(--tw-primary); }
+  .arrow { color: var(--tw-text-4); font-style: normal; }
+
+  /* —— 两栏工作区 —— */
+  .body { margin-top: 1rem; display: grid; grid-template-columns: 20rem minmax(0, 1fr);
+          gap: 1rem; align-items: start; }
+  @media (max-width: 64rem) { .body { grid-template-columns: minmax(0, 1fr); } }
+
+  /* —— 左侧参数面板 —— */
+  .panel {
+    display: grid; gap: 0; padding: 0; background: #fff;
+    border: 1px solid var(--tw-border-2); border-radius: 8px; box-shadow: var(--tw-shadow-sm);
+    position: sticky; top: 4.75rem; max-height: calc(100vh - 6rem); overflow: auto;
+  }
+  @media (max-width: 64rem) { .panel { position: static; max-height: none; } }
+  .panel::-webkit-scrollbar { width: 6px; }
+  .panel::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 99px; }
+  /* 面板内每个直接子块都成为分组 */
+  .panel > * { padding: .875rem 1rem; border-bottom: 1px solid var(--tw-border-2); }
+  .panel > *:last-child { border-bottom: 0; }
+
+  .picked { margin: 0; font-size: 12px; color: var(--tw-text-3); }
+  .picked a { color: var(--tw-primary); text-decoration: none; }
+  .picked a:hover { text-decoration: underline; }
+
+  /* —— 子标签 → Ant Segmented —— */
+  .sub-tabs { display: inline-flex; padding: 2px; gap: 2px; background: var(--tw-fill);
+              border-radius: 6px; border-bottom: 0 !important; }
+  .sub-tab { padding: .3125rem .75rem; border: 0; border-radius: 4px; background: none;
+             color: var(--tw-text-2); font: inherit; font-size: 13px; cursor: pointer;
+             transition: all .2s cubic-bezier(.645,.045,.355,1); }
+  .sub-tab:hover { color: var(--tw-text); }
+  .sub-tab.on { background: #fff; color: var(--tw-text); font-weight: 500;
+                box-shadow: 0 1px 2px rgb(0 0 0 / .06); }
+  .sub-panel { padding-top: .75rem; }
+  .sub-hint { margin: 0 0 .5rem; font-size: 12px; color: var(--tw-text-3); }
+
+  /* —— 包材卡 —— */
+  .shelf { display: flex; gap: .5rem; overflow-x: auto; padding: 0 0 .5rem; scroll-snap-type: x proximity; }
+  .shelf::-webkit-scrollbar { height: 6px; }
+  .shelf::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 99px; }
+  .shelf-card { position: relative; flex: 0 0 auto; display: grid; gap: 0;
+                padding: .4375rem .625rem; background: #fff; text-align: left;
+                border: 1px solid var(--tw-border); border-radius: 6px; cursor: pointer;
+                scroll-snap-align: start;
+                transition: border-color .2s cubic-bezier(.645,.045,.355,1), background .2s; }
+  .shelf-card:hover { border-color: var(--tw-primary); }
+  .shelf-card.on { border-color: var(--tw-primary); background: var(--tw-primary-bg);
+                   box-shadow: 0 0 0 2px rgb(124 77 168 / .1); }
+  .shelf-card.on::after { content: '✓'; position: absolute; top: .1875rem; right: .25rem;
+                          width: .875rem; height: .875rem; border-radius: 50%; display: grid; place-items: center;
+                          font-size: 9px; color: #fff; background: var(--tw-primary); }
+  .shelf-code { font-size: 12px; font-weight: 600; color: var(--tw-text); }
+  .shelf-type { font-size: 11px; color: var(--tw-text-3); }
+
+  /* —— 上传区 —— */
+  .drop { position: relative; width: 100%; aspect-ratio: 4 / 3; max-height: min(20rem, 48vh);
+          display: grid; place-items: center; cursor: pointer; overflow: hidden; text-align: center; padding: 1rem;
+          border: 1px dashed var(--tw-border); border-radius: 8px; background: var(--tw-fill-2);
+          color: var(--tw-text-3); font-size: 13px;
+          transition: border-color .2s, background .2s; }
+  .drop:hover { border-color: var(--tw-primary); background: var(--tw-primary-bg); }
+  .panel.over .drop { border-style: solid; border-color: var(--tw-primary); background: var(--tw-primary-bg); }
+  .drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #fff; }
+  .drop .hint { position: absolute; left: 50%; bottom: .5rem; transform: translateX(-50%);
+                font-size: 12px; color: var(--tw-text); background: rgb(255 255 255 / .92);
+                border-radius: 99px; padding: .25rem .625rem; pointer-events: none;
+                border: 1px solid var(--tw-border-2); }
+  .drop .zoom { position: absolute; top: .5rem; right: .5rem; font: inherit; font-size: 12px;
+                cursor: zoom-in; color: var(--tw-text); background: rgb(255 255 255/.92);
+                border: 1px solid var(--tw-border); border-radius: 6px; padding: .25rem .5rem; }
+
+  /* —— 缩略图 —— */
+  .thumbs { display: flex; gap: .375rem; flex-wrap: wrap; }
+  .thumbs button { width: 3rem; height: 3rem; padding: 0; border: 1px solid var(--tw-border);
+                   border-radius: 6px; background: var(--tw-fill); cursor: pointer; overflow: hidden;
+                   transition: border-color .2s; }
+  .thumbs button.on { border-color: var(--tw-primary); box-shadow: 0 0 0 2px rgb(124 77 168 / .12); }
+  .thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* —— 风格卡 —— */
+  .style-zone { display: grid; gap: .5rem; }
+  .fld-label { font-size: 13px; color: var(--tw-text-2); font-weight: 500; }
+  .style-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr)); gap: .375rem; }
+  .style-card { padding: .375rem .5rem; border: 1px solid var(--tw-border); border-radius: 6px;
+                background: #fff; color: var(--tw-text-2); font: inherit; font-size: 12px;
+                cursor: pointer; text-align: center;
+                transition: border-color .2s, background .2s, color .2s; }
+  .style-card:hover { border-color: var(--tw-primary); color: var(--tw-text); }
+  .style-card.on { border-color: var(--tw-primary); background: var(--tw-primary-bg);
+                   color: var(--tw-primary-active); font-weight: 500; }
+
+  /* —— 表单 —— */
+  .fld { display: grid; gap: .375rem; }
+  .fld span { font-size: 13px; color: var(--tw-text-2); }
+  .fld textarea { font: inherit; font-size: 13px; padding: .5rem .6875rem; border-radius: 6px;
+                  border: 1px solid var(--tw-border); background: #fff; color: var(--tw-text);
+                  resize: vertical; transition: border-color .2s, box-shadow .2s; }
+  .fld textarea:hover { border-color: var(--tw-primary-hover); }
+  .fld textarea:focus { outline: none; border-color: var(--tw-primary);
+                        box-shadow: 0 0 0 2px rgb(124 77 168 / .12); }
+  .consent { display: flex; gap: .5rem; align-items: center; font-size: 12px; color: var(--tw-text-2); }
+  .consent input { margin: 0; accent-color: var(--tw-primary); flex: none; width: .9375rem; height: .9375rem; }
+
+  /* —— 主按钮（Ant Primary） —— */
+  .pk .dtc-btn.primary { width: 100%; min-height: 2.5rem; border: 1px solid transparent; border-radius: 6px;
+    font-size: 14px; font-weight: 500; color: #fff; background: var(--tw-primary);
+    box-shadow: 0 2px 0 rgb(124 77 168 / .08);
+    transition: background .2s cubic-bezier(.645,.045,.355,1), box-shadow .2s; }
+  .pk .dtc-btn.primary:hover { background: var(--tw-primary-hover); color: #fff; }
+  .pk .dtc-btn.primary:active { background: var(--tw-primary-active); }
+  #go:disabled { opacity: 1; color: rgb(0 0 0 / .25); background: var(--tw-fill);
+                 border-color: var(--tw-border); box-shadow: none; cursor: not-allowed; }
+
+  /* —— 进度 —— */
+  .bar { height: 6px; border-radius: 99px; background: var(--tw-fill); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 35%; border-radius: inherit; background: var(--tw-primary);
+           animation: slide 1.2s cubic-bezier(.645,.045,.355,1) infinite; }
+  @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+
+  .msg { min-height: 1.3em; margin: 0; font-size: 12px; color: var(--tw-text-3); }
+  .msg.err { color: var(--tw-error); }
+  .fine { margin: 0; font-size: 12px; line-height: 1.6; color: var(--tw-text-4); }
+
+  /* —— 右栏结果 —— */
+  .main-col { display: grid; gap: 1rem; min-width: 0; }
+  .out { display: flex; flex-direction: column; gap: 1rem; min-width: 0; align-self: stretch; }
+  .empty { flex: 1; display: grid; place-content: center; justify-items: center; gap: .75rem; text-align: center;
+           min-height: 22rem; padding: 2.5rem 1.5rem; background: #fff;
+           border: 1px dashed var(--tw-border); border-radius: 8px; color: var(--tw-text-3); }
+  .empty h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--tw-text); }
+  .empty p { margin: 0; max-width: 46ch; font-size: 14px; line-height: 1.7; }
+  .empty-samples { list-style: none; margin: .75rem 0 0; padding: 0; display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; }
+  .empty-samples li { margin: 0; }
+  .empty-samples img { width: 7.5rem; height: 7.5rem; object-fit: cover; display: block;
+    border-radius: 6px; border: 1px solid var(--tw-border-2); background: var(--tw-fill); }
+
+  .block { background: #fff; border: 1px solid var(--tw-border-2); border-radius: 8px;
+           box-shadow: var(--tw-shadow-sm); padding: 1rem; }
+  .block h2 { margin: 0 0 .75rem; font-size: 15px; font-weight: 600; color: var(--tw-text); }
+  .facts { margin: 0; font-size: 14px; line-height: 1.8; color: var(--tw-text-2); }
+  .plan { font-size: 14px; line-height: 1.8; white-space: pre-wrap; max-width: 72ch; color: var(--tw-text); }
+
+  .renders { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); gap: .75rem; }
+  .renders.one { grid-template-columns: minmax(0, 36rem); }
+  .renders figure { margin: 0; min-width: 0; }
+  .renders img { width: 100%; aspect-ratio: 4 / 3; max-height: 52vh; object-fit: contain; display: block;
+                 border-radius: 6px; border: 1px solid var(--tw-border-2); background: var(--tw-fill);
+                 cursor: zoom-in; transition: border-color .2s; }
+  .renders img:hover { border-color: var(--tw-primary); }
+  .renders figcaption { margin-top: .375rem; font-size: 12px; color: var(--tw-text-3); }
+  .why { margin: 0 0 .625rem; font-size: 13px; line-height: 1.7; color: var(--tw-text-3); }
+  #cta { justify-self: start; }
+
+  /* —— 画布折叠区 —— */
+  .canvas-section { margin-top: 1rem; background: #fff; border: 1px solid var(--tw-border-2);
+                    border-radius: 8px; box-shadow: var(--tw-shadow-sm); overflow: hidden; }
+  .canvas-section summary { padding: .875rem 1rem; cursor: pointer; font-size: 14px; font-weight: 600;
+                            color: var(--tw-text); list-style: none; display: flex; align-items: center; gap: .5rem; }
+  .canvas-section summary::-webkit-details-marker { display: none; }
+  .canvas-section summary::before { content: '▸'; font-size: 11px; color: var(--tw-text-3); transition: transform .2s; }
+  .canvas-section[open] summary::before { transform: rotate(90deg); }
+  .canvas-section[open] summary { border-bottom: 1px solid var(--tw-border-2); }
+  .canvas-hint { font-weight: 400; font-size: 12px; color: var(--tw-text-3); }
+  .canvas-section[open] { padding-bottom: 1rem; }
+
+  /* —— 灯箱 —— */
+  .lb { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 96vh; cursor: zoom-out; }
+  .lb::backdrop { background: rgb(0 0 0 / .85); }
+  .lb img { max-width: 96vw; max-height: 96vh; object-fit: contain; border-radius: 6px; display: block; }
+
+  /* —— 实拍带 —— */
+  .strip, .shop { margin-top: 1.5rem; }
+  .strip-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .625rem; }
+  .strip-head h2 { margin: 0; font-size: 15px; font-weight: 600; color: var(--tw-text); }
+  .strip-more { font-size: 13px; color: var(--tw-primary); text-decoration: none; white-space: nowrap; }
+  .strip-more:hover { text-decoration: underline; }
+  .strip-rail, .shop-rail { list-style: none; margin: 0; padding: 0 0 .5rem; display: flex; gap: .5rem;
+    overflow-x: auto; scroll-snap-type: x proximity; }
+  .strip-rail::-webkit-scrollbar, .shop-rail::-webkit-scrollbar { height: 6px; }
+  .strip-rail::-webkit-scrollbar-thumb, .shop-rail::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 99px; }
+  .strip-rail li { flex: 0 0 auto; scroll-snap-align: start; margin: 0; }
+  .strip-rail .strip-name { display: block; margin-top: .375rem; font-size: 12px; color: var(--tw-text-3, rgba(0,0,0,.45));
+    max-width: 11.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .strip-rail img { width: 11.5rem; height: 15rem; object-fit: cover; display: block; border-radius: 8px;
+    border: 1px solid var(--tw-border-2); background: var(--tw-fill); }
+  .shop-rail { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); overflow: visible; }
+  .shop-rail li { margin: 0; }
+  .shop-rail img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; display: block; border-radius: 8px;
+    border: 1px solid var(--tw-border-2); background: var(--tw-fill); }
+  .shop-rail span { display: block; margin-top: .375rem; font-size: 12px; color: var(--tw-text-3); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bar i { animation: none; width: 100%; opacity: .5; }
+    .pk *, .pk *::before, .pk *::after { transition: none !important; }
+  }
+  /* 首屏大图（2026-10-30 视觉升级） */
+  .pk-hero {
+    position: relative; min-height: clamp(22rem, 42vh, 30rem);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    overflow: hidden;
+  }
+  .pk-hero-bg { position: absolute; inset: 0; background-size: cover; background-position: center; filter: brightness(.5); }
+  .pk-hero::after {
+    content: ''; position: absolute; inset: 0; z-index: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(26,23,38,.3) 40%, rgba(26,23,38,.88) 100%);
+  }
+  .pk-hero-content {
+    position: relative; z-index: 1;
+    width: 100%; max-width: 64rem; margin: 0 auto;
+    padding: 0 clamp(1rem, 3vw, 2rem) 2.5rem;
+  }
+  .pk-hero-eyebrow { margin: 0 0 .625rem; font-size: 13px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase; color: #c4a8e8; }
+  .pk-hero-title { margin: 0 0 .875rem; font-size: clamp(1.75rem, 1rem + 2.6vw, 2.5rem);
+    font-weight: 700; line-height: 1.12; color: #fff; letter-spacing: -.02em; text-wrap: balance; }
+  .pk-hero-lead { margin: 0; font-size: 16px; line-height: 1.7; color: rgba(255,255,255,.82); max-width: 34rem; }
+  .pk-hero-warn { margin: .75rem 0 0; font-size: 13px; color: #ffd7a0; max-width: 46ch;
+    background: rgba(0,0,0,.25); padding: .5rem .875rem; border-radius: 8px; }
+  .pk-hero-warn.soft { color: #ffe4a0; }
+
+  /* 步骤条浮在 hero 底部边缘 */
+  .steps { margin: -1.75rem auto 0; position: relative; z-index: 5;
+    width: 100%; max-width: 64rem; padding: 0 clamp(1rem, 3vw, 2rem); }
+
+</style>
+
+<script is:inline define:vars={{ lang, T, canSee, STYLES }}>
+  (() => {
+    const $ = (id) => document.getElementById(id);
+    const panel = $('panel'), drop = $('drop'), pick = $('pick'), ph = $('ph'), preview = $('preview');
+    const hint = $('hint'), zoom = $('zoom'), thumbs = $('thumbs');
+    const brief = $('brief'), consent = $('consent'), go = $('go'), msg = $('msg'), bar = $('bar');
+    const out = $('out'), lb = $('lb'), lbImg = $('lbImg');
+    const steps = document.querySelectorAll('.step');
+
+    const imgs = [];
+    let active = -1;
+    const cur = () => imgs[active];
+    let hasImage = false;
+
+    const sync = () => { go.disabled = !((cur() || hasImage) && consent.checked && canSee); };
+    consent.addEventListener('change', sync);
+    const say = (text, err) => { msg.textContent = text || ''; msg.classList.toggle('err', !!err); };
+
+    const openLb = (src) => { lbImg.src = src; lb.showModal(); };
+    lb.addEventListener('click', () => { lb.close(); lbImg.src = ''; });
+
+    /* 子标签切换 */
+    document.querySelectorAll('.sub-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const name = tab.dataset.subtab;
+        document.querySelectorAll('.sub-tab').forEach((t) => t.classList.remove('on'));
+        tab.classList.add('on');
+        document.querySelectorAll('.sub-panel').forEach((p) => { p.hidden = p.dataset.subpanel !== name; });
+      });
+    });
+
+    /* 包材库卡片选择 */
+    document.querySelectorAll('.shelf-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.shelf-card').forEach((c) => c.classList.remove('on'));
+        card.classList.add('on');
+        const code = card.dataset.code;
+        const type = card.dataset.type;
+        const material = card.dataset.material;
+        const capacity = card.dataset.capacity;
+        const prefix = T.packPrefix + [code, type, material, capacity].filter(Boolean).join(' · ') + '\n';
+        brief.value = prefix + brief.value.replace(/^[^\n]*\n/, '');
+        hasImage = true;
+        /* 标记步骤1完成 */
+        steps[0].classList.remove('on'); steps[0].classList.add('done');
+        steps[1].classList.add('on');
+        sync();
+      });
+    });
+
+    /* 风格预设点击 */
+    document.querySelectorAll('.style-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.style-card').forEach((c) => c.classList.remove('on'));
+        card.classList.add('on');
+        const b = card.dataset.brief;
+        /* 保留包材前缀,替换正文 */
+        const lines = brief.value.split('\n');
+        if (lines[0] && lines[0].startsWith(T.packPrefix)) {
+          brief.value = lines[0] + '\n' + b;
+        } else {
+          brief.value = b;
+        }
+        /* 标记步骤2完成 */
+        steps[1].classList.remove('on'); steps[1].classList.add('done');
+        steps[2].classList.add('on');
+      });
+    });
+
+    const compress = async (src) => {
+      const bmp = await createImageBitmap(src);
+      const s = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      const w = Math.round(bmp.width * s), h = Math.round(bmp.height * s);
+      const cv = new OffscreenCanvas(w, h);
+      cv.getContext('2d').drawImage(bmp, 0, 0, w, h);
+      bmp.close();
+      let q = 0.8, blob = await cv.convertToBlob({ type: 'image/webp', quality: q });
+      while (blob.size > 1400000 && q > 0.4) { q -= 0.12; blob = await cv.convertToBlob({ type: 'image/webp', quality: q }); }
+      return new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
+    };
+
+    const show = (i) => {
+      active = i;
+      const it = cur();
+      ph.hidden = !!it; preview.hidden = hint.hidden = zoom.hidden = !it;
+      if (it) preview.src = it.dataUrl;
+      thumbs.hidden = imgs.length < 2;
+      thumbs.querySelectorAll('button').forEach((b, k) => b.classList.toggle('on', k === i));
+      hasImage = !!it;
+      sync();
+    };
+
+    const addFiles = async (list) => {
+      const files = [...list].filter((f) => !f.type || f.type.startsWith('image/')).slice(0, 6 - imgs.length);
+      if (!files.length) return;
+      say('');
+      for (const f of files) {
+        try {
+          const dataUrl = await compress(f);
+          imgs.push({ dataUrl, full: URL.createObjectURL(f) });
+          const b = document.createElement('button'); b.type = 'button';
+          const im = document.createElement('img'); im.src = dataUrl; im.alt = '';
+          b.appendChild(im);
+          const idx = imgs.length - 1;
+          b.addEventListener('click', () => show(idx));
+          thumbs.appendChild(b);
+        } catch { say(T.badFile, true); }
+      }
+      if (imgs.length) { show(imgs.length - 1); steps[0].classList.remove('on'); steps[0].classList.add('done'); steps[1].classList.add('on'); }
+    };
+
+    drop.addEventListener('click', () => pick.click());
+    pick.addEventListener('change', async () => { await addFiles(pick.files || []); pick.value = ''; });
+    zoom.addEventListener('click', (e) => { e.stopPropagation(); if (cur()) openLb(cur().full); });
+    ['dragover', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault()));
+    panel.addEventListener('dragenter', () => { panel.classList.add('over'); ph.textContent = T.uploadOver; });
+    panel.addEventListener('dragover', () => panel.classList.add('over'));
+    panel.addEventListener('dragleave', (e) => {
+      if (!panel.contains(e.relatedTarget)) { panel.classList.remove('over'); ph.textContent = T.uploadHint; }
+    });
+    panel.addEventListener('drop', (e) => {
+      panel.classList.remove('over'); ph.textContent = T.uploadHint;
+      addFiles(e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : []);
+    });
+    document.addEventListener('paste', (e) => {
+      const fs = [...((e.clipboardData && e.clipboardData.files) || [])].filter((f) => f.type.startsWith('image/'));
+      if (fs.length) { e.preventDefault(); addFiles(fs); }
+    });
+
+    const shot = drop.getAttribute('data-shot');
+    if (shot) {
+      fetch(shot).then((r) => r.ok ? r.blob() : Promise.reject(r.status)).then((b) => addFiles([b]))
+        .catch(() => { ph.textContent = T.uploadHint; });
+    }
+
+    const figure = (src, label) => {
+      const fig = document.createElement('figure');
+      const im = document.createElement('img');
+      im.src = src; im.alt = label || ''; im.loading = 'lazy';
+      im.addEventListener('click', () => openLb(src));
+      fig.appendChild(im);
+      if (label) { const cap = document.createElement('figcaption'); cap.textContent = label; fig.appendChild(cap); }
+      return fig;
+    };
+
+    go.addEventListener('click', async () => {
+      go.disabled = true; go.textContent = T.running; say('');
+      const t0 = Date.now();
+      bar.hidden = false;
+      const secs = () => Math.round((Date.now() - t0) / 1000);
+      const timer = setInterval(() => say(`${T.running} ${secs()}${T.sec}`), 1000);
+      const ac = new AbortController();
+      const kill = setTimeout(() => ac.abort(), 150000);
+      try {
+        const res = await fetch('/api/ai/pack', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ac.signal,
+          body: JSON.stringify({ image: cur() ? cur().dataUrl : '', brief: brief.value.trim(), lang, consent: true }),
+        });
+        const r = await res.json().catch(() => ({ ok: false, msg: T.httpErr.replace('{s}', String(res.status)) }));
+        clearInterval(timer);
+        if (r.need === 'login' && r.href) { location.href = r.href; return; }
+        if (!r.ok) { say(r.msg || T.httpErr.replace('{s}', String(res.status)), true); return; }
+
+        $('empty').hidden = true;
+        $('facts').textContent = r.factLine || ''; $('factsBox').hidden = !r.factLine;
+        $('plan').textContent = r.plan || ''; $('planBox').hidden = !r.plan;
+        const rs = $('renders'); rs.innerHTML = '';
+        if (r.renders && r.renders.length) {
+          r.renders.forEach((u, i) => rs.appendChild(figure(u, (r.renderLabels && r.renderLabels[i]) || '')));
+          const w = $('why'); w.textContent = r.why || ''; w.hidden = !r.why;
+          $('renderBox').hidden = false;
+        } else { $('renderBox').hidden = true; }
+        $('cta').hidden = false;
+        const notes = [r.visionNote, r.planNote, r.renderNote].filter(Boolean).join(' · ');
+        say(`${T.elapsed} ${secs()}${T.sec}` + (notes ? ' · ' + notes : ''), !!notes);
+        steps[2].classList.remove('on'); steps[2].classList.add('done');
+        if (matchMedia('(max-width: 64rem)').matches) out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        if (r.jobId) {
+          const box = $('customBox'), cmsg = $('customMsg'), cwrap = $('customWrap');
+          box.hidden = false; cmsg.textContent = T.customWait; cwrap.innerHTML = '';
+          let tries = 0;
+          const tick = async () => {
+            tries += 1;
+            try {
+              const s = await (await fetch('/api/ai/pack-status?id=' + r.jobId)).json();
+              if (s.url) { cmsg.textContent = ''; cwrap.appendChild(figure(s.url, '')); return; }
+              if (s.status === 'failed') { cmsg.textContent = T.customFail; return; }
+            } catch { }
+            if (tries < 48) setTimeout(tick, 5000);
+            else cmsg.textContent = T.customFail;
+          };
+          setTimeout(tick, 5000);
+        } else { $('customBox').hidden = true; }
+      } catch (e) {
+        say(e && e.name === 'AbortError' ? T.timeout : T.netErr, true);
+      } finally {
+        clearInterval(timer); clearTimeout(kill); bar.hidden = true;
+        go.disabled = false; go.textContent = T.go; sync();
+      }
+    });
+  })();
+</script>

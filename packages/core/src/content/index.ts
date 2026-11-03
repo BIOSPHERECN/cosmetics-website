@@ -22,13 +22,15 @@ export const HOME: Record<string, Record<Locale, HomeContent>> = {
   'biosphere-oralcare': biosphereOralcare,
 };
 
-/** 取某站某语言的首页内容;缺失即构建期抛错,不静默出空页 */
+/** 取某站某语言的首页内容;缺失时回退到 en,再缺失则抛错 */
 export function getHome(siteId: string, locale: Locale): HomeContent {
   const bySite = HOME[siteId];
   if (!bySite) throw new Error(`[content] 未找到站点内容: ${siteId}`);
-  const c = bySite[locale];
+  const c = bySite[locale] ?? bySite.en;
   if (!c) throw new Error(`[content] 站点 ${siteId} 缺少语言: ${locale}`);
   return c;
 }
 
 export { EMAIL } from './shared.ts';
+export { SOLUTIONS, findSolution, byAxis } from './solutions.ts';
+export type { Solution, SolutionCopy, Axis } from './solutions.ts';

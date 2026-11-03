@@ -1,0 +1,63 @@
+---
+/**
+ * 配方实验室的独立外壳(2026-09-17 创始人:「配方系统应该是在原有系统上跳出一个单独的界面,
+ * 而不是和原有系统混在一起」「这样太乱了,别人会看糊涂」)。
+ *
+ * 只有一条细顶栏 + 内容区,没有后台侧栏;版心最大 1800px 居中不拉满。
+ * 配色沿用 admin.css 的变量,字号根 18px 与后台一致。
+ */
+import '../styles/admin.css';
+export interface Props {
+  title: string;
+  email: string;
+  /** 当前项目号与状态,只在项目页显示 */
+  code?: string;
+  status?: string;
+  tenant?: { siteId: string; siteName: string; isGroup: boolean; options: { id: string; name: string }[] };
+}
+const { title, email, code, status } = Astro.props;
+---
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>{title} · 帛卉配方实验室</title>
+  <style>
+    html { font-size: 18px; }
+    body { margin: 0; background: var(--ad-ground); color: var(--ad-ink); font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+    .top { position: sticky; top: 0; z-index: 20; background: var(--ad-panel); border-bottom: 1px solid var(--ad-side-line); }
+    .top .in { max-width: 112.5rem; margin: 0 auto; padding: .625rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+    .brand { font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+    .brand small { font-weight: 400; color: var(--ad-side-dim); margin-left: .5rem; font-size: .8125rem; }
+    .mid { flex: 1; text-align: center; font-size: .875rem; color: var(--ad-side-ink); }
+    .mid b { font-family: var(--ad-mono, ui-monospace, monospace); font-weight: 600; margin-right: .5rem; }
+    .who { display: flex; align-items: center; gap: .875rem; font-size: .8125rem; color: var(--ad-side-dim); white-space: nowrap; }
+    .who a { color: var(--ad-ink); text-decoration: none; }
+    .who a:hover { text-decoration: underline; }
+    .who button { background: none; border: 1px solid var(--ad-side-line); border-radius: 999px; padding: .25rem .75rem; font-size: .8125rem; cursor: pointer; color: var(--ad-side-ink); }
+    main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1.5rem 4rem; }
+    @media (max-width: 60rem) { .mid { display: none; } main { padding: 1rem; } }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="in">
+      <div class="brand">帛卉 · 配方实验室<small>BIOSPHERE Formula Lab</small></div>
+      <div class="mid">{code && <><b>{code}</b>{status}</>}</div>
+      <div class="who">
+        <span>{email}</span>
+        <a href="/bohui/formula-lab/">项目列表</a>
+        <a href="/bohui/" title="回到后台">返回后台</a>
+        <button id="lab-logout" type="button">退出</button>
+      </div>
+    </div>
+  </header>
+  <main>
+    <slot />
+  </main>
+  <script is:inline>
+    document.getElementById('lab-logout')?.addEventListener('click', async () => { await fetch('/api/admin/login', { method: 'DELETE' }); location.href = '/bohui/login/'; });
+  </script>
+</body>
+</html>

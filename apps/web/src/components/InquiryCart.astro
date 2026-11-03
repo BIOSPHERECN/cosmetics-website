@@ -132,7 +132,8 @@ const { labels, submitHref } = Astro.props;
   [hidden] { display: none !important; }
 
   .cart-fab {
-    position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 60;
+    /* bottom 5.75rem:最右下角让给 AI 客服气泡(创始人钦定位),询盘车上移一档 */
+    position: fixed; right: 1.25rem; bottom: 5.75rem; z-index: 60;
     display: flex; align-items: center; gap: 0.625rem;
     padding: 0.875rem 1.25rem; border: 0; cursor: pointer;
     background: var(--ck-accent); color: var(--ck-on-accent);
@@ -142,7 +143,7 @@ const { labels, submitHref } = Astro.props;
   .fab-n {
     min-width: 1.5rem; height: 1.5rem; display: grid; place-items: center;
     background: var(--ck-on-accent); color: var(--ck-accent);
-    border-radius: 999px; font-size: 0.75rem; font-variant-numeric: tabular-nums;
+    border-radius: 999px; font-size: max(0.75rem, 14px); font-variant-numeric: tabular-nums;
   }
   .cart-veil { position: fixed; inset: 0; background: rgb(0 0 0 / 0.4); z-index: 70; }
   .cart {
@@ -157,10 +158,10 @@ const { labels, submitHref } = Astro.props;
   .cart-empty { padding: 2rem 0; color: var(--ck-ink-faint); font-size: var(--ck-small); }
   .cart-item { display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.875rem 0; border-bottom: var(--ck-border-w) solid var(--ck-line); }
   .ci-main { flex: 1; display: flex; flex-direction: column; gap: 0.25rem; font-size: var(--ck-small); }
-  .ci-opt { color: var(--ck-ink-faint); font-size: 0.75rem; }
+  .ci-opt { color: var(--ck-ink-faint); font-size: max(0.75rem, 14px); }
   .ci-x { background: 0; border: 0; cursor: pointer; color: var(--ck-ink-faint); }
   .cart-ft { border-top: var(--ck-border-w) solid var(--ck-line); }
-  .cart-hint { font-size: 0.75rem; color: var(--ck-ink-faint); margin-bottom: 0.75rem; }
+  .cart-hint { font-size: max(0.75rem, 14px); color: var(--ck-ink-faint); margin-bottom: 0.75rem; }
   .cart-go {
     display: block; text-align: center; padding: 0.875rem 1rem;
     background: var(--ck-accent); color: var(--ck-on-accent);

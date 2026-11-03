@@ -1,0 +1,284 @@
+---
+/**
+ * 询盘表单(CMS 页面用)—— 全站唯一真正能收到线索的入口。
+ *
+ * 2026-10-23 双层化(创始人最高原则:降低询盘门槛,把客户留住):
+ *   第一层「快速询盘」:产品/品类 + 目标国家 + WhatsApp/邮箱 + 预计数量(可选)——30 秒可提交;
+ *   第二层「深度商机」:品牌与渠道 / 包装 / 合规 / 上市时间 / 预算 / 目标人群 —— 折叠 details,可选展开。
+ * 提交时 JS 把两层所有非空字段拼成 message 文本发给 /api/inquiry(后端接口不变)。
+ * WhatsApp deeplink 自动带产品名+来源页面,让海外采购一键发起对话。
+ *
+ * 原设计取舍(保留):
+ *   · 零 JS 也能提交:原生 POST /api/inquiry,303 回本页带 ?sent=1;
+ *   · 蜜罐字段叫 website,不叫 company;
+ *   · 选品链路带过来的组合(?about=?formula=?pack=?market=?claim=)自动填进对应字段。
+ */
+export interface Props {
+  lang: string;
+  email: string;
+  source?: string;
+  whatsapp?: string | null;
+  product?: string;   /* 详情页传入本品名称/编码,预填「想做什么产品」,减少一次输入 */
+}
+const { lang, email, source = 'contact', whatsapp = '', product = '' } = Astro.props;
+const siteKey = (import.meta.env.TURNSTILE_SITE_KEY as string | undefined)
+  ?? '0x4AAAAAAEh9PTvpt4eaYV_q';
+const zh = String(lang).startsWith('zh');
+const waNum = String(whatsapp || '').replace(/[^0-9]/g, '');
+const T = zh
+  ? { h: '发起询盘', p: '填完基本信息就能提交,我们一个工作日内回复。想聊更细的?展开下面的深度选项。',
+      fast: '快速询盘（30 秒）', deep: '深度商机（可选）', deepHint: '展开填写,帮我们更快给方案。',
+      product: '想做什么产品？', productPh: '例：草本头皮护理油 / 洁牙片 / VC 精华',
+      market: '目标市场（国家或地区）', marketPh: '例：巴西、印尼、美国',
+      qty: '预计首单量（选填）', qtyPh: '例：5000 支',
+      name: '称呼', mail: '邮箱', wa: 'WhatsApp 或电话（邮箱或此项至少填一个）',
+      brand: '品牌与销售渠道', brandPh: '例：自有品牌 / Amazon / 线下分销',
+      pack: '包装想法', packPh: '例：100ml 棕色瓶 + 泵头',
+      compliance: '合规需求', compliancePh: '例：FDA / CPNP / HALAL',
+      timeline: '计划上市时间', timelinePh: '例：2027 Q1',
+      budget: '预算区间（选填）', budgetPh: '例：中高价位 / 大众价位',
+      audience: '目标人群与卖点', audiencePh: '例：25-35 岁女性 / 敏感肌 / 天然成分',
+      submit: '发送询盘', waDirect: '不想等邮件?直接 WhatsApp', or: '或直接邮件联系:',
+      privacy: '仅用于回复你的询盘,不做他用,不外发。',
+      sent: '已收到,我们会在一个工作日内回复。',
+      sending: '提交中…', fail: '提交失败,请改用下面的邮箱联系我们。', netErr: '网络异常,请稍后重试。',
+      emailFirst: '邮箱和 WhatsApp 或电话至少填写一个。' }
+  : { h: 'Start an inquiry', p: 'Fill the basics and submit — we reply within one business day. Want to go deeper? Expand the optional section below.',
+      fast: 'Quick inquiry (30s)', deep: 'Deep brief (optional)', deepHint: 'Fill in to get a faster proposal.',
+      product: 'What product?', productPh: 'e.g. herbal scalp oil / toothpaste tablets / VC serum',
+      market: 'Target market', marketPh: 'e.g. Brazil, Indonesia, US',
+      qty: 'Estimated first order (optional)', qtyPh: 'e.g. 5,000 pcs',
+      name: 'Name', mail: 'Email', wa: 'WhatsApp or phone (email or this is required)',
+      brand: 'Brand & sales channel', brandPh: 'e.g. own brand / Amazon / retail',
+      pack: 'Packaging ideas', packPh: 'e.g. 100ml amber bottle + pump',
+      compliance: 'Compliance needs', compliancePh: 'e.g. FDA / CPNP / HALAL',
+      timeline: 'Planned launch', timelinePh: 'e.g. 2027 Q1',
+      budget: 'Budget range (optional)', budgetPh: 'e.g. premium / mass-market',
+      audience: 'Target customer & key claims', audiencePh: 'e.g. women 25-35 / sensitive skin / natural',
+      submit: 'Send inquiry', waDirect: 'Rather not wait? WhatsApp us', or: 'Or email us directly:',
+      privacy: 'Used only to answer your inquiry. Not shared.',
+      sent: 'Received. We reply within one business day.',
+      sending: 'Sending…', fail: 'Could not send — please use the email below.', netErr: 'Network error, please retry.',
+      emailFirst: 'Enter an email or a WhatsApp/phone number.' };
+---
+
+<section class="iq" id="inquiry" aria-label={T.h}>
+  <div class="iw">
+    <h2>{T.h}</h2>
+    <p class="lead">{T.p}</p>
+
+    <form class="f" id="iqf" action="/api/inquiry" method="post">
+      <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
+             style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+      <input type="hidden" name="source" value={source} />
+      <input type="hidden" name="sourcePath" id="iqsp" />
+
+      {/* ── 第一层：快速询盘 ── */}
+      <fieldset class="L1">
+        <legend>{T.fast}</legend>
+        <label><span>{T.product}</span><input type="text" name="iq_product" id="iq_product" placeholder={T.productPh} value={product} required /></label>
+        <label><span>{T.market}</span><input type="text" name="iq_market" id="iq_market" placeholder={T.marketPh} required /></label>
+        <div class="g2">
+          <label><span>{T.name}</span><input type="text" name="name" required autocomplete="name" /></label>
+          <label><span>{T.qty}</span><input type="text" name="iq_qty" placeholder={T.qtyPh} /></label>
+        </div>
+        <div class="g2">
+          <label><span>{T.mail}</span><input type="email" name="email" autocomplete="email" /></label>
+          <label><span>{T.wa}</span><input type="tel" name="whatsapp" autocomplete="tel" inputmode="tel" placeholder="+62 812 3456 7890" maxlength="40" /></label>
+        </div>
+      </fieldset>
+
+      {/* ── 第二层：深度商机（折叠,可选）── */}
+      <details class="L2">
+        <summary>{T.deep} <small>{T.deepHint}</small></summary>
+        <label><span>{T.brand}</span><input type="text" name="iq_brand" placeholder={T.brandPh} /></label>
+        <label><span>{T.pack}</span><input type="text" name="iq_pack" placeholder={T.packPh} /></label>
+        <label><span>{T.compliance}</span><input type="text" name="iq_compliance" placeholder={T.compliancePh} /></label>
+        <div class="g2">
+          <label><span>{T.timeline}</span><input type="text" name="iq_timeline" placeholder={T.timelinePh} /></label>
+          <label><span>{T.budget}</span><input type="text" name="iq_budget" placeholder={T.budgetPh} /></label>
+        </div>
+        <label><span>{T.audience}</span><input type="text" name="iq_audience" placeholder={T.audiencePh} /></label>
+      </details>
+
+      {/* 隐藏 message 字段:JS 提交前把所有字段拼成文本,后端 /api/inquiry 照收 */}
+      <textarea name="message" id="iqmsg" rows="1" style="display:none"></textarea>
+
+      <p class="act">
+        {siteKey && <div class="cf-turnstile" data-sitekey={siteKey} data-size="flexible"></div>}
+        <button class="btn" type="submit">{T.submit}</button>
+        {waNum && (
+          <a class="wa" id="iqwa" href={`https://wa.me/${waNum}`} target="_blank" rel="noopener">
+            <span aria-hidden="true">💬</span> {T.waDirect}
+          </a>
+        )}
+        <span class="fb" id="iqfb" role="status" aria-live="polite"></span>
+      </p>
+      <p class="pv">{T.privacy}</p>
+    </form>
+
+    <p class="alt">{T.or} <a href={`mailto:${email}`}>{email}</a></p>
+  </div>
+  {siteKey && <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer is:inline />}
+</section>
+
+<style>
+  .wa { display: inline-flex; align-items: center; gap: .375rem; font-size: .875rem;
+        text-decoration: none; color: var(--ck-ink-soft); margin-left: .75rem;
+        padding: .625rem 1rem; border: 1px solid var(--ck-line); border-radius: 980px; }
+  .wa:hover { color: var(--ck-accent); border-color: var(--ck-accent); }
+  .cf-turnstile { margin: .5rem 0; }
+  .iq { padding: clamp(2.5rem, 5vw, 4rem) 0; background: var(--dtc-sand, var(--ck-surface-alt, #f5f5f7));
+        border-top: 1px solid var(--dtc-line, rgb(0 0 0/.08)); }
+  .iw { max-width: 46rem; margin: 0 auto; padding: 0 var(--ck-gutter, 1.25rem); }
+  .iq h2 { font-size: clamp(1.25rem, 1rem + .8vw, 1.75rem); letter-spacing: -.015em; margin: 0 0 .5rem; }
+  .lead { color: var(--ck-ink-soft); font-size: var(--ck-small); margin: 0 0 1.5rem; }
+  .f { display: grid; gap: .875rem; }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: .875rem; }
+  label { display: grid; gap: .3125rem; font-size: var(--ck-small); }
+  label > span { color: var(--ck-ink-soft); }
+  input, textarea { font: inherit; font-size: .9375rem; padding: .6875rem .8125rem; width: 100%;
+    border: 1px solid var(--dtc-line, rgb(0 0 0/.14)); border-radius: 10px;
+    background: var(--dtc-paper, #fff); color: var(--ck-ink); }
+  input:focus, textarea:focus { outline: none; border-color: var(--ck-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ck-accent) 16%, transparent); }
+  /* 第一层:边框 + 标题,一眼看出「这里填基本信息就能提交」 */
+  .L1 { border: 1px solid var(--ck-line); border-radius: 12px; padding: 1rem 1.25rem 1.25rem; margin: 0; display: grid; gap: .875rem; background: var(--ck-surface, #fff); }
+  .L1 legend { font-weight: 700; font-size: .9375rem; padding: 0 .5rem; color: var(--ck-accent); }
+  /* 第二层:折叠 details,展开后间距一致 */
+  .L2 { border: 1px solid var(--ck-line); border-radius: 12px; padding: 0 1.25rem; display: grid; gap: .875rem; background: var(--ck-surface, #fff); }
+  .L2[open] { padding-bottom: 1.25rem; }
+  .L2 > summary { cursor: pointer; font-weight: 600; font-size: .9375rem; padding: .875rem 0; list-style: none; display: flex; align-items: baseline; gap: .5rem; }
+  .L2 > summary::before { content: '▸'; color: var(--ck-accent); transition: transform .2s; }
+  .L2[open] > summary::before { transform: rotate(90deg); }
+  .L2 > summary small { font-weight: 400; font-size: .8125rem; color: var(--ck-ink-soft); }
+  .act { display: flex; align-items: center; gap: .75rem; margin: .25rem 0 0; flex-wrap: wrap; }
+  .btn { font: inherit; font-size: .9375rem; font-weight: 600; padding: .8125rem 1.75rem; border: 0;
+    border-radius: var(--ck-cta-radius, 980px); background: var(--ck-accent); color: var(--ck-on-accent); cursor: pointer; }
+  .btn:disabled { opacity: .5; cursor: wait; }
+  .fb { font-size: var(--ck-small); color: var(--ck-ink-soft); }
+  .fb.ok { color: #1D7A46; } .fb.err { color: #A02B20; }
+  .pv, .alt { font-size: .75rem; color: var(--ck-ink-soft); margin: 0; }
+  .alt { margin-top: 1.25rem; }
+  @media (max-width: 40rem) { .g2 { grid-template-columns: 1fr; } }
+</style>
+
+<script is:inline>
+  (function () {
+    var f = document.getElementById('iqf');
+    if (!f) return;
+    var fb = document.getElementById('iqfb');
+    var zh = document.documentElement.lang.indexOf('zh') === 0;
+    var T = zh
+      ? { sent: '已收到,我们会在一个工作日内回复。', sending: '提交中…', fail: '提交失败,请改用下面的邮箱联系我们。', netErr: '网络异常,请稍后重试。', emailFirst: '邮箱和 WhatsApp 或电话至少填写一个。' }
+      : { sent: 'Received. We reply within one business day.', sending: 'Sending…', fail: 'Could not send — please use the email below.', netErr: 'Network error, please retry.', emailFirst: 'Enter an email or a WhatsApp/phone number.' };
+    var email = f.elements.email;
+    var whatsapp = f.elements.whatsapp;
+    var msg = document.getElementById('iqmsg');
+    var waLink = document.getElementById('iqwa');
+
+    /* URL 参数自动填字段(?about=?formula=?pack=?market=?claim=?type=) */
+    try {
+      var q = new URLSearchParams(location.search);
+      var prod = q.get('about') || q.get('formula') || '';
+      if (prod && f.iq_product) f.iq_product.value = prod;
+      var pid = q.get('product_id') || '';
+      if (pid) {
+        var hid = document.createElement('input');
+        hid.type = 'hidden'; hid.name = 'product_id'; hid.value = pid;
+        f.appendChild(hid);
+      }
+
+      var mkt = q.get('market') || '';
+      if (mkt && f.iq_market) f.iq_market.value = mkt;
+      var claim = q.get('claim') || '';
+      if (claim && f.iq_audience) f.iq_audience.value = claim;
+      var pack = q.get('pack') || '';
+      if (pack && f.iq_pack) f.iq_pack.value = pack;
+      /* 来源路径 + utm */
+      var sp = document.getElementById('iqsp'), u = [];
+      q.forEach(function (v, k) { if (k.indexOf('utm_') === 0) u.push(k + '=' + encodeURIComponent(v)); });
+      if (sp) sp.value = (location.pathname + (u.length ? '?' + u.join('&') : '')).slice(0, 200);
+      /* AI 客服交接摘要 */
+      var h = sessionStorage.getItem('bh-chat-handoff');
+      if (h && f.iq_audience) f.iq_audience.value += (f.iq_audience.value ? ' | ' : '') + h;
+      sessionStorage.removeItem('bh-chat-handoff');
+      /* WhatsApp deeplink 预填:产品名+来源页面 */
+      if (waLink && prod) {
+        var waText = encodeURIComponent((zh ? '我对这款产品感兴趣: ' : 'I am interested in this product: ') + prod + ' | ' + location.href);
+        waLink.href = waLink.href.split('?')[0] + '?text=' + waText;
+      }
+      if (q.get('sent') === '1' && fb) {
+        fb.className = 'fb ok';
+        fb.textContent = T.sent;
+      }
+    } catch (e) {}
+
+    /* 提交前:把所有字段拼成 message 文本,后端接口不变 */
+    function buildMessage() {
+      var bits = [];
+      var fields = [
+        ['iq_product', zh ? '产品' : 'Product'],
+        ['iq_market', zh ? '目标市场' : 'Market'],
+        ['iq_qty', zh ? '预计首单量' : 'Qty'],
+        ['iq_brand', zh ? '品牌与渠道' : 'Brand & channel'],
+        ['iq_pack', zh ? '包装' : 'Packaging'],
+        ['iq_compliance', zh ? '合规' : 'Compliance'],
+        ['iq_timeline', zh ? '上市时间' : 'Timeline'],
+        ['iq_budget', zh ? '预算' : 'Budget'],
+        ['iq_audience', zh ? '目标人群与卖点' : 'Audience & claims'],
+      ];
+      for (var i = 0; i < fields.length; i++) {
+        var el = f.elements[fields[i][0]];
+        if (el && el.value && el.value.trim()) bits.push(fields[i][1] + ': ' + el.value.trim());
+      }
+      if (msg) msg.value = bits.join('\n');
+    }
+
+    var validateContact = function () {
+      var missing = !email.value.trim() && !whatsapp.value.trim();
+      var m = missing ? T.emailFirst : '';
+      email.setCustomValidity(m);
+      whatsapp.setCustomValidity(m);
+      return !missing;
+    };
+    email.addEventListener('input', validateContact);
+    whatsapp.addEventListener('input', validateContact);
+
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!validateContact()) { f.reportValidity(); return; }
+      buildMessage();
+      var btn = f.querySelector('.btn');
+      btn.disabled = true;
+      if (fb) { fb.className = 'fb'; fb.textContent = T.sending; }
+      var fd = new FormData(f);
+      var payload = {};
+      fd.forEach(function (v, k) { payload[k] = String(v); });
+      if (payload.iq_market && !payload.market) payload.market = payload.iq_market;
+      if (payload.iq_qty && !payload.volume) payload.volume = payload.iq_qty;
+      fetch('/api/inquiry', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }).catch(function () { return { ok: r.ok, j: {} }; }); })
+        .then(function (res) {
+          if (fb) {
+            var good = res.ok && res.j && res.j.ok !== false;
+            fb.className = 'fb ' + (good ? 'ok' : 'err');
+            if (good) {
+              fb.textContent = T.sent + (res.j.ticket_id ? (' #' + res.j.ticket_id) : '');
+              f.reset();
+            } else {
+              fb.textContent = (res.j && res.j.msg) ? res.j.msg : T.fail;
+            }
+          }
+        })
+        .catch(function () {
+          if (fb) { fb.className = 'fb err'; fb.textContent = T.netErr; }
+        })
+        .then(function () { btn.disabled = false; });
+    });
+  })();
+</script>

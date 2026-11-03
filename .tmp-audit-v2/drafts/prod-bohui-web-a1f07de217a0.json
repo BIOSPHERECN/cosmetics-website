@@ -1,0 +1,131 @@
+{
+ "schema": "bohui-draft/2",
+ "worker": "prod-bohui-web",
+ "kind": "prod",
+ "tree": "a1f07de217a06eef9deb16b01da0f7b46480071d9e57492a8a0b81fdd3ccd77d",
+ "target": {
+  "worker": "bohui-web",
+  "command": "node F:/0cosmetic/cosmetic-sites/tools/set-probe-secret.mjs",
+  "account": "company"
+ },
+ "scope_sha256": "0992bcb2fccee20aef412c817ebb0a54f67f6f4ff384171c66337eb62de96cd8",
+ "base": {
+  "commit": null,
+  "tree": null,
+  "first_ship": true
+ },
+ "note": "设冒烟探针 secret PROBE_SECRET:tools/set-probe-secret.mjs 从本机 .env 读值经 stdin 交给 wrangler(不进命令行和日志);按审核员意见脚本自锁 --name bohui-web、公司账号 ACCOUNT_ID/API_TOKEN 与 cwd,正则不跨行",
+ "tier": "L1",
+ "tier_reasons": [
+  "18 行"
+ ],
+ "angles": [
+  "综合"
+ ],
+ "files": {
+  "综合": {
+   "diff": "F:/0cosmetic/tools-review/audit_v2/drafts/prod-bohui-web-a1f07de217a0/综合.diff",
+   "files": [
+    "tools-review/audit_v2/cache/tmp/prod-8dcb20b48343/command.txt",
+    "cosmetic-sites/tools/set-probe-secret.mjs"
+   ],
+   "lines": 18
+  }
+ },
+ "all_diff": "F:/0cosmetic/tools-review/audit_v2/drafts/prod-bohui-web-a1f07de217a0/all.diff",
+ "gate1": {
+  "result": "过",
+  "block": [],
+  "doubt": [],
+  "exceptions": [],
+  "risks": [],
+  "lines": 18,
+  "files": 2,
+  "seconds": {
+   "total": 4.5
+  }
+ },
+ "judges": {
+  "laya": {
+   "decision": "block",
+   "conf": 0.07,
+   "noul": {
+    "cost": 0.96,
+    "security": 0.96,
+    "compliance": 0.97
+   },
+   "correctness": 1.47,
+   "verdict": "存疑",
+   "status": "判了",
+   "seconds": 34,
+   "partial": false
+  },
+  "jev": {
+   "decision": "block",
+   "conf": 0.92,
+   "noul": {
+    "cost": 0.04,
+    "security": 0.64,
+    "compliance": 0.01
+   },
+   "correctness": 0.21,
+   "verdict": "拦",
+   "status": "判了",
+   "tokens_in": 1315,
+   "day_used": 10240,
+   "seconds": 21.4,
+   "call_ref": "ledger/jev_calls.jsonl@2026-09-25T04:39:41+08:00",
+   "request_id": null,
+   "partial": false
+  }
+ },
+ "budget": {
+  "level": "n/a"
+ },
+ "items": [
+  {
+   "ref": "JEV",
+   "kind": "jev 拦",
+   "text": "{\"decision\": \"block\", \"conf\": 0.92, \"noul\": {\"cost\": 0.04, \"security\": 0.64, \"compliance\": 0.01}, \"reason\": null}"
+  },
+  {
+   "ref": "LAYA",
+   "kind": "laya 存疑",
+   "text": "{\"decision\": \"block\", \"conf\": 0.07, \"noul\": {\"cost\": 0.96, \"security\": 0.96, \"compliance\": 0.97}, \"reason\": null}"
+  }
+ ],
+ "refute_needed": [
+  "JEV"
+ ],
+ "reports_expected": [
+  "F:/0cosmetic/tools-review/audit_v2/reports/prod-bohui-web/a1f07de217a0/综合.json"
+ ],
+ "created_at": "2026-09-25T04:39:54+08:00",
+ "skills": {
+  "成本": [
+   "zero-r2-move",
+   "karpathy-coder"
+  ],
+  "安全": [
+   "security-review",
+   "claude-guard:guard-rules",
+   "bohui-data-security-formula-confidentiality"
+  ],
+  "合规": [
+   "bohui-legal-advertising-claims",
+   "bohui-label-claims-review"
+  ],
+  "正确性": [
+   "code-reviewer",
+   "karpathy-coder"
+  ],
+  "综合": [
+   "code-reviewer",
+   "security-review"
+  ],
+  "反驳": [],
+  "复核": [
+   "code-reviewer"
+  ]
+ }
+}

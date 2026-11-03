@@ -1,0 +1,186 @@
+{
+ "at": "2026-09-24T23:52:24+08:00",
+ "worker": "bohui-web",
+ "mode": "deploy",
+ "results": [
+  {
+   "url": "https://biosphere-ai.com/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [302]",
+    "跳转到 / ≠ …/en///zh-cn/"
+   ],
+   "crit": true
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": true
+  },
+  {
+   "url": "https://biosphere-ai.com/en/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": true
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/packaging/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/faq/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/en/services/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/formulas/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/ingredients/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/regulations/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/search/?q=serum",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/robots.txt",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/sitemap.xml",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/llms.txt",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/bohui/",
+   "status": 302,
+   "errs": [],
+   "crit": true
+  },
+  {
+   "url": "https://beauty2oem.com/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [302]",
+    "跳转到 / ≠ …/zh-cn/"
+   ],
+   "crit": true
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": true
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/brief/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/opportunities/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/predictions/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/insights/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/contact/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [302]",
+    "跳转到 /zh-cn/contact/ ≠ …/zh-cn/brief/"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/delivery/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": false
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/privacy/",
+   "status": 301,
+   "errs": [
+    "状态 301 ≠ [200]"
+   ],
+   "crit": false
+  }
+ ]
+}

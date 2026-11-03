@@ -1,0 +1,332 @@
+---
+/**
+ * 定向外联名单 —— AI 获客的「找人」环节落地页(2026-09-16 老板定调:获客优先)。
+ *
+ * 数据从哪来:tools/prospect/ 三步 —— 榜单挖品牌 → 搜索解析官网 → 抓官网背调,
+ * 模型按 ICP 规则打分并写好一封对方语言的开发信。这里只做三件事:
+ *   ① 按分排、按市场筛,让业务先打最像的;② 一键复制主题/正文;③ 记状态,三个数字(触达/回复/报价)自动出来。
+ */
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { env } from 'cloudflare:workers';
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { mailFrom, canSend } from '../../lib/mail';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+/* 「开发信」页签(2026-09-18,0098):草稿由 tools/prospect/outreach-build.py 生成,这里勾选 → 发样例给自己看 → 真发;发出与回复的计数也在这页。
+   数据与接口都在 /api/admin/outreach;页面只做首屏 SSR + 两个按钮。 */
+const tab = url.searchParams.get('tab') === 'outreach' ? 'outreach' : 'list';
+// 09-23 A6(0105):三段审批 —— 草稿页做 ① 调研通过 ② 文案通过;已审页做 ③ 真发(只有管理员)。unknown = 发了但没拿到回执,人工查,不重发
+const OST: [string, string][] = [['draft', '草稿'], ['approved', '已审'], ['sent', '已发'], ['unknown', '结果未知'], ['replied', '已回'], ['unsubscribed', '退订'], ['bounced', '退信']];
+const ost = OST.some(([k]) => k === url.searchParams.get('ost')) ? String(url.searchParams.get('ost')) : 'draft';
+const CC: Record<string, [string, string]> = { valid: ['邮箱有效', 'p-ok'], risky: ['邮箱存疑', 'p-warn'], invalid: ['邮箱无效', 'p-bad'] };
+let oRows: any[] = [], oCnt: Record<string, number> = {};
+if (tab === 'outreach') {
+  oRows = ((await c.db.prepare(`SELECT o.id, o.prospect_id, o.contact_email, o.step, o.subject, o.body_text, o.status, o.sent_at, o.replied_at, o.reply_mail_id, o.approved_at, o.approved_by,
+      p.brand, p.country, p.market, p.icp_score, p.icp_reason, p.website, p.needs_review, p.review_note, p.research_ok_at, cc.status cc_status, cc.reason cc_reason
+      FROM outreach_log o JOIN prospects p ON p.id=o.prospect_id LEFT JOIN outreach_contact_check cc ON cc.email=lower(o.contact_email) WHERE o.status=? ORDER BY p.icp_score DESC, o.id LIMIT 200`).bind(ost).all<any>().catch(() => ({ results: [] as any[] }))).results ?? []);
+  oCnt = Object.fromEntries((((await c.db.prepare(`SELECT status, COUNT(*) n FROM outreach_log GROUP BY status`).all<any>().catch(() => ({ results: [] as any[] }))).results ?? []) as any[]).map((r) => [r.status, r.n]));
+}
+const FROM = mailFrom(env).raw, CAN_SEND = canSend(env);
+const q = (url.searchParams.get('q') ?? '').trim();
+const market = url.searchParams.get('market') ?? '';
+const status = url.searchParams.get('status') ?? '';
+const min = Number(url.searchParams.get('min') ?? 0) || 0;
+const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
+const PER = 30;
+
+const where: string[] = [], bind: unknown[] = [];
+if (market) { where.push('market=?'); bind.push(market); }
+if (status) { where.push('status=?'); bind.push(status); }
+if (min) { where.push('icp_score>=?'); bind.push(min); }
+if (q) { where.push('(brand LIKE ? OR company LIKE ? OR positioning LIKE ? OR hook LIKE ?)'); bind.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
+const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+const total = (await c.db.prepare(`SELECT COUNT(*) n FROM prospects ${W}`).bind(...bind).first<{ n: number }>())?.n ?? 0;
+const { results: rows } = await c.db.prepare(
+  `SELECT *, CAST(julianday('now') - julianday(COALESCE(updated_at, created_at)) AS INTEGER) AS idle FROM prospects ${W} ORDER BY CASE status WHEN 'skip' THEN 1 ELSE 0 END, icp_score DESC, id LIMIT ? OFFSET ?`
+).bind(...bind, PER, (page - 1) * PER).all<any>();
+
+/* 三个数字 + 分布:全表统计,不受筛选影响 —— 老板看的是全局 */
+const { results: byStatus } = await c.db.prepare(`SELECT status, COUNT(*) n FROM prospects GROUP BY status`).all<{ status: string; n: number }>();
+const cnt = Object.fromEntries(byStatus.map((x) => [x.status, x.n]));
+const { results: byMarket } = await c.db.prepare(
+  `SELECT market, SUM(icp_score>=60) a, SUM(icp_score>=40 AND icp_score<60) b, SUM(icp_score<40) c FROM prospects GROUP BY market ORDER BY a DESC, b DESC`
+).all<{ market: string; a: number; b: number; c: number }>();
+const all = byMarket.reduce((s, m) => s + m.a + m.b + m.c, 0);
+const gradeA = byMarket.reduce((s, m) => s + m.a, 0);
+const reached = ['sent', 'replied', 'meeting', 'quoted', 'won', 'lost'].reduce((s, k) => s + (cnt[k] ?? 0), 0);
+const replied = ['replied', 'meeting', 'quoted', 'won'].reduce((s, k) => s + (cnt[k] ?? 0), 0);
+const quoted = ['quoted', 'won'].reduce((s, k) => s + (cnt[k] ?? 0), 0);
+
+const MK: Record<string, string> = { id: '印尼', my: '马来', ae: '阿联酋', sa: '沙特', ph: '菲律宾', vn: '越南', th: '泰国', us: '美国', gb: '英国', au: '澳洲' };
+const ST: Record<string, [string, string]> = {
+  new: ['待发', 'p-wait'], sent: ['已发', 'p-warn'], replied: ['已回复', 'p-ok'], meeting: ['约谈', 'p-ok'],
+  quoted: ['已报价', 'p-ok'], won: ['成交', 'p-ok'], lost: ['流失', 'p-bad'], skip: ['不合适', 'p-wait'],
+};
+const list = (v: unknown): string[] => { try { const a = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(a) ? a.map(String) : a ? [String(a)] : []; } catch { return v ? [String(v)] : []; } };
+const grade = (s: number) => s >= 60 ? 'A' : s >= 40 ? 'B' : 'C';
+const pcs = rows.length ? (await c.db.prepare(`SELECT * FROM prospect_contacts WHERE prospect_id IN (${rows.map(() => '?').join(',')}) ORDER BY id`).bind(...rows.map((r: any) => r.id)).all<any>().catch(() => ({ results: [] as any[] }))).results : [];
+const pages = Math.max(1, Math.ceil(total / PER));
+const link = (p: number) => { const u = new URLSearchParams(); if (q) u.set('q', q); if (market) u.set('market', market); if (status) u.set('status', status); if (min) u.set('min', String(min)); u.set('p', String(p)); return `?${u}`; };
+const chart = { markets: byMarket.map((m) => MK[m.market] ?? m.market), a: byMarket.map((m) => m.a), b: byMarket.map((m) => m.b), c: byMarket.map((m) => m.c),
+  funnel: [['名单', all], ['A 级', gradeA], ['已触达', reached], ['已回复', replied], ['已报价', quoted], ['成交', cnt.won ?? 0]] };
+---
+
+<AdminShell title="定向外联" active="prospects" email={c.sess.email} tenant={c.tenant}>
+  <h1>定向外联名单</h1>
+  <p class="lead">榜单挖品牌 → 解析官网 → 抓官网背调 → 模型按 ICP 打分并写好开发信。先打 A 级(≥60),每发一封记一次状态,三个数字自己会长。</p>
+  {/* 2026-09-16 05:35:首批草稿里的起订量 / 出样周期是系统占位数字,已全部去掉;老板在知识库填好「工厂口径」后跑 tools/prospect/rewrite_drafts.py 重写 */}
+  <div class="tabs">
+    <a class:list={['tab', tab === 'list' && 'on']} href="/bohui/prospects/">名单</a>
+    <a class:list={['tab', tab === 'outreach' && 'on']} href="/bohui/prospects/?tab=outreach">开发信{oCnt.draft ? ` · 草稿 ${oCnt.draft}` : ''}</a>
+  </div>
+
+  {tab === 'outreach' && (
+    <section class="ot" data-from={FROM}>
+      <div class="kpi">
+        {OST.map(([k, v]) => <div><b>{oCnt[k] ?? 0}</b><span>{v}</span></div>)}
+      </div>
+      <p class="warnbar">草稿按获客团「开发信与邮件序列」专家口径生成(tools/prospect/outreach-build.py):<b>不含起订量 / 价格 / 交期</b>,一封只求一个动作,末尾带退订说明。
+        真发前先「发样例到我邮箱」看真实效果;对方回信自动串回邮件中心并把线索标「已回复」,回「unsubscribe」自动进抑制名单。<br />
+        <b>三道审批</b>:① 调研通过(官网 / 品牌名 / 评分理由看过)→ ② 文案通过(邮箱须「有效」)→ ③ 取发送包(真人从自己的域名邮箱一对一发,密送存档;冷信不经本站发送)。取包前逐封再查一遍:审批人在白名单、线索状态、ICP ≥ 60、草稿审批后没改过、邮箱有效且 MX 在、未退订、当日额度;同一邮箱 / 同一品牌的同一封只发一次。
+        {!CAN_SEND && <b> 发信未接入(Cloudflare 电子邮件发送要接入域名),按钮暂不可用。</b>}</p>
+      <div class="bar">
+        {OST.map(([k, v]) => <a class:list={['btn', k === ost && 'pri']} href={`/bohui/prospects/?tab=outreach&ost=${k}`}>{v}{oCnt[k] ? `(${oCnt[k]})` : ''}</a>)}
+        {(ost === 'draft' || ost === 'approved') && oRows.length > 0 && <>
+          <label class="chk"><input type="checkbox" id="o-all" /> 全选</label>
+          <input id="o-test" value="huanggw20@gmail.com" placeholder="样例发到…" style="max-width:14rem" />
+          <button class="btn" id="o-sample" disabled={!CAN_SEND}>发样例到我邮箱</button>
+          {ost === 'draft' && <>
+            <button class="btn" data-op="research_ok">① 调研通过</button>
+            <button class="btn pri" data-op="approve">② 文案通过</button>
+          </>}
+          {ost === 'approved' && <button class="btn pri" id="o-hand" title="冷信不经本站发:取回 mailto,用你自己的域名邮箱一对一发,密送存档地址别删">③ 取发送包(<span id="o-n">0</span> 封)</button>}
+        </>}
+      </div>
+      {oRows.length === 0 ? <div class="empty">{ost === 'draft' ? '没有草稿。跑 python tools/prospect/outreach-build.py --limit 20 生成。' : '这一栏还没有。'}</div> : (
+        <div class="list">
+          {oRows.map((o) => (
+            <details class="pr" data-oid={o.id}>
+              <summary>
+                {(ost === 'draft' || ost === 'approved') && <input type="checkbox" class="o-pick" value={o.id} onclick="event.stopPropagation()" />}
+                <span class:list={['score', `g${grade(o.icp_score ?? 0)}`]}>{o.icp_score ?? '–'}</span>
+                <b>{o.brand}</b>
+                <span class="co">{o.country || MK[o.market] || o.market}</span>
+                <span class="hook">{o.subject}</span>
+                <span class="co">{o.contact_email}</span>
+                {o.needs_review ? <span class="pill p-bad" title={o.review_note || ''}>线索待复核</span> : <span class:list={['pill', o.research_ok_at ? 'p-ok' : 'p-wait']}>{o.research_ok_at ? '调研✓' : '调研待审'}</span>}
+                <span class:list={['pill', (CC[o.cc_status] ?? ['', 'p-wait'])[1]]} title={o.cc_reason || ''}>{(CC[o.cc_status] ?? ['邮箱未校验'])[0]}</span>
+                {o.approved_at && <span class="pill p-ok" title={`${o.approved_by ?? ''} ${o.approved_at}`}>文案✓</span>}
+                {o.step > 1 && <span class="pill p-wait">第 {o.step} 封</span>}
+                {o.sent_at && <span class="pill p-warn">发于 {String(o.sent_at).slice(0, 16)}</span>}
+                {o.replied_at && <span class="pill p-ok">{o.status === 'unsubscribed' ? '退订' : '回于'} {String(o.replied_at).slice(0, 16)}</span>}
+                {o.reply_mail_id && <a class="pill p-ok" href={`/bohui/mail/?id=${o.reply_mail_id}`} onclick="event.stopPropagation()">看回信</a>}
+              </summary>
+              <div class="body">
+                <div class="mail"><div class="subj">{o.subject}</div><pre class="msg">{o.body_text}</pre></div>
+                <dl><dt>评分理由</dt><dd>{o.icp_reason || '—'}</dd><dt>线索</dt><dd><a href={`/bohui/prospects/?q=${encodeURIComponent(o.brand)}`}>{o.brand}</a> · #{o.prospect_id} · {o.website}</dd>
+                  {o.review_note && <><dt>复核</dt><dd>{o.review_note}</dd></>}
+                  <dt>邮箱校验</dt><dd>{o.cc_reason || '未校验(跑 python tools/prospect/contact_check.py)'}{o.cc_status === 'risky' && <> <button class="btn" data-cc={o.contact_email}>人工确认这个邮箱可发</button></>}</dd></dl>
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
+    </section>
+  )}
+
+  {tab === 'list' && <>
+  <p class="warnbar">开发信草稿里<b>不含起订量 / 出样周期 / 价格</b>(之前的数字是占位,已撤)。发之前按知识库「工厂口径」页补真实数字;口径填好后系统会统一重写。</p>
+
+  <div class="kpi">
+    <div><b>{all}</b><span>名单</span></div>
+    <div><b>{gradeA}</b><span>A 级 ≥60</span></div>
+    <div><b>{reached}</b><span>已触达</span></div>
+    <div><b>{replied}</b><span>已回复 {reached ? `(${Math.round(replied / reached * 100)}%)` : ''}</span></div>
+    <div><b>{quoted}</b><span>已报价</span></div>
+    <div><b>{cnt.won ?? 0}</b><span>成交</span></div>
+  </div>
+  <div class="charts">
+    <div class="ch"><b>各市场 · 分数段</b><div id="ch-mk" style="height:15rem"></div></div>
+    <div class="ch"><b>漏斗 · 名单到成交</b><div id="ch-fn" style="height:15rem"></div></div>
+  </div>
+  <script type="application/json" id="pd" is:inline set:html={ldJson(chart)} />
+
+  <form class="bar" method="get">
+    <input name="q" value={q} placeholder="搜品牌 / 公司 / 定位 / 切入点…" style="max-width:16rem" />
+    <select name="market"><option value="">全部市场</option>
+      {byMarket.map((m) => <option value={m.market} selected={m.market === market}>{MK[m.market] ?? m.market}({m.a + m.b + m.c})</option>)}</select>
+    <select name="min"><option value="0" selected={!min}>全部分数</option><option value="60" selected={min === 60}>A 级 ≥60</option><option value="40" selected={min === 40}>≥40</option></select>
+    <select name="status"><option value="">全部状态</option>
+      {Object.entries(ST).map(([k, v]) => <option value={k} selected={k === status}>{v[0]}{cnt[k] ? `(${cnt[k]})` : ''}</option>)}</select>
+    <button class="btn pri" type="submit">筛选</button>
+    {(q || market || status || min) && <a class="btn" href="/bohui/prospects/">清空</a>}
+    <a class="btn" href={`/api/admin/prospect?min=${min || 0}`}>⤓ 导出 CSV</a>
+  </form>
+
+  {rows.length === 0 ? <div class="empty">没有符合条件的名单。跑 tools/prospect/ 三步后再来。</div> : (
+    <div class="list">
+      {rows.map((r) => { const st = ST[r.status] ?? ['?', 'p-wait']; const g = grade(r.icp_score ?? 0); const cc = list(r.contact_channels); const cats = list(r.categories); const chs = list(r.channels); return (
+        <details class="pr" data-id={r.id}>
+          <summary>
+            <span class:list={['score', `g${g}`]}>{r.icp_score ?? '–'}</span>
+            <b>{r.brand}</b>
+            <span class="co">{r.country || MK[r.market] || r.market}{r.segment ? ` · ${r.segment}` : ''}</span>
+            <span class="hook">{r.hook || r.positioning || ''}</span>
+            {pcs.some((x: any) => x.prospect_id === r.id) ? <span class="pill p-ok">有决策人</span> : null}
+            {r.in_brand_leads ? <span class="pill p-wait">品牌清单已有</span> : null}
+            {r.crawl_ok === 0 ? <span class="pill p-warn">官网未抓到·需人工核</span> : null}
+            {r.needs_review ? <span class="pill p-bad" title={r.review_note || ''}>官网 / 品牌名待复核·不出开发信</span> : null}
+            {/* SLA 从数据推导,不建待办表:发了 5 天没动静就该发第二封;回复了 3 天没约上就该催 */}
+            {r.status === 'sent' && r.idle >= 5 ? <span class="pill p-bad">已发 {r.idle} 天无回复 · 发第二封</span> : r.status === 'replied' && r.idle >= 3 ? <span class="pill p-bad">回复 {r.idle} 天未约谈 · 跟进</span> : null}
+            <span class:list={['pill', st[1]]}>{st[0]}</span>
+          </summary>
+          <div class="body">
+            <dl>
+              <dt>官网</dt><dd><a href={r.website} target="_blank" rel="noreferrer">{r.website}</a>{r.company && r.company !== r.brand ? ` · ${r.company}` : ''}</dd>
+              <dt>定位</dt><dd>{r.positioning || '—'}{cats.length ? ` · ${cats.join(' / ')}` : ''}</dd>
+              <dt>渠道</dt><dd>{chs.join(' · ') || '—'}{r.scale_signals ? ` · ${r.scale_signals}` : ''}</dd>
+              <dt>生产</dt><dd>{r.mfg_signal || '—'}{r.expansion_signal ? <><br />扩张:{r.expansion_signal}</> : null}</dd>
+              <dt>联系</dt><dd>{cc.length ? cc.map((x, i) => <>{i ? ' · ' : ''}{/^https?:/.test(x) ? <a href={x} target="_blank" rel="noreferrer">{x}</a> : /^[^@\s]+@[^@\s]+$/.test(x) ? <a href={`mailto:${x}?subject=${encodeURIComponent(r.email_subject || '')}&body=${encodeURIComponent(r.email_body || '')}`}>{x}</a> : <span>{x}</span>}</>) : '—'}</dd>
+              {/* 决策人:助手从 LinkedIn / 公司团队页找的姓名与职位(创始人 09-16:「官网信息没价值,要相关负责人」) */}
+              <dt>决策人</dt><dd>{(() => { const ps = pcs.filter((x: any) => x.prospect_id === r.id); return ps.length ? ps.map((x: any, i: number) => <>{i ? ' · ' : ''}<b>{x.name}</b>{x.title ? ` ${x.title}` : ''}{x.linkedin ? <> <a href={x.linkedin} target="_blank" rel="noreferrer">LinkedIn</a></> : null}{x.email ? <> <a href={`mailto:${x.email}?subject=${encodeURIComponent(r.email_subject || '')}&body=${encodeURIComponent(r.email_body || '')}`}>{x.email}</a></> : null}</>) : <span class="none">还没有 —— 等助手交付「决策人」CSV</span>; })()}</dd>
+              <dt>评分理由</dt><dd>{r.icp_reason || '—'}</dd>
+              <dt>切入点</dt><dd>{r.hook || '—'}</dd>
+              <dt>下一步</dt><dd><b>{r.next_step || '—'}</b></dd>
+            </dl>
+            <div class="mail">
+              <div class="mh"><b>开发信</b><button class="btn" data-copy="subject">复制主题</button><button class="btn" data-copy="body">复制正文</button></div>
+              <div class="subj" data-subject>{r.email_subject || '—'}</div>
+              <pre class="msg" data-body>{r.email_body || '—'}</pre>
+            </div>
+            {r.note && <pre class="note">{r.note}</pre>}
+            <div class="noteform"><textarea rows="2" maxlength="2000" placeholder="记一条跟进:发了哪封、对方怎么说…"></textarea><button class="btn pri" data-note>记录</button></div>
+            <div class="ops">
+              {Object.entries(ST).map(([k, v]) => <button class:list={['btn', k === 'sent' && 'pri']} data-st={k} disabled={r.status === k}>{v[0]}</button>)}
+              <button class="btn" data-convert title="对方回复了就转:建客户 + 联系人 + 机会,进 CRM">转客户</button>
+            </div>
+          </div>
+        </details>
+      ); })}
+    </div>
+  )}
+  {pages > 1 && <div class="pager">{page > 1 && <a class="btn" href={link(page - 1)}>上一页</a>}<span>第 {page} / {pages} 页 · 共 {total}</span>{page < pages && <a class="btn" href={link(page + 1)}>下一页</a>}</div>}
+  </>}
+  <div id="toast" class="toast" hidden></div>
+
+  <style>
+    .tabs{display:flex;gap:.375rem;margin:.75rem 0 .25rem} .tab{font:inherit;font-size:.8125rem;padding:.3125rem .75rem;border:1px solid var(--ad-line);border-radius:999px;text-decoration:none;color:inherit} .tab.on{background:#10131a;color:#fff;border-color:#10131a}
+    .chk{display:flex;align-items:center;gap:.375rem;font-size:.8125rem;margin-left:auto} .o-pick{width:1rem;height:1rem;margin:0}
+    .warnbar{background:#fef9c3;color:#854d0e;border-radius:8px;padding:.625rem .875rem;font-size:.875rem;margin:.5rem 0 0}
+    .kpi{display:grid;grid-template-columns:repeat(6,1fr);gap:.5rem;margin:1rem 0}
+    .kpi div{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:.75rem 1rem;display:grid}
+    .kpi b{font-size:1.5rem;font-variant-numeric:tabular-nums} .kpi span{color:var(--ad-faint);font-size:.75rem}
+    .charts{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem}
+    .ch{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:.75rem 1rem} .ch>b{font-size:.8125rem}
+    .bar{display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap} .bar input,.bar select{width:auto}
+    .list{display:grid;gap:.5rem}
+    .pr{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;overflow:hidden}
+    .pr>summary{padding:.625rem 1rem;cursor:pointer;display:flex;gap:.625rem;align-items:center;flex-wrap:wrap;list-style:none;font-size:.875rem}
+    .pr>summary::-webkit-details-marker{display:none} .pr[open]>summary{border-bottom:1px solid var(--ad-line);background:#fafbfc}
+    .score{min-width:2.5rem;text-align:center;font-weight:700;border-radius:6px;padding:.125rem .375rem;font-variant-numeric:tabular-nums}
+    .gA{background:#dcfce7;color:#166534} .gB{background:#fef9c3;color:#854d0e} .gC{background:#f1f5f9;color:#64748b}
+    .co{color:var(--ad-soft)} .hook{color:var(--ad-faint);font-size:.8125rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:8rem}
+    .body{padding:1rem 1.125rem}
+    dl{display:grid;grid-template-columns:5rem 1fr;gap:.4375rem .875rem;margin:0 0 1rem;font-size:.875rem} dt{color:var(--ad-faint);font-size:.8125rem} dd{margin:0}
+    .mail{border:1px solid var(--ad-line);border-radius:7px;padding:.75rem .875rem;background:#fafbfc;margin-bottom:.75rem}
+    .mh{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem} .mh b{font-size:.8125rem;margin-right:auto}
+    .subj{font-weight:600;font-size:.875rem;margin-bottom:.375rem}
+    .msg{white-space:pre-wrap;font:inherit;font-size:.875rem;line-height:1.65;margin:0}
+    .note{white-space:pre-wrap;font:inherit;font-size:.8125rem;color:var(--ad-soft);border-inline-start:2px solid var(--ad-line);padding-inline-start:.75rem;margin:0 0 .75rem}
+    .noteform{display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.75rem}
+    .noteform textarea{flex:1;font:inherit;font-size:.8125rem;padding:.5rem .625rem;border:1px solid var(--ad-line);border-radius:6px;resize:vertical}
+    .ops{display:flex;gap:.5rem;flex-wrap:wrap}
+    .pager{display:flex;gap:.75rem;align-items:center;justify-content:center;margin-top:1.5rem;font-size:.8125rem;color:var(--ad-soft)}
+    .toast{position:fixed;right:1.25rem;bottom:1.25rem;background:#10131a;color:#fff;padding:.625rem 1rem;border-radius:7px;font-size:.8125rem;z-index:9}
+    [hidden]{display:none !important}
+    @media (max-width:60rem){.kpi{grid-template-columns:repeat(3,1fr)}.charts{grid-template-columns:1fr}}
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.6.0/echarts.min.js" is:inline defer></script>
+  <script is:inline>
+    const t = document.getElementById('toast');
+    const say = (m) => { t.textContent = m; t.hidden = false; setTimeout(() => { t.hidden = true; }, 1800); };
+    const patch = async (id, body) => (await fetch('/api/admin/prospect', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...body }) })).json().catch(() => ({}));
+    document.querySelectorAll('.ops button[data-st]').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true; const d = await patch(+b.closest('.pr').dataset.id, { status: b.dataset.st });
+      if (d.ok) { say('已更新'); setTimeout(() => location.reload(), 400); } else { b.disabled = false; say(d.msg || '更新失败'); }
+    }));
+    document.querySelectorAll('button[data-convert]').forEach((b) => b.addEventListener('click', async () => {
+      b.disabled = true; const r = await fetch('/api/admin/crm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'convert', from: 'prospect', id: +b.closest('.pr').dataset.id }) });
+      const d = await r.json().catch(() => ({}));
+      if (d.ok) { say(d.created ? '已建客户' : '已挂到已有客户'); setTimeout(() => location.assign('/bohui/companies/?open=' + d.company_id), 500); } else { b.disabled = false; say(d.msg || '失败'); }
+    }));
+    document.querySelectorAll('button[data-note]').forEach((b) => b.addEventListener('click', async () => {
+      const box = b.closest('.noteform').querySelector('textarea'); const note = box.value.trim(); if (!note) { box.focus(); return; }
+      b.disabled = true; const d = await patch(+b.closest('.pr').dataset.id, { note });
+      if (d.ok) { say('已记录'); setTimeout(() => location.reload(), 400); } else { b.disabled = false; say(d.msg || '记录失败'); }
+    }));
+    document.querySelectorAll('button[data-copy]').forEach((b) => b.addEventListener('click', async () => {
+      const box = b.closest('.mail'); const txt = box.querySelector(b.dataset.copy === 'subject' ? '[data-subject]' : '[data-body]').textContent;
+      try { await navigator.clipboard.writeText(txt); say('已复制'); } catch { say('复制失败,请手动选中'); }
+    }));
+    /* 开发信页签:勾选 → 发样例(test_to)/ 真发(confirm 写明数量与发件人)。接口每次 ≤20 封、封间隔 3 秒,按钮禁用到返回 */
+    const picks = () => [...document.querySelectorAll('.o-pick:checked')].map((x) => +x.value);
+    const oN = document.getElementById('o-n'); const upd = () => { if (oN) oN.textContent = picks().length; };
+    document.querySelectorAll('.o-pick').forEach((x) => x.addEventListener('change', upd));
+    document.getElementById('o-all')?.addEventListener('change', (e) => { document.querySelectorAll('.o-pick').forEach((x) => { x.checked = e.target.checked; }); upd(); });
+    const sendOut = async (test) => {
+      const ids = picks(); if (!ids.length) return say('先勾选草稿'); if (ids.length > 20) return say('一次最多 20 封');
+      const test_to = test ? document.getElementById('o-test').value.trim() : '';
+      if (test && !test_to) return say('填样例收件邮箱');
+      const from = document.querySelector('.ot').dataset.from;
+      if (!test && !confirm(`③ 发送审批:真发 ${ids.length} 封开发信给对方邮箱?\n发件人:${from}\n发前会逐封再查一遍,不过的不发;发出后不可撤回。`)) return;
+      const btn = document.getElementById(test ? 'o-sample' : 'o-send'); btn.disabled = true; say(`发送中… ${ids.length} 封,约 ${ids.length * 3} 秒`);
+      const r = await fetch('/api/admin/outreach', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'send', ids, test_to }) });
+      const d = await r.json().catch(() => ({})); btn.disabled = false;
+      if (!d.ok) return say(d.msg || '发送失败');
+      const bad = (d.results || []).filter((x) => !x.ok);
+      say(`${test ? '样例' : ''}已发 ${d.sent} 封${bad.length ? `,失败 ${bad.length}:${bad[0].msg || ''}` : ''}`);
+      if (!test) setTimeout(() => location.reload(), 1500);
+    };
+    // ① 调研通过 / ② 文案通过 / 人工确认邮箱:都是一次 POST,结果逐条说,不过的写明原因
+    const post = (body) => fetch('/api/admin/outreach', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json()).catch(() => ({ ok: false, msg: '网络错误' }));
+    document.querySelectorAll('button[data-op]').forEach((b) => b.addEventListener('click', async () => {
+      const ids = picks(); if (!ids.length) return say('先勾选草稿');
+      b.disabled = true; const d = await post({ op: b.dataset.op, ids }); b.disabled = false;
+      const bad = (d.results || []).filter((x) => !x.ok);
+      say(`${b.textContent} ${d.n ?? 0} 条${bad.length ? `,没过 ${bad.length}:${bad[0].msg || ''}` : ''}`);
+      if (d.n) setTimeout(() => location.reload(), 1800);
+    }));
+    document.querySelectorAll('button[data-cc]').forEach((b) => b.addEventListener('click', async () => {
+      if (!confirm(`确认 ${b.dataset.cc} 是对方真实可用的邮箱?(会记下是你确认的)`)) return;
+      const d = await post({ op: 'contact_ok', email: b.dataset.cc }); say(d.ok ? '已确认' : d.msg || '失败'); if (d.ok) setTimeout(() => location.reload(), 1200);
+    }));
+    document.getElementById('o-sample')?.addEventListener('click', () => sendOut(true));
+    /* 09-24 W7:③ 取发送包 —— 逐封取 mailto 并打开本机邮件客户端;不过闸的写明原因 */
+    document.getElementById('o-hand')?.addEventListener('click', async (e) => {
+      const ids = picks(); if (!ids.length) return say('先勾选'); if (ids.length > 5) return say('一次最多取 5 封,逐封发');
+      const btn = e.currentTarget; btn.disabled = true; const msgs = [];
+      for (const id of ids) {
+        const d = await post({ op: 'handoff', id });
+        if (d.ok && d.mailto) { window.open(d.mailto, '_blank'); msgs.push(`#${id} 已取包`); } else msgs.push(`#${id} ${d.msg || '失败'}`);
+      }
+      btn.disabled = false; say(msgs.join(';'));
+    });
+    window.addEventListener('load', () => {
+      if (!window.echarts || !document.getElementById('pd')) return; const d = JSON.parse(document.getElementById('pd').textContent);
+      const mk = echarts.init(document.getElementById('ch-mk'), null, { renderer: 'svg' });
+      mk.setOption({ grid: { left: 36, right: 12, top: 28, bottom: 24 }, legend: { top: 0, textStyle: { fontSize: 11 } }, tooltip: { trigger: 'axis' },
+        xAxis: { type: 'category', data: d.markets, axisLabel: { fontSize: 11 } }, yAxis: { type: 'value', minInterval: 1 },
+        series: [['A 级', d.a, '#22c55e'], ['B 级', d.b, '#eab308'], ['C 级', d.c, '#cbd5e1']].map(([n, v, c]) => ({ name: n, type: 'bar', stack: 's', data: v, itemStyle: { color: c } })) });
+      const fn = echarts.init(document.getElementById('ch-fn'), null, { renderer: 'svg' });
+      fn.setOption({ tooltip: { trigger: 'item' }, series: [{ type: 'funnel', left: '6%', width: '88%', top: 8, bottom: 8, sort: 'none', gap: 2, minSize: '12%',
+        label: { position: 'inside', formatter: '{b} {c}', fontSize: 11 }, data: d.funnel.map(([n, v]) => ({ name: n, value: v })) }] });
+      addEventListener('resize', () => { mk.resize(); fn.resize(); });
+    });
+  </script>
+</AdminShell>

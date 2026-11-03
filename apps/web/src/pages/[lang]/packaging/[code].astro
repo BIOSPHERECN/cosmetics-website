@@ -1,0 +1,227 @@
+---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { TERMS_CONFIRMED } from '../../../lib/terms';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT, type Locale } from '@cosmetic/core/i18n';
+/**
+ * 包材单品页 —— 与配方详情页共用 ItemDetail(创始人:「产品库、包材库是一样的结构」)。
+ *
+ * 形态照着采购真正要的东西排:编码 + 材质 + 品类当标题,容量写双单位,
+ * 口径、起订量、打样周期放在最上面一排,底下是可做工艺与适配剂型。
+ * 按钮是「索取样品 / 用这一款做配方」,不是加购物车 —— 我们不做自助下单,也不在页面上报价。
+ *
+ * 还缺的一块要说清楚:部件级参数(盖与瓶各自的外径、高度、重量)。
+ * 那才是能对上模具的粒度,现在数据没有,所以整段不渲染 —— 不拿空表撑门面。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import ItemDetail from '@cosmetic/core/components/ItemDetail.astro';
+import InquiryFormLite from '@cosmetic/core/components/InquiryFormLite.astro';
+import { pageShell } from '../../../lib/shell';
+import { PACK_TYPE_LABEL, FMT_LABEL, label, packName, dualCapacity, packDesignHref } from '../../../lib/catalog';
+import { PACK_SHELF } from '@cosmetic/core/generated/pack-shelf.ts';
+
+export const prerender = false;
+
+const lang = (Astro.params.lang ?? 'zh-cn') as Locale; // astro check: 路由参数是 string,与 pack.astro 同法收窄
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const code = String(Astro.params.code ?? '').toUpperCase().slice(0, 24);
+const db = (env as any).DB as D1Database | undefined;
+
+/* 先查库拿完整字段(口径、装饰工艺、备注这些只在库里有);
+   查不到就回落到随包发布的货架快照。
+
+   2026-09-07 的教训:D1 免费档日读额度耗尽那天,这一页对着库里明明有的
+   三千七百款一律返回 404 —— 而 404 是在告诉搜索引擎「这个页面不存在」,
+   一天的 404 足够让刚收录的详情页被整批清出索引。
+   数据层不可用是免费档上的常态,不是意外:快照里有编码、类型、材质、容量、
+   起订量与参考价,足够让这一页站得住,少的只是几行工艺细节。 */
+const p: any = (db ? await db.prepare(
+  `SELECT code, type, material, capacity, neck_size, moq, lead_days, decoration,
+          sustainability, compat_formats, cost_band, notes_zh, status,
+          price_ref, price_unit, price_currency, stock_note, dims, weight_g
+     FROM packaging WHERE code = ? AND status IN ('sample','active')`).bind(code).first<any>().catch(() => null) : null)
+  ?? (() => {
+    const r = PACK_SHELF.find((x) => x.code === code);
+    return r ? {
+      code: r.code, type: r.type, material: r.material, capacity: r.capacity,
+      moq: r.moq, lead_days: r.leadDays, price_ref: r.priceRef, price_unit: r.priceUnit,
+      compat_formats: r.compatFormats, status: r.status,
+      neck_size: null, decoration: null, sustainability: null, cost_band: null,
+      notes_zh: null, price_currency: 'CNY', stock_note: null,
+    } : null;
+  })();
+if (!p) return new Response(null, { status: 404 });
+
+/* 有没有审过的实拍。建这一页时库里一张图都没有,所以当时没接;
+   2026-09-07 接了三千五百多款白底实拍之后必须补上,否则详情页永远是空占位。 */
+/* 有没有审过的实拍 —— 快照里已经记着,不再为此查一次库。
+   一次查询看着便宜,乘以三千七百个详情页 × 十七个语种就不便宜了。 */
+const shot = PACK_SHELF.find((x) => x.code === code)?.hasImg ? { our_code: code } : null;
+
+const related = db ? (((await db.prepare(
+  `SELECT code, type, material, capacity FROM packaging
+    WHERE type = ? AND code <> ? AND status IN ('sample','active') LIMIT 6`)
+  .bind(p.type, p.code).all<any>().catch(() => ({ results: [] }))).results ?? []) as any[]) : [];
+
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/packaging/${p.code}/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const name = packName(p, zh);
+const typeLabel = label(PACK_TYPE_LABEL, p.type, zh);
+const fits = String(p.compat_formats ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+
+const T = zh ? {
+  home: '首页', lib: '包材库',
+  shotPending: '实拍整理中', specs: '规格', parts: '部件参数', related: '同类其它款', faqH: '常见问题',
+  partCode: '编码',
+  cap: '容量', neck: '口径', mat: '材质', moq: '起订量', lead: '打样', band: '成本档', ref: '参考价', dims: '尺寸', weight: '单件重量',
+  priceUnit: '/ 只 · FOB 广州',
+  deco: '可做装饰工艺', sus: '可持续选项', fit: '适配剂型', units: '只', days: '天',
+  bands: { low: '经济', mid: '中档', high: '高端' } as Record<string, string>,
+  sample: '索取样品', use: '用这一款做配方', design: '一键生成包装设计',
+  ctaNote: '发编码给我们,当天把实拍照片与完整尺寸图发你;需要样件的话一并寄。',
+  secSpec: '这一款的规格是什么?', secProc: '能做哪些工艺,有没有可持续选项?', secBiz: '怎么供货?',
+  note: '本页参数为示例规格,用于说明可选范围。实际尺寸、口径与起订量以实物打样与书面确认为准。参考价用于判断量级,不是报价 —— 实际价格随数量、配色、工艺与批次变动,以书面报价为准。部件级尺寸(盖与瓶各自的外径、高度、重量)正在逐款补录,需要的话直接向我们索取。',
+  faq: [
+    ['能按我的容量定制吗?', '标准容量走现货模具最快。非标容量要开模,开模费与周期按结构复杂度核算,并且需要更高的起订量 —— 首批量不大时,通常建议先用接近的标准容量把货跑起来。'],
+    ['颜色和表面工艺能改吗?', '能。丝印、烫金、喷涂、贴标、磨砂都可以做。金银与珠光类不承诺色差数值,以同基材的实物封样为准。'],
+    ['口径怎么对?', '口径决定了泵头与盖能不能通用。把你已有的泵头口径告诉我们,或者直接用我们这一款配套的规格,避免两头都要改。'],
+    ['料体和瓶子会不会不相容?', '会,尤其是含精油、高浓度醇类或酸性体系的配方。所以相容性测试要和稳定性一起做,不能分开验 —— 这一步我们在打样阶段就安排。'],
+  ] as [string, string][],
+} : {
+  home: 'Home', lib: 'Packaging',
+  shotPending: 'Photography pending', specs: 'Specification', parts: 'Component specification',
+  related: 'Others of this type', faqH: 'Frequently asked', partCode: 'Code',
+  cap: 'Capacity', neck: 'Neck size', mat: 'Material', moq: 'MOQ', lead: 'Sampling', band: 'Cost band', ref: 'Indicative', dims: 'Dimensions', weight: 'Unit weight',
+  priceUnit: '/ pc · FOB Guangzhou',
+  deco: 'Decoration available', sus: 'Sustainability options', fit: 'Fits formats', units: 'pcs', days: 'days',
+  bands: { low: 'Value', mid: 'Mid', high: 'Premium' } as Record<string, string>,
+  sample: 'Request a sample', use: 'Build a formula in this', design: 'Generate packaging design',
+  ctaNote: 'Send us the code and we will send photography and full dimension drawings the same day, with physical samples if you need them.',
+  secSpec: 'What are the specifications?', secProc: 'What decoration and sustainability options are available?', secBiz: 'How is it supplied?',
+  note: 'Parameters on this page are sample specifications describing the available range. Actual dimensions, neck sizes and MOQ are confirmed at sampling and in writing. Any price shown is indicative of order of magnitude only — the actual price varies with quantity, colour, finish and batch, and is confirmed in a written quotation. Component-level dimensions (cap and bottle diameter, height and weight) are being added item by item — ask us if you need them now.',
+  faq: [
+    ['Can the capacity be customised?', 'Standard capacities in stock tooling are fastest. Non-standard capacities need new tooling, priced and scheduled by structural complexity, and carry a higher MOQ. For a modest first run we usually suggest launching in the nearest standard size.'],
+    ['Can colour and finish change?', 'Yes — silkscreen, hot stamping, spraying, labelling and frosting are all available. We do not commit to numeric colour tolerance on metallics and pearlescents; an approved physical sample on the same substrate governs.'],
+    ['How do I match the neck size?', 'Neck size decides whether pumps and caps interchange. Tell us the neck size you already use, or adopt the size this item pairs with, so you are not changing both ends at once.'],
+    ['Could the formula and the container be incompatible?', 'Yes, especially with essential oils, high alcohol content or acidic systems. Compatibility testing therefore runs alongside stability rather than separately, and we schedule it during sampling.'],
+  ] as [string, string][],
+};
+
+/* GEO 首段直答(2026-09-16,头条「外贸 SEO 评判」+ Reddit 打法第三步):首段用 60 字回答「这是什么、装什么、能改什么」,全部来自字段,没有的不写。 */
+const capTxt = dualCapacity(p.capacity) || '';
+const headline = zh
+  ? [`${p.code} 是一款${capTxt ? capTxt + ' ' : ''}${p.material ? p.material + ' ' : ''}${typeLabel}`, p.neck_size ? `口径 ${p.neck_size}` : '', p.dims ? `尺寸 ${p.dims}` : '', p.compat_formats ? `适配 ${p.compat_formats}` : '', p.decoration ? `可做 ${p.decoration}` : ''].filter(Boolean).join(',') + '。出样通常 5–14 天;起订量与价格按项目书面报价。'
+  : [`${p.code} is a ${capTxt ? capTxt + ' ' : ''}${p.material ? p.material + ' ' : ''}${String(typeLabel).toLowerCase()}`, p.neck_size ? `neck ${p.neck_size}` : '', p.dims ? `${p.dims}` : '', p.compat_formats ? `suited to ${String(p.compat_formats).replace(/,\s*/g, ', ')}` : '', p.decoration ? `decoration: ${p.decoration}` : ''].filter(Boolean).join(', ') + '. Samples usually in 5–14 days; MOQ and price are quoted per project in writing.';
+const keyFacts = [
+  { k: T.cap, v: dualCapacity(p.capacity) || '—' },
+  ...(p.price_ref ? [{ k: T.ref, v: `${p.price_ref} ${T.priceUnit}` }] : []),
+  { k: T.mat, v: p.material || '—' },
+  /* 尺寸与单件重量(2026-09-16 创始人:客户要知道瓶子尺寸)—— 1688 件重尺表来的,没有就不显示 */
+  ...(p.dims ? [{ k: T.dims, v: p.dims }] : []),
+  ...(p.weight_g ? [{ k: T.weight, v: `${p.weight_g} g` }] : []),
+  { k: T.neck, v: p.neck_size || '—' },
+  ...(TERMS_CONFIRMED ? [
+    { k: T.moq, v: p.moq ? `${Number(p.moq).toLocaleString()} ${T.units}` : '—' },
+    { k: T.lead, v: p.lead_days ? `${p.lead_days} ${T.days}` : '—' },
+  ] : []),   // 起订量 / 打样:工厂口径未确认前不显示(lib/terms.ts)
+].filter((f) => f.v !== '—' || f.k === T.cap);
+
+const sections = [
+  {
+    title: T.secProc,
+    rows: [
+      ...(p.decoration ? [{ k: T.deco, v: p.decoration }] : []),
+      ...(p.sustainability ? [{ k: T.sus, v: p.sustainability }] : []),
+    ],
+  },
+  {
+    title: T.secBiz,
+    rows: [
+      ...(fits.length ? [{ k: T.fit, v: fits.map((f) => label(FMT_LABEL, f, zh)).join(' · ') }] : []),
+      ...(p.cost_band ? [{ k: T.band, v: T.bands[p.cost_band] ?? p.cost_band }] : []),
+      ...(p.notes_zh && zh ? [{ k: '备注', v: p.notes_zh }] : []),
+    ],
+  },
+].filter((s) => s.rows.length > 0);
+
+const ld = [
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: T.home, item: `${origin}/${lang}/` },
+      { '@type': 'ListItem', position: 2, name: T.lib, item: `${origin}/${lang}/packaging/` },
+      { '@type': 'ListItem', position: 3, name: name, item: origin + path },
+    ],
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'Product',
+    name, sku: p.code, category: typeLabel,
+    material: p.material || undefined,
+    description: `${typeLabel}${p.capacity ? ' ' + p.capacity : ''}${p.material ? ' · ' + p.material : ''}`,
+    brand: { '@type': 'Brand', name: 'BIOSPHERE' },
+    additionalProperty: keyFacts.map((f) => ({ '@type': 'PropertyValue', name: f.k, value: f.v })),
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: T.faq.map(([q, a]) => ({
+      '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  },
+];
+/* 询盘表单的 WhatsApp 号与联系页同源(middleware 注入) */
+const contactWa: string | null = ((Astro.locals as any)?.contact ?? {}).whatsapp ?? null;
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'} title={`${name} · ${T.lib}`}
+  description={`${typeLabel}${p.capacity ? ' ' + p.capacity : ''}${p.material ? ' · ' + p.material : ''}`}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <ItemDetail
+      breadcrumb={[
+        { label: T.home, href: `/${lang}/` },
+        { label: T.lib, href: `/${lang}/packaging/` },
+        { label: p.code },
+      ]}
+      eyebrow={typeLabel}
+      images={shot ? [{ src: `/pack/${p.code}`, alt: `${p.code} ${typeLabel}` }] : []}
+      hideEmptyGallery={!shot}
+      code={p.code}
+      name={name}
+      headline={headline}
+      keyFacts={keyFacts}
+      ctas={[
+        { label: T.sample, href: `/${lang}/contact/?pack=${p.code}&intent=sample`, primary: true },
+        { label: T.use, href: `/${lang}/selector/?pack=${p.code}` },
+        /* 创始人:「选1个瓶子就可以有功能键,一键生成包装设计,这个才更方便」——
+           紧挨着索样/做配方两个按钮放,同一排,不单独起一块。 */
+        { label: T.design, href: packDesignHref(lang, p, zh) },
+      ]}
+      ctaNote={T.ctaNote}
+      sections={sections}
+      faq={T.faq}
+      related={related.map((r: any) => ({
+        code: r.code, href: `/${lang}/packaging/${r.code}/`,
+        name: packName(r, zh), chip: dualCapacity(r.capacity),
+      }))}
+      note={T.note}
+      labels={{ shotPending: T.shotPending, specs: T.specs, parts: T.parts,
+                related: T.related, faq: T.faqH, partCode: T.partCode }} />
+      <InquiryFormLite lang={lang} email={shell.email} whatsapp={contactWa} source="packaging-detail" product={`${p.code} ${name}`} />
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <script type="application/ld+json" set:html={ldJson(ld)} />
+</BaseLayout>

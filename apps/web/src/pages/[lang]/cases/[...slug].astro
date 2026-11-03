@@ -1,0 +1,256 @@
+---
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { t as uiT, type Locale } from '@cosmetic/core/i18n';
+/**
+ * 客户案例 —— GEO 诊断五块空白里的最后一块。
+ *
+ * 写法是「这类需求我们怎么接」,不是「我们做过谁」——
+ * 合作品牌名属于客户的商业信息,没有书面授权不能公开;
+ * 但缺授权挡住的是**具名**,挡不住**结构**。
+ * 采购真正想知道的也是「像我这种情况,你们怎么接、多久、卡在哪」。
+ *
+ * 每条案例出 Article schema(不是 Review 或 Testimonial)——
+ * 没有具名客户就不是证言,标成证言是虚假结构化数据,会被判罚。
+ * 拿到授权之后把 verified 改成 true,再考虑升级标记。
+ *
+ * 内容在 packages/core/src/content/cases.ts。零 D1 查询。
+ */
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { CASES_ZH, type CaseItem } from '@cosmetic/core/content/cases.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { orgJsonLd, faqJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const lang = (Astro.params.lang ?? 'zh-cn') as Locale;
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const site = shell.site;
+const origin = `https://${site?.domain ?? 'biosphere-ai.com'}`;
+const B = `/${lang}`;
+
+const raw = String(Astro.params.slug ?? '').replace(/\/+$/, '');
+const item: CaseItem | undefined = raw ? CASES_ZH.find((c) => c.slug === raw) : undefined;
+if (raw && !item) return new Response('Not found', { status: 404 });
+
+const path = raw ? `${B}/cases/${raw}/` : `${B}/cases/`;
+const L = zh
+  ? { eyebrow: '项目走查', idxTitle: '这几类需求,我们是这么接的',
+      lede: '不写「我们做过谁」——合作品牌名是客户的商业信息,没有书面授权不公开。写的是「像你这种情况,我们怎么接、多久、卡在哪」。',
+      note: '所有数字来自我们自己的产线与库存:在册配方 13,000+、现货包材 4,476 款、打样 3–7 天、首批 3,000 件可接。没有一个是为了让故事好看编的。',
+      brief: '他手上的条件', verdict: '一句话结论', facts: '关键约束', stages: '时间线',
+      trap: '这类项目最常见的坑', more: '相关页面', back: '全部走查', risk: '卡点',
+      badge: '场景走查 · 非具名客户案例',
+      cta: '你的情况和哪一条像?把品类、目标市场、首批量级发给我们', ctaBtn: '发起询盘' }
+  : { eyebrow: 'Project walk-throughs', idxTitle: 'How we take on these briefs',
+      lede: 'Not "who we have worked with" — client brand names are their commercial information and are not published without written consent. This is how a brief like yours actually runs: what we do, how long, where it stalls.',
+      note: 'Every figure comes from our own lines and stock: 13,000+ formulas on file, 4,476 stock packaging items, samples in 3–7 days, first runs from 3,000 units.',
+      brief: 'What they had', verdict: 'Short answer', facts: 'Key constraints', stages: 'Timeline',
+      trap: 'Where this kind of project goes wrong', more: 'Related', back: 'All walk-throughs', risk: 'Watch out',
+      badge: 'Scenario walk-through, not a named client case',
+      cta: 'Which one looks like your situation? Send us category, market and first-run volume', ctaBtn: 'Send an enquiry' };
+
+const crumbs = breadcrumbJsonLd(origin, lang, path, uiT(lang as any)('nav.home'),
+  item
+    ? [{ label: L.eyebrow, href: `${B}/cases/` }, { label: item.who, href: path }]
+    : [{ label: L.eyebrow, href: path }]);
+
+/* 出 Article,不出 Review / Testimonial ——
+   没有具名客户就不是证言,标成证言是虚假结构化数据。 */
+const articleLd = item
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: item.who,
+      description: item.verdict,
+      url: `${origin}${path}`,
+      inLanguage: lang,
+      isAccessibleForFree: true,
+      author: { '@type': 'Organization', name: site?.name ?? 'BIOSPHERE' },
+      publisher: { '@type': 'Organization', name: site?.name ?? 'BIOSPHERE' },
+      about: item.facts.map((f) => `${f.k}:${f.v}`).join('; '),
+    }
+  : null;
+
+const jsonLd = [
+  orgJsonLd(origin, site?.name ?? 'BIOSPHERE', lang, L.lede),
+  articleLd,
+  item ? null : faqJsonLd(CASES_ZH.map((c) => ({ q: c.who, a: c.verdict }))),
+  crumbs,
+].filter(Boolean);
+
+const title = item
+  ? `${item.who} · ${zh ? '项目走查' : 'project walk-through'}`
+  : (zh ? '项目走查 —— 跨境精华、东南亚面膜、草本 ODM、只供包材'
+        : 'Project walk-throughs — cross-border serum, SEA sheet masks, herbal ODM, packaging only');
+const desc = item ? item.verdict : L.lede;
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={site?.variant ?? 'v1'}
+  brand={site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={title} description={desc}
+  siteName={site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={site?.is_live === 1} brandColor={site?.brand_color} theme={site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={site?.name ?? '帛卉'}
+              siteNameZh={site?.tagline ?? ''} nav={shell.nav} />
+
+  <main id="main">
+    {!item && (
+      <>
+        <header class="hd">
+          <p class="eyebrow">{L.eyebrow}</p>
+          <h1>{L.idxTitle}</h1>
+          <p class="lede">{L.lede}</p>
+          <p class="note">{L.note}</p>
+        </header>
+        <ul class="idx">
+          {CASES_ZH.map((c) => (
+            <li>
+              <a href={`${B}/cases/${c.slug}/`}>
+                <h2>{c.who}</h2>
+                <p>{c.verdict}</p>
+                <span class="go" aria-hidden="true">→</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </>
+    )}
+
+    {item && (
+      <>
+        <header class="hd">
+          <p class="eyebrow"><a href={`${B}/cases/`}>{L.back}</a></p>
+          <h1>{item.who}</h1>
+          {/* 没有授权就不装成具名案例 —— 明写出来比含糊过去可信 */}
+          {!item.verified && <p class="badge">{L.badge}</p>}
+          {/* 具名案例反过来:必须把出处摆出来。一句「我们服务过 XX」谁都会写,
+              写清「这句话出自我们自己哪份公开物料」才是可核的。 */}
+          {item.verified && item.source && <p class="src">{item.source}</p>}
+          <p class="brief"><b>{L.brief}</b>{item.brief}</p>
+          <p class="verdict"><b>{L.verdict}</b>{item.verdict}</p>
+        </header>
+
+        <section class="facts">
+          <h2>{L.facts}</h2>
+          <dl>
+            {item.facts.map((f) => (<><dt>{f.k}</dt><dd>{f.v}</dd></>))}
+          </dl>
+        </section>
+
+        <section class="stages">
+          <h2>{L.stages}</h2>
+          <ol>
+            {item.stages.map((s) => (
+              <li>
+                <span class="when">{s.when}</span>
+                <div>
+                  <p>{s.what}</p>
+                  {s.risk && <p class="risk"><b>{L.risk}</b>{s.risk}</p>}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section class="trap">
+          <h2>{L.trap}</h2>
+          <ul>{item.trap.map((t) => <li>{t}</li>)}</ul>
+        </section>
+
+        <nav class="more" aria-label={L.more}>
+          <h2>{L.more}</h2>
+          <p>{item.links.map((l) => <a href={`${B}${l.href}`}>{l.label}</a>)}</p>
+        </nav>
+      </>
+    )}
+
+    <section class="cta">
+      <p>{L.cta}</p>
+      <a class="btn" href={`${B}/contact/`}>{L.ctaBtn}</a>
+    </section>
+  </main>
+
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+  <script type="application/ld+json" set:html={ldJson(jsonLd)} is:inline />
+</BaseLayout>
+
+<style>
+  main { max-width: 62rem; margin: 0 auto; padding: clamp(2rem, 5vw, 4rem) clamp(1rem, 4vw, 3rem) 3rem;  /* 09-17 「太多空余」:页底 5 → 3rem */ }
+  .hd { margin-bottom: clamp(2rem, 4vw, 3rem); }
+  .eyebrow { margin: 0 0 .75rem; font-size: .75rem; letter-spacing: .16em; text-transform: uppercase;
+             color: var(--ck-ink-faint); }
+  .eyebrow a { color: inherit; text-decoration: none; }
+  .eyebrow a:hover { color: var(--ck-accent); }
+  h1 { margin: 0 0 .75rem; font-size: clamp(1.6rem, 3.2vw, 2.4rem); line-height: 1.24;
+       letter-spacing: -.02em; text-wrap: balance; }
+  .src { margin: 0 0 1rem; padding: .75rem .875rem; border-radius: var(--ck-radius);
+          background: var(--ck-surface-alt); border-inline-start: 3px solid var(--ck-accent);
+          font-size: .8125rem; line-height: 1.7; color: var(--ck-ink-soft); }
+  .badge { display: inline-block; margin: 0 0 1rem; padding: .25rem .625rem; border-radius: 999px;
+           font-size: .75rem; color: var(--ck-ink-soft);
+           background: var(--ck-surface-alt); border: 1px solid var(--ck-line); }
+  .lede { margin: 0 0 .75rem; font-size: clamp(1rem, 1.6vw, 1.125rem); line-height: 1.75; color: var(--ck-ink-soft); }
+  .note { margin: 0; font-size: .875rem; line-height: 1.7; color: var(--ck-ink-faint); }
+  .brief, .verdict { margin: 0 0 .75rem; font-size: 1rem; line-height: 1.75; }
+  .brief b, .verdict b { display: block; margin-bottom: .3125rem; font-size: .6875rem; letter-spacing: .14em;
+                         text-transform: uppercase; color: var(--ck-accent); }
+  .brief { color: var(--ck-ink-soft); }
+
+  .idx { list-style: none; margin: 0; padding: 0; display: grid; gap: .875rem; }
+  .idx a { display: block; position: relative; padding: clamp(1.125rem, 2.4vw, 1.625rem);
+           border: 1px solid var(--ck-line); border-radius: var(--ck-radius);
+           background: var(--ck-surface); text-decoration: none; color: inherit; }
+  .idx a:hover { border-color: var(--ck-accent); }
+  .idx h2 { margin: 0 0 .5rem; font-size: 1.0625rem; line-height: 1.45; padding-right: 2rem; }
+  .idx p { margin: 0; font-size: .875rem; line-height: 1.7; color: var(--ck-ink-soft); }
+  .idx .go { position: absolute; top: clamp(1.125rem, 2.4vw, 1.625rem); inset-inline-end: 1.25rem;
+             color: var(--ck-ink-faint); }
+
+  section { margin-top: clamp(2.25rem, 4.5vw, 3.5rem); }
+  section h2 { margin: 0 0 1rem; font-size: 1.0625rem; letter-spacing: -.01em; }
+
+  .facts dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: .5rem 1.25rem; }
+  .facts dt { font-size: .8125rem; color: var(--ck-ink-faint); white-space: nowrap; }
+  .facts dd { margin: 0; font-size: .9375rem; color: var(--ck-ink); }
+
+  /* 时间线用真正的 ol —— 顺序是内容,读屏与 AI 都靠它判断先后 */
+  .stages ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.125rem; }
+  .stages li { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: .875rem;
+               padding-bottom: 1.125rem; border-bottom: 1px solid var(--ck-line); }
+  .stages li:last-child { border-bottom: 0; padding-bottom: 0; }
+  .stages .when { font-size: .8125rem; font-weight: 600; color: var(--ck-accent); padding-top: .1rem; }
+  .stages p { margin: 0; font-size: .9375rem; line-height: 1.75; color: var(--ck-ink-soft); }
+  .stages .risk { margin-top: .4375rem; font-size: .8125rem; color: var(--ck-ink-faint); }
+  .stages .risk b { color: var(--ck-ink-soft); font-weight: 600; margin-inline-end: .375rem; }
+
+  .trap ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .5rem; }
+  .trap li { font-size: .9375rem; line-height: 1.7; color: var(--ck-ink-soft); }
+
+  .more p { margin: 0; display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; }
+  .more a { font-size: .875rem; color: var(--ck-ink-soft); }
+
+  .cta { padding: clamp(1.5rem, 3.5vw, 2.5rem); border-radius: var(--ck-radius);
+         background: var(--ck-surface-alt); border: 1px solid var(--ck-line);
+         display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; }
+  .cta p { margin: 0; color: var(--ck-ink-soft); font-size: .9375rem; line-height: 1.7; }
+  .btn { display: inline-flex; padding: .6875rem 1.5rem; border-radius: 999px;
+         background: var(--ck-accent); color: #fff; text-decoration: none; font-weight: 600; font-size: .9375rem; }
+
+  @media (max-width: 40rem) {
+    .stages li { grid-template-columns: 1fr; gap: .375rem; }
+    .facts dl { grid-template-columns: 1fr; gap: .125rem .75rem; }
+    .facts dd { margin-bottom: .625rem; }
+  }
+</style>

@@ -1,0 +1,256 @@
+{
+ "at": "2026-09-24 20:40:14",
+ "src": "F:/0cosmetic/tools-review/audit_v2",
+ "dir": "F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-203708",
+ "total": 41,
+ "fail": 21,
+ "seconds": 185,
+ "results": [
+  {
+   "id": "G1",
+   "desc": "访客页加 COUNT(*) → 拦(C1)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):2 个文件 2 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 2 · 6.2s → 拦\n   拦 C1(visitor-live-aggregate) apps/web/src/pages/x.astro:1  const r = await db.prepare(\"SELECT COUNT(*) FROM products\").first()\n"
+  },
+  {
+   "id": "G2",
+   "desc": "cron 里加 env.PHOTO.list({prefix}) → 拦(C4)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):2 个文件 2 行 · 拦 1 · 存疑 1 · 豁免 0 · 风险 1 · 6.5s → 拦\n   拦 C4(C4-r2-list) apps/web/src/pages/api/cron/y.ts:1  export const y = await env.PHOTO.list({ prefix: 'a/' })\n   疑 C4(C4-r2-list-ast) apps/web/src/pages/api/cron/y.ts:1  export const y = await env.PHOTO.list({ prefix: 'a/' })\n"
+  },
+  {
+   "id": "G3",
+   "desc": "tools 脚本加 copy_object( → 拦(C5,硬规则 exit 3)",
+   "ok": true,
+   "detail": "rc=3 == 第一关 z(ops):1 个文件 1 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 0 · 4.8s → 拦\n   拦 C5(C5-r2-copy-move) z.py:1  s3.copy_object(Bucket='b', Key='k', CopySource='x')\n"
+  },
+  {
+   "id": "G4",
+   "desc": "lib 里加 fetch('https://api.deepseek.com/…') → 拦(C7)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):2 个文件 2 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 1 · 10.5s → 拦\n   拦 C7(C7-paid-api) apps/web/src/lib/a.ts:2  export const r = fetch('https://api.deepseek.com/v1/chat')\n"
+  },
+  {
+   "id": "G5",
+   "desc": "加 const k = 'sk-…'(24 位) → 拦(S1,硬规则)",
+   "ok": true,
+   "detail": "rc=3 == 第一关 w1(build):2 个文件 2 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 1 · 5.6s → 拦\n   拦 S1(secret-literal) apps/web/src/lib/k.ts:1  export const k = 'sk-abcdefghijklmnopqrstuvwx'\n"
+  },
+  {
+   "id": "G6",
+   "desc": "zh-cn 页面加 帛卉集团/印尼工厂/自有厂房 → 拦(R1–R3,硬规则)",
+   "ok": true,
+   "detail": "rc=3 == 第一关 w1(build):2 个文件 2 行 · 拦 3 · 存疑 0 · 豁免 0 · 风险 1 · 11.7s → 拦\n   拦 R1(R1-group-branding) apps/web/src/pages/zh-cn.astro:2  <p>帛卉集团 印尼工厂 自有厂房</p>\n   拦 R3(R3-indonesia-factory) apps/web/src/pages/zh-cn.astro:2  <p>帛卉集团 印尼工厂 自有厂房</p>\n   拦 R2(R2-owned-factory) apps/web/src/pages/zh-cn.astro:2  <p>帛卉集团 印尼工厂 自有厂房</p>\n"
+  },
+  {
+   "id": "G7",
+   "desc": "后台页面加 SueAI → 拦(R4)",
+   "ok": true,
+   "detail": "rc=3 == 第一关 w1(build):2 个文件 2 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 1 · 6.1s → 拦\n   拦 R4(R4-sueai) apps/web/src/pages/bohui/x.astro:1  <p>SueAI 助手</p>\n"
+  },
+  {
+   "id": "G8",
+   "desc": "页面加「起订量 3000 件」→ 构建通过,存疑 R7",
+   "ok": true,
+   "detail": "rc=0 == 第一关 w1(build):2 个文件 2 行 · 拦 0 · 存疑 1 · 豁免 0 · 风险 1 · 5.6s → 过\n   疑 R7(R7-invented-terms) apps/web/src/pages/zh-cn.astro:2  <p>起订量 3000 件</p>\n"
+  },
+  {
+   "id": "G9",
+   "desc": "不带规则 id 和理由的 // nosemgrep → 拦(K6)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):2 个文件 2 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 1 · 5.6s → 拦\n   拦 K6(K6-bare-nosemgrep) apps/web/src/lib/a.ts:2  export const b = 2 // nosemgrep\n"
+  },
+  {
+   "id": "G10",
+   "desc": "public/ 下放 x.sql.bak → 拦(S3)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):1 个文件 1 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 0 · 0.8s → 拦\n   拦 S3(S3-public-junk) apps/web/public/x.sql.bak:0  x.sql.bak\n"
+  },
+  {
+   "id": "G11",
+   "desc": "max-width 112.5rem 改成 90rem → 拦(K1)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):2 个文件 3 行 · 拦 3 · 存疑 0 · 豁免 0 · 风险 0 · 10.7s → 拦\n   拦 K1(K1-maxw-1800) apps/web/src/styles/base.css:0  .wrap { max-width: 90rem; }\n   拦 K1(K1-maxw-gone) -:0  112.5rem 从 1 处降到 0\n   拦 S3(S3-public-junk) apps/web/public/x.sql.bak:0  x.sql.bak\n"
+  },
+  {
+   "id": "G12",
+   "desc": "删掉 COUNT 后面的 LIMIT → 算新增(blob 缓存按内容判)",
+   "ok": true,
+   "detail": "rc=1 == 第一关 w1(build):2 个文件 3 行 · 拦 3 · 存疑 0 · 豁免 0 · 风险 2 · 10.9s → 拦\n   拦 C1(visitor-live-aggregate) apps/web/src/pages/search.astro:3  const n = await db.prepare(`SELECT COUNT(*) FROM (SELECT 1 FROM products WHERE name = ?)`).bind(q).first()\n   拦 C3(search-count-cap) apps/web/src/pages/search.astro:3  const n = await db.prepare(`SELECT COUNT(*) FROM (SELECT 1 FROM products WHERE name = ?)`).bind(q).first()\n   拦 S3(S3-public-junk) apps/web/public/x.sql.bak:0  x.sql.bak\n"
+  },
+  {
+   "id": "G13",
+   "desc": "只改一行 CSS → 过;热跑 10 次中位数 0.7s ≤10s",
+   "ok": false,
+   "detail": "rc=1 times=[6.2, 0.7, 0.7, 0.7, 0.7, 0.8, 0.8, 0.7, 0.7, 0.7] == 第一关 w1(build):2 个文件 3 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 0 · 6.0s(缓存) → 拦\n   拦 S3(S3-public-junk) apps/web/public/x.sql.bak:0  x.sql.bak\n"
+  },
+  {
+   "id": "X12",
+   "desc": "误报样例 10 条不拦;印尼生产、集团旗下判存疑",
+   "ok": false,
+   "detail": "rc=1 == 第一关 w1(build):2 个文件 11 行 · 拦 1 · 存疑 2 · 豁免 0 · 风险 1 · 5.5s → 拦\n   拦 S3(S3-public-junk) apps/web/public/x.sql.bak:0  x.sql.bak\n   疑 R3(R3-indonesia-production-doubt) apps/web/src/pages/zh-cn.astro:5  <p>在印尼生产销售需 BPOM 注册</p>\n   疑 R1(R1-group-branding-doubt) apps/web/src/pages/zh-cn.astro:6  <p>欧莱雅集团旗下品牌</p>\n"
+  },
+  {
+   "id": "X13",
+   "desc": "// nosemgrep: C5-r2-copy-move 理由 放在 copy_object( 上 → 仍拦(strict)",
+   "ok": true,
+   "detail": "rc=3 == 第一关 w1(build):2 个文件 2 行 · 拦 2 · 存疑 0 · 豁免 0 · 风险 1 · 5.8s → 拦\n   拦 C5(C5-r2-copy-move) apps/web/src/lib/a.ts:2  export const m = s3.copy_object({}) // nosemgrep: C5-r2-copy-move 迁移脚本要用\n   拦 S3(S3-public-junk) apps/web/public/x.sql.bak:0  x.sql.bak\n"
+  },
+  {
+   "id": "B0",
+   "desc": "adopt-baseline:first_base 的范围树登记成 refs/ship/w1,ship.jsonl 记 baseline",
+   "ok": true,
+   "detail": "baseline w1:refs/ship/w1 = cd7fce68f7(树 9fa606257efd,线上版本 v0-base)\n"
+  },
+  {
+   "id": "X1",
+   "desc": "新增 src/pages/distributors/x.astro、改被 .gitignore 吃掉的 src/data/site-counts.json → 树哈希都变",
+   "ok": true,
+   "detail": "434ac121 cbf10503 ae62d347"
+  },
+  {
+   "id": "X4",
+   "desc": "assume-unchanged 后改文件 → 哈希变;filter 属性 → 拦;符号链接 → 拦",
+   "ok": false,
+   "detail": "8a9b598d c17748a9 rc=0 8a9b598d0d7c83cbdd95e9db1c3db19944311807\n "
+  },
+  {
+   "id": "P1",
+   "desc": "没有审核单 → 出草稿 + Laya/Jev 机审(夹具)+ 打印工作流,退出 2 待审",
+   "ok": false,
+   "detail": "rc=1 == w1 审核范围树 752ba31ba62b · 基准 cd7fce68f7(树 9fa606257efd)\n== 第一关 w1(ship):2 个文件 3 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 1 · 10.2s → 拦\n   拦 S3(S3-public-junk) apps/web/public/x.sql.bak:0  x.sql.bak\n"
+  },
+  {
+   "id": "P2",
+   "desc": "报告没到齐前重跑仍是待审",
+   "ok": false,
+   "detail": "rc=1"
+  },
+  {
+   "id": "T3",
+   "desc": "报告 tree 写错 / 空壳报告 → 签单拒收(待审)",
+   "ok": false,
+   "detail": "1 1 [审核单] 拒绝:没有草稿 F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-203708/tr/audit_v2/drafts/w1-752ba31ba62b.json,先跑 ship.sh\n"
+  },
+  {
+   "id": "P3",
+   "desc": "造审核单:Claude 报告 + 机审过 → 签单「过」,台账 tickets.jsonl 记一行",
+   "ok": false,
+   "detail": "rc=1 == w1 审核范围树 752ba31ba62b · 基准 cd7fce68f7(树 9fa606257efd)\n== 第一关 w1(ship):2 个文件 3 行 · 拦 1 · 存疑 0 · 豁免 0 · 风险 1 · 10.2s(缓存) → 拦\n   拦 S3(S3-public-junk) apps/web/public/x.sql.bak:0  x.sql.bak\n"
+  },
+  {
+   "id": "V0",
+   "desc": "审核单有效 → verify(ship)通过",
+   "ok": false,
+   "detail": "[verify ship] 拒绝:\n   没有审核单 F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-203708/tr/audit_v2/tickets/w1/752ba31ba62b.json(树 752ba31ba62b):先跑 ship.sh 审核\n"
+  },
+  {
+   "id": "T1",
+   "desc": "签单后改一个字 → verify 第 1 步拦",
+   "ok": false,
+   "detail": "[verify ship] 拒绝:\n   没有审核单 F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-203708/tr/audit_v2/tickets/w1/6e42ffa71805.json(树 6e42ffa71805):先跑 ship.sh 审核\n"
+  },
+  {
+   "id": "issue_flow",
+   "desc": "用例组异常",
+   "ok": false,
+   "detail": "Traceback (most recent call last):\n  File \"F:\\0cosmetic\\tools-review\\audit_v2\\redteam\\run.py\", line 638, in main\n    fn()\n  File \"F:\\0cosmetic\\tools-review\\audit_v2\\redteam\\run.py\", line 270, in issue_flow\n    orig = io.open(p, encoding='utf-8').read()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: 'F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-203708/tr/audit_v2/tickets/w1/752ba31ba62b.json'\n"
+  },
+  {
+   "id": "judge_cases",
+   "desc": "用例组异常",
+   "ok": false,
+   "detail": "Traceback (most recent call last):\n  File \"F:\\0cosmetic\\tools-review\\audit_v2\\redteam\\run.py\", line 638, in main\n    fn()\n  File \"F:\\0cosmetic\\tools-review\\audit_v2\\redteam\\run.py\", line 305, in judge_cases\n    j = d['judges']['jev']\n        ~^^^^^^^^^^\nTypeError: 'NoneType' object is not subscriptable\n"
+  },
+  {
+   "id": "S-a",
+   "desc": "ship.sh 没审核单 → 退出 2 待审,打印 review-ticket 调用",
+   "ok": false,
+   "detail": "rc=127 /bin/bash: F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-203708/repo/tools/ship.sh: No such file or directory\n"
+  },
+  {
+   "id": "S-b",
+   "desc": "再跑 ship.sh:签单 → 构建 → 封存 → 部署(假 wrangler 先跑 build.command 验单)→ 台账 + refs/ship 快照(父 = 基线)",
+   "ok": false,
+   "detail": "rc=127 /bin/bash: F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-203708/repo/tools/ship.sh: No such file or directory\n"
+  },
+  {
+   "id": "S-c",
+   "desc": "git log refs/ship/w1 = 上线历史(每次上线一个快照提交)",
+   "ok": false,
+   "detail": "baseline w1 v0-base source: 787d4c8ef15056672481d6503accaab0ce0a2dac time: 2026-09-24T20:39:05+08:00\n"
+  },
+  {
+   "id": "ship_walk",
+   "desc": "用例组异常",
+   "ok": false,
+   "detail": "ython312\\Lib\\subprocess.py\", line 548, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\subprocess.py\", line 1538, in _execute_child\n    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,\n                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nNotADirectoryError: [WinError 267] 目录名称无效。\n"
+  },
+  {
+   "id": "breakglass_walk",
+   "desc": "用例组异常",
+   "ok": false,
+   "detail": "Traceback (most recent call last):\n  File \"F:\\0cosmetic\\tools-review\\audit_v2\\redteam\\run.py\", line 638, in main\n    fn()\n  File \"F:\\0cosmetic\\tools-review\\audit_v2\\redteam\\run.py\", line 415, in breakglass_walk\n    bl = [json.loads(l) for l in io.open(f'{C}/ledger/breakglass.jsonl', encoding='utf-8') if l.strip()]\n                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: 'F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-203708/tr/audit_v2/ledger/breakglass.jsonl'\n"
+  },
+  {
+   "id": "U1",
+   "desc": "急修:在 refs/ship 上开干净 worktree 打补丁 → 快审 1 名 → 上线;主工作区别线的半成品没带上;挂 24 小时追审",
+   "ok": false,
+   "detail": "rc=127 /bin/bash: F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-203708/repo/tools/ship.sh: No such file or directory\n || /bin/bash: F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-203708/repo/tools/ship.sh: No such file or directory\n"
+  },
+  {
+   "id": "X9",
+   "desc": "急修改 middleware 20 行带【降读】→ 走急修(成本+安全);同一事故第 4 次 → 拒",
+   "ok": true,
+   "detail": "4-203708/tr/audit_v2\\ticket.py\", line 624, in check_urgent_quota\n    raise GateError(f'事故 {incident} 已急修 {groups} 次(6 小时内合并计 1 次,每个事故最多 3 次)')\nlib.GateError: 事故 INC-9 已急修 3 次(6 小时内合并计 1 次,每个事故最多 3 次)\n || [\"急修\", [\"急修 19 行 2 文件\"], [\"成本+安全\"], 19, true]\n"
+  },
+  {
+   "id": "watch_cases",
+   "desc": "用例组异常",
+   "ok": false,
+   "detail": "Traceback (most recent call last):\n  File \"F:\\0cosmetic\\tools-review\\audit_v2\\redteam\\run.py\", line 638, in main\n    fn()\n  File \"F:\\0cosmetic\\tools-review\\audit_v2\\redteam\\run.py\", line 508, in watch_cases\n    known = next(r['version_id'] for r in lmod.ledger_records('ship.jsonl') if r.get('action') == 'deploy' and r.get('status') == 'ok')\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nStopIteration\n"
+  },
+  {
+   "id": "S2",
+   "desc": "smoke 夹具:两条首页 5xx → 干跑,打印「将回退到 <prev_live_version>」",
+   "ok": true,
+   "detail": "   ✗ https://s.test/:状态 503 ≠ [200]\n   ✗ https://s.test/en/:状态 502 ≠ [200]\n[冒烟 deploy] w1:1/3 过\n   关键页 2 条仍 5xx/超时,将回退到 v-prev-good\n"
+  },
+  {
+   "id": "X8",
+   "desc": "对照地址不通 → 本机网络异常不回退;部署前已 5xx → 不回退",
+   "ok": true,
+   "detail": "7 6    ✗ https://s.test/:状态 503 ≠ [200]\n   ✗ https://s.test/en/:状态 502 ≠ [200]\n[冒烟 deploy] w1:1/3 过\n   对照地址直连和 7890 都不通 → 判「本机网络异常」,不回退,只开单\n    ✗ https://s.test/:状态 503 ≠ [200]\n   ✗ https://s.test/en/:状态 502 ≠ [200]\n[冒烟 deploy] w1:1/3 过\n   关键页失败 2 条,其中 2 条部署前就坏(外部原因:D1 7500 / 上游),不回退\n"
+  },
+  {
+   "id": "D1",
+   "desc": "deploy.sh 副本 + 假 wrangler,不经 ship.sh 直接跑 → 顶部自查拦下",
+   "ok": false,
+   "detail": "/bin/bash: F:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-203708/d1repo/tools/platform/deploy.sh: No such file or directory\n"
+  },
+  {
+   "id": "H-deny",
+   "desc": "hook 该拒的 44 条(H1–H5、H10c、H11、H15、H17、T9、O2、SendMessage/computer-use)全部拒",
+   "ok": false,
+   "detail": "H15v=allow"
+  },
+  {
+   "id": "H-allow",
+   "desc": "hook 该放的 21 条(H6–H10b、H16、日常只读/构建/白名单入口)全部放",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "id": "H-speed",
+   "desc": "hook 单次 108 ms(目标 ≤300 ms)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "id": "H17+",
+   "desc": "报告:草稿列出的文件名和 refute-*/复核-* 放行,其他拒",
+   "ok": false,
+   "detail": "�ܱ���·�� f:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-203708/tr/audit_v2/reports/w9/abcdefabcdef/�ۺ�.json(բ�Ÿ���/����/̨��/�ݸ�/����/.git ����/site-packages ע��) | �ܱ���·�� f:/0cosmetic/tools-review/audit_v2/cache/tmp/redteam-20260924-203708/tr/audit_v2/reports/w9/abcdefabcdef/refute-jev.json(բ�Ÿ���/����/̨��/�ݸ�/����/.git ����/site-packages ע��) | True\n"
+  }
+ ]
+}

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>biosphere-ai 管理后台 · 登录</title>
+<style>
+  :root {
+    --paper: #FAFAF5;
+    --paper-deep: #F3F0E8;
+    --ink: #1C1917;
+    --ink-soft: #57534E;
+    --brand: #B8860B;
+    --accent: #2D5016;
+    --accent-soft: #E8EDE2;
+    --line: #D5D1CA;
+    --white: #FFFFFF;
+    --danger: #B3261E;
+    --radius: 10px;
+    --shadow: 0 8px 30px rgba(28, 25, 23, .10);
+    --font: 'Inter', 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font);
+    background: linear-gradient(160deg, var(--paper) 0%, var(--paper-deep) 100%);
+    color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .login-card {
+    width: 100%; max-width: 400px;
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 36px 32px 30px;
+  }
+  .login-brand { text-align: center; margin-bottom: 26px; }
+  .login-brand .logo {
+    width: 56px; height: 56px; margin: 0 auto 12px;
+    border-radius: 14px; display: flex; align-items: center; justify-content: center;
+    background: var(--accent); color: #fff; font-weight: 700; font-size: 22px; letter-spacing: .5px;
+  }
+  .login-brand h1 { font-size: 20px; font-weight: 700; color: var(--ink); }
+  .login-brand p { font-size: 13px; color: var(--ink-soft); margin-top: 6px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+  .field input {
+    width: 100%; height: 44px; padding: 0 14px;
+    font-size: 15px; font-family: var(--font);
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--paper); color: var(--ink);
+    outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .btn {
+    width: 100%; height: 46px; border: none; border-radius: 8px;
+    font-size: 15px; font-weight: 600; font-family: var(--font);
+    background: var(--accent); color: #fff; cursor: pointer;
+    transition: background .15s, transform .05s;
+  }
+  .btn:hover { background: #243f12; }
+  .btn:active { transform: scale(.99); }
+  .btn:disabled { opacity: .6; cursor: not-allowed; }
+  .msg { min-height: 20px; font-size: 13px; margin: 12px 0 4px; text-align: center; }
+  .msg.error { color: var(--danger); }
+  .msg.ok { color: var(--accent); }
+  .hint { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line); font-size: 12px; color: var(--ink-soft); text-align: center; line-height: 1.7; }
+  .back { display: block; margin-top: 14px; text-align: center; font-size: 13px; color: var(--ink-soft); text-decoration: none; }
+  .back:hover { color: var(--brand); }
+  @media (max-width: 480px) {
+    .login-card { padding: 28px 22px 24px; }
+  }
+</style>
+</head>
+<body>
+  <form class="login-card" id="loginForm" novalidate>
+    <div class="login-brand">
+      <div class="logo">bio</div>
+      <h1>biosphere-ai 管理后台</h1>
+      <p>BIOSPHERE-AI Brand Site Console</p>
+    </div>
+    <div class="field">
+      <label for="password">管理员密码</label>
+      <input type="password" id="password" name="password" placeholder="请输入登录密码" autocomplete="current-password" required>
+    </div>
+    <button class="btn" id="submitBtn" type="submit">登 录</button>
+    <div class="msg" id="msg" role="status"></div>
+    <div class="hint">仅限授权管理员访问<br>未登录访问管理页将自动重定向至此</div>
+    <a class="back" href="/">← 返回主站首页</a>
+  </form>
+<script>
+(function () {
+  var form = document.getElementById('loginForm');
+  var pwd = document.getElementById('password');
+  var btn = document.getElementById('submitBtn');
+  var msg = document.getElementById('msg');
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var value = pwd.value.trim();
+    if (!value) { show('请输入密码', true); return; }
+    btn.disabled = true;
+    msg.className = 'msg';
+    msg.textContent = '验证中…';
+    fetch('/bhbohui/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: value })
+    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (res.ok && res.d && res.d.ok) {
+          show('登录成功，正在进入后台…', false);
+          setTimeout(function () { location.href = '/bhbohui'; }, 300);
+        } else {
+          show((res.d && res.d.message) || '密码错误', true);
+          btn.disabled = false;
+          pwd.select();
+        }
+      })
+      .catch(function () {
+        show('网络异常，请重试', true);
+        btn.disabled = false;
+      });
+  });
+
+  function show(text, isError) {
+    msg.textContent = text;
+    msg.className = 'msg' + (isError ? ' error' : ' ok');
+  }
+})();
+</script>
+</body>
+</html>

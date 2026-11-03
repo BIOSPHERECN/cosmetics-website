@@ -21,9 +21,22 @@ html[data-dtc] {
   --dtc-paper: #f9f8f5;        /* 暖白:主底 */
   --dtc-sand: #eeeedc;         /* 沙色:交替屏 */
   --dtc-line: #d5d1ca;         /* 分隔线 */
-  --dtc-strip: #ef4b81;        /* 通告条底色 */
+  /* 通告条底色。原站是 #ef4b81,白字压上去只有 3.50:1 ——
+     正文级字号要 4.5:1 才算过关。往黑里兑 14% 得到 #ce416f(4.58:1),
+     色相没动,读起来还是同一支粉,只是不再是"看得见但读着累"。 */
+  --dtc-strip: #ce416f;
   --dtc-strip-ink: #ffffff;
   --dtc-leaf: #4a6b3a;         /* 草本绿:陈述屏的叶纹 */
+
+  /* ── 暗场只允许两档,而且必须同色系 ──────────────────────
+     实测这一页底部同时出现了三种互不相干的暗色:
+       #000418(DTC 墨) · #101a16(我加的墨绿) · #1a2036(noir 主题遗留)
+     三个色相各走各的,读起来就是「三个设计拼在一起」。
+     收敛成同一色相的深浅两档:深的压场,浅的做层次。 */
+  --dtc-dark:      #000418;    /* 主暗场:数字条、页脚 */
+  --dtc-dark-soft: #0c1330;    /* 次暗场:相邻暗块之间做层次用 */
+  --dtc-on-dark:   #eef0f6;
+  --dtc-on-dark-soft: rgb(238 240 246 / 0.66);
 
   /* ── 字 ── Futura 打头是原站的选择:几何无衬线,
        字面开阔、字重对比大,美妆 DTC 用得最多的一类。
@@ -31,15 +44,56 @@ html[data-dtc] {
   --dtc-font: 'Futura', 'Century Gothic', 'Helvetica Neue', Arial,
               'PingFang SC', 'Microsoft YaHei', sans-serif;
 
+  /* ── --ck-* 令牌整套映射到 DTC 色板 ─────────────────────────
+     病根:AI 工作台、测肤页、询盘框等共用组件吃的是 --ck-*(surface/bg/ink/line),
+     而 dtc 主题此前**从没定义过这套令牌** —— 它们就掉进别的主题的深色默认值。
+     创始人截到的「方案说明」深底暗字框、更早的品牌生态黑底、资质墙黑底,
+     全是同一类病。之前是出一个补一个(.eco/.certwall/.band 各写一段覆盖),
+     这里把令牌整套接管,吃 --ck-* 的组件从此天然落在 dtc 色场里。
+     注意不动 --ck-accent:品牌主色由 BaseLayout 按站注入,不归主题管。 */
+  --ck-bg: var(--dtc-paper);
+  --ck-surface: #ffffff;
+  --ck-surface-alt: var(--dtc-sand);
+  --ck-ink: var(--dtc-ink);
+  --ck-ink-soft: color-mix(in srgb, var(--dtc-ink) 74%, transparent);
+  --ck-ink-faint: color-mix(in srgb, var(--dtc-ink) 52%, transparent);
+  --ck-line: var(--dtc-line);
+  /* hero 三件也必须一起接管 —— tech-spec 学派给 hero 定的是近黑底(#080b12),
+     图片没铺满的地方就露出一条空黑带,创始人截图点名「别搞黑色底!不好看」。
+     教训同 --ck-* 接管:改共享令牌就要把**该学派定义过的每一个**都过一遍,
+     漏一个,漏的那个就在某页露馅。 */
+  --ck-hero-bg: var(--dtc-paper);
+  --ck-hero-ink: var(--dtc-ink);
+  --ck-hero-deco: none;
+
+  /* ── 版心与标题字(创始人 2026-08-30 两条指令)──────────────
+     ①「页面太窄了,起码都是1800宽度,并有自适应」:
+       版心 1800px。.ck-wrap 本身带内边距,小屏自动缩,不用媒体查询。
+     ②「字体注意美感」:标题换思源宋体(BaseLayout 按主题挂载),
+       Windows 系统栈的加粗雅黑大标题是黑压压一片,宋体显示字 +
+       无衬线正文才是高端美妆的排印配伍。正文字体不动。 */
+  /* ★ 创始人限定:版心必须 1800,不可改(2026-08-31 原话「我限定你必须用1800!」)。
+     「空白太大」不靠收版心解决,靠让内容填满 1800 轴:
+     单一左轴(编辑偏置已废)+ hero 左文右图对开填满 + 网格铺满整幅。 */
+  --ck-maxw: 112.5rem;
+  /* 标题字第三版:创始人看过宋体实物后改口「还是换思源,或者阿里字体」——
+     思源黑体打头,阿里普惠体做本地优先备选(装了就用),不再用衬线。 */
+  --ck-font-head: 'Alibaba PuHuiTi 3.0', 'Alibaba PuHuiTi', 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+
   /* ── 度量 ── */
   --dtc-wrap: 1280px;
-  --dtc-wrap-wide: 1440px;
+  /* 原站量出来是 1440,但创始人限定全站版心 1800(见 --ck-maxw 注释)——
+     宽档容器若窄于版心,同页出现两条左轴(能力页实拍:ProcGrid 缩进 160px,
+     和相邻版块起笔线错开),这正是「乱」。宽档跟版心走。 */
+  --dtc-wrap-wide: var(--ck-maxw);
   --dtc-wrap-mid: 1152px;
   --dtc-wrap-prose: 768px;
   --dtc-wrap-narrow: 576px;
   --dtc-gutter: 24px;
-  --dtc-py: 80px;
-  --dtc-py-lg: 96px;
+  /* 创始人全局审查令(2026-08-31):「版块大色块浪费空间」——
+     80/96 砍到 48/56;手机端见下方媒体查询 28/36 */
+  --dtc-py: 48px;
+  --dtc-py-lg: 56px;
 }
 
 /* 主题接管整页:字体、底色、字色三件套一次说清,组件里不再各写一遍 */
@@ -52,7 +106,7 @@ html[data-dtc] body {
 
 /* ── 容器五档 ───────────────────────────────────────────── */
 .dtc-wrap        { max-width: var(--dtc-wrap);        margin-inline: auto; padding-inline: var(--dtc-gutter); }
-.dtc-wrap-wide   { max-width: var(--dtc-wrap-wide);   margin-inline: auto; padding-inline: var(--dtc-gutter); }
+.dtc-wrap-wide   { max-width: var(--dtc-wrap-wide, 112.5rem);   margin-inline: auto; padding-inline: var(--dtc-gutter); }
 .dtc-wrap-mid    { max-width: var(--dtc-wrap-mid);    margin-inline: auto; padding-inline: var(--dtc-gutter); }
 .dtc-wrap-prose  { max-width: var(--dtc-wrap-prose);  margin-inline: auto; padding-inline: var(--dtc-gutter); }
 .dtc-wrap-narrow { max-width: var(--dtc-wrap-narrow); margin-inline: auto; padding-inline: var(--dtc-gutter); }
@@ -66,14 +120,16 @@ html[data-dtc] body {
 /* ── 标题层级 ───────────────────────────────────────────── */
 .dtc-h2 {
   margin: 0;
-  font-size: clamp(1.875rem, 1.2rem + 2.2vw, 3rem);   /* 30 → 48px,与原站 text-3xl md:text-5xl 对齐 */
+  /* 创始人:「字体特别大!」根字号 18px 会把 rem 放大 —— 上限从 3rem(54px)
+     压到 1.75rem(31.5px),对齐阿里大店版块标题的克制感 */
+  font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem);
   font-weight: 700;
   line-height: 1.12;
   letter-spacing: -0.01em;
   color: var(--dtc-ink);
   text-wrap: balance;
 }
-.dtc-h2.sm { font-size: clamp(1.875rem, 1.4rem + 1.4vw, 2.25rem); }  /* 30 → 36px */
+.dtc-h2.sm { font-size: clamp(1.125rem, 0.95rem + 0.7vw, 1.5rem); }  /* 20 → 27px */
 .dtc-lead {
   margin: 1.25rem 0 0;
   font-size: 0.9375rem;
@@ -81,10 +137,12 @@ html[data-dtc] body {
   color: color-mix(in srgb, var(--dtc-ink) 60%, transparent);
 }
 .dtc-eyebrow {
-  font-size: 0.75rem;
+  font-size: max(0.75rem, 14px);
   text-transform: uppercase;
   letter-spacing: 0.25em;
-  color: color-mix(in srgb, var(--dtc-ink) 50%, transparent);
+  /* 50% 墨压在纸色上只有 3.81:1;这类小号大写字距还拉开了,更难认。
+     提到 62% 得到 4.9:1,在沙色底上也有 4.8:1 —— 两种底都过。 */
+  color: color-mix(in srgb, var(--dtc-ink) 62%, transparent);
 }
 
 /* ── 描边按钮 ───────────────────────────────────────────
@@ -98,7 +156,7 @@ html[data-dtc] body {
   color: var(--dtc-ink);
   background: transparent;
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: max(0.8125rem, 14px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.15em;
@@ -111,5 +169,397 @@ html[data-dtc] body {
 .dtc-btn.on-dark:hover { background: #fff; color: var(--dtc-ink); }
 
 @media (max-width: 48rem) {
-  html[data-dtc] { --dtc-py: 56px; --dtc-py-lg: 64px; }
+  html[data-dtc] { --dtc-py: 28px; --dtc-py-lg: 36px; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   借用 B2B 家族的版块时,把它们拉回 DTC 的色场。
+   实测:资质墙与询盘条在 DTC 页上仍然是黑底(#0b0e17 / #080b12)——
+   因为它们的底色来自 --ck-* 令牌,而那套令牌是给深金主题调的。
+   一页里出现两种互不相干的暗色,读起来就是"两个设计拼在一起"。
+   ══════════════════════════════════════════════════════════════ */
+
+/* 资质墙:改成沙色底 + 墨字,和相邻版块同一个色场 */
+html[data-dtc] .certwall {
+  background: var(--dtc-sand);
+  color: var(--dtc-ink);
+  padding-block: var(--dtc-py);
+}
+html[data-dtc] .certwall h2 {
+  font-size: clamp(1.875rem, 1.4rem + 1.4vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--dtc-ink);
+}
+html[data-dtc] .certwall .note {
+  color: color-mix(in srgb, var(--dtc-ink) 60%, transparent);
+  max-width: 56ch;
+}
+html[data-dtc] .certwall .cert {
+  background: var(--dtc-paper);
+  border: 1px solid var(--dtc-line);
+  border-radius: 4px;
+}
+html[data-dtc] .certwall .mark {
+  background: var(--dtc-ink);
+  color: var(--dtc-paper);
+  border-radius: 3px;
+}
+html[data-dtc] .certwall .label { color: var(--dtc-ink); }
+html[data-dtc] .certwall .sub { color: color-mix(in srgb, var(--dtc-ink) 55%, transparent); }
+
+/* 询盘收口条:整页最后一块,给它整页唯一的深墨绿 ——
+   与工序流程带用同一个深色,让"暗场"在页面上出现两次且互相呼应,
+   而不是各暗各的。 */
+/* 询盘收口条:用主暗场,和数字条同色 ——
+   一页里的暗块彼此呼应才成体系,各暗各的就是撞色。 */
+html[data-dtc] .band {
+  background: var(--dtc-dark);
+  color: var(--dtc-on-dark);
+  padding-block: var(--dtc-py);
+}
+html[data-dtc] .band h2 { color: inherit; letter-spacing: -0.01em; }
+html[data-dtc] .band p { color: var(--dtc-on-dark-soft); }
+html[data-dtc] .band a[class*='cta'],
+html[data-dtc] .band .btn {
+  background: var(--dtc-paper);
+  color: #101a16;
+  border-color: var(--dtc-paper);
+}
+
+/* 图文对开在 DTC 页上的图别太高 —— 4:5 是品牌站的比例,
+   工厂店的图内容是横向展开的空间(车间、产线),3:2 更合适。 */
+html[data-dtc] .split .pic { aspect-ratio: 3 / 2; }
+
+
+/* ══ 底部三块的收口 ══════════════════════════════════════════
+   品牌生态与页脚的底色来自 noir 主题的 --ck-* 令牌(#1a2036 蓝紫),
+   和这一页的墨色(#000418)不是一个色相。
+   更严重的是**品牌生态那块是深底配深字**(#1a2036 底 + #000418 字)——
+   那不是配色不好看,是读不了。 */
+/* 集团品牌生态:这一页的深色收口段。
+   ★ 选择器必须按组件真实类名写(.node/.nm/.dom/.tag/.role/.here)★
+   第一版是**猜的**([class*='card']),根本匹配不到 .node ——
+   在旧的错误深色 surface 下碰巧能看,--ck 令牌接管(surface→白)后
+   当场露馅:白卡片压着为深卡调的浅色文字,创始人截到的"白卡鬼字"就是它。
+   教训:皮肤层覆盖别人组件前,先打开组件抄类名,不许猜。 */
+/* 生态段:同页脚,子树令牌翻转(理由见页脚那段注释)。
+   .node 的卡底原来吃 --ck-surface,翻转后自动变半透明浅膜,连它都不用单写。 */
+html[data-dtc] .eco {
+  --ck-ink: var(--dtc-on-dark);
+  --ck-ink-soft: var(--dtc-on-dark-soft);
+  --ck-ink-faint: rgb(238 240 246 / 0.46);
+  --ck-line: rgb(255 255 255 / 0.16);
+  --ck-surface: rgb(255 255 255 / 0.05);
+  --ck-surface-alt: var(--dtc-dark-soft);
+  background: var(--dtc-dark-soft);
+  color: var(--dtc-on-dark);
+}
+/* .role 用品牌色(--ck-accent),深底上本就可读,不动 */
+
+/* 页脚:深色收尾段。
+   ★ 手法是「子树令牌翻转」,不是逐类覆盖 ★
+   逐类覆盖打不过 Astro 作用域:它给内部每个选择器都附加 [data-astro-cid],
+   特异度堆到 (0,4,1),外面 html[data-dtc] footer.ft a 只有 (0,2,2),必输 ——
+   实拍就是深底暗字(导航、邮箱全隐形)。
+   在子树上把 --ck-ink 三件套翻成亮色,组件内部照常读令牌,自动全亮,
+   而且以后页脚里再加任何吃令牌的东西都天然正确。 */
+html[data-dtc] footer.ft {
+  --ck-ink: var(--dtc-on-dark);
+  --ck-ink-soft: var(--dtc-on-dark-soft);
+  --ck-ink-faint: rgb(238 240 246 / 0.46);
+  --ck-line: rgb(255 255 255 / 0.14);
+  --ck-surface: rgb(255 255 255 / 0.05);
+  --ck-surface-alt: rgb(255 255 255 / 0.05);
+  background: var(--dtc-dark);
+  color: var(--dtc-on-dark-soft);
+}
+
+/* 店招那一段:section 自己没有底色,取到了纯黑。
+   图和卡片盖住了所以看不出来,但图没加载完的那一瞬间会闪一下黑。 */
+html[data-dtc] .sh { background: var(--dtc-paper); }
+
+/* 数字条统一走令牌,不再各写各的 */
+html[data-dtc] .sb.ink { background: var(--dtc-dark); color: var(--dtc-on-dark); }
+
+/* 工序流程带的深色档也归到同一色系 */
+html[data-dtc] .ribbon.deep { background: var(--dtc-dark-soft); color: var(--dtc-on-dark); }
+
+
+/* ── 主 CTA 的白字对比度 ─────────────────────────────────────
+   「立即询盘」是全站最重要的按钮,白字压在品牌色上实测只有 3.72:1。
+   品牌色是数据库里的 brand_color,按站不同,所以不能改死一个 hex ——
+   改成从品牌色兑黑 12% 派生:色相不变,任何品牌色都往安全侧走一步。
+   只作用在这套皮肤里;另外四站同样偏低,但那要动集团主色,留给创始人定。 */
+html[data-dtc] .cta,
+html[data-dtc] .cart-fab,
+html[data-dtc] a[class*='btn']:not(.dtc-btn) {
+  background: color-mix(in srgb, var(--ck-accent) 88%, #000);
+}
+html[data-dtc] .cta:hover,
+html[data-dtc] .cart-fab:hover {
+  background: color-mix(in srgb, var(--ck-accent) 74%, #000);
+}
+
+/* ── 标题排印细则(「字体注意美感」)──────────────────────────
+   宋体标题的三条纪律:
+   ① 字重 600:宋体 900 会糊成墨块,600 笔画间有呼吸;
+   ② 行高 1.14:editorial 层给拉丁字定的 0.94 会把汉字上下笔画剪掉;
+   ③ 字距 +0.02em:汉字方块字,负字距(拉丁的做法)会让笔画打架。
+   多叠一个 [data-brand] 把特异度抬到 (0,4,x),压过 editorial 层
+   同类规则 —— 两层文件加载顺序不归我们管,特异度归我们管。 */
+html[data-dtc][data-brand] h1,
+html[data-dtc][data-brand] h2,
+html[data-dtc][data-brand] h3 {
+  /* 思源黑体只载了 500/700/900:标题用 700 —— 600 会被浏览器伪合成,发虚 */
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.14;
+}
+html[data-dtc][data-editorial][data-brand] .hero h1 {
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+}
+/* 眉标/按钮一类的小号大写字仍走无衬线 —— 宋体小字号发虚 */
+html[data-dtc][data-brand] .ck-eyebrow,
+html[data-dtc][data-brand] .ch {
+  font-family: var(--dtc-font);
+}
+
+
+/* ══ 帛卉品牌紫(创始人 2026-08-31:「公司介绍都是紫色为基调,
+   要符合公司的风格,黑色的部分也变紫色」)══════════════════════
+   紫色体系从公司 PDF 的 logo 采样定调:
+     主紫 #6B2FA0(accent,DB brand_color 同步,白字对比 7:1 过 AA)
+     紫墨 #241238(正文/描边 —— 近黑带紫相,纸色底上对比 ~15:1)
+     深紫场 #1D0A2E / 次深 #2E1547(数字条、页脚、暗块)
+     通告条 #6B2FA0
+   只作用于 biosphere-ai 一站;写在 html[data-dtc] 之后,同特异度后写者赢。 */
+/* 第二版(创始人:「你的紫色是深色,公司是浅色,看清楚我发的」)——
+   对表 PDF:公司基调是**浅紫罗兰**(淡紫底 + 深紫字),不是深茄紫。
+   浅紫场当底、深紫当字,原「暗场」组件(数字条/页脚/通告条)整体翻浅。 */
+/* 第三版 —— 色号直接采自《帛卉公司介绍_2026.pdf》页面像素直方图
+   (创始人:「你看看文档的色是什么色号」):
+   主频紫 #d0d0f0 / #c0c0f0(长春花紫底)、中调 #a090d0 / #b0a0d0。 */
+html[data-brand="biosphere-ai"] {
+  /* 创始人全局审查(2026-08-31):「其他版块抬头文字太大」——
+     子页量出 H1=76px / 章节 H2=58.5px。品牌级压制标题 token,
+     全站(编辑式子页含内)一次生效:H1 顶 40px、H2 顶 31px、H3 顶 22px */
+  --ck-h1: clamp(1.75rem, 1.35rem + 1.4vw, 2.25rem);
+  --ck-h2: clamp(1.25rem, 1rem + 1vw, 1.75rem);
+  --ck-h3: clamp(1.0625rem, 0.95rem + 0.4vw, 1.25rem);
+  --dtc-ink: #312052;                       /* 深紫字(纸底对比 ~13:1) */
+  --dtc-dark: #D0D0F0;                      /* 文档主频紫:数字条/页脚底 */
+  --dtc-dark-soft: #C0C0F0;                 /* 文档次频紫,做层次 */
+  --dtc-on-dark: #3A2B6E;                   /* 长春花底上的深紫字(8:1+) */
+  --dtc-on-dark-soft: rgb(58 43 110 / 0.74);
+  --dtc-strip: #D0D0F0;                     /* 通告条同底 */
+  --dtc-strip-ink: #43307A;
+  --ck-hero-ink: #312052;
+}
+/* 页脚/生态的令牌翻转原按深底写死了几档白色透明度 —— 浅紫底下重定 */
+html[data-brand="biosphere-ai"] footer.ft,
+html[data-brand="biosphere-ai"] .eco {
+  --ck-ink-faint: rgb(49 32 82 / 0.55);
+  --ck-line: rgb(58 37 100 / 0.18);
+  --ck-surface: rgb(58 37 100 / 0.05);
+  --ck-surface-alt: rgb(58 37 100 / 0.05);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Apple 层 —— 创始人 2026-09-02:「按 apple 提升整体高级感」
+   判据来自 emilkowalski/apple-design(WWDC《Designing Fluid Interfaces》
+   《The Details of UI Typography》提炼)+ apple.com 实测 token。
+
+   实测出的四条病灶,按杠杆排序:
+   ① 一页 12 个版块用了 5 种底色(米白/黄沙/浅紫/深紫/白)——
+      Apple 全站只用「白 + #F5F5F7」两色,靠留白分区而不是色块分区。
+      色块越多越像拼贴,这是「不高级」的头号原因。紫色保留,但从
+      「整屏底色」降级为「一条数字带」的点缀,品牌不丢、噪音消失。
+   ② 黄沙 #EEEEDC 带黄,显旧;换中性 #F5F5F7 立刻干净。
+   ③ 按钮直角 + 无按下反馈 —— Apple 第一条铁律是「按下即响应」,
+      反馈必须在 pointer-down 发生,不是等松手。
+   ④ 页头是实底 + 1px 硬线 —— Apple 用半透明材质让内容从下面穿过,
+      并用渐隐边替代硬线(scroll edge effect)。
+
+   全部收在这一段,想回滚整段删掉即可。
+   ══════════════════════════════════════════════════════════════ */
+
+html[data-brand="biosphere-ai"] {
+  --dtc-paper: #ffffff;                 /* 暖米白 → 纯白 */
+  --dtc-sand: #f5f5f7;                  /* 黄沙 → Apple 中性浅灰 */
+  --dtc-line: rgb(0 0 0 / 0.08);        /* 分隔线再淡一档,让留白说话 */
+  --dtc-radius-card: 18px;              /* Apple 卡片圆角 */
+  --dtc-shadow-card: 0 2px 8px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.08);
+}
+
+/* ① 深紫整屏 → 浅灰底。紫色只留数字带那一条(.sb.ink),成为唯一的品牌重音 */
+html[data-brand="biosphere-ai"] .ribbon.deep {
+  background: var(--dtc-sand);
+  --dtc-on-dark: var(--dtc-ink);
+  --dtc-on-dark-soft: color-mix(in srgb, var(--dtc-ink) 62%, transparent);
+}
+
+/* ② 按钮:胶囊 + 按下即缩(Apple §1 响应 / §4 行为优先) */
+html[data-brand="biosphere-ai"] .dtc-btn {
+  border-radius: 980px;
+  border-width: 1px;
+  letter-spacing: 0.06em;               /* 0.15em 过散,收到 Apple 的克制区间 */
+  transition: background 0.25s ease, color 0.25s ease, transform 0.1s ease-out;
+}
+html[data-brand="biosphere-ai"] .dtc-btn:active { transform: scale(0.97); }
+
+/* ③ 卡片:双层阴影(近实 + 远虚)才有真实的悬浮感,单层是贴纸感 */
+html[data-brand="biosphere-ai"] .sh .card {
+  border-radius: var(--dtc-radius-card);
+  box-shadow: var(--dtc-shadow-card);
+}
+
+/* ④ 页头材质:实底浅紫(创始人 2026-09-11:「导航栏还是用 PPT 的浅紫色,透明的不好,文字会重叠」)。
+   之前是 72% 透明 + 背景模糊,内容从下面穿过,滚动时正文和导航字叠在一起。 */
+html[data-brand="biosphere-ai"] .hdr {
+  background: #ecebfa;
+  border-bottom-color: #d9d6f3;
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.04);
+}
+
+/* ⑤ 无障碍偏好(Apple §14):降低动效 / 降低透明 / 高对比三档各自响应 */
+@media (prefers-reduced-transparency: reduce) {
+  html[data-brand="biosphere-ai"] .hdr {
+    background: var(--ck-bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-brand="biosphere-ai"] .dtc-btn:active { transform: none; }
+}
+
+/* ── Apple 层 · 第二轮:排版光学(2026-09-02)────────────────────
+   判据 apple-design §15《The Details of UI Typography》:
+
+   ①「先用平台系统字体,除非有理由覆盖」——系统字体自带光学字号、
+     字距表与易读性调校,这些是任何网络字体拿不到的。
+     实测我们的正文栈是 Futura → Century Gothic → Helvetica Neue → Arial:
+     前两个绝大多数机器没装,所以真实渲染是 **Arial**。
+     Arial 配苹方,正是"免费模板"观感的来源之一。
+     换成系统栈后:Mac/iPhone 得 SF Pro、Win11 得 Segoe UI Variable、
+     中文仍走苹方 —— 海外采购多用 Mac/iPhone,这一改他们最先看见。
+
+   ②「字距是字号的函数,绝不一个值走天下」——大字要收(负字距),
+     小号大写字反过来要放开。我们此前所有标题共用一个值。
+
+   ③ 焦点环必须即时出现,绝不做过渡动画(§14)。
+   ────────────────────────────────────────────────────────── */
+html[data-brand="biosphere-ai"] body,
+html[data-brand="biosphere-ai"] .dtc-btn {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text',
+               'Segoe UI Variable Text', 'Segoe UI', system-ui,
+               'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-optical-sizing: auto;
+}
+
+html[data-brand="biosphere-ai"] h1,
+html[data-brand="biosphere-ai"] .sh .name { letter-spacing: -0.02em; }
+html[data-brand="biosphere-ai"] h2,
+html[data-brand="biosphere-ai"] .dtc-h2   { letter-spacing: -0.01em; }
+html[data-brand="biosphere-ai"] h3        { letter-spacing: -0.005em; }
+html[data-brand="biosphere-ai"] p,
+html[data-brand="biosphere-ai"] li        { letter-spacing: 0; }
+/* 0.25em 的大写字距是编辑腔,不是 Apple 腔 —— 收到 0.14em */
+html[data-brand="biosphere-ai"] .dtc-eyebrow { letter-spacing: 0.14em; }
+
+/* 正文避免孤字尾行 */
+html[data-brand="biosphere-ai"] p { text-wrap: pretty; }
+
+html[data-brand="biosphere-ai"] a:focus-visible,
+html[data-brand="biosphere-ai"] button:focus-visible,
+html[data-brand="biosphere-ai"] .dtc-btn:focus-visible {
+  outline: 2px solid var(--ck-accent, #7C4DA8);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ── Apple 层 · 第三轮:手感(2026-09-02)──────────────────────
+   判据 apple-design §1 响应 / §4 行为优先 / §7 空间一致 / §11 帧级平滑。
+
+   现状:全站几乎无动效。Emil 的原则是「先减后加」——不是把动效撒满,
+   而是只在**用户直接触碰**的地方给即时反馈。所以这里只做三件:
+
+   ① 卡片/图片 hover:只动 transform,永不动 layout(§11 只做合成属性)。
+   ② 链接下划线从触点长出来,而不是整条闪现(§8 朝手势方向暗示)。
+   ③ 所有过渡统一到两条曲线,时长 ≤ 0.25s —— 超过就开始"等它演完"。
+
+   刻意不做:滚动视差、入场逐个淡入、数字滚动 —— 那些是"看起来有动效",
+   不是"用起来跟手",而且拖慢首屏。
+   ────────────────────────────────────────────────────────── */
+html[data-brand="biosphere-ai"] {
+  --ap-ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ap-dur: 0.22s;
+}
+
+/* ① 可点卡片:抬升 + 阴影加深,只用 transform / box-shadow */
+html[data-brand="biosphere-ai"] a.shot,
+html[data-brand="biosphere-ai"] .pcard {
+  transition: transform var(--ap-dur) var(--ap-ease-out),
+              box-shadow var(--ap-dur) var(--ap-ease-out);
+}
+html[data-brand="biosphere-ai"] a.shot:hover,
+html[data-brand="biosphere-ai"] .pcard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--dtc-shadow-card);
+}
+html[data-brand="biosphere-ai"] a.shot:active,
+html[data-brand="biosphere-ai"] .pcard:active { transform: translateY(0) scale(0.995); }
+
+/* ② 正文内链:下划线从中间长出来 —— 方向暗示"这里可以进去" */
+html[data-brand="biosphere-ai"] .prose a,
+html[data-brand="biosphere-ai"] .dtc-lead a {
+  text-decoration: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 50% 100%;
+  background-repeat: no-repeat;
+  transition: background-size var(--ap-dur) var(--ap-ease-out);
+}
+html[data-brand="biosphere-ai"] .prose a:hover,
+html[data-brand="biosphere-ai"] .dtc-lead a:hover { background-size: 100% 1px; }
+
+/* ③ 减少动效偏好:位移一律取消,只留极短的透明度变化(§14) */
+@media (prefers-reduced-motion: reduce) {
+  html[data-brand="biosphere-ai"] a.shot,
+  html[data-brand="biosphere-ai"] .pcard,
+  html[data-brand="biosphere-ai"] .prose a {
+    transition: opacity 0.15s linear;
+  }
+  html[data-brand="biosphere-ai"] a.shot:hover,
+  html[data-brand="biosphere-ai"] .pcard:hover,
+  html[data-brand="biosphere-ai"] a.shot:active,
+  html[data-brand="biosphere-ai"] .pcard:active { transform: none; }
+}
+
+/* ── Apple 层 · 第四轮:节奏(2026-09-02)────────────────────────
+   创始人:「每个版块中间的空余是不是太大了?」—— 实测坐实:
+   相邻版块之间 96–104px 连续空白,且**同底色时没有任何视觉边界**,
+   读起来就是一块空地。
+
+   病根是上一轮收敛底色的副作用:以前靠换色划界,留白被"色块边界"消化掉;
+   现在白接白,两份 padding(48+48)糊成一片没人认领的空地。
+
+   Apple 的做法是**版块之间只有一份节奏**,不是每个版块各自加一份。
+   所以:同底色相邻时,把下一段的上边距吃掉,合成一段统一间距;
+   换底色时才保留完整的两份(那里的空白由色块边界消化,读起来是"换章")。
+   ────────────────────────────────────────────────────────── */
+html[data-brand="biosphere-ai"] { --dtc-py: 40px; --dtc-py-lg: 48px; }
+
+html[data-brand="biosphere-ai"] .dtc-sec.paper  + .dtc-sec.paper,
+html[data-brand="biosphere-ai"] .dtc-sec.sand   + .dtc-sec.sand,
+html[data-brand="biosphere-ai"] .ribbon         + .dtc-sec.sand,
+html[data-brand="biosphere-ai"] .dtc-sec.sand   + .ribbon,
+html[data-brand="biosphere-ai"] .ribbon         + .ribbon,
+html[data-brand="biosphere-ai"] .sb.paper       + .dtc-sec.paper { padding-top: 0; }
+
+@media (max-width: 48rem) {
+  html[data-brand="biosphere-ai"] { --dtc-py: 24px; --dtc-py-lg: 30px; }
 }

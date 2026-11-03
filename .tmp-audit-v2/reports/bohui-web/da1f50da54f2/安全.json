@@ -1,0 +1,98 @@
+{
+  "angle": "安全",
+  "tree": "da1f50da54f22579923cefafe1258f1f54c232f2",
+  "worker": "bohui-web",
+  "run_label": "review-ticket da1f50da54f2 安全",
+  "reviewer": "claude",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-da1f50da54f2.json",
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/da1f50da54f2/安全.json",
+  "skills_loaded": ["claude-guard:guard-rules", "bohui-data-security-formula-confidentiality"],
+  "verdict": "存疑",
+  "checked": ["安全-①", "安全-②", "安全-③", "安全-④", "安全-⑤", "安全-⑥", "安全-⑦"],
+  "findings": [
+    {
+      "id": "S-1",
+      "level": "中",
+      "file": "apps/web/public/b2o/img/fd/c-pink-serum.webp",
+      "line": 0,
+      "claim": "新增公开图 c-pink-serum.webp 瓶身印着近似知名品牌 CLARINS 的字样(图中为「CÀARINS」),被 B2oBlock.astro 第 58 行 cardPink 引用,放在 beauty2oem 首页机会卡上公开发布。",
+      "failure_scenario": "访客或品牌方看到首页机会卡示意图上是近似某国际品牌的商标字样,可被理解为暗示合作或冒用他人商标;品牌方投诉或平台下架时,站点要整图撤换并清缓存(还要再推一次 CACHE_V)。这是安全·⑦公开文件内容问题,落点在合规/知识产权,但图就在 public/ 里、属于本角度 diff。",
+      "evidence": "用 Read 逐张查看了 apps/web/public/b2o/img/fd/ 下 14 张 webp;c-pink-serum.webp 瓶身主字样为 CÀARINS;Grep 到 apps/web/src/components/B2oBlock.astro:58 `cardPink: ['fd/c-pink-serum', ...]` 与仓库根 _换图-说明.md:16「首页机会卡结构示意图」。其余 13 张瓶身文字是 AI 出图的乱码字母,未见真实品牌、帛卉/BIOSPHERE、地址、电话或内部数据。",
+      "fix": "换掉 c-pink-serum.webp(另选一张无可辨品牌字样的图库图,或本地 LaMa 把瓶身字样抹掉),合规审核员确认后再上线。"
+    },
+    {
+      "id": "S-2",
+      "level": "低",
+      "file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/da1f50da54f2/undefined.json",
+      "line": 0,
+      "claim": "任务里说「复核时再读」的原报告路径是 undefined.json,目录里不存在;本次按首审处理,没有可复核的原报告。",
+      "failure_scenario": "派单脚本拼路径时变量为空(undefined),如果签单环节依赖这份原报告做对照,会读不到或读错文件。",
+      "evidence": "ls F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/da1f50da54f2/ 在写本报告前为空目录。",
+      "fix": "派单脚本检查 prev 报告路径变量,为空时不要拼进任务文本。"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "G1",
+      "result": "不成立",
+      "why": "tools/ship.sh:16 的注释「审核部 v2.1:ENABLED 在 → v2(审核单 + 三家共判,从已批准副本执行);不在 → v1 四道闸」只描述分支逻辑,没有让审核员放行、忽略规则之类的指令,不是提示注入;S9 是被「审核部」关键词误触发。第 17 行的实际逻辑:ENABLED 在时 source 的是 audit_v2/cache/gate_approved/ 下已批准的 ship_lib.sh 副本(存在,21:13),不在时回落到原来的 gate.sh,两条路都要过闸,没有绕过部署闸门的路径。"
+    },
+    {
+      "ref": "JEV",
+      "result": "成立但可接受",
+      "why": "Jev 给出 block、conf 0.72,但 reason 为 null、partial=true,没有指出具体文件行号。本角度逐项复查:middleware.ts 只改了 CACHE_V 值与注释(注释里的 WhatsApp 号是 09-21 起就公开在页脚的对外联系号,不是新泄露);ship.sh 只改用法注释和 v1/v2 分支;14 张图是 VP8 有损格式、没有 VP8X 扩展块,所以不带 EXIF/XMP/GPS。唯一实质问题是 S-1 的近似商标图,已单列。",
+      "mitigation": "按 S-1 换图;CACHE_V 读量尖峰归成本角度处理。"
+    },
+    {
+      "ref": "LAYA",
+      "result": "成立但可接受",
+      "why": "Laya 给出 allow,但 conf 只有 0.04、partial=true,不能当作放行依据;本角度已人工逐项检查,结论见 findings。",
+      "mitigation": "不采信低置信结果,以人工复查为准。"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "合规",
+      "level": "中",
+      "item": "c-pink-serum.webp 带近似 CLARINS 的商标字样,已公开用在 beauty2oem 首页",
+      "mitigation": "上线前换图或抹字"
+    },
+    {
+      "cat": "安全",
+      "level": "低",
+      "item": "tools/ship.sh 在公开仓 cosmetic-sites 里被 git 跟踪,里面有本机路径 F:/0cosmetic 和代理端口 7890(改动前就有,不是本次新增);没有密钥原文,.env 只在运行时 source",
+      "mitigation": "可以考虑以后把 ship.sh 移进私有仓或 .gitignore,本次不阻塞"
+    },
+    {
+      "cat": "回归",
+      "level": "低",
+      "item": "ship.sh 的 v2 分支依赖 audit_v2/ENABLED 和已批准副本 ship_lib.sh,副本缺失时 source 会失败,上线不了(不会误部署)",
+      "mitigation": "已确认两个文件都存在"
+    }
+  ],
+  "smoke_extra": [
+    "上线后打开 beauty2oem 首页机会卡,确认 c-pink-serum 已换成无品牌字样的图",
+    "/b2o/img/fd/*.webp 14 张返回 200 且 content-type 为 image/webp"
+  ],
+  "evidence_read": [
+    "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-da1f50da54f2.json",
+    "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-da1f50da54f2/安全.diff",
+    "F:/0cosmetic/tools-review/audit_v2/口径摘要.md",
+    "F:/0cosmetic/cosmetic-sites/tools/ship.sh(全文)",
+    "F:/0cosmetic/cosmetic-sites/.gitignore(tools 相关行)",
+    "F:/0cosmetic/cosmetic-sites/apps/web/public/b2o/img/fd/*.webp(14 张逐张目视 + RIFF 头部检查)",
+    "F:/0cosmetic/cosmetic-sites/apps/web/src/components/B2oBlock.astro:58(Grep)",
+    "F:/0cosmetic/cosmetic-sites/apps/web/src/pages/[lang]/insights.astro:47(Grep)",
+    "F:/0cosmetic/cosmetic-sites/_换图-说明.md(Grep)"
+  ],
+  "per_check": {
+    "①密钥和凭据": "diff 里没有密钥、token 或连接串;ship.sh 在运行时 source .env,不内嵌。",
+    "②鉴权": "diff 没有改后台/会员路由、x-bohui-dept、canCost。",
+    "③注入": "diff 没有 SQL、set:html、JSON-LD、跳转改动;middleware 只改了 CACHE_V 字符串。",
+    "④SSRF": "没有新增对外抓取;ship.sh 里的 curl api.cloudflare.com 是原有的连通性探测。",
+    "⑤新依赖": "安全 diff 里没有 package.json 或 allowBuilds 改动。",
+    "⑥绑定": "没有改 wrangler 配置;部署仍然是 source 公司 .env 再 -c wrangler.json,和原来一致。",
+    "⑦public/": "14 张图都是 VP8 有损格式、没有元数据块;内容为 AI 出图,除 S-1 外没有内部数据。"
+  },
+  "skills_note": "security-review 技能加载失败(技能内置的 git diff origin/HEAD... 报 no merge base),已按它的检查范围人工完成;另外两个技能加载成功。"
+}

@@ -1,0 +1,169 @@
+diff --git a/apps/web/src/components/B2oBlock.astro b/apps/web/src/components/B2oBlock.astro
+index 2a4b59f..dbd9ded 100644
+--- a/apps/web/src/components/B2oBlock.astro
++++ b/apps/web/src/components/B2oBlock.astro
+@@ -45,6 +45,23 @@ const href = (h: any, fb: string) => { const v = String(h ?? '').trim(); if (!v)
+ 
+ /* 配图:全部自托管 webp(apps/web/public/b2o/img/),写死宽高防跳版 */
+ const IMG: Record<string, [string, number, number, string]> = {
++  heroFull: ['vi/hero-full', 1024, 1024, '戴草帽和太阳镜的女子在泳池边展示防晒产品'],
++  wall01: ['vi/wall-01', 1024, 1024, '海滩与热带水果间陈列多款彩色防晒产品'],
++  wall02: ['vi/wall-02', 1024, 1024, '粉色背景前陈列蓝色、白色和橙色软管与喷瓶'],
++  wall03: ['vi/wall-03', 1024, 1024, '夜景灯光前陈列星空图案的深蓝色瓶罐'],
++  wall04: ['vi/wall-04', 1024, 1024, '柑橘和菠萝旁陈列三款水果插画瓶装产品'],
++  wall05: ['vi/wall-05', 1024, 1024, '橙色背景前一支蓝黄粉渐变波浪图案的软管,旁边是切开的橙子'],
++  wall06: ['vi/wall-06', 1024, 1024, '热带绿叶前一支满布橙色花朵与民族纹样的方形瓶'],
++  wall07: ['vi/wall-07', 1024, 1024, '海浪与贝壳前竖立海洋图案的彩色软管'],
++  wall08: ['vi/wall-08', 1024, 1024, '橙子与棕榈叶间陈列橙黄色软管'],
++  wall09: ['vi/wall-09', 1024, 1024, '热带水果和泳池背景前陈列多款鲜艳瓶装产品'],
++  wall10: ['vi/wall-10', 1024, 1024, '向日葵与橙子旁陈列黄色瓶装和白色软管'],
++  wall11: ['vi/wall-11', 1024, 1024, '绿叶与柑橘间陈列热带植物插画包装'],
++  wall12: ['vi/wall-12', 1024, 1024, '海滩、菠萝和柑橘间陈列橙绿色防晒产品'],
++  m1: ['vi/m1', 1024, 1024, '粉色背景前并排陈列三款渐变色软管'],
++  m2: ['vi/m2', 1024, 1024, '棕榈叶影与菠萝旁陈列金白色瓶罐和软管'],
++  m3: ['vi/m3', 1024, 1024, '戴草帽和太阳镜的女子在阳光下的花卉市集微笑'],
++  m4: ['vi/m4', 1024, 1024, '绿叶间陈列两款热带鸟类插画包装'],
+   hero: ['fd/hero-beach-lineup', 1024, 1024, '海边沙滩上摆放着多款色彩明快的防晒产品和热带水果'],
+   desk: ['02-seller-desk', 1248, 832, '卖家在打包台前整理样品瓶和纸箱'],
+   lab: ['03-lab-bench', 1248, 832, '实验台上,戴手套的手用滴管往烧杯里加精华'],
+@@ -66,6 +83,7 @@ const IMG: Record<string, [string, number, number, string]> = {
+   dark: ['10-dark-close', 1248, 832, ''],
+   vials: ['12-vials-top', 1248, 832, '白色样品架上一排排装着不同颜色原料的小瓶'],
+ };
++const WALL = Array.from({ length: 12 }, (_, i) => `wall${String(i + 1).padStart(2, '0')}`);
+ const img = (k: string, eager = false) => {
+   const [f, w, h, alt] = IMG[k];
+   return { src: `/b2o/img/${f}.webp`, width: w, height: h, alt, class: `b2o-img-${k}`, loading: eager ? 'eager' : 'lazy', decoding: 'async', fetchpriority: eager ? 'high' : undefined } as any;
+@@ -109,7 +127,8 @@ const Arrow = '→';
+ {type === 'fx_hero' && (
+   <>
+     <section class="b2o-sec b2o-hero">
+-      <div class="b2o-wrap b2o-grid">
++      <img {...img('heroFull', true)} />
++      <div class="b2o-wrap">
+         <div class="b2o-hero-copy">
+           <h1 class="b2o-h1 b2o-h1-hero"><span class="ln">{tidy(d.title)}</span>{d.sub && <span class="ln">{tidy(d.sub)}</span>}</h1>
+           <p class="b2o-lede">提交店铺，24 小时内拿到一份 1 至 2 页的机会简报。</p>
+@@ -118,25 +137,39 @@ const Arrow = '→';
+             <a class="b2o-btn b2o-btn-pri" href={BRIEF}>提交店铺，拿简报<span class="ico" aria-hidden="true">{Arrow}</span></a>
+             <a class="b2o-btn b2o-btn-sec" href="#b2o-sample">看简报样张</a>
+           </div>
+-          <div class="b2o-promise">
+-            <div><b>24<small>小时</small></b><span>内发到你手上</span></div>
+-            <div><b>1 至 2<small>页</small></b><span>只写要紧的</span></div>
+-            <div><b>3<small>个方向</small></b><span>每个附风险</span></div>
+-          </div>
+         </div>
+-        <div class="b2o-hero-visual" id="b2o-sample">
+-          <figure class="b2o-bezel"><div class="core b2o-ph r32"><img {...img('hero', true)} /></div></figure>
+-          <aside class="b2o-sheet" aria-label="简报样张结构">
+-            <span class="b2o-mark sm"><b class="m-b">BEAUTY</b><b class="m-2">2</b><b class="m-o">OEM</b></span>
+-            <h2>客户产品机会简报 · 样张结构</h2>
+-            <ol>
+-              <li>产品结构<i style="--w:86%"></i></li>
+-              <li>缺口：同类在涨、你还没有的<i style="--w:64%"></i></li>
+-              <li>三个方向，每个写风险<i style="--w:78%"></i></li>
+-              <li>帛卉能做到哪<i style="--w:52%"></i></li>
+-            </ol>
+-            <p class="redact">内容已打码，不公开、不给其他客户</p>
+-          </aside>
++      </div>
++    </section>
++
++    <section class="b2o-sec b2o-sample" id="b2o-sample">
++      <div class="b2o-wrap b2o-sample-row">
++        <aside class="b2o-sheet" aria-label="简报样张结构">
++          <span class="b2o-mark sm"><b class="m-b">BEAUTY</b><b class="m-2">2</b><b class="m-o">OEM</b></span>
++          <h2>客户产品机会简报 · 样张结构</h2>
++          <ol>
++            <li>产品结构<i style="--w:86%"></i></li>
++            <li>缺口：同类在涨、你还没有的<i style="--w:64%"></i></li>
++            <li>三个方向，每个写风险<i style="--w:78%"></i></li>
++            <li>帛卉能做到哪<i style="--w:52%"></i></li>
++          </ol>
++          <p class="redact">内容已打码，不公开、不给其他客户</p>
++        </aside>
++        <div class="b2o-promise">
++          <div><b>24<small>小时</small></b><span>内发到你手上</span></div>
++          <div><b>1 至 2<small>页</small></b><span>只写要紧的</span></div>
++          <div><b>3<small>个方向</small></b><span>每个附风险</span></div>
++        </div>
++      </div>
++    </section>
++
++    <section class="b2o-sec alt b2o-wall">
++      <div class="b2o-wrap">
++        <header class="b2o-head">
++          <h2 class="b2o-h2">包装与视觉方向参考</h2>
++          <p class="b2o-lede">这些是效果图,用来和你讨论包装与视觉方向,不是已交付的客户产品。</p>
++        </header>
++        <div class="b2o-wall-columns">
++          {WALL.map((key) => <figure><img {...img(key)} /></figure>)}
+         </div>
+       </div>
+     </section>
+@@ -205,10 +238,10 @@ const Arrow = '→';
+             <p class="dsc">{x.note}</p>
+           </div>
+           <div class="v">
+-            {i === 0 && <div class="b2o-ph r20"><img {...img('methodTrend')} /></div>}
+-            {i === 1 && <div class="b2o-ph r20"><img {...img('methodJudge')} /></div>}
+-            {i === 2 && <div class="b2o-ph r20"><img {...img('methodVerify')} /></div>}
+-            {i === 3 && <div class="b2o-ph r20"><img {...img('methodLaunch')} /></div>}
++            {i === 0 && <div class="b2o-ph r20"><img {...img('m1')} /></div>}
++            {i === 1 && <div class="b2o-ph r20"><img {...img('m2')} /></div>}
++            {i === 2 && <div class="b2o-ph r20"><img {...img('m3')} /></div>}
++            {i === 3 && <div class="b2o-ph r20"><img {...img('m4')} /></div>}
+           </div>
+         </div>
+       ))}
+@@ -306,11 +339,6 @@ const Arrow = '→';
+       <div class="b2o-wrap b2o-grid">
+         <div class="side">
+           <figure class="b2o-bezel side-pic"><div class:list={['core', 'b2o-ph', page === 'delivery' ? 'tall' : '']}><img {...img(page === 'delivery' ? 'deliveryPapaya' : 'lab')} /></div></figure>
+-          {page === '' && (
+-            <div class="b2o-todo" role="img" aria-label="车间实拍图位,待补实拍">
+-              <div><b>广州工厂 · 灌装车间</b>此处只放真实拍摄的车间照片<span class="b2o-tag red">待补实拍</span></div>
+-            </div>
+-          )}
+         </div>
+         <div class="main">
+           <h2 class="b2o-h2">{deliveryTitle}</h2>
+diff --git a/apps/web/src/middleware.ts b/apps/web/src/middleware.ts
+index 98128d0..54e3c01 100644
+--- a/apps/web/src/middleware.ts
++++ b/apps/web/src/middleware.ts
+@@ -466,7 +466,14 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+   /* 规范化(09-24 安全架构 C1,参数登记表在 lib/canon.ts):页面路径补尾斜杠、只留登记过的参数、取值夹到范围内,
+      不一致就 301 一次。301 落在 WAF 之后,跳过去的请求会再过一遍边缘规则(S1 / R2 的通配都带尾斜杠)。
+      后台已登录的人不跳(草稿预览等参数只给他们用),本地与副本不跳。 */
+-  if ((req.method === 'GET' || req.method === 'HEAD') && !staff && !dev && isPagePath(url0.pathname)) {
++  /* Post-deploy smoke probe: a request carrying the shared secret header skips canonical redirects and the edge cache.
++     Without the configured secret nobody matches. */
++  const probeSecret = String((cfEnv as any)?.PROBE_SECRET ?? '');
++  const probeHdr = req.headers.get('x-bohui-probe') ?? '';
++  let probeDiff = probeSecret.length === 0 || probeHdr.length !== probeSecret.length ? 1 : 0;
++  for (let i = 0; i < probeHdr.length && i < probeSecret.length; i++) probeDiff |= probeHdr.charCodeAt(i) ^ probeSecret.charCodeAt(i);
++  const probe = probeDiff === 0;
++  if ((req.method === 'GET' || req.method === 'HEAD') && !staff && !dev && !probe && isPagePath(url0.pathname)) {
+     const to = canonical(url0.pathname, url0.search);
+     if (to) return new Response(null, { status: 301, headers: { Location: to } });
+   }
+@@ -505,7 +512,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+     (req.method === 'GET' || req.method === 'HEAD') &&
+     !url0.pathname.startsWith('/api/') &&
+     !url0.pathname.startsWith('/bohui/') &&
+-    !noCache && !staff && !member;
++    !noCache && !staff && !member && !probe;
+   const cache = (caches as any).default as Cache | undefined;
+   /* 缓存键带版本号。2026-09-07:D1 日读额度耗尽期间,「数据源未就绪」那一页是以
+      HTTP 200 渲染的,于是被原样缓存了一小时 —— 我用 ?cb= 验证时绕过了缓存,
+@@ -514,7 +521,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+   /* v3(2026-09-07 上午):D1 额度耗尽期间,边缘把一批 404 与 503 缓存住了 ——
+      修好之后访客拿到的仍是坏副本。推版本号是清掉它们唯一干净的办法。 */
+   /* v4(2026-09-07 晚):sitemap 拆分、繁中上线、跨站兜底重写 —— 清掉全部旧副本 */
+-  const CACHE_V = 'v84';   // 09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
++  const CACHE_V = 'v85';   // 09-25 beauty2oem 视觉重排改了 b2o.css(资源哈希变),旧缓存 HTML 会引用已下线的旧样式,必须 +1;09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
+   const keyFor = (r: Request) => {
+     const u = new URL(r.url);
+     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。

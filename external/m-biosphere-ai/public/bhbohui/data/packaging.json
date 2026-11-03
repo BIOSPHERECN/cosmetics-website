@@ -1,0 +1,61 @@
+{
+  "note": "初始为示例条目，完整清单见 output/国内护肤品包装供应商清单50家.md",
+  "items": [
+    {
+      "id": 1,
+      "category": "玻璃瓶类",
+      "company": "广州乐鑫玻璃制品有限公司",
+      "business": "化妆品玻璃瓶、喷涂",
+      "channel": "官网 gzlexinboli.com",
+      "source": "官网"
+    },
+    {
+      "id": 2,
+      "category": "玻璃瓶类",
+      "company": "广州弘玻玻璃制品有限公司",
+      "business": "滴管瓶、喷雾瓶、精油瓶",
+      "channel": "1688工厂店",
+      "source": "1688"
+    },
+    {
+      "id": 3,
+      "category": "玻璃瓶类",
+      "company": "杭州晶冠玻璃瓶有限公司",
+      "business": "膏霜瓶、精油瓶、香水瓶",
+      "channel": "官网 jgglass.cn",
+      "source": "官网"
+    },
+    {
+      "id": 4,
+      "category": "塑料瓶/容器类",
+      "company": "PP/PE 瓶罐供应商",
+      "business": "塑料瓶、泵头瓶",
+      "channel": "",
+      "source": "示例"
+    },
+    {
+      "id": 5,
+      "category": "软管类",
+      "company": "复合软管供应商",
+      "business": "洗面奶软管、乳液软管",
+      "channel": "",
+      "source": "示例"
+    },
+    {
+      "id": 6,
+      "category": "泵头/配件类",
+      "company": "泵头喷雾配件供应商",
+      "business": "真空泵、喷雾泵、滴管",
+      "channel": "",
+      "source": "示例"
+    },
+    {
+      "id": 7,
+      "category": "礼盒/纸盒类",
+      "company": "化妆品礼盒彩盒供应商",
+      "business": "礼盒、彩盒、手提袋",
+      "channel": "",
+      "source": "示例"
+    }
+  ]
+}

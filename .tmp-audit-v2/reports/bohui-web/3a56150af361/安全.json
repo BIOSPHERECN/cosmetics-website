@@ -1,0 +1,53 @@
+{
+  "angle": "安全",
+  "tree": "3a56150af3611f26c2c0bfce1ae04eaeeca61d07",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-3a56150af361.json",
+  "run_label": "review-ticket 3a56150af361 安全",
+  "reviewer": "claude",
+  "skills_loaded": ["claude-guard:guard-rules", "bohui-data-security-formula-confidentiality"],
+  "verdict": "过",
+  "checked": ["安全-①", "安全-②", "安全-③", "安全-④", "安全-⑤", "安全-⑥", "安全-⑦"],
+  "findings": [
+    {
+      "id": "S0",
+      "level": "低",
+      "file": "(技能加载)",
+      "claim": "security-review 技能加载失败:技能内置命令 git diff origin/HEAD... 报 no merge base,未能按该技能流程跑;改为人工逐行审 安全.diff",
+      "failure_scenario": "流程缺项,不影响本次结论;本角度 diff 只有 middleware.ts 12 行 + 17 张图,人工已全覆盖",
+      "evidence": "Skill 返回:fatal: origin/HEAD...HEAD: no merge base"
+    },
+    {
+      "id": "S1",
+      "level": "低",
+      "file": "apps/web/src/middleware.ts",
+      "line": 472,
+      "claim": "探针头 x-bohui-probe 的效果只限于跳过 301 规范化与边缘缓存(不读不写新鲜副本、陈旧备份),不绕过 staff/member 鉴权、gateKey、限额;secret 未配时 probeDiff 恒为 1,谁都不算探针。比较为定长异或累加,只泄露长度,可接受",
+      "failure_scenario": "若 PROBE_SECRET 被泄露(例如写进公开仓的冒烟脚本或 wrangler.toml [vars]),外人可每次带头绕过缓存现渲染,重现 09-24 C1 修掉的「绕缓存刷 D1 读量」问题;目前未发生",
+      "evidence": "读 middleware.ts 440-520、619-700:probe 只出现在 477 行 301 判断与 516 行 cacheable;619/642/658/688/697 的缓存读写与 5xx 兜底都受 cacheable 管;wrangler.toml 与仓库 *.ts/*.json/*.toml/*.sh/*.py 中除 middleware 注释外无 PROBE_SECRET 字样,[vars] 里没有",
+      "fix": "PROBE_SECRET 只用 wrangler secret put 设(先 source 公司 .env,防双账号陷阱),冒烟脚本从私有仓/本机 .env 读,不进公开仓 cosmetic-sites"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "LAYA",
+      "result": "不成立",
+      "why": "Laya 判 block 但 conf 仅 0.03、reason 为空,给不出具体位置;人工审 安全.diff:middleware 新增探针只放宽缓存/301 且以 secret 门控,未触及鉴权、SQL、set:html、跳转目标、对外抓取、依赖与绑定;17 张 webp 无 EXIF/XMP/ICCP 块(VP8 简单格式),抽看 hero-full、wall-07 为 AI 生成风格商业图,无内部数据/文字"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "安全",
+      "level": "低",
+      "item": "PROBE_SECRET 一旦泄露即成缓存绕过口子,可刷 D1 读量",
+      "mitigation": "只用 wrangler secret 设、冒烟脚本不进公开仓;怀疑泄露就轮换 secret"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "首屏泳池模特图与作品墙的肖像/版权来源不属安全角度,需合规审核员确认是创始人图库自有或 AI 生成、非抓取原图",
+      "mitigation": "合规角度核对来源"
+    }
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/3a56150af361/安全.json"
+}

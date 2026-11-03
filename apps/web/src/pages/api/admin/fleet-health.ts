@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { readSession, readCookie, COOKIE } from '../../../lib/auth';
+import { apiGuard, requireAdmin } from '../../../lib/guard';
 import { health, loadFleet, vision } from '../../../lib/fleet';
 
 export const prerender = false;
@@ -16,11 +16,19 @@ export const prerender = false;
  * 凡是数据有两个来源(D1 与环境变量),就必须显式指明用哪一个。
  */
 export const GET: APIRoute = async ({ request, url }) => {
-  const secret = (env as any).AUTH_SECRET as string | undefined;
-  const sess = await readSession(readCookie(request.headers.get('cookie'), COOKIE), secret ?? '');
-  if (!sess) return json({ ok: false, msg: '未登录' }, 401);
+  /*
+   * 鉴权从 readSession 改成 apiGuard,并限定 admin。
+   *
+   * 改的不是写法,是**作用域**:readSession 只回答「登录了没」。
+   * 而这个接口会**真的挨个打一遍模型** —— 既烧额度,也回显供应商配置。
+   * 站点运营没有理由触发它,而误点一次就是一轮真实调用。
+   */
+  const c = await apiGuard(request);
+  if (c instanceof Response) return c;
+  const denied = requireAdmin(c);
+  if (denied) return denied;
 
-  const db = (env as any).DB as D1Database | undefined;
+  const db = c.db as D1Database | undefined;
   const all = await loadFleet(db, env as any);
 
   const only = url.searchParams.get('id');

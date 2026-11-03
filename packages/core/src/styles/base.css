@@ -45,6 +45,39 @@ h3 {
 h1 { font-size: var(--ck-h1); }
 h2 { font-size: var(--ck-h2); }
 h3 { font-size: var(--ck-h3); }
+/* 手机端字号封顶(创始人实机:「字体太大,空间都没了」)。
+   两层病:① fonts.css 把根字号抬到 --ck-body:1.125rem(18px),
+   手机上所有 rem 尺寸跟着膨胀 —— 第一版用 rem 封顶(2.375rem)被根字号
+   放大成 43px,QA 舰队量出来才现形;② 各流派 --ck-h1 下限 2.9rem+ 本就是
+   给宽幅画布调的。所以:根字号手机端封到 17px,标题用 **px 硬上限**
+   (不随根缩放);min() 取小,字号本来就小的流派不受影响。 */
+/* ── 手机端触控靶下限 ──────────────────────────────────────────
+   2026-09-09 实测(375×812 首页):110 个可点元素里 81 个不到 44px。
+   Apple 与 WCAG 都把 44px 当下限,不是洁癖 —— 按不准就点错,
+   点错就退出,而退出在日志里长得跟「没兴趣」一模一样。
+   这里只兜底那些天生偏小的:页头字标、按钮、"看全部"这类文字链、页脚链接。
+   卡片和导航项各自已经有 44px 规则,不重复约束。 */
+@media (max-width: 52rem) {
+  .ck-skip-link { min-height: 0; }
+  a.cta,
+  .dtc-btn,
+  .more,
+  .mark,
+  footer a {
+    min-height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+  }
+  /* 页脚法务链一行四个,撑高之后要留出行距,否则挤成一坨 */
+  footer a { padding-block: 0.25rem; }
+}
+
+@media (max-width: 52rem) {
+  html { font-size: min(var(--ck-body, 1rem), 17px); }
+  h1 { font-size: min(var(--ck-h1, 36px), 36px); }
+  h2 { font-size: min(var(--ck-h2, 28px), 28px); }
+  h3 { font-size: min(var(--ck-h3, 21px), 21px); }
+}
 
 p { margin: 0; }
 
@@ -156,7 +189,11 @@ h1, h2, h3, h4, h5, h6,
   overflow-wrap: break-word;
 }
 /* 拉丁系长复合词允许连字符断行;CJK 与阿拉伯语不需要,浏览器会自行忽略 */
-h1, h2, h3, h4 { hyphens: auto; }
+/* 标题禁止词内断行:en 页实拍出过「Product catalog/ue」「Brand ecosyst/em」——
+   全局 overflow-wrap:break-word 在窄容器把标题单词拦腰斩,比整词换行丑得多。
+   正文保留 break-word(超长 URL 之类仍需兜底),标题族单独收紧;
+   不用 keep-all —— 那会连中文标题的正常逐字换行一起禁掉。 */
+h1, h2, h3, h4 { hyphens: manual; overflow-wrap: normal; }
 /* 证书号、起订量这类不能被拆开 */
 .mk, .num, time, [data-nowrap] { overflow-wrap: normal; word-break: keep-all; }
 

@@ -1,0 +1,152 @@
+---
+/**
+ * 后台 · 品牌代工厂溯源（2026-11-02）
+ *
+ * 数据来源：ImportKey 的进口商页 /i/{slug}（robots.txt 放行）。
+ * 价值：回答「这个品牌是谁在给它代工」—— 提单里的 Supplier 字段直接给出中国工厂名与起运港。
+ *
+ * ImportYeti 不可用（条款禁止 + Cloudflare 拦），ImportKey 是合规替代。
+ * 只放后台，不上前端。
+ */
+import { env } from 'cloudflare:workers';
+import AdminShell from '../../layouts/AdminShell.astro';
+import { readSession, readCookie, COOKIE } from '../../lib/auth';
+
+export const prerender = false;
+const db = (env as any).DB as D1Database | undefined;
+const secret = (env as any).AUTH_SECRET as string | undefined;
+const sess = await readSession(readCookie(Astro.request.headers.get('cookie'), COOKIE), secret ?? '');
+if (!sess) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const q = (url.searchParams.get('q') ?? '').trim();
+const onlyCn = url.searchParams.get('cn') === '1';
+const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
+const PER = 30;
+
+const where: string[] = [];
+const bind: unknown[] = [];
+if (q) { where.push('(brand LIKE ? OR cn_suppliers_json LIKE ? OR suppliers_json LIKE ?)'); bind.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+if (onlyCn) where.push("cn_suppliers_json IS NOT NULL AND cn_suppliers_json NOT IN ('[]','')");
+const W = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+type Row = {
+  slug: string; brand: string; address: string | null; n_shipments: number;
+  suppliers_json: string | null; cn_suppliers_json: string | null;
+  products_json: string | null; checked_at: string | null; supplier_type: string | null;
+};
+let rows: Row[] = [];
+let total = 0;
+if (db) {
+  const cntRow = await db.prepare(`SELECT COUNT(*) n FROM customs_importkey ${W}`).bind(...bind)
+    .first<{ n: number }>().catch(() => null);
+  total = cntRow?.n ?? 0;
+  const r = await db.prepare(
+    `SELECT slug,brand,address,n_shipments,suppliers_json,cn_suppliers_json,products_json,checked_at,supplier_type
+       FROM customs_importkey ${W}
+      ORDER BY (CASE WHEN cn_suppliers_json IN ('[]','') OR cn_suppliers_json IS NULL THEN 1 ELSE 0 END),
+               n_shipments DESC, brand
+      LIMIT ? OFFSET ?`,
+  ).bind(...bind, PER, (page - 1) * PER).all<Row>().catch(() => ({ results: [] as Row[] }));
+  rows = r.results ?? [];
+}
+const pages = Math.max(1, Math.ceil(total / PER));
+const stat = db ? ((await db.prepare(
+  `SELECT COUNT(*) n,
+          SUM(CASE WHEN cn_suppliers_json NOT IN ('[]','') AND cn_suppliers_json IS NOT NULL THEN 1 ELSE 0 END) cn
+     FROM customs_importkey`,
+).first<{ n: number; cn: number }>().catch(() => null)) ?? { n: 0, cn: 0 }) : { n: 0, cn: 0 };
+const link = (o: Record<string, string | number>) => {
+  const u = new URLSearchParams();
+  if (q) u.set('q', q);
+  if (onlyCn) u.set('cn', '1');
+  for (const [k, v] of Object.entries(o)) v ? u.set(k, String(v)) : u.delete(k);
+  return `?${u}`;
+};
+const arr = (s: string | null): string[] => { try { return JSON.parse(s || '[]') as string[]; } catch { return []; } };
+const enriched = rows.map((r) => {
+  const cn = arr(r.cn_suppliers_json);
+  const all = arr(r.suppliers_json);
+  return { ...r, cn, other: all.filter((s) => !cn.includes(s)) };
+});
+---
+
+<AdminShell title="品牌代工厂溯源" active="models" email={sess.email}>
+  <h1>品牌代工厂溯源</h1>
+  <p class="lead">
+    从公开进口提单反推：<b>每个品牌是哪些中国工厂在给它代工 / 供货</b>。
+    数据源 ImportKey（robots.txt 放行 <code>/i/</code>），只取提单里的 Supplier 与起运港，不采个人信息。
+    已入库 <b>{stat.n}</b> 个品牌，其中 <b>{stat.cn}</b> 个能追到中国供应商。
+  </p>
+
+  <form class="bar" method="get" style="display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0">
+    <input name="q" value={q} placeholder="搜品牌或供应商名…" style="max-width:18rem" />
+    <label style="font-size:.8125rem;display:flex;align-items:center;gap:.375rem">
+      <input type="checkbox" name="cn" value="1" checked={onlyCn} /> 只看有中国供应商的
+    </label>
+    <button class="btn pri" type="submit">筛选</button>
+    {(q || onlyCn) && <a class="btn" href="/bohui/brand-suppliers/">清空</a>}
+  </form>
+
+  {rows.length === 0 ? (
+    <div class="empty">还没有数据。跑 <code>tools/prospect/importkey-collect.py --apply</code> 采集。</div>
+  ) : (
+    <>
+      <div class="tblwrap">
+        <table>
+          <thead><tr>
+            <th style="width:15rem">品牌</th>
+            <th style="width:6rem">类型</th>
+            <th style="width:4.5rem">提单</th>
+            <th>中国供应商（代工/包材）</th>
+            <th style="width:14rem">其他供应商</th>
+          </tr></thead>
+          <tbody>
+            {enriched.map((r) => (
+                <tr>
+                  <td>
+                    <b>{r.brand}</b>
+                    <div class="sub">
+                      <a href={`https://importkey.com/i/${r.slug}`} target="_blank" rel="noreferrer">ImportKey</a>
+                      {r.address ? <span> · {String(r.address).slice(0, 46)}</span> : null}
+                    </div>
+                  </td>
+                  <td>
+                    {r.supplier_type === 'manufacturer' && <span class="ty mf">内容物代工</span>}
+                    {r.supplier_type === 'packaging' && <span class="ty pk">包材</span>}
+                    {r.supplier_type === 'other' && <span class="ty ot">其他</span>}
+                    {r.supplier_type === 'freight_only' && <span class="ty fr">仅货代</span>}
+                  </td>
+                  <td class="num">{r.n_shipments}</td>
+                  <td>
+                    {r.cn.length === 0 && <span class="none">未识别到</span>}
+                    {r.cn.map((s) => <span class="tag cn">{s}</span>)}
+                  </td>
+                  <td class="sub">{r.other.slice(0, 3).join(' / ')}</td>
+                </tr>
+            ))}
+
+          </tbody>
+        </table>
+      </div>
+      {pages > 1 && (
+        <nav style="display:flex;gap:.5rem;margin-top:1rem;align-items:center">
+          {page > 1 && <a class="btn" href={link({ p: page - 1 })}>上一页</a>}
+          <span style="font-size:.8125rem">第 {page} / {pages} 页 · 共 {total} 条</span>
+          {page < pages && <a class="btn" href={link({ p: page + 1 })}>下一页</a>}
+        </nav>
+      )}
+    </>
+  )}
+  <style>
+    .sub { font-size: .6875rem; color: #8a8499; }
+    .num { text-align: right; }
+    .none { color: #bbb; font-size: .75rem; }
+    .tag.cn { display: inline-block; margin: 0 .25rem .25rem 0; background: #e6f4ea; color: #389e0d; }
+    .ty { display: inline-block; padding: .0625rem .375rem; border-radius: 4px; font-size: .6875rem; white-space: nowrap; }
+    .ty.mf { background: #e6f4ea; color: #389e0d; }
+    .ty.pk { background: #e8f0fe; color: #1a56db; }
+    .ty.ot { background: #f5f5f5; color: #666; }
+    .ty.fr { background: #fff2f0; color: #a8071a; }
+  </style>
+</AdminShell>

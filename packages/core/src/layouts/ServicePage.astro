@@ -1,0 +1,585 @@
+---
+/**
+ * 服务/方案详情页 —— 渲染 solutions.ts 里的一条 Solution。
+ * SOP第8节要求:产品范围、可承接条件、被核实资质、客户常问问题、需求提交入口。
+ *
+ * 数据驱动:AI 改 solutions.ts 就能更新页面内容,不用像 WordPress 那样手动管理后台。
+ * 结构化数据:FAQ schema 让 Google 和 AI 搜索能直接读取问答。
+ */
+import BaseLayout from './BaseLayout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import { localePath, t, type Locale } from '../i18n/index.ts';
+import { SITES, getVariant, type SiteDef } from '../registry.ts';
+import type { Solution, SolutionCopy } from '../content/solutions.ts';
+import { ldJson } from '../content/ldjson.ts';
+
+export interface Props {
+  site: SiteDef;
+  locale: Locale;
+  solution: Solution;
+  email: string;
+}
+
+const { site, locale, solution, email } = Astro.props;
+const tr = t(locale);
+const variant = getVariant(site);
+const zhPage = String(locale).startsWith('zh');
+const copy: SolutionCopy = solution[locale] ?? solution.zh;
+const path = localePath(locale, `/services/${solution.slug}/`);
+const siblings = SITES.filter((s) => s.id !== site.id);
+
+/** FAQ 结构化数据 */
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: copy.faq.map(([q, a]) => ({
+    '@type': 'Question',
+    name: q,
+    acceptedAnswer: { '@type': 'Answer', text: a },
+  })),
+};
+
+/** 面包屑结构化数据 */
+const crumbSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: site.name, item: site.url },
+    { '@type': 'ListItem', position: 2, name: copy.title, item: `${site.url}${path.slice(1)}` },
+  ],
+};
+
+/** 询盘表单预填 */
+const INQUIRY_QS = (zhPage
+  ? [
+      `① 您的公司名称：`, `答：`, ``,
+      `② 目标市场：`, `答：`, ``,
+      `③ 产品类目（护肤品/身体护理/口腔护理等）：`, `答：`, ``,
+      `④ 计划采购数量：`, `答：`, ``,
+      `⑤ 品牌/包材要求：`, `答：`, ``,
+      `⑥ 目标上市时间：`, `答：`, ``,
+      `⑦ 联系方式（邮箱或WhatsApp）：`, `答：`,
+    ]
+  : [
+      `① Company name:`, `A:`, ``,
+      `② Target markets:`, `A:`, ``,
+      `③ Product category (skincare / body care / oral care etc.):`, `A:`, ``,
+      `④ Expected quantity:`, `A:`, ``,
+      `⑤ Brand / packaging requirements:`, `A:`, ``,
+      `⑥ Target launch date:`, `A:`, ``,
+      `⑦ Contact (email or WhatsApp):`, `A:`,
+    ]).join('\n');
+
+const inqPrefill = zhPage
+  ? `我看了「${copy.title}」页面，想了解更多。\n\n${INQUIRY_QS}`
+  : `I found your "${copy.title}" page and would like to know more.\n\n${INQUIRY_QS}`;
+---
+
+<BaseLayout
+  locale={locale}
+  school={variant.school}
+  variant={variant.id}
+  brand={site.id}
+  siteName={site.name}
+  siteUrl={site.url}
+  path={path}
+  title={copy.title}
+  description={copy.tagline}
+  indexable={site.indexable}
+  brandColor={site.brandColor}
+>
+  <a class="ck-skip-link" href="#main">{tr('a11y.skip')}</a>
+  <SiteHeader locale={locale} path={path} siteName={site.name} siteNameZh={site.nameZh} />
+
+  <main id="main">
+    {/* 面包屑 */}
+    <nav class="crumb" aria-label="breadcrumb">
+      <div class="ck-wrap">
+        <a href={localePath(locale, '/')}>{site.name}</a>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">{copy.title}</span>
+      </div>
+    </nav>
+
+    {/* 页头:标题+导语 */}
+    <section class="head">
+      <div class="ck-wrap">
+        <p class="ck-eyebrow">{zhPage ? '服务与方案' : 'Services & Solutions'}</p>
+        <h1>{copy.title}</h1>
+        <p class="tagline">{copy.tagline}</p>
+        <p class="lede">{copy.lede}</p>
+      </div>
+    </section>
+
+    {/* 痛点:你现在大概卡在这几件事上 */}
+    <section class="block">
+      <div class="ck-wrap">
+        <h2>{zhPage ? '你可能正卡在这' : 'Where you might be stuck'}</h2>
+        <div class="pair-grid">
+          {copy.pains.map(([q, a]) => (
+            <div class="pair">
+              <p class="pair-q">{q}</p>
+              <p class="pair-a">{a}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* 步骤:我们怎么接 */}
+    <section class="block alt">
+      <div class="ck-wrap">
+        <h2>{zhPage ? '我们怎么接' : 'How we work with you'}</h2>
+        <ol class="steps">
+          {copy.steps.map(([title, desc], i) => (
+            <li class="step">
+              <span class="step-n" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <p class="step-t">{title}</p>
+                <p class="step-d">{desc}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+
+    {/* 证据:先能给你什么 */}
+    <section class="block">
+      <div class="ck-wrap">
+        <h2>{zhPage ? '先能给你什么' : 'What we can show you first'}</h2>
+        <div class="pair-grid">
+          {copy.proof.map(([label, detail]) => (
+            <div class="pair">
+              <p class="pair-q">{label}</p>
+              <p class="pair-a">{detail}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* 关联方案卡:第三刀——一页聚合,不让客户跨库跳转 */}
+    <section class="block relate">
+      <div class="ck-wrap">
+        <h2>{zhPage ? '这套方案匹配什么' : 'What this matches'}</h2>
+        <div class="relate-grid">
+          <div class="relate-card">
+            <h3>{zhPage ? '在库基底' : 'Formula bases'}</h3>
+            <p class="relate-hint">{zhPage ? '已为您匹配成熟基底，点击申请免费寄样' : 'Matched mature bases. Request free samples.'}</p>
+            <div class="relate-items" data-solution={solution.slug} data-type="bases"></div>
+          </div>
+          <div class="relate-card">
+            <h3>{zhPage ? '合规预检' : 'Compliance check'}</h3>
+            <p class="relate-hint">{zhPage ? '目标市场法规前置核验' : 'Target market regulatory pre-check'}</p>
+            <div class="relate-items" data-solution={solution.slug} data-type="compliance"></div>
+          </div>
+          <div class="relate-card">
+            <h3>{zhPage ? '推荐包材' : 'Packaging'}</h3>
+            <p class="relate-hint">{zhPage ? '现货包材 1,000–3,000支起订' : 'Stock packaging MOQ 1,000–3,000 pcs'}</p>
+            <div class="relate-items" data-solution={solution.slug} data-type="packaging"></div>
+          </div>
+        </div>
+        <div class="relate-cta">
+          <a class="cta" href="#inquiry">{zhPage ? '把这套方案加入询盘' : 'Add this plan to inquiry'}</a>
+        </div>
+      </div>
+    </section>
+
+    {/* FAQ */}
+    <section class="block alt">
+      <div class="ck-wrap">
+        <h2>{zhPage ? '常见问题' : 'FAQ'}</h2>
+        <div class="faq-list">
+          {copy.faq.map(([q, a]) => (
+            <details class="faq-item">
+              <summary>{q}</summary>
+              <p>{a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* 询盘表单:SOP要求每页有需求提交入口,表单最小化 */}
+    <section class="block inq-section" id="inquiry">
+      <div class="ck-wrap">
+        <h2>{zhPage ? '提交需求' : 'Submit your inquiry'}</h2>
+        <p class="inq-hint">{zhPage
+          ? '不用注册,直接填写。常规现货包材代工：单品 1,000–3,000件起订。成熟基底打样周期：5–14个工作日。'
+          : 'No registration. Stock packaging OEM: MOQ 1,000–3,000 pcs. Mature base sampling: 5–14 working days.'}</p>
+        <form class="inq" action="/api/inquiry" method="post">
+          <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
+                 style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+          <input type="hidden" name="source" value={`service:${solution.slug}`} />
+          <div class="grid2">
+            <label><span>{zhPage ? '公司名称' : 'Company'}</span>
+              <input type="text" name="company" required /></label>
+            <label><span>{zhPage ? '目标市场' : 'Target market'}</span>
+              <input type="text" name="market" placeholder={zhPage ? '如:美国/东南亚/中东' : 'e.g. US / SEA / Middle East'} /></label>
+            <label><span>{zhPage ? '邮箱' : 'Email'}</span>
+              <input type="email" name="email" autocomplete="email" /></label>
+            <label><span>{zhPage ? 'WhatsApp' : 'WhatsApp'}</span>
+              <input type="tel" name="whatsapp" placeholder="+62 812 3456 7890" /></label>
+          </div>
+          <label class="full"><span>{zhPage ? '需求描述' : 'What you need'}</span>
+            <textarea name="message" rows="10" required>{inqPrefill}</textarea></label>
+          <p class="act">
+            <button class="cta" type="submit">{zhPage ? '发送询盘' : 'Send inquiry'}</button>
+            <span class="fb" role="status" aria-live="polite"></span>
+          </p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  {/* 第四刀:统一悬浮条——默认只显示WhatsApp+回到顶部,选了产品后动态浮出询盘车 */}
+  <div class="float-bar" id="floatBar">
+    <button class="float-btn" id="floatTop" type="button" aria-label={zhPage ? '回到顶部' : 'Back to top'} title={zhPage ? '回到顶部' : 'Back to top'}>↑</button>
+    <a class="float-btn wa" href={`https://wa.me/${email.includes('@') ? '' : ''}`} target="_blank" rel="noopener" aria-label="WhatsApp">💬</a>
+    <button class="float-btn cart hidden" id="floatCart" type="button" aria-label={zhPage ? '询盘车' : 'Inquiry cart'}>
+      <span class="cart-icon">📋</span>
+      <span class="cart-badge" id="cartBadge">0</span>
+    </button>
+  </div>
+
+  <SiteFooter locale={locale} path={path} site={site} siblings={siblings} email={email} />
+
+  {/* FAQ + 面包屑结构化数据 */}
+  <script type="application/ld+json" set:html={ldJson(faqSchema)} />
+  <script type="application/ld+json" set:html={ldJson(crumbSchema)} />
+</BaseLayout>
+
+<style>
+  .crumb {
+    font-size: var(--ck-small);
+    color: var(--ck-ink-faint);
+    padding-block: 0.75rem 0;
+  }
+  .crumb a { color: var(--ck-ink-soft); text-decoration: none; }
+  .crumb a:hover { text-decoration: underline; }
+  .crumb span[aria-hidden] { margin-inline: 0.5rem; }
+
+  .head {
+    background: var(--ck-hero-bg);
+    color: var(--ck-hero-ink);
+    padding-block: clamp(1.5rem, 3vw, 3rem);
+  }
+  .head h1 { margin-top: 0.5rem; }
+  .tagline {
+    margin-top: 0.75rem;
+    font-size: var(--ck-h3);
+    color: color-mix(in srgb, currentColor 85%, transparent);
+    max-width: var(--ck-maxw-prose);
+  }
+  .lede {
+    margin-top: 1rem;
+    max-width: var(--ck-maxw-prose);
+    color: color-mix(in srgb, currentColor 72%, transparent);
+    line-height: 1.7;
+  }
+
+  .block {
+    padding-block: clamp(1.75rem, 4vw, 3.5rem);
+    background: var(--ck-bg);
+  }
+  .block.alt { background: var(--ck-surface-alt); }
+  .block h2 {
+    font-size: var(--ck-h2);
+    margin-bottom: 1.5rem;
+  }
+
+  /* 关联方案卡:第三刀 */
+  .relate { background: var(--ck-surface-alt); }
+  .relate-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1.25rem; }
+  .relate-card { padding: 1.25rem; border: var(--ck-border-w) solid var(--ck-line); border-radius: var(--ck-radius, 10px); background: var(--ck-surface, #fff); }
+  .relate-card h3 { font-size: 0.9375rem; color: var(--ck-accent); margin-bottom: 0.5rem; }
+  .relate-hint { font-size: var(--ck-small); color: var(--ck-ink-soft); margin-bottom: 0.75rem; }
+  .relate-items { display: grid; gap: 0.5rem; }
+  .relate-item { padding: 0.5rem 0.75rem; border: 1px solid var(--ck-line); border-radius: 8px; font-size: 0.8125rem; line-height: 1.5; }
+  .relate-item strong { color: var(--ck-accent); }
+  .relate-cta { margin-top: 1.25rem; text-align: center; }
+  .relate-cta .cta { display: inline-block; padding: 0.9375rem 2rem; background: var(--ck-accent); color: var(--ck-on-accent); border-radius: var(--ck-cta-radius); font-weight: var(--ck-cta-weight); letter-spacing: var(--ck-cta-tracking); text-transform: var(--ck-cta-transform); text-decoration: none; }
+  .relate-cta .cta:hover { background: var(--ck-accent-deep); }
+
+  .pair-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+    gap: 1.25rem;
+  }
+  .pair {
+    padding: 1.25rem;
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-radius: var(--ck-radius, 10px);
+    background: var(--ck-surface, #fff);
+  }
+  .pair-q {
+    font-weight: 600;
+    color: var(--ck-ink);
+    margin-bottom: 0.5rem;
+  }
+  .pair-a {
+    color: var(--ck-ink-soft);
+    font-size: var(--ck-small);
+    line-height: 1.65;
+  }
+
+  .steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.875rem;
+  }
+  .step {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-bottom: var(--ck-border-w) solid var(--ck-line);
+  }
+  .step-n {
+    flex: none;
+    font-family: var(--ck-font-mono);
+    font-size: max(0.75rem, 14px);
+    color: var(--ck-accent);
+    padding-top: 0.15rem;
+  }
+  .step-t { font-weight: 600; color: var(--ck-ink); }
+  .step-d { color: var(--ck-ink-soft); font-size: var(--ck-small); margin-top: 0.25rem; line-height: 1.6; }
+
+  .faq-list { display: grid; gap: 0.5rem; }
+  .faq-item {
+    border: var(--ck-border-w) solid var(--ck-line);
+    border-radius: var(--ck-radius, 10px);
+    background: var(--ck-surface, #fff);
+    padding: 0.875rem 1.125rem;
+  }
+  .faq-item summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--ck-ink);
+    list-style: none;
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::before { content: '+ '; color: var(--ck-accent); }
+  .faq-item[open] summary::before { content: '− '; }
+  .faq-item p {
+    margin-top: 0.5rem;
+    color: var(--ck-ink-soft);
+    font-size: var(--ck-small);
+    line-height: 1.65;
+  }
+
+  .inq-section { background: var(--ck-hero-bg); color: var(--ck-hero-ink); }
+  .inq-hint {
+    font-size: var(--ck-small);
+    color: color-mix(in srgb, currentColor 70%, transparent);
+    margin-bottom: 1.25rem;
+  }
+  .inq { display: grid; gap: 0.875rem; max-width: var(--ck-maxw-prose); }
+  .inq .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.875rem; }
+  .inq label { display: grid; gap: 0.3125rem; font-size: var(--ck-small); }
+  .inq label > span { color: color-mix(in srgb, currentColor 75%, transparent); }
+  .inq input, .inq textarea {
+    font: inherit; font-size: 0.9375rem; padding: 0.625rem 0.75rem;
+    border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+    border-radius: var(--ck-radius, 10px);
+    background: var(--ck-surface, #fff); color: var(--ck-ink); width: 100%;
+  }
+  .inq input:focus, .inq textarea:focus { outline: none; border-color: var(--ck-accent); }
+  .fb { margin-left: 0.75rem; font-size: var(--ck-small); }
+  .fb.ok { color: #1D7A46; }
+  .fb.err { color: #A02B20; }
+  .cta {
+    display: inline-block; padding: 0.9375rem 2rem;
+    background: var(--ck-accent); color: var(--ck-on-accent);
+    border-radius: var(--ck-cta-radius); border: none; cursor: pointer;
+    font-weight: var(--ck-cta-weight); letter-spacing: var(--ck-cta-tracking);
+    text-transform: var(--ck-cta-transform);
+  }
+  .cta:hover { background: var(--ck-accent-deep); }
+
+  @media (max-width: 40rem) {
+    .inq .grid2 { grid-template-columns: 1fr; }
+  }
+
+  /* 第四刀:统一悬浮条 */
+  .float-bar {
+    position: fixed; bottom: 1rem; right: 1rem; z-index: 55;
+    display: flex; flex-direction: column; gap: 0.5rem;
+  }
+  .float-btn {
+    width: 3rem; height: 3rem; border-radius: 50%; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: transform 0.15s;
+  }
+  .float-btn:hover { transform: scale(1.08); }
+  .float-btn.wa { background: #25D366; color: #fff; text-decoration: none; }
+  #floatTop { background: var(--ck-surface, #fff); color: var(--ck-ink); border: 1px solid var(--ck-line); }
+  .float-btn.cart { background: var(--ck-accent); color: var(--ck-on-accent); position: relative; }
+  .float-btn.cart.hidden { display: none; }
+  .cart-badge {
+    position: absolute; top: -4px; right: -4px;
+    background: #e53e3e; color: #fff; font-size: 0.625rem;
+    width: 1.125rem; height: 1.125rem; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-weight: 700;
+  }
+  @media (max-width: 40rem) {
+    .float-bar { bottom: 0.75rem; right: 0.75rem; }
+    .float-btn { width: 2.5rem; height: 2.5rem; font-size: 1rem; }
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    const zh = document.documentElement.lang.indexOf('zh') === 0;
+
+    /* 第三刀:关联方案卡——根据方案slug自动填充匹配数据 */
+    var RELATE = {
+      'herbal-skincare': {
+        bases: [
+          { code: 'BH-S-001', name: zh ? '草本舒缓精华基底' : 'Herbal soothing serum base', actives: zh ? '积雪草、泛醇、神经酰胺' : 'Centella, Panthenol, Ceramide' },
+          { code: 'BH-S-042', name: zh ? '烟酰胺亮肤精华基底' : 'Niacinamide brightening base', actives: zh ? '烟酰胺3%、熊果苷' : 'Niacinamide 3%, Arbutin' },
+        ],
+        compliance: zh ? '🇺🇸FDA MoCRA注册 | 🇮🇩BPOM Notifkos | 🇪🇺CPNP通报' : 'US FDA MoCRA | ID BPOM Notifkos | EU CPNP',
+        packaging: zh ? ['滴管玻璃瓶30ml(现货1,000起)', '真空泵瓶50ml(现货1,000起)', '膏霜罐30g(现货3,000起)'] : ['Dropper glass 30ml(MOQ1k)', 'Airless pump 50ml(MOQ1k)', 'Cream jar 30g(MOQ3k)'],
+      },
+      'body-care': {
+        bases: [
+          { code: 'BH-B-007', name: zh ? '草本止痒防晒乳' : 'Herbal anti-itch suncare lotion', actives: zh ? '薄荷醇、氧化锌、甘草酸' : 'Menthol, Zinc Oxide, Glycyrrhizin' },
+          { code: 'BH-B-023', name: zh ? '果酸身体乳基底' : 'AHA body lotion base', actives: zh ? '乳酸5%、乳木果油' : 'Lactic Acid 5%, Shea Butter' },
+        ],
+        compliance: zh ? '🇺🇸OTC防晒需药案 | 🇮🇩防晒剂符合ACD限用 | 🇪🇺EC 1223/2009' : 'US OTC drug filing | ID ACD limits | EU EC 1223/2009',
+        packaging: zh ? ['防晒软管100ml(现货1,000起)', '喷雾瓶150ml(现货3,000起)', '泵头瓶200ml(现货1,000起)'] : ['Suncare tube 100ml(MOQ1k)', 'Spray 150ml(MOQ3k)', 'Pump 200ml(MOQ1k)'],
+      },
+      'oral-care': {
+        bases: [
+          { code: 'BH-O-002', name: zh ? '草本牙膏基底(含氟)' : 'Herbal toothpaste base (fluoride)', actives: zh ? '氟化钠、草本提取物' : 'Sodium Fluoride, Herbal extract' },
+          { code: 'BH-O-007', name: zh ? '洁净牙片基底' : 'Tooth tablet base', actives: zh ? '碳酸钙、木糖醇' : 'Calcium Carbonate, Xylitol' },
+        ],
+        compliance: zh ? '🇺🇸含氟按化妆品管理 | 🇮🇩BPOM按药品 | 🇪🇺CPNP化妆品' : 'US fluoride=cosmetic | ID BPOM=drug | EU CPNP=cosmetic',
+        packaging: zh ? ['牙膏管100g(现货3,000起)', '压片瓶60粒(现货3,000起)'] : ['Toothpaste tube 100g(MOQ3k)', 'Tablet bottle 60ct(MOQ3k)'],
+      },
+      'product-development': {
+        bases: [
+          { code: 'BH-S-089', name: zh ? '视黄醇抗老面霜基底' : 'Retinol anti-aging cream base', actives: zh ? '视黄醇0.3%、角鲨烷' : 'Retinol 0.3%, Squalane' },
+          { code: 'BH-S-001', name: zh ? '草本舒缓精华基底' : 'Herbal soothing serum base', actives: zh ? '积雪草、泛醇、神经酰胺' : 'Centella, Panthenol, Ceramide' },
+        ],
+        compliance: zh ? '打样阶段先过成分合规，不等标签出来才发现要改配方' : 'Ingredient compliance checked during selection, not after labels',
+        packaging: zh ? ['打样用:通用样品瓶', '量产后:按品类匹配现货包材1,000-3,000起'] : ['Sampling: universal sample bottle', 'Production: stock packaging MOQ 1k-3k'],
+      },
+      'factory-quality': {
+        bases: [{ code: 'GMPC', name: zh ? 'GMPC化妆品良好生产规范认证' : 'GMPC cosmetics GMP certification', actives: zh ? '覆盖全部化妆品产线' : 'Covers all cosmetics lines' }],
+        compliance: zh ? 'GMPC | ISO 22716 | HALAL（以证书原件为准）' : 'GMPC | ISO 22716 | HALAL (originals prevail)',
+        packaging: zh ? ['每批留样追溯', '质检节点:原料→半成品→灌装→包装→成品'] : ['Batch sample retention', 'QC: raw→bulk→filling→packaging→finished'],
+      },
+      'cross-border-seller': {
+        bases: [
+          { code: 'BH-S-042', name: zh ? '烟酰胺亮肤精华(跨境爆款)' : 'Niacinamide serum (cross-border hit)', actives: zh ? '烟酰胺3%、熊果苷' : 'Niacinamide 3%, Arbutin' },
+          { code: 'BH-B-007', name: zh ? '草本防晒乳(东南亚热销)' : 'Herbal suncare (SEA bestseller)', actives: zh ? '薄荷醇、氧化锌' : 'Menthol, Zinc Oxide' },
+        ],
+        compliance: zh ? '🇮🇩BPOM+HALAL双轨 | 🇺🇸MoCRA | 🇪🇺CPNP' : 'ID BPOM+HALAL | US MoCRA | EU CPNP',
+        packaging: zh ? ['跨境标准:软管100ml(现货1,000起)', '小包裹:滴管30ml(现货1,000起)'] : ['Cross-border: tube 100ml(MOQ1k)', 'Small parcel: dropper 30ml(MOQ1k)'],
+      },
+    };
+
+    // 默认数据(其他方案用)
+    var DEFAULT_RELATE = {
+      bases: [{ code: 'BH-S-001', name: zh ? '草本舒缓精华基底' : 'Herbal soothing serum base', actives: zh ? '积雪草、泛醇' : 'Centella, Panthenol' }],
+      compliance: zh ? '43国法规前置核验，以目标市场官方文本为准' : '43-market pre-check. Official text prevails.',
+      packaging: zh ? ['现货包材1,000-3,000起订，按品类匹配'] : ['Stock packaging MOQ 1k-3k, matched by category'],
+    };
+
+    document.querySelectorAll('[data-solution]').forEach(function (container) {
+      var slug = container.getAttribute('data-solution');
+      var type = container.getAttribute('data-type');
+      var data = RELATE[slug] || DEFAULT_RELATE;
+      var html = '';
+      if (type === 'bases') {
+        data.bases.forEach(function (b) {
+          html += '<div class="relate-item"><strong>' + b.code + '</strong> ' + b.name + '<br><small>' + (zh ? '活性物：' : 'Actives: ') + b.actives + '</small></div>';
+        });
+      } else if (type === 'compliance') {
+        html += '<div class="relate-item">' + data.compliance + '</div>';
+      } else if (type === 'packaging') {
+        data.packaging.forEach(function (p) {
+          html += '<div class="relate-item">' + p + '</div>';
+        });
+      }
+      container.innerHTML = html;
+    });
+
+    /* 询盘表单 */
+    const f = document.querySelector('.inq-section form');
+    // 第四刀:悬浮条逻辑
+    var floatTop = document.getElementById('floatTop');
+    var floatCart = document.getElementById('floatCart');
+    var cartBadge = document.getElementById('cartBadge');
+    if (floatTop) {
+      floatTop.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    }
+    // 询盘车:用sessionStorage计数,点"加入询盘"按钮时+1
+    function updateCart() {
+      try {
+        var items = JSON.parse(sessionStorage.getItem('inq_cart') || '[]');
+        if (items.length > 0 && cartBadge) {
+          cartBadge.textContent = String(items.length);
+          floatCart && floatCart.classList.remove('hidden');
+        }
+      } catch (_) {}
+    }
+    updateCart();
+    // "加入询盘"按钮
+    var addBtn = document.querySelector('.relate-cta a');
+    if (addBtn) {
+      addBtn.addEventListener('click', function () {
+        try {
+          var items = JSON.parse(sessionStorage.getItem('inq_cart') || '[]');
+          var slug = document.querySelector('[data-solution]')?.getAttribute('data-solution') || 'unknown';
+          items.push({ slug: slug, ts: Date.now() });
+          sessionStorage.setItem('inq_cart', JSON.stringify(items));
+          updateCart();
+        } catch (_) {}
+      });
+    }
+    if (floatCart) {
+      floatCart.addEventListener('click', function () {
+        document.getElementById('inquiry')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+    if (!f) return;
+    const fb = f.querySelector('.fb');
+    const zh = document.documentElement.lang.indexOf('zh') === 0;
+    const emailEl = f.elements.email;
+    const waEl = f.elements.whatsapp;
+    const validate = () => {
+      const missing = !emailEl.value.trim() && !waEl.value.trim();
+      const msg = missing ? (zh ? '邮箱和 WhatsApp 至少填写一个。' : 'Enter an email or WhatsApp number.') : '';
+      emailEl.setCustomValidity(msg); waEl.setCustomValidity(msg);
+      return !missing;
+    };
+    emailEl.addEventListener('input', validate);
+    waEl.addEventListener('input', validate);
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!validate()) { f.reportValidity(); return; }
+      const btn = f.querySelector('button');
+      btn.disabled = true;
+      if (fb) { fb.className = 'fb'; fb.textContent = zh ? '提交中…' : 'Sending…'; }
+      try {
+        const r = await fetch('/api/inquiry', { method: 'POST', body: new FormData(f) });
+        if (fb) {
+          fb.className = 'fb ' + (r.ok ? 'ok' : 'err');
+          fb.textContent = r.ok
+            ? (zh ? '已收到，我们会尽快回复。' : 'Received. We will get back to you shortly.')
+            : (zh ? '提交失败，请改用邮件联系我们。' : 'Could not send — please email us instead.');
+        }
+        if (r.ok) f.reset();
+      } catch {
+        if (fb) { fb.className = 'fb err'; fb.textContent = zh ? '网络异常，请稍后重试。' : 'Network error, please retry.'; }
+      } finally { btn.disabled = false; }
+    });
+  })();
+</script>

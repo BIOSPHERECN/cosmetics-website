@@ -1,0 +1,41 @@
+# Cloudflare 静态资源响应头。
+#
+# 为什么要有这一份:
+#   实测 /media/shots/ 与 /media/medierba/ 下的图返回的是
+#   `Cache-Control: public, max-age=0, must-revalidate` —— 等于**没有缓存**。
+#   MEDIERBA 首页一次引用 26 张图、合计 4.8MB;剂型图那批 7.3MB。
+#   每个访客、每次刷新都要重新下一遍。
+#
+#   这类问题不会报错、不会让页面出错,只是让每个人都慢一点、
+#   让带宽账单高一点 —— 所以没人会主动报,只能靠量。
+#
+# 为什么不用 immutable:
+#   /_astro/* 那批文件名里带内容哈希,改了内容文件名就变,一年不变是安全的。
+#   而这里的图是 fmt-serum.jpg、medierba-hero.png 这种**固定名字**,
+#   创始人随时会把它们换成自己的实拍。设成 immutable 一年,
+#   已经缓存过的访客一年之内都看不到新图 —— 那是给自己埋雷。
+#
+#   所以用「一天新鲜 + 七天可陈旧」:
+#     max-age=86400            一天内直接用缓存,不回源
+#     stale-while-revalidate   过期后先拿旧的显示,后台悄悄更新
+#   换图后最长一天全网见效,而 99% 的请求不再回源。
+
+# 2026-08-31 实测:factory/bohui/origin 子目录漏在规则外,还是 max-age=0 ——
+# 手机整页几十张图每次全量重下,灰块半天不出图。合并成一条盖住整个 /media/。
+/media/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# 字体不会变,可以放心长缓存
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 安全响应头 —— 全站统一。
+# 这几条都是"不做也不会坏、做了能挡一类攻击"的类型,成本几乎为零。
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  # 不给任何站点把我们嵌进 iframe 的机会(点击劫持)
+  X-Frame-Options: SAMEORIGIN
+  # 关掉页面用不到的浏览器能力。AI 肌肤检测是让用户主动选图上传,
+  # 不调摄像头,所以 camera 也一并关掉 —— 少一项就少一个被滥用的入口。
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()

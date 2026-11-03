@@ -14,15 +14,30 @@ const c = await pageGuard(Astro.request);
 if (!c) return Astro.redirect('/bohui/login/');
 
 const { results: users } = await c.db.prepare(
-  `SELECT id, email, role, display_name, created_at FROM users ORDER BY id`
+  `SELECT id, email, role, lab_role, display_name, created_at FROM users ORDER BY id`
 ).all<any>();
+const myTotp = await c.db.prepare(`SELECT totp_secret IS NOT NULL AS on_ FROM users WHERE id=?`)
+  .bind(c.sess.uid).first<{ on_: number }>();
+const totpOn = !!myTotp?.on_;
 const { results: acts } = await c.db.prepare(
   `SELECT user_id, COUNT(*) n, MAX(created_at) last FROM revisions GROUP BY user_id`
 ).all<{ user_id: number; n: number; last: string }>();
 const actBy = new Map(acts.map((a) => [a.user_id, a]));
 const isAdmin = c.sess.role === 'admin';
 const nAdmin = users.filter((u: any) => u.role === 'admin').length;
-const ROLE: Record<string, string> = { admin: '管理员', editor: '编辑' };
+/* 角色口径与 lib/guard.ts 的 roleAllows() 一一对应,改一边必须改另一边 */
+const ROLE: Record<string, string> = { admin: '管理员', editor: '内容编辑', sales: '销售(只做询盘)', viewer: '只读', lab: '实验室(只进配方实验室)' };
+const ROLE_HINT: Record<string, string> = {
+  admin: '全部权限,含账号、模型密钥、站点设置',
+  editor: '页面、版块、产品、资讯、媒体、配方、包材、翻译;碰不到账号与密钥',
+  sales: '只能看和处理询盘、导出询盘;内容与设置一律 403',
+  viewer: '只读,任何写操作 403',
+  lab: '配方实验室成员:再在右边选实验室角色。碰不到内容、询盘、设置',
+};
+/* 实验室角色与 lib/guard.ts 的 LAB_ROLES 一一对应,改一边必须改另一边。
+   它和系统角色是两列:系统角色管进哪些接口,实验室角色管配方页里看到多少(比例、成本)。
+   管理员不选实验室角色 = 看不到配方比例,这是有意的:管理员不默认看配方。 */
+const LAB_ROLE: Record<string, string> = { chief: '总工', formulator: '配方师', sampler: '打版员', sales: '业务', boss: '老板', purchasing: '采购', finance: '财务' };   // 采购 / 财务只确认原料价,不进配方(创始人 09-18「价格由财务和采购确认,我们不可以瞎编」)
 ---
 
 <AdminShell title="账号与权限" active="users" email={c.sess.email} tenant={c.tenant}>
@@ -32,9 +47,76 @@ const ROLE: Record<string, string> = { admin: '管理员', editor: '编辑' };
     共 {users.length} 个账号,其中 {nAdmin} 个管理员。
   </p>
 
+  {/* 两步验证:只能给自己开/关 —— 替别人操作等于拿走对方密钥 */}
+  <section class="totp">
+    <b>我的两步验证</b>
+    <span class:list={['pill', totpOn ? 'p-ok' : 'p-wait']}>{totpOn ? '已启用' : '未启用'}</span>
+    {totpOn ? (
+      <span class="tp-row">
+        <input id="tp-code" inputmode="numeric" maxlength="6" placeholder="当前动态码" />
+        <button class="btn" id="tp-off">关闭两步验证</button>
+      </span>
+    ) : (
+      <span class="tp-row">
+        <button class="btn pri" id="tp-setup">启用两步验证</button>
+      </span>
+    )}
+    <div id="tp-panel" hidden>
+      <p class="tp-hint">用 Google Authenticator / Microsoft Authenticator / 1Password 任一验证器,
+        选「手动输入密钥」,录入下面这串(账户名随意,类型选「基于时间」):</p>
+      <code id="tp-secret"></code>
+      <p class="tp-hint">录入后,把验证器显示的 6 位码填这里确认激活:</p>
+      <span class="tp-row">
+        <input id="tp-act-code" inputmode="numeric" maxlength="6" placeholder="000000" />
+        <button class="btn pri" id="tp-act">确认激活</button>
+      </span>
+    </div>
+    <style>
+  .rolelegend { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .5rem; }
+  .rolelegend li { display: grid; gap: .125rem; padding: .625rem .75rem; border-radius: 10px;
+                   border: 1px solid rgba(0,0,0,.1); font-size: .875rem; }
+  .rolelegend b { font-size: .9375rem; }
+  .rolelegend span { opacity: .72; line-height: 1.55; }
+
+      .totp { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem;
+              background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: 8px;
+              padding: .875rem 1rem; margin-bottom: 1.25rem; font-size: .875rem; }
+      .totp > div { flex-basis: 100%; }
+      .tp-row { display: inline-flex; gap: .5rem; align-items: center; }
+      .totp input { font: inherit; font-size: .875rem; width: 8rem; padding: .375rem .5rem;
+                    border: 1px solid var(--ad-line); border-radius: 6px; letter-spacing: .2em; }
+      #tp-secret { display: inline-block; padding: .5rem .75rem; background: var(--ad-sunk);
+                   border-radius: 6px; font-size: .9375rem; letter-spacing: .12em; user-select: all; }
+      .tp-hint { font-size: .8125rem; color: var(--ad-soft); margin: .625rem 0 .25rem; }
+      [hidden] { display: none !important; }
+    </style>
+    <script is:inline>
+      const tpCall = (body) => fetch('/api/admin/totp', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((r) => r.json());
+      document.getElementById('tp-setup')?.addEventListener('click', async (e) => {
+        e.target.disabled = true;
+        const d = await tpCall({ action: 'setup' });
+        if (d.ok) {
+          document.getElementById('tp-secret').textContent = d.secret;
+          document.getElementById('tp-panel').hidden = false;
+        } else { alert(d.msg || '失败'); e.target.disabled = false; }
+      });
+      document.getElementById('tp-act')?.addEventListener('click', async () => {
+        const d = await tpCall({ action: 'activate', code: document.getElementById('tp-act-code').value.trim() });
+        if (d.ok) { alert('两步验证已启用 —— 下次登录起,密码之后还需输入动态码。'); location.reload(); }
+        else alert(d.msg || '失败');
+      });
+      document.getElementById('tp-off')?.addEventListener('click', async () => {
+        const d = await tpCall({ action: 'disable', code: document.getElementById('tp-code').value.trim() });
+        if (d.ok) { alert('两步验证已关闭。'); location.reload(); }
+        else alert(d.msg || '失败');
+      });
+    </script>
+  </section>
+
   <table>
     <thead><tr>
-      <th>邮箱</th><th style="width:8rem">姓名</th><th style="width:7rem">角色</th>
+      <th>邮箱</th><th style="width:8rem">姓名</th><th style="width:7rem">系统角色</th><th style="width:7rem">实验室角色</th>
       <th style="width:7rem">修改次数</th><th style="width:10rem">最近操作</th><th style="width:11rem"></th>
     </tr></thead>
     <tbody>
@@ -50,16 +132,28 @@ const ROLE: Record<string, string> = { admin: '管理员', editor: '编辑' };
             <td>
               {isAdmin && u.id !== c.sess.uid ? (
                 <select class="role">
-                  <option value="admin" selected={u.role === 'admin'}>管理员</option>
-                  <option value="editor" selected={u.role === 'editor'}>编辑</option>
+                  {Object.keys(ROLE).map((k) => (
+                    <option value={k} selected={u.role === k}>{ROLE[k]}</option>
+                  ))}
                 </select>
               ) : <span class="pill p-wait">{ROLE[u.role] ?? u.role}</span>}
+            </td>
+            <td>
+              {isAdmin && u.id !== c.sess.uid ? (
+                <select class="lab">
+                  <option value="" selected={!u.lab_role}>无</option>
+                  {Object.keys(LAB_ROLE).map((k) => (
+                    <option value={k} selected={u.lab_role === k}>{LAB_ROLE[k]}</option>
+                  ))}
+                </select>
+              ) : <span class="pill p-wait">{u.lab_role ? (LAB_ROLE[u.lab_role] ?? u.lab_role) : '无'}</span>}
             </td>
             <td class="num">{a?.n ?? 0}</td>
             <td style="font-size:.75rem;color:var(--ad-faint)">{a?.last ? <time data-utc={a.last}>{a.last.slice(0, 16)}</time> : '—'}</td>
             <td style="text-align:right;white-space:nowrap">
               {u.id === c.sess.uid && <button class="btn pw">改我的口令</button>}
-              {isAdmin && u.id !== c.sess.uid && !(u.role === 'admin' && nAdmin <= 1) &&
+              {/* 最后一个管理员不给删按钮;写成 > 而不是 <=,Astro 会把 `<= 1) &&` 后面的 <button 误认成标签 */}
+              {isAdmin && u.id !== c.sess.uid && (u.role !== 'admin' || nAdmin > 1) &&
                 <button class="btn danger del">删除</button>}
             </td>
           </tr>
@@ -67,6 +161,17 @@ const ROLE: Record<string, string> = { admin: '管理员', editor: '编辑' };
       })}
     </tbody>
   </table>
+  <p class="hint" style="margin-top:.625rem">
+    实验室成员建号选「实验室」系统角色,再选实验室角色;打版员不需要其他任何权限。
+  </p>
+
+  <!-- 权限说明写在页面上,不写在文档里 —— 分配角色的人就在这一屏,
+       跳出去查文档的那一步,现实中没人会走。 -->
+  <ul class="rolelegend">
+    {Object.keys(ROLE).map((k) => (
+      <li><b>{ROLE[k]}</b><span>{ROLE_HINT[k]}</span></li>
+    ))}
+  </ul>
 
   {isAdmin && (
     <section class="pane">
@@ -78,7 +183,11 @@ const ROLE: Record<string, string> = { admin: '管理员', editor: '编辑' };
       <form id="nf" class="row">
         <input name="email" type="email" placeholder="name@biosphere-ai.com" required style="max-width:18rem" />
         <input name="display_name" placeholder="姓名(选填)" style="max-width:10rem" />
-        <select name="role"><option value="editor">编辑</option><option value="admin">管理员</option></select>
+        <select name="role">{Object.keys(ROLE).map((k) => <option value={k}>{ROLE[k]}</option>)}</select>
+        <select name="lab_role" title="实验室角色(非实验室成员留「无」)">
+          <option value="">实验室角色:无</option>
+          {Object.keys(LAB_ROLE).map((k) => <option value={k}>{LAB_ROLE[k]}</option>)}
+        </select>
         <button class="btn pri" type="submit">生成邀请</button>
       </form>
       <p id="invite" class="invite" hidden></p>
@@ -107,6 +216,10 @@ const ROLE: Record<string, string> = { admin: '管理员', editor: '编辑' };
       const d = await post('PATCH', { id: +s.closest('tr').dataset.id, role: s.value });
       say(d.ok ? '角色已更新' : (d.msg || '更新失败'));
     }));
+    document.querySelectorAll('select.lab').forEach(s => s.addEventListener('change', async () => {
+      const d = await post('PATCH', { id: +s.closest('tr').dataset.id, lab_role: s.value || null });
+      say(d.ok ? '实验室角色已更新' : (d.msg || '更新失败'));
+    }));
     document.querySelectorAll('.del').forEach(b => b.addEventListener('click', async () => {
       const tr = b.closest('tr');
       if (!confirm('确定删除账号 ' + tr.querySelector('b').textContent + '?')) return;
@@ -114,7 +227,7 @@ const ROLE: Record<string, string> = { admin: '管理员', editor: '编辑' };
       d.ok ? location.reload() : say(d.msg || '删除失败');
     }));
     document.querySelectorAll('.pw').forEach(b => b.addEventListener('click', async () => {
-      const p1 = prompt('输入新口令(至少 6 位)'); if (!p1) return;
+      const p1 = prompt('输入新口令(至少 10 位)'); if (!p1) return;
       if (p1 !== prompt('再输一次确认')) return say('两次输入不一致');
       const d = await post('PATCH', { id: +b.closest('tr').dataset.id, password: p1 });
       say(d.ok ? '口令已更新,下次登录生效' : (d.msg || '更新失败'));

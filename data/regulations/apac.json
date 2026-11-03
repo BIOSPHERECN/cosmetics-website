@@ -1,0 +1,559 @@
+{
+  "markets": [
+    {
+      "id": "cn",
+      "region": "East Asia",
+      "country_en": "Mainland China",
+      "country_zh": "中国大陆",
+      "authority_en": "National Medical Products Administration (NMPA)",
+      "authority_zh": "国家药品监督管理局",
+      "law_en": "Regulations on the Supervision and Administration of Cosmetics (CSAR)",
+      "law_zh": "化妆品监督管理条例",
+      "law_ref": "State Council Decree No. 727 (promulgated 2020-06-16)",
+      "in_force_since": "2021-01-01",
+      "latest_update": {
+        "date": "2026-07-29",
+        "what": "NMPA Announcement No. 70 (2026) introduced eight registration/filing optimisation measures, incl. wider animal-test exemptions, shared test reports for similar formulas and ingredient safety data kept on file instead of submitted.",
+        "source": "https://www.nifdc.org.cn/nifdc/xxgk/zcfg/flfg/20260729173627128.html"
+      },
+      "market_entry": "Pre-market: 普通化妆品备案 (filing) for general cosmetics and 特殊化妆品注册 (NMPA registration) for special cosmetics (hair dye, perm, freckle-whitening, sunscreen, anti-hair-loss, new efficacy), under 化妆品注册备案管理办法 (SAMR Order No. 35, in force 2021-05-01).",
+      "responsible_person": "Overseas registrants/filers must appoint a 境内责任人 (domestic responsible person, a Chinese legal entity) that files the product and bears joint liability for quality and safety.",
+      "safety_file": "产品安全评估报告 per 化妆品安全评估技术导则 (2021): simplified reports were accepted only until 2025-05-01 (NMPA Announcement 2024 No. 50); since then a full-version assessment is required, with eligible general cosmetics allowed to submit the 安全评估基本结论 and keep the full report on file for inspection.",
+      "labeling_key": "Chinese label mandatory under 化妆品标签管理办法 (in force 2022-05-01): full ingredient list in descending order using standard Chinese names, ingredients at or below 0.1% grouped under 其他微量成分; efficacy claims must be substantiated under 化妆品功效宣称评价规范; no fragrance-allergen naming rule.",
+      "animal_testing": "Not required for domestic general cosmetics; imported general cosmetics have been exempt from toxicology tests since 2021-05-01 if the manufacturer holds a GMP certificate from its home authority and the safety assessment confirms safety, except children's products, products using new ingredients under monitoring, or firms under key supervision; NMPA No. 70 (2026) widened the exemptions.",
+      "ingredient_lists": "化妆品安全技术规范 (2015年版, continuously updated: prohibited, restricted, permitted preservatives/UV filters/colorants/hair dyes) plus 已使用化妆品原料目录 (2021年版, 5th adjustment 2026-08-19).",
+      "official_url": "https://www.nmpa.gov.cn/hzhp/hzhpfgwj/index.html",
+      "sources": [
+        "https://sjfg.samr.gov.cn/law/file/pdf/3235243/1663837881333.pdf",
+        "https://www.nmpa.gov.cn/xxgk/ggtg/hzhpggtg/jmhzhptg/20240422172542190.html",
+        "https://www.nmpa.gov.cn/xxgk/fgwj/xzhgfxwj/20210603171933181.html",
+        "https://www.nifdc.org.cn/nifdc/xxgk/zcfg/flfg/20260729173627128.html",
+        "https://yjj.sh.gov.cn/zcjd/20260729/60d13ccfda7848fe88caf92c05bdfbc9.html",
+        "https://en.reach24h.com/news/industry-news/cosmetic/china-cosmetics-regulations-update-may-2026",
+        "https://www.reach24h.com/cosmetic/industry-news/safety-specification-update"
+      ],
+      "notes": "The full-version safety-assessment cut-off is 2025-05-01. Other 2026 items: NMPA Announcement No. 48 (2026-05-15, mercury standard effective 2026-07-01; o-phenylphenol and Acid Violet 43 from 2028-06-01), No. 51 (2026-05-29, eight test methods effective 2027-03-01), GACC Announcement No. 61 (2026-05-11, import/export inspection rules effective 2026-12-01), e-label pilots in Shanghai/Guangdong, and a draft mandatory national labelling standard under consultation."
+    },
+    {
+      "id": "hk",
+      "region": "East Asia",
+      "country_en": "Hong Kong SAR",
+      "country_zh": "香港特别行政区",
+      "authority_en": "Customs and Excise Department (C&ED); Department of Health for pharmaceutical-type products",
+      "authority_zh": "香港海关(药剂类产品由卫生署管辖)",
+      "law_en": "Consumer Goods Safety Ordinance (Cap. 456) and Consumer Goods Safety Regulation (Cap. 456A); Trade Descriptions Ordinance (Cap. 362)",
+      "law_zh": "《消费品安全条例》(第456章)及《消费品安全规例》(第456A章);《商品说明条例》(第362章)",
+      "law_ref": "Cap. 456 Laws of Hong Kong (general safety requirement, s.4)",
+      "in_force_since": null,
+      "latest_update": {
+        "date": "2026-07-24",
+        "what": "Hong Kong Customs warned the public about a collagen cream containing banned Sudan red dye and lacking the required Chinese warning labelling (enforcement action under Cap. 456; no new legislation).",
+        "source": "https://cosmetic.chemlinked.com/news/cosmetic-news/monthly-recap-global-cosmetic-regulatory-updates-july-2026"
+      },
+      "market_entry": "None: no pre-market registration, notification or import licence for general cosmetics; only products classified as pharmaceuticals (Cap. 138) or proprietary Chinese medicines (Cap. 549) need registration.",
+      "responsible_person": "No statutory responsible person; the Hong Kong manufacturer, importer or supplier is liable for meeting the general safety requirement.",
+      "safety_file": "No mandated dossier; suppliers must be able to show the product meets the general safety requirement (reasonable safety by reference to international or Hong Kong standards, test reports on request).",
+      "labeling_key": "No cosmetics-specific label law, but any warning or caution on safe keeping, use or disposal must be in both English and Chinese, legibly and conspicuously (Cap. 456A); descriptions must not be false or misleading (Cap. 362); no ingredient or allergen listing mandate.",
+      "animal_testing": "No ban and no requirement.",
+      "ingredient_lists": "No cosmetic-specific lists; C&ED judges safety against international standards (EU/ACD/China limits) and the Poisons List under the Pharmacy and Poisons Ordinance (Cap. 138) restricts substances such as hydroquinone and certain hair-dye amines.",
+      "official_url": "https://www.elegislation.gov.hk/hk/cap456",
+      "sources": [
+        "https://www.elegislation.gov.hk/hk/cap456",
+        "https://www.customs.gov.hk/en/service-enforcement-information/consumer-protection/goods-safety/index.html",
+        "https://cms.law/en/int/expert-guides/cms-expert-guide-on-beauty/hong-kong",
+        "https://www.info.gov.hk/gia/general/201806/27/P2018062700331.htm",
+        "https://cosmetic.chemlinked.com/news/cosmetic-news/monthly-recap-global-cosmetic-regulatory-updates-july-2026"
+      ],
+      "notes": "Commencement date of Cap. 456 (commonly cited as 1995) could not be verified; bilingual warnings are the only language rule."
+    },
+    {
+      "id": "tw",
+      "region": "East Asia",
+      "country_en": "Taiwan",
+      "country_zh": "台湾",
+      "authority_en": "Taiwan Food and Drug Administration (TFDA), Ministry of Health and Welfare",
+      "authority_zh": "卫生福利部食品药物管理署",
+      "law_en": "Cosmetic Hygiene and Safety Act",
+      "law_zh": "化粧品衛生安全管理法",
+      "law_ref": "Promulgated 2018-05-02 by Presidential Order, replacing 化粧品衛生管理條例",
+      "in_force_since": "2019-07-01",
+      "latest_update": {
+        "date": "2026-07-01",
+        "what": "Third and final phase: all general cosmetics (except handmade solid soap exempt from factory registration) must hold a Product Information File (PIF) and be made under 化粧品優良製造準則 (GMP, ISO 22716-based).",
+        "source": "https://www.fda.gov.tw/TC/siteContent.aspx?sid=12524"
+      },
+      "market_entry": "Pre-market 產品登錄 (online product notification) for all cosmetics: general cosmetics since 2021-07-01 and 特定用途化粧品 (sunscreen, hair dye, perm, antiperspirant, tooth whitening) since 2024-07-01, when the former 查驗登記 licence system ended.",
+      "responsible_person": "The Taiwan manufacturer or importer (化粧品製造或輸入業者) must complete the notification, hold the PIF and appear on the label, so a foreign brand needs a Taiwan-registered importer.",
+      "safety_file": "PIF (產品資訊檔案, 16 items incl. formula, labels, test reports and a safety assessment signed by a qualified assessor) phased in on 2024-07-01 (specific-purpose), 2025-07-01 (infant, lip, eye, non-medicated toothpaste/mouthwash) and 2026-07-01 (all general cosmetics), with fines up to NT$1 million.",
+      "labeling_key": "Traditional-Chinese labelling with product name, use, directions, batch, shelf life, full ingredient list, manufacturer/importer and origin; specific-purpose actives must show content; no separate fragrance-allergen naming rule.",
+      "animal_testing": "Animal testing for cosmetic or ingredient safety assessment banned in Taiwan since 2019-11-09 (Art. 6) with narrow TFDA-approved exceptions; imported animal-tested products are not banned.",
+      "ingredient_lists": "化粧品禁止使用成分表, 化粧品成分使用限制表, 化粧品防腐劑成分名稱及使用限制表, 化粧品色素成分使用限制表, 化粧品防曬劑成分使用限制表 and 化粧品微生物容許量基準表 (nine PFAS/allergen entries added to the prohibited list from 2025-01-01).",
+      "official_url": "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=L0030013",
+      "sources": [
+        "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=L0030013",
+        "https://www.fda.gov.tw/TC/siteContent.aspx?sid=12524",
+        "https://www.fda.gov.tw/tc/sitecontent.aspx?sid=3435",
+        "https://www.fda.gov.tw/tc/newsContent.aspx?cid=3&id=30614",
+        "https://www.mohw.gov.tw/cp-16-80962-1.html",
+        "https://taronews.tw/2026/05/27/1193092/"
+      ],
+      "notes": "GMP phases mirror the PIF phases (2024-07-01, 2025-07-01, 2026-07-01) per TFDA and Taiwan press."
+    },
+    {
+      "id": "jp",
+      "region": "East Asia",
+      "country_en": "Japan",
+      "country_zh": "日本",
+      "authority_en": "Ministry of Health, Labour and Welfare (MHLW) with PMDA; prefectural governments issue licences",
+      "authority_zh": "厚生劳动省(厚生労働省)/医药品医疗器械综合机构(PMDA)",
+      "law_en": "Act on Securing Quality, Efficacy and Safety of Products Including Pharmaceuticals and Medical Devices (PMD Act)",
+      "law_zh": "医薬品、医療機器等の品質、有効性及び安全性の確保等に関する法律(薬機法)",
+      "law_ref": "Act No. 145 of 1960 (renamed PMD Act 2014); latest amendment Act No. 37 of 2025",
+      "in_force_since": "1961-02-01",
+      "latest_update": {
+        "date": "2025-05-21",
+        "what": "PMD Act amendment (Act No. 37 of 2025) promulgated and phased in from 2025-11-20 and 2026-05-01, tightening MAH governance, quality and supply obligations (largely pharma-focused); separately MHLW's 2025-03-10 notice rewrote the 特記表示 (highlighted-ingredient) rules so that the ingredient's purpose must be stated.",
+        "source": "https://www.mhlw.go.jp/content/11120000/001491554.pdf"
+      },
+      "market_entry": "No pre-market approval for cosmetics: the licensed MAH files a 化粧品製造販売届 (notification) per product before sale, whereas products with medicinal claims are 医薬部外品 (quasi-drugs) needing MHLW approval.",
+      "responsible_person": "A Japan-licensed 製造販売業者 (Marketing Authorization Holder) must hold the product notification and bear full responsibility, and imported goods also need a licensed 製造業者 for labelling/storage.",
+      "safety_file": "No statutory PIF; the MAH must ensure conformity with 化粧品基準 and the GQP/GVP ordinances and keep quality and safety records.",
+      "labeling_key": "Full ingredient list in Japanese using JCIA 表示名称 (mandatory since 2001-04-01) plus product name, MAH name/address, contents and lot; a highlighted ingredient (特記表示) must state its purpose (2025-03-10 notice); no fragrance-allergen labelling rule in force.",
+      "animal_testing": "No statutory ban and no requirement for cosmetics; quasi-drug approvals may still rely on animal data.",
+      "ingredient_lists": "化粧品基準 (Standards for Cosmetics, MHW Notification No. 331 of 2000, last amended 2024-07-12): negative list plus positive lists for preservatives, UV filters and tar colours.",
+      "official_url": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iyakuhin/keshouhin/index.html",
+      "sources": [
+        "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/kenkou_iryou/iyakuhin/keshouhin/index.html",
+        "https://www.mhlw.go.jp/content/000491511.pdf",
+        "https://www.mhlw.go.jp/web/t_doc?dataId=00tc8641&dataType=1&pageNo=1",
+        "https://www.mhlw.go.jp/content/11120000/001491554.pdf",
+        "https://www.thomsonreuters.co.jp/ja/westlaw-japan/law_guide/2026/0430/"
+      ],
+      "notes": "Consultancy claims that Japan will mandate fragrance-allergen labelling from May 2026 could not be verified on MHLW's site and should be treated as unconfirmed; MHLW also introduced electronic export certificates for cosmetics on 2026-07-27 (ChemLinked)."
+    },
+    {
+      "id": "kr",
+      "region": "East Asia",
+      "country_en": "South Korea",
+      "country_zh": "韩国",
+      "authority_en": "Ministry of Food and Drug Safety (MFDS)",
+      "authority_zh": "食品医药品安全处(식품의약품안전처)",
+      "law_en": "Cosmetics Act",
+      "law_zh": "化妆品法(화장품법)",
+      "law_ref": "Act No. 6025 (enacted 1999-09-07); latest amendment Act No. 21302 (2025-12-30)",
+      "in_force_since": "2000-07-01",
+      "latest_update": {
+        "date": "2026-07-08",
+        "what": "MFDS issued draft amendments to the Cosmetics Act Enforcement Decree and Rule setting detailed safety-assessment standards (assessor qualifications, record retention) and custom-cosmetics rules, implementing Act No. 21302 whose mandatory safety assessment phases in from 2028.",
+        "source": "https://www.chemlinked.com/featured/tracking-south-koreas-cosmetic-safety-assessment-regulations"
+      },
+      "market_entry": "No pre-market approval for general cosmetics (the registered responsible seller reports production/import), while 기능성화장품 (functional cosmetics: whitening, anti-wrinkle, UV, hair etc.) need MFDS review or report before sale.",
+      "responsible_person": "A Korea-registered 화장품책임판매업자 (cosmetic responsible seller) must register with MFDS, hold the product records and appear on the label.",
+      "safety_file": "Currently product safety/efficacy data are kept by the responsible seller; Act No. 21302 (promulgated 2025-12-30) requires a safety assessment prepared and reviewed by a qualified assessor before marketing, with MFDS guidelines issued 2026-06-10 and phased mandatory application from 2028 (full by about 2031).",
+      "labeling_key": "Korean-language label with full ingredient list (전성분표시); 25 fragrance allergens must be named when above 0.01% in rinse-off or 0.001% in leave-on products (since 2020-01-01); the 2025-02-07 Enforcement Rule amendment revised how manufacturing number, expiry date, period-after-opening and precautions are shown.",
+      "animal_testing": "Sale of cosmetics tested on animals (finished products or ingredients) has been banned since 2017-02 under Art. 15-2, with limited exceptions such as tests required by foreign law.",
+      "ingredient_lists": "화장품 안전기준 등에 관한 규정 (MFDS Notification: Annex 1 prohibited ingredients, Annex 2 restricted ingredients incl. preservatives, UV filters and colorants) plus the functional-cosmetics standards.",
+      "official_url": "https://www.law.go.kr/%EB%B2%95%EB%A0%B9/%ED%99%94%EC%9E%A5%ED%92%88%EB%B2%95",
+      "sources": [
+        "https://www.law.go.kr/%EB%B2%95%EB%A0%B9/%ED%99%94%EC%9E%A5%ED%92%88%EB%B2%95",
+        "https://www.mfds.go.kr/eng/index.do",
+        "https://www.chemlinked.com/featured/tracking-south-koreas-cosmetic-safety-assessment-regulations",
+        "https://cosmetic.chemlinked.com/news/cosmetic-news/south-korea-amends-labeling-requirements-for-cosmetic-packaging",
+        "https://www.law.go.kr/LSW/admRulLsInfoP.do?admRulSeq=2100000184611"
+      ],
+      "notes": "Exact effective dates of individual Act No. 21302 provisions were not verified from the statute text (ChemLinked gives a 2028 phase-in); a 2026-03-31 Enforcement Rule amendment also tightened supervision of directly-purchased overseas cosmetics."
+    },
+    {
+      "id": "asean",
+      "region": "Southeast Asia",
+      "country_en": "ASEAN (ASEAN Cosmetic Directive)",
+      "country_zh": "东盟(东盟化妆品指令)",
+      "authority_en": "ASEAN Cosmetic Committee (ACC) and ASEAN Cosmetic Scientific Body (ACSB); enforced by each member state's regulator",
+      "authority_zh": "东盟化妆品委员会(ACC)/东盟化妆品科学机构(ACSB),由各成员国监管机构执行",
+      "law_en": "ASEAN Cosmetic Directive (Schedule B of the Agreement on the ASEAN Harmonized Cosmetic Regulatory Scheme)",
+      "law_zh": "东盟化妆品指令(《东盟统一化妆品监管体系协定》附表B)",
+      "law_ref": "Agreement signed 2003-09-02 in Phnom Penh at the 35th AEM Meeting",
+      "in_force_since": "2008-01-01",
+      "latest_update": {
+        "date": "2026-06-30",
+        "what": "Revised ACD Annexes II, III, IV and VI released after the 43rd ACC meeting: four azole antifungals banned, kojic acid limited to 1% (face/hand) and 0.2% (body), BHT and verbena absolute restricted, and chlorophene and 2-chloroacetamide removed as preservatives.",
+        "source": "https://www.cirs-group.com/en/cosmetics/asean-cosmetic-directive-updated-involving-annexes-ii-iii-iv-and-vi"
+      },
+      "market_entry": "Pre-market product notification (not approval) to each member state's authority before the product is placed on that market (Art. 7).",
+      "responsible_person": "The company or person responsible for placing the product on the market must be established in the member state where it is notified and is named on the label.",
+      "safety_file": "Product Information File (Art. 8) with a safety assessment signed by a qualified assessor, kept at the responsible person's address for inspection.",
+      "labeling_key": "Art. 6 and Appendix I: product name and function, full ingredient list (INCI, descending), country of manufacture, responsible company name/address, contents, batch, manufacture/expiry dates and warnings, in the language accepted by each member state; allergen naming is not mandated by the ACD itself.",
+      "animal_testing": "The ACD neither bans nor requires animal testing; safety is demonstrated through the PIF assessment.",
+      "ingredient_lists": "ACD Annex II (prohibited), Annex III (restricted), Annex IV (colourants), Annex VI (preservatives) and Annex VII (UV filters), updated twice yearly by the ACC/ACSB.",
+      "official_url": "https://www.hsa.gov.sg/cosmetic-products/asean-cosmetic-directive/",
+      "sources": [
+        "https://www.hsa.gov.sg/cosmetic-products/asean-cosmetic-directive/",
+        "https://asean.org/wp-content/uploads/images/archive/18354.pdf",
+        "https://www.cirs-group.com/en/cosmetics/asean-cosmetic-directive-updated-involving-annexes-ii-iii-iv-and-vi",
+        "https://enviliance.com/regions/southeast-asia/my/report_16761",
+        "https://cosmetic.chemlinked.com/news/cosmetic-news/asean-amends-cosmetic-ingredient-annexes-to-acd-17-added-11-revised-and-1-deleted"
+      ],
+      "notes": "Annex changes bind in each state only once transposed (e.g. Malaysia Circular 2/2026 of 2026-07-06; Philippines FDA Circular 2026-0001 of 2026-04-22 for the 40th–42nd ACC changes)."
+    },
+    {
+      "id": "sg",
+      "region": "Southeast Asia",
+      "country_en": "Singapore",
+      "country_zh": "新加坡",
+      "authority_en": "Health Sciences Authority (HSA), Cosmetics Control Unit",
+      "authority_zh": "新加坡卫生科学局(HSA)",
+      "law_en": "Health Products Act 2007 and Health Products (Cosmetic Products – ASEAN Cosmetic Directive) Regulations 2007",
+      "law_zh": "《健康产品法》(2007年)及《健康产品(化妆品—东盟化妆品指令)条例》(2007年)",
+      "law_ref": "Health Products Act (Cap. 122D); Cosmetic Products Regulations 2007 transposing the ACD",
+      "in_force_since": "2008-01-01",
+      "latest_update": {
+        "date": "2026-06-30",
+        "what": "HSA published the June 2026 ACD annex revisions (Annexes II, III, IV, VI) that notifiers must check before submitting or re-notifying products.",
+        "source": "https://www.hsa.gov.sg/cosmetic-products/asean-cosmetic-directive/"
+      },
+      "market_entry": "Pre-market product notification via HSA's PRISM portal (CRIS account) for every product and variant, renewed annually, before supply.",
+      "responsible_person": "The Singapore company or person responsible for placing the product on the market (a locally registered entity with a CRIS/CorpPass account) files the notification and is named on the label.",
+      "safety_file": "Product Information File per ACD Art. 8, including a safety assessment, kept by the responsible company and produced to HSA on request.",
+      "labeling_key": "English labelling with product name/function, directions, full ingredient list, country of manufacture, responsible company name/address, contents, batch number, manufacturing/expiry date and ACD Annex III/VI/VII warnings; small packs may use leaflets or tags.",
+      "animal_testing": "No ban and no requirement.",
+      "ingredient_lists": "ACD Annexes II–VII as published on the HSA ACD page (June 2026 version).",
+      "official_url": "https://www.hsa.gov.sg/cosmetic-products/",
+      "sources": [
+        "https://www.hsa.gov.sg/cosmetic-products/",
+        "https://www.hsa.gov.sg/cosmetic-products/notification/submit",
+        "https://www.hsa.gov.sg/cosmetic-products/asean-cosmetic-directive/",
+        "https://cosmetic.chemlinked.com/cosmepedia/singapore-cosmetic-regulation"
+      ],
+      "notes": "No separate national cosmetic law change in 2025–26 beyond ACD annex adoption was found."
+    },
+    {
+      "id": "my",
+      "region": "Southeast Asia",
+      "country_en": "Malaysia",
+      "country_zh": "马来西亚",
+      "authority_en": "National Pharmaceutical Regulatory Agency (NPRA), Ministry of Health",
+      "authority_zh": "马来西亚国家药品监管局(NPRA)",
+      "law_en": "Control of Drugs and Cosmetics Regulations 1984 (under the Sale of Drugs Act 1952) and the Guidelines for Control of Cosmetic Products in Malaysia",
+      "law_zh": "《1984年药品与化妆品管制条例》(依据《1952年药品销售法》)及《马来西亚化妆品管制指南》",
+      "law_ref": "CDCR 1984, Regulation 18A (notified cosmetics)",
+      "in_force_since": "1984",
+      "latest_update": {
+        "date": "2026-07-06",
+        "what": "NPRA Circular No. 2/2026 revised the Guidelines' annexes (prohibited, restricted, colourants, preservatives) to adopt the 43rd ACC amendments, following Circular No. 1/2026 of 2026-01-26 and the 2025-07-10 revision that banned 2-ethylhexanoic acid and TMPTA and restricted salicylic acid.",
+        "source": "https://enviliance.com/regions/southeast-asia/my/report_16761"
+      },
+      "market_entry": "Pre-market cosmetic notification via the QUEST 3+ online system; the notification is valid 2 years and must be renewed at least 1 month before expiry.",
+      "responsible_person": "The Cosmetic Notification Holder (CNH) must be a Malaysian company or legal entity registered with the Companies Commission (SSM) with a permanent local address.",
+      "safety_file": "Product Information File (ACD Art. 8) with safety assessment held by the CNH and made available to NPRA on request.",
+      "labeling_key": "Labels in Bahasa Malaysia and/or English with product name, function, full ingredient list (INCI), country of manufacture, CNH name/address, contents, batch, manufacturing/expiry date and required warnings; halal claims only with JAKIM certification.",
+      "animal_testing": "No ban and no requirement.",
+      "ingredient_lists": "Guidelines for Control of Cosmetic Products in Malaysia, Annex I Parts 1–7 (ACD Annexes II–VII as adopted by NPRA).",
+      "official_url": "https://www.npra.gov.my/index.php/en/cosmetic-main-page.html",
+      "sources": [
+        "https://www.npra.gov.my/index.php/en/cosmetic-main-page.html",
+        "https://www.npra.gov.my/index.php/en/cosmetics-guideline-annex-i-vii",
+        "https://www.cirs-group.com/en/cosmetics/malaysia-updates-cosmetic-regulatory-guidelines-with-new-entries-for-prohibited-and-restricted-substances",
+        "https://enviliance.com/regions/southeast-asia/my/report_16761",
+        "https://cosmetic.chemlinked.com/news/cosmetic-news/malaysia-npra-updates-cosmetic-ingredient-annexes"
+      ],
+      "notes": "CDCR dates from 1984; the notification regime under Reg. 18A has applied since ACD implementation on 2008-01-01."
+    },
+    {
+      "id": "th",
+      "region": "Southeast Asia",
+      "country_en": "Thailand",
+      "country_zh": "泰国",
+      "authority_en": "Thai Food and Drug Administration (Thai FDA), Cosmetic Control Group, Ministry of Public Health",
+      "authority_zh": "泰国食品药品监督管理局(Thai FDA)化妆品管制处",
+      "law_en": "Cosmetics Act B.E. 2558 (2015), as amended by Cosmetics Act (No. 2) B.E. 2565 (2022)",
+      "law_zh": "《化妆品法》佛历2558年(2015年),经佛历2565年(2022年)第2号修正",
+      "law_ref": "Cosmetics Act B.E. 2558 (Royal Gazette, in force 2015-09-09)",
+      "in_force_since": "2015-09-09",
+      "latest_update": {
+        "date": "2026-06-09",
+        "what": "Thai FDA opened consultation (to 2026-07-08) on six draft notifications adding 10 prohibited substances (Quaternium-15, benzophenone, phenacetin, azole antifungals, etc.) and 3 restricted ones (BHT, Acid Yellow 3, verbena absolute) to align with the ACD, and on 2026-07-07 published a reference list of fragrance allergens based on EU Regulation 2023/1545.",
+        "source": "https://www.cirs-group.com/en/cosmetics/thailand-proposes-acd-aligned-cosmetic-ingredient-limits-and-adds-10-new-prohibited-substances"
+      },
+      "market_entry": "Pre-market notification (จดแจ้ง) filed electronically with Thai FDA before manufacture or import; the notification receipt is valid 3 years.",
+      "responsible_person": "A Thai-registered manufacturer or importer (the notifier) with a registered place of business in Thailand holds the notification and appears on the label.",
+      "safety_file": "Product Information File per ACD Art. 8 (with safety assessment) kept by the notifier for inspection.",
+      "labeling_key": "Thai-language label required (applied within 30 days of import): product name and type, notification number, ingredient list, importer/manufacturer name and address, batch, manufacturing/expiry date, net content and warnings, with foreign text allowed alongside Thai.",
+      "animal_testing": "No ban and no requirement.",
+      "ingredient_lists": "Ministry of Public Health notifications on prohibited substances, restricted substances, permitted preservatives, colourants and UV filters, aligned to ACD Annexes II–VII.",
+      "official_url": "https://catalog.fda.moph.go.th/dataset/1e51956a-5718-4aa9-8b23-076349ed1856/resource/848bf9fe-ee17-4d7d-89e3-f4d6e304e6eb/download/cosmetics-act-b.e.-2015.pdf",
+      "sources": [
+        "https://catalog.fda.moph.go.th/dataset/1e51956a-5718-4aa9-8b23-076349ed1856/resource/848bf9fe-ee17-4d7d-89e3-f4d6e304e6eb/download/cosmetics-act-b.e.-2015.pdf",
+        "https://cosmetic.chemlinked.com/cosmepedia/thailand-cosmetic-regulation",
+        "https://cosmetic.chemlinked.com/news/cosmetic-news/thailand-issues-amendments-to-the-cosmetic-act-be-2558-2015",
+        "https://www.cirs-group.com/en/cosmetics/thailand-proposes-acd-aligned-cosmetic-ingredient-limits-and-adds-10-new-prohibited-substances"
+      ],
+      "notes": "The June 2026 ingredient changes were still drafts at the consultation deadline and their adoption status as of 2026-09-11 was not verified."
+    },
+    {
+      "id": "id",
+      "region": "Southeast Asia",
+      "country_en": "Indonesia",
+      "country_zh": "印度尼西亚",
+      "authority_en": "Indonesian Food and Drug Authority (BPOM); BPJPH for halal certification",
+      "authority_zh": "印尼食品药品监督管理局(BPOM);清真认证由BPJPH负责",
+      "law_en": "Health Law No. 17/2023 and Government Regulation No. 28/2024, implemented by BPOM Regulation No. 21/2022 (cosmetic notification), No. 25/2025 (technical requirements for cosmetic ingredients), No. 18/2024 (labelling, promotion and advertising) and No. 8/2026 (CPKB/GMP certification)",
+      "law_zh": "《2023年第17号卫生法》及《2024年第28号政府条例》,配套BPOM第21/2022号(化妆品通报)、第25/2025号(化妆品原料技术要求)、第18/2024号(标签、推广与广告)及第8/2026号(CPKB良好生产规范认证)条例",
+      "law_ref": "PerBPOM No. 21/2022 (notification); PerBPOM No. 25/2025 (ingredients); PP No. 42/2024 (halal)",
+      "in_force_since": "2022",
+      "latest_update": {
+        "date": "2026-06-24",
+        "what": "BPOM announced PerBPOM No. 8/2026 (set 2026-04-21) simplifying CPKB/GMP certification; in parallel PerBPOM 25/2025 ingredient limits must be met by 2026-10-03, BPJPH halal certification becomes mandatory for all cosmetics from 2026-10-17 (PP 42/2024), and BPJPH Regulation 3/2026 (2026-07-23) requires a red 'NON HALAL' mark on non-halal cosmetics after a 12-month transition.",
+        "source": "https://www.pom.go.id/siaran-pers/perbpom-8-tahun-2026-permudah-perizinan-kosmetik-bagi-pelaku-usaha-dan-jamin-kosmetik-aman-bagi-masyarakat"
+      },
+      "market_entry": "Pre-market notification (notifikasi kosmetika) through BPOM's Notifkos e-system per product and variant, with fees of IDR 500,000 (ASEAN-made) or IDR 1,500,000 (non-ASEAN) and a 3-year validity.",
+      "responsible_person": "The applicant must be an Indonesian legal entity (local manufacturer, importer or licence holder) with a BPOM account and, for imports, a letter of authorisation from the foreign manufacturer.",
+      "safety_file": "Dokumen Informasi Produk (DIP, the ACD Art. 8 PIF) with safety assessment kept by the notifier, plus a BPJPH halal certificate from 2026-10-17.",
+      "labeling_key": "Bahasa Indonesia is mandatory at least for benefits, directions and warnings (PerBPOM 18/2024, in force 2024-11-15), plus full ingredient list, notification number, batch, expiry, manufacturer/importer and halal or 'NON HALAL' marking.",
+      "animal_testing": "No ban and no requirement.",
+      "ingredient_lists": "PerBPOM No. 25/2025 on Technical Requirements for Cosmetic Ingredients (prohibited, restricted, permitted preservatives/colourants/UV filters aligned to the ACD), replacing PerBPOM 23/2019 and 17/2022.",
+      "official_url": "https://standar-otskk.pom.go.id/regulasi",
+      "sources": [
+        "https://standar-otskk.pom.go.id/regulasi",
+        "https://www.peraturan.go.id/id/peraturan-bpom-no-25-tahun-2025",
+        "https://standar-otskk.pom.go.id/berita/peraturan-bpom-no-21-tahun-2022",
+        "https://www.pom.go.id/siaran-pers/perbpom-8-tahun-2026-permudah-perizinan-kosmetik-bagi-pelaku-usaha-dan-jamin-kosmetik-aman-bagi-masyarakat",
+        "https://bpjph.halal.go.id/detail/bpjph-produk-kosmetik-wajib-bersertifikat-halal-pada-oktober-2026/",
+        "https://peraturan.bpk.go.id/Details/304896/pp-no-42-tahun-2024",
+        "https://cosmetic.chemlinked.com/news/cosmetic-news/monthly-recap-global-cosmetic-regulatory-updates-july-2026"
+      ],
+      "notes": "The exact promulgation day of PerBPOM 25/2025 (October 2025) and the reported e-Notifikasi mandate with 3-year validity from 2026-10-03 come from consultancy sources; a draft revision of PerBPOM 21/2022 was consulted in September 2025 and its adoption was not confirmed."
+    },
+    {
+      "id": "vn",
+      "region": "Southeast Asia",
+      "country_en": "Vietnam",
+      "country_zh": "越南",
+      "authority_en": "Drug Administration of Vietnam (DAV), Ministry of Health; provincial Departments of Health for domestic products",
+      "authority_zh": "越南卫生部药品管理局(DAV);国产产品由省级卫生厅受理",
+      "law_en": "Circular No. 06/2011/TT-BYT on Cosmetic Management (amended by Circulars 32/2019/TT-BYT and 34/2025/TT-BYT) and Decree 93/2016/NĐ-CP on cosmetic manufacturing conditions",
+      "law_zh": "《化妆品管理通知》第06/2011/TT-BYT号(经第32/2019及第34/2025号通知修订)及第93/2016/NĐ-CP号法令(化妆品生产条件)",
+      "law_ref": "Circular 06/2011/TT-BYT dated 2011-01-25; Circular 34/2025/TT-BYT dated 2025-07-03",
+      "in_force_since": "2011",
+      "latest_update": {
+        "date": "2025-08-18",
+        "what": "Circular 34/2025/TT-BYT took effect, adding online notification via the National Public Service Portal with e-signatures, while the MoH's comprehensive draft Government Decree on Cosmetic Management (WTO G/TBT/N/VNM/349, redrafted 2026-02-02 and 2026-05-29) to replace Circular 06/2011 remained in consultation.",
+        "source": "https://thuvienphapluat.vn/van-ban/EN/The-thao-Y-te/Circular-34-2025-TT-BYT-amendments-to-Circular-06-2011-TT-BYT-on-management-of-cosmetics/671159/tieng-anh.aspx"
+      },
+      "market_entry": "Pre-market product notification (công bố sản phẩm mỹ phẩm): imports to DAV and domestic products to provincial health departments, with a receipt number valid 5 years before circulation.",
+      "responsible_person": "The organisation or individual responsible for placing the product on the market must be a Vietnam-established entity holding the notification receipt, so foreign manufacturers appoint a Vietnamese importer or authorised entity.",
+      "safety_file": "Product Information File per ACD Art. 8 with safety assessment kept by the responsible organisation for inspection.",
+      "labeling_key": "Vietnamese-language label (Decree 43/2017 as amended by Decree 111/2021, plus Circular 06/2011): product name, function, ingredients, net content, manufacturer and responsible party, batch, production/expiry date, origin and warnings, with supplementary Vietnamese labels allowed on imports.",
+      "animal_testing": "No ban and no requirement.",
+      "ingredient_lists": "ACD Annexes II–VII as applied through Circular 06/2011/TT-BYT, with ACC updates implemented nationally (e.g. DEET ban effective 2025-11-15).",
+      "official_url": "https://dav.gov.vn/thong-tu-062011tt-byt-ngay-25012011-cua-bo-y-te-quy-dinh-ve-quan-ly-my-pham-n721.html",
+      "sources": [
+        "https://dav.gov.vn/thong-tu-062011tt-byt-ngay-25012011-cua-bo-y-te-quy-dinh-ve-quan-ly-my-pham-n721.html",
+        "https://thuvienphapluat.vn/van-ban/EN/The-thao-Y-te/Circular-34-2025-TT-BYT-amendments-to-Circular-06-2011-TT-BYT-on-management-of-cosmetics/671159/tieng-anh.aspx",
+        "https://www.cirs-group.com/en/cosmetics/vietnam-notifies-draft-decree-on-the-management-of-cosmetics",
+        "https://xaydungchinhsach.chinhphu.vn/toan-van-du-thao-nghi-dinh-quy-dinh-ve-quan-ly-my-pham-119260529154617902.htm",
+        "https://www.tilleke.com/insights/vietnam-updates-regulations-on-cosmetic-notification/"
+      ],
+      "notes": "Whether the draft Decree was promulgated between June and 2026-09-11 could not be confirmed (latest found: second draft of 2026-05-29 on chinhphu.vn, originally targeted for 2026-07-01)."
+    },
+    {
+      "id": "ph",
+      "region": "Southeast Asia",
+      "country_en": "Philippines",
+      "country_zh": "菲律宾",
+      "authority_en": "Food and Drug Administration (FDA Philippines), Center for Cosmetics Regulation and Research",
+      "authority_zh": "菲律宾食品药品管理局(FDA)化妆品监管研究中心",
+      "law_en": "Republic Act No. 9711 (FDA Act of 2009) amending RA 3720, with the ASEAN Cosmetic Directive adopted by DOH Administrative Order No. 2005-0025",
+      "law_zh": "《第9711号共和国法》(2009年FDA法)修订《第3720号法》,并经卫生部第2005-0025号行政令采纳东盟化妆品指令",
+      "law_ref": "RA 9711 (2009); AO 2005-0025; FDA Circular 2023-001 (PIF)",
+      "in_force_since": "2008-01-01",
+      "latest_update": {
+        "date": "2026-04-22",
+        "what": "FDA Circular No. 2026-0001 consolidated ACD amendments from the 40th–42nd ACC meetings, adding TMPTA to Annex II, amending the benzophenone entry (effective 2026-11-19) and restricting BHT with a 24-month grace period.",
+        "source": "https://www.fda.gov.ph/fda-circular-no-2026-0001-consolidated-amendments-to-the-asean-cosmetic-directive-acd-as-adopted-during-the-40th-to-42nd-asean-cosmetic-committee-acc-meeting-and-their-related-meetings/"
+      },
+      "market_entry": "Pre-market Cosmetic Product Notification via the FDA eServices portal (with PIF upload) before distribution, valid 1–3 years and renewable.",
+      "responsible_person": "A Philippine company holding an FDA License to Operate (LTO) as manufacturer, importer or distributor must file the notification and appear on the label.",
+      "safety_file": "Product Information File per ACD Art. 8 under FDA Circular 2023-001, kept by the LTO holder for inspection.",
+      "labeling_key": "ACD Appendix I labelling in English or Filipino: product name and function, full ingredient list, country of manufacture, LTO holder name/address, contents, batch, manufacturing/expiry date and precautions, with claims following the ACD claims guidelines.",
+      "animal_testing": "No ban and no requirement.",
+      "ingredient_lists": "ACD Annexes II–VII as adopted through FDA circulars (latest FDA Circular 2026-0001; FDA Circular 2025-002 of 2025-03-18 adopted the 39th ACC changes such as the DEET ban).",
+      "official_url": "https://www.fda.gov.ph/fda-circular-no-2026-0001-consolidated-amendments-to-the-asean-cosmetic-directive-acd-as-adopted-during-the-40th-to-42nd-asean-cosmetic-committee-acc-meeting-and-their-related-meetings/",
+      "sources": [
+        "https://www.fda.gov.ph/fda-circular-no-2026-0001-consolidated-amendments-to-the-asean-cosmetic-directive-acd-as-adopted-during-the-40th-to-42nd-asean-cosmetic-committee-acc-meeting-and-their-related-meetings/",
+        "https://www.fda.gov.ph/fda-circular-no-2023-0001-updated-guidelines-on-product-information-file-pif-for-cosmetic-products-repealing-fda-circular-no-2018-001-reiterating-the-mandatory-implementation-of-article/",
+        "https://www.cirs-group.com/en/cosmetics/philippines-amends-asean-cosmetic-directive",
+        "https://cosmetic.chemlinked.com/cosmepedia/philippines-cosmetic-regulation"
+      ],
+      "notes": "ACD applied from 2008-01-01 while RA 9711 itself dates from 2009; notification validity (1–3 years) is from consultancy sources."
+    },
+    {
+      "id": "in",
+      "region": "South Asia",
+      "country_en": "India",
+      "country_zh": "印度",
+      "authority_en": "Central Drugs Standard Control Organisation (CDSCO), Ministry of Health and Family Welfare; State Licensing Authorities for manufacturing",
+      "authority_zh": "印度中央药品标准控制组织(CDSCO);生产许可由各邦许可机构负责",
+      "law_en": "Cosmetics Rules, 2020 under the Drugs and Cosmetics Act, 1940 (as amended by the Cosmetics (Amendment) Rules, 2025)",
+      "law_zh": "《2020年化妆品规则》(依据《1940年药品与化妆品法》,经《2025年化妆品(修正)规则》修订)",
+      "law_ref": "G.S.R. 763(E) of 2020-12-15; Cosmetics (Amendment) Rules 2025 notified 2025-07-29",
+      "in_force_since": "2020-12-15",
+      "latest_update": {
+        "date": "2025-07-29",
+        "what": "Cosmetics (Amendment) Rules 2025 clarified 'use before' and 'date of expiry' definitions, allowed electronic batch records and shifted some powers to State Licensing Authorities; BIS revised IS 4707 Part 2 (list of substances) on 2025-08-21 and on 2026-07-02 proposed banning 64 fragrance raw materials (consultation to 2026-08-31).",
+        "source": "https://www.indialaw.in/blog/regulatory/cosmetics-rules-2025-new-norms-for-labels-licensing/"
+      },
+      "market_entry": "Pre-market import registration: a Form COS-1 application via SUGAM leads to a COS-2 Import Registration Certificate (valid 5 years, product by product), while domestic manufacture needs a state licence.",
+      "responsible_person": "A foreign manufacturer must appoint an Indian authorised agent, subsidiary or importer that holds the COS-2 registration and is named on the label.",
+      "safety_file": "No PIF as such; the applicant submits product specifications, test methods, labels and an undertaking that the product conforms to the applicable BIS standard listed in the Ninth Schedule.",
+      "labeling_key": "English and/or Hindi label with product name, manufacturer and importer name/address (incl. 'Made in ...'), batch number, manufacturing and use-before/expiry date, net content, registration number and an 'INGREDIENTS' list (ingredients above 1% in descending order); no fragrance-allergen rule.",
+      "animal_testing": "Animal testing of cosmetics banned in India (Rule 148-C, 2014) and import of cosmetics tested on animals prohibited since 2014-11-13 (Rule 135-B).",
+      "ingredient_lists": "BIS standards in the Ninth Schedule of the Cosmetics Rules 2020, notably IS 4707 Part 1 (colourants) and Part 2 (prohibited/restricted substances, revised 2025), plus product-specific IS specifications.",
+      "official_url": "https://cdsco.gov.in/opencms/opencms/en/Acts-and-rules/Cosmetics-Rules/",
+      "sources": [
+        "https://cdsco.gov.in/opencms/opencms/en/Acts-and-rules/Cosmetics-Rules/",
+        "https://cdsco.gov.in/opencms/opencms/en/Cosmetics/cosmetics/",
+        "https://www.indialaw.in/blog/regulatory/cosmetics-rules-2025-new-norms-for-labels-licensing/",
+        "https://indianchemicalregulation.com/india-notifies-cosmetics-amendment-rules-2025/",
+        "https://www.loc.gov/item/global-legal-monitor/2014-10-17/india-no-import-of-cosmetics-tested-on-animals/",
+        "https://cosmetic.chemlinked.com/news/cosmetic-news/monthly-recap-global-cosmetic-regulatory-updates-july-2026"
+      ],
+      "notes": "The Gazette G.S.R. number of the 2025 amendment was not found; a CDSCO circular effective 2026-01-16 reportedly auto-rejects SUGAM applications whose queries stay unanswered for 90 days (consultancy source)."
+    },
+    {
+      "id": "au",
+      "region": "Oceania",
+      "country_en": "Australia",
+      "country_zh": "澳大利亚",
+      "authority_en": "Australian Industrial Chemicals Introduction Scheme (AICIS) for ingredients; ACCC for labelling; TGA for sunscreens and therapeutic claims",
+      "authority_zh": "澳大利亚工业化学品引入计划(AICIS)管原料;ACCC管标签;TGA管防晒及治疗类宣称",
+      "law_en": "Industrial Chemicals Act 2019 (AICIS) with the Consumer Goods (Cosmetics) Information Standard 2020 under the Australian Consumer Law",
+      "law_zh": "《2019年工业化学品法》(AICIS)及《2020年消费品(化妆品)信息标准》(澳大利亚消费者法)",
+      "law_ref": "Industrial Chemicals Act 2019 (Cth); Industrial Chemicals (General) Rules 2019",
+      "in_force_since": "2020-07-01",
+      "latest_update": {
+        "date": "2026-06-27",
+        "what": "After evaluation EVA00186, retinal (retinaldehyde, CAS 116-31-4) for any consumer use can no longer be introduced as exempted or reported, so importers/manufacturers need an AICIS assessment certificate first (notice 2026-07-14); AICIS registration for the 2026–27 year is required before introducing chemicals on or after 2026-09-01.",
+        "source": "https://www.industrialchemicals.gov.au/news-and-notices/retinal-introductions-consumer-use-now-need-assessment-aicis"
+      },
+      "market_entry": "No product registration: the Australian importer or manufacturer registers with AICIS each year (1 Sep–31 Aug) and categorises every ingredient introduction as exempted, reported or assessed, while sunscreens above SPF 4 and therapeutic-claim products are TGA-regulated.",
+      "responsible_person": "The Australian entity that imports or manufactures (the 'introducer') must hold AICIS registration and keep categorisation records; an overseas OEM cannot register on a buyer's behalf.",
+      "safety_file": "No PIF; the introducer keeps records supporting each AICIS category (ingredient identity, hazard data, exposure) for 5 years and obtains an assessment certificate for assessed introductions.",
+      "labeling_key": "Consumer Goods (Cosmetics) Information Standard 2020: full ingredient list in English on the container (INCI or common English names, descending order, colour additives last, 'may contain' allowed for colours); therapeutic/sunscreen labels follow TGA rules; no allergen-naming rule.",
+      "animal_testing": "Since 2020-07-01 new animal test data (generated on or after that date) cannot be used to support AICIS categorisation or assessment of ingredients used solely in cosmetics, with narrow exceptions; sale of imported animal-tested products is not banned.",
+      "ingredient_lists": "Australian Inventory of Industrial Chemicals (AIIC) for listed chemicals, Poisons Standard (SUSMP) schedules and the IChEMS register (PFOS/PFOA/PFHxS banned from 2025-07-01); no cosmetic-specific positive lists.",
+      "official_url": "https://www.industrialchemicals.gov.au/cosmetics-and-soap",
+      "sources": [
+        "https://www.industrialchemicals.gov.au/cosmetics-and-soap",
+        "https://www.industrialchemicals.gov.au/business/getting-started-registration-importing-and-manufacturing/what-registration-and-who-must-register",
+        "https://www.industrialchemicals.gov.au/business/use-animal-test-data",
+        "https://www.industrialchemicals.gov.au/news-and-notices/retinal-introductions-consumer-use-now-need-assessment-aicis",
+        "https://www.productsafety.gov.au/business/search-mandatory-standards/cosmetics-ingredients-labelling-mandatory-standard",
+        "https://www.tga.gov.au/resources/legislation/consumer-goods-cosmetics-information-standard-2020"
+      ],
+      "notes": "The 2025-07-01 PFAS ban sits under the IChEMS scheme (environment portfolio), not AICIS; the ACCC is reviewing the 2020 information standard (outcome not verified)."
+    },
+    {
+      "id": "nz",
+      "region": "Oceania",
+      "country_en": "New Zealand",
+      "country_zh": "新西兰",
+      "authority_en": "Environmental Protection Authority (EPA); Commerce Commission for Fair Trading Act claims; Medsafe for therapeutic products",
+      "authority_zh": "新西兰环境保护局(EPA);商业委员会管公平交易法宣称;Medsafe管治疗类产品",
+      "law_en": "Cosmetic Products Group Standard 2020 under the Hazardous Substances and New Organisms Act 1996",
+      "law_zh": "《2020年化妆品组标准》(依据《1996年有害物质与新生物法》)",
+      "law_ref": "Cosmetic Products Group Standard 2020 (HSNO group standard), amended by EPA decision APP204297 of 2024-01-30",
+      "in_force_since": "2020",
+      "latest_update": {
+        "date": "2026-01-01",
+        "what": "The amended Cosmetic Products Group Standard 2020 applies: schedules aligned to the EU, PFAS added to the prohibited list (manufacture/import banned from 2027-01-01, sale from 2028-01-01, disposal by 2028-07-01), nanomaterial record-keeping and revised labelling incl. 'contains/releases formaldehyde' warnings.",
+        "source": "https://www.epa.govt.nz/assets/FileAPI/hsno-ar/APP204297/APP204297-Update-Report-for-Proposal-to-amend-the-Cosmetic-Products-Group-Standard-2020.pdf"
+      },
+      "market_entry": "None: no pre-market notification or registration, but products must comply with the Group Standard (ingredients, labelling, packaging) from the day they are imported or made.",
+      "responsible_person": "No statutory responsible person, but the New Zealand importer or manufacturer is legally responsible and its NZ physical address must appear on the label.",
+      "safety_file": "No PIF required; the importer/manufacturer must hold evidence of compliance with the Group Standard (formulation checked against the schedules, nanomaterial records) for the EPA on request.",
+      "labeling_key": "English label with product name, full ingredient list (INCI, descending order), batch code, NZ importer/manufacturer address, nano ingredients flagged and required warnings; hazardous formulations also need HSNO hazard labelling.",
+      "animal_testing": "Animal testing of cosmetics or cosmetic-only ingredients in New Zealand banned since 2015 (Animal Welfare Act s.84A); imported animal-tested products are not banned.",
+      "ingredient_lists": "Group Standard schedules for prohibited components (Schedule 4, incl. PFAS in Table 2), restricted components, permitted colourants, preservatives and UV filters, aligned to EU Regulation 1223/2009 annexes.",
+      "official_url": "https://www.epa.govt.nz/industry-areas/hazardous-substances/rules-for-hazardous-substances/group-standards/cosmetic-products/",
+      "sources": [
+        "https://www.epa.govt.nz/assets/FileAPI/hsno-ar/APP204297/APP204297-Update-Report-for-Proposal-to-amend-the-Cosmetic-Products-Group-Standard-2020.pdf",
+        "https://gpcgateway.com/news/detail/updated-cosmetic-products-group-standard-to-apply-in-new-zealand-from-1-january-2026/MjI1Mw",
+        "https://cosmetic.chemlinked.com/news/cosmetic-news/new-zealand-consults-on-the-revised-cosmetic-products-group-standard-2020-a-blanket-ban-on-pfas-included",
+        "https://www.legislation.govt.nz/act/public/2015/0049/latest/DLM6432504.html"
+      ],
+      "notes": "The original 2020 commencement month and the exact schedule numbering were not verified."
+    }
+  ],
+  "updates_2025_2026": [
+    {
+      "date": "2025-02-07",
+      "market_id": "kr",
+      "title_en": "Korea amends cosmetic packaging labelling rules",
+      "summary_en": "MFDS amended the Cosmetics Act Enforcement Rule (Annex 4) with immediate effect, revising how the manufacturing number, expiry date, period-after-opening and precautions must appear on all cosmetics made or imported after that date.",
+      "source": "https://cosmetic.chemlinked.com/news/cosmetic-news/south-korea-amends-labeling-requirements-for-cosmetic-packaging"
+    },
+    {
+      "date": "2025-05-01",
+      "market_id": "cn",
+      "title_en": "China stops accepting simplified safety assessment reports",
+      "summary_en": "The one-year transition under NMPA Announcement 2024 No. 50 ended, so every new registration or filing now needs a full-version safety assessment per the 2021 Technical Guidelines, with eligible general cosmetics submitting the basic conclusion and keeping the full report on file.",
+      "source": "https://www.nmpa.gov.cn/xxgk/ggtg/hzhpggtg/jmhzhptg/20240422172542190.html"
+    },
+    {
+      "date": "2025-05-21",
+      "market_id": "jp",
+      "title_en": "Japan promulgates PMD Act amendment (Act No. 37 of 2025)",
+      "summary_en": "Phased in from 2025-11-20 and 2026-05-01, the amendment strengthens MAH quality/safety governance and supply obligations; the cosmetics-specific 2025 change was MHLW's 2025-03-10 notice rewriting the 特記表示 highlighted-ingredient rules to require the ingredient's purpose on packs and ads.",
+      "source": "https://www.mhlw.go.jp/content/11120000/001491554.pdf"
+    },
+    {
+      "date": "2025-08-18",
+      "market_id": "vn",
+      "title_en": "Vietnam Circular 34/2025/TT-BYT takes effect; draft Cosmetics Decree in consultation",
+      "summary_en": "Circular 34/2025 (issued 2025-07-03) added online notification via the National Public Service Portal, while the MoH's draft Decree on Cosmetic Management (WTO G/TBT/N/VNM/349, redrafted 2026-02 and 2026-05) would replace Circular 06/2011 with mandatory CGMP-ASEAN, PIF and stricter claims rules.",
+      "source": "https://thuvienphapluat.vn/van-ban/EN/The-thao-Y-te/Circular-34-2025-TT-BYT-amendments-to-Circular-06-2011-TT-BYT-on-management-of-cosmetics/671159/tieng-anh.aspx"
+    },
+    {
+      "date": "2025-10-03",
+      "market_id": "id",
+      "title_en": "Indonesia issues PerBPOM 25/2025 on cosmetic ingredients ahead of the halal deadline",
+      "summary_en": "Issued in October 2025 (day inferred from its one-year transition ending 2026-10-03), PerBPOM 25/2025 replaced the 2019/2022 ingredient rules with tighter ACD-aligned limits; two weeks after that deadline, on 2026-10-17, BPJPH halal certification becomes mandatory for all cosmetics under PP 42/2024.",
+      "source": "https://www.peraturan.go.id/id/peraturan-bpom-no-25-tahun-2025"
+    },
+    {
+      "date": "2025-12-30",
+      "market_id": "kr",
+      "title_en": "Korea enacts a mandatory cosmetic safety assessment system (Act No. 21302)",
+      "summary_en": "Responsible sellers must prepare and retain a safety assessment reviewed by a qualified assessor before marketing; MFDS issued preparation guidelines on 2026-06-10 and draft Decree/Rule amendments on 2026-07-08, with phased application from 2028 and full enforcement around 2031.",
+      "source": "https://www.chemlinked.com/featured/tracking-south-koreas-cosmetic-safety-assessment-regulations"
+    },
+    {
+      "date": "2026-06-27",
+      "market_id": "au",
+      "title_en": "Australia requires an AICIS assessment certificate for retinal in consumer products",
+      "summary_en": "Following evaluation EVA00186 (presumed developmental toxicant, Repr. 1B), retinal/retinaldehyde with any consumer end use can no longer be exempted or reported, so an assessment certificate is needed before import or manufacture of retinal serums, creams and moisturisers.",
+      "source": "https://www.industrialchemicals.gov.au/news-and-notices/retinal-introductions-consumer-use-now-need-assessment-aicis"
+    },
+    {
+      "date": "2026-06-30",
+      "market_id": "asean",
+      "title_en": "ASEAN releases revised ACD Annexes II, III, IV and VI",
+      "summary_en": "After the 43rd ACC meeting, bifonazole, clotrimazole, thiabendazole and tioconazole were banned, kojic acid capped at 1%/0.2%, BHT and verbena absolute restricted and chlorophene/2-chloroacetamide dropped as preservatives; Malaysia transposed the changes by NPRA Circular 2/2026 on 2026-07-06 and the Philippines had adopted the 40th–42nd ACC changes by FDA Circular 2026-0001 on 2026-04-22.",
+      "source": "https://www.cirs-group.com/en/cosmetics/asean-cosmetic-directive-updated-involving-annexes-ii-iii-iv-and-vi"
+    },
+    {
+      "date": "2026-07-01",
+      "market_id": "tw",
+      "title_en": "Taiwan makes PIF and GMP mandatory for all general cosmetics",
+      "summary_en": "The final phase of the Cosmetic Hygiene and Safety Act roll-out requires every general cosmetic (except exempt handmade soap) to hold a Product Information File with a safety assessment and to be manufactured under 化粧品優良製造準則, on top of the existing product notification.",
+      "source": "https://www.fda.gov.tw/TC/siteContent.aspx?sid=12524"
+    },
+    {
+      "date": "2026-07-29",
+      "market_id": "cn",
+      "title_en": "China NMPA Announcement No. 70 (2026) streamlines registration and filing",
+      "summary_en": "Eight measures: a first-launch-in-China commitment replaces home-market sale proof, animal-test exemptions widen, ingredient safety data are archived instead of submitted, similar formulas may share test reports, cross-border production transfers and domestic-responsible-person changes are simplified, and more efficacy-test methods are accepted.",
+      "source": "https://www.nifdc.org.cn/nifdc/xxgk/zcfg/flfg/20260729173627128.html"
+    }
+  ]
+}

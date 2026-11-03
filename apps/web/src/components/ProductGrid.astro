@@ -25,8 +25,26 @@ export interface Props {
   items: GridItem[];
   addLabel: string;
   moqLabel: string;
+  /** 紧凑网格:产品目录用(创始人:「单个商品图太巨大了」);剂型卡带表单用默认档 */
+  dense?: boolean;
 }
-const { title, intro, items, addLabel, moqLabel } = Astro.props;
+const { title, intro, items, addLabel, moqLabel, dense = false } = Astro.props;
+
+/**
+ * 规格组既支持对象写法 { 容量: ['30ml'] },也支持数组写法 [{ label, values }]。
+ *
+ * 为什么要加数组这一种:对象写法把组名当成了 **JSON 的键**,
+ * 而翻译管线只翻值不翻键 —— 结果英文/阿拉伯语页面上,
+ * 规格组名一律显示「容量」「包材」这些中文。
+ * 数组写法把组名变成一个普通字符串值,翻译就能覆盖到。
+ * 旧数据还是对象形状,所以两种都得认。
+ */
+function optionPairs(p: any): [string, string[]][] {
+  const o = p?.options;
+  if (Array.isArray(o)) return o.filter((x) => x?.label).map((x) => [String(x.label), (x.values ?? []).map(String)]);
+  if (o && typeof o === 'object') return Object.entries(o).map(([k, v]) => [k, (v as string[]) ?? []]);
+  return [];
+}
 
 /** 剂型 → 产品形态。没有实拍图时画对应的瓶型,比放灰块或不相干的图强 */
 const ART: Record<string, ProductKind> = {
@@ -42,24 +60,38 @@ const ART: Record<string, ProductKind> = {
       {intro && <p class="intro">{intro}</p>}
     </header>
 
-    <ul class="grid" data-reveal="stagger">
+    <ul class:list={["grid", { dense }]} data-reveal="stagger">
       {items.map((p) => (
         <li class="card">
-          <div class="shotwrap">
-            {p.image
-              ? <img class="shot" src={p.image} alt={p.name} loading="lazy" decoding="async" />
-              : <ProductArt kind={ART[p.id] ?? 'jar'} label={p.name} />}
-          </div>
+          {/* 有详情页的产品,图和名字都能点进去 ——
+              创始人点着一张不可点的产品图说「无法点击进入」,他是对的:
+              访客看到产品卡的第一反应就是点它,不是找角落里的按钮。
+              「加入询盘」按钮不动,两条路并存。 */}
+          {(p as any).href ? (
+            <a class="shotwrap linkwrap" href={(p as any).href}>
+              {p.image
+                ? <img class="shot" src={p.image} alt={p.name} loading="lazy" decoding="async" />
+                : <ProductArt kind={ART[p.id] ?? 'jar'} label={p.name} />}
+            </a>
+          ) : (
+            <div class="shotwrap">
+              {p.image
+                ? <img class="shot" src={p.image} alt={p.name} loading="lazy" decoding="async" />
+                : <ProductArt kind={ART[p.id] ?? 'jar'} label={p.name} />}
+            </div>
+          )}
           <div class="meta">
-            <h3 class="nm">{p.name}</h3>
+            <h3 class="nm">{(p as any).href
+              ? <a class="nmlink" href={(p as any).href}>{p.name}</a>
+              : p.name}</h3>
             {p.summary && <p class="sm">{p.summary}</p>}
             {p.moq && (
               <p class="moq"><span class="mk">{moqLabel}</span><span>{p.moq}</span></p>
             )}
 
-            {p.options && Object.keys(p.options).length > 0 && (
+            {optionPairs(p).length > 0 && (
               <div class="opts">
-                {Object.entries(p.options).map(([k, vals]) => (
+                {optionPairs(p).map(([k, vals]) => (
                   <label class="opt">
                     <span class="ol">{k}</span>
                     <select class="os" data-opt={k}>
@@ -82,8 +114,7 @@ const ART: Record<string, ProductKind> = {
 </section>
 
 <script is:inline>
-  // 点「加入询盘」前,把同卡片内所有下拉的当前值写进 data-options,
-  // 这样询盘车拿到的是采购真正选的规格,而不是默认值。
+
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-add-inquiry]');
     if (!btn) return;
@@ -102,20 +133,31 @@ const ART: Record<string, ProductKind> = {
 
   .grid {
     list-style: none; margin: 2.75rem 0 0; padding: 0;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    /* 卡宽有上限(21rem)是关键:minmax(…,1fr) 在视口收窄、列数塌到 2 时
+       会把每张卡拉到 ~650px,1:1 图跟着变巨幅 —— 创始人:「缩小浏览器就变成
+       2 个巨大的!」。max 卡宽 + 居中,列数随宽度变、卡的尺寸永远稳定。 */
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 18rem));
+    /* start 不是 center:版块标题在左轴上,货架也从同一条线起笔 ——
+       网格居中会和标题错位半格,视觉上就是「乱」(创始人放大实锤)。 */
+    justify-content: start;
     gap: var(--ck-gap);
   }
+  /* 目录密档:图更小,一屏能扫更多 SKU(创始人:「一行还是多一些」) */
+  .grid.dense { grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 15rem)); }
   .card {
     display: flex; flex-direction: column;
     background: var(--ck-surface);
     border: var(--ck-border-w) solid var(--ck-line);
     border-radius: var(--ck-radius-lg);
     overflow: hidden;
-    transition: border-color var(--ck-dur) var(--ck-ease), transform var(--ck-dur) var(--ck-ease);
+    box-shadow: var(--ck-shadow-card);
+    transition: border-color var(--ck-dur) var(--ck-ease), transform var(--ck-dur) var(--ck-ease),
+      box-shadow var(--ck-dur) var(--ck-ease);
   }
-  .card:hover { border-color: var(--ck-line-strong); transform: translateY(-3px); }
+  .card:hover { border-color: var(--ck-line-strong); transform: translateY(-3px); box-shadow: var(--ck-shadow-lift); }
 
-  .shotwrap { aspect-ratio: 4 / 3; overflow: hidden; background: var(--ck-surface-alt); }
+  /* 1:1 —— 全站图片管理标准(品类图同款):后面批量上产品,方图最好管理 */
+  .shotwrap { aspect-ratio: 1 / 1; overflow: hidden; background: var(--ck-surface-alt); }
   .shot {
     width: 100%; height: 100%; object-fit: cover; display: block;
     transition: transform 0.6s var(--ck-ease);
@@ -130,17 +172,22 @@ const ART: Record<string, ProductKind> = {
 
   .meta { padding: 1.125rem 1.125rem 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
   .nm { font-size: var(--ck-h3); }
+  .linkwrap { display: block; cursor: pointer; }
+  .linkwrap:hover .shot { transform: scale(1.03); }
+  .linkwrap .shot { transition: transform 0.4s ease; }
+  .nmlink { color: inherit; text-decoration: none; }
+  .nmlink:hover { text-decoration: underline; text-underline-offset: 3px; }
   .sm { font-size: var(--ck-small); color: var(--ck-ink-soft); }
   .moq { display: flex; align-items: baseline; gap: 0.5rem; font-size: var(--ck-small); font-variant-numeric: tabular-nums; }
   .mk {
-    font-family: var(--ck-font-mono); font-size: 0.625rem; letter-spacing: 0.08em;
+    font-family: var(--ck-font-mono); font-size: max(0.625rem, 14px); letter-spacing: 0.08em;
     padding: 0.125rem 0.375rem; border-radius: 3px;
     background: var(--ck-accent-soft); color: var(--ck-accent);
   }
 
   .opts { display: grid; gap: 0.5rem; margin-top: 0.25rem; }
   .opt { display: grid; gap: 0.25rem; }
-  .ol { font-size: 0.6875rem; color: var(--ck-ink-faint); letter-spacing: 0.06em; }
+  .ol { font-size: max(0.6875rem, 14px); color: var(--ck-ink-faint); letter-spacing: 0.06em; }
   .os {
     font: inherit; font-size: var(--ck-small);
     padding: 0.4375rem 0.5rem;

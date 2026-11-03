@@ -11,6 +11,7 @@
 import AdminShell from '../../../layouts/AdminShell.astro';
 import FieldTree from '../../../components/admin/FieldTree.astro';
 import { pageGuard } from '../../../lib/guard';
+import { getDraft } from '../../../lib/page-versions';
 import { LANG_GROUPS } from '../../../lib/db';
 import { SITES } from '@cosmetic/core/registry';
 import { BLOCKS, BLOCK_BY_ID, FAMILY_NAME, type BlockFamily } from '@cosmetic/core/blocks';
@@ -43,6 +44,28 @@ if (ids.length) {
 }
 const dataBy = new Map<string, string>(i18n.map((r) => [`${r.block_id}:${r.lang}`, r.data_json]));
 
+/* A9 · 09-23 草稿:有未发布的草稿时,编辑器里显示草稿内容(不然存完草稿一刷新,人会以为改的东西丢了)。
+   只覆盖文案与显隐;版块的增删和顺序是即时生效的,不进草稿。 */
+const draft = await getDraft(c.db, id);
+if (draft) {
+  for (const b of draft.blocks ?? []) {
+    for (const [lang, data] of Object.entries(b.data ?? {})) {
+      if (data && Object.keys(data).length) dataBy.set(`${b.id}:${lang}`, JSON.stringify(data));
+    }
+    const row = blocks.find((x: any) => x.id === b.id);
+    if (row) row.is_visible = b.is_visible ? 1 : 0;
+  }
+  for (const m of draft.meta ?? []) {
+    if (!m.title && !m.nav_label) continue;
+    const i = meta.findIndex((x: any) => x.lang === m.lang);
+    if (i >= 0) meta[i] = m; else meta.push(m);
+  }
+}
+const undo = await c.db.prepare(
+  `SELECT COUNT(*) n, (SELECT note || ' · ' || created_at FROM page_versions WHERE page_id=?1 AND kind='backup' ORDER BY id DESC LIMIT 1) last
+     FROM page_versions WHERE page_id=?1 AND kind='backup'`,
+).bind(id).first<{ n: number; last: string | null }>().catch(() => null);
+
 const url = new URL(Astro.request.url);
 // 默认中英双栏:一屏对照着改,比来回切语种快得多
 const editLangs = (url.searchParams.get('langs') ?? 'zh-cn,en').split(',').filter(Boolean);
@@ -53,8 +76,8 @@ const siteName = new Map(SITES.map((s) => [s.id, s.name])).get(pg.site_id) ?? pg
    加了 DTC 那一族之后就对不上了 —— 后台显示 shelf、slideshow 这种英文键名,
    运营根本不知道那是什么。一处真源,不留第二张表。 */
 const famOf = (id: string): BlockFamily => BLOCK_BY_ID.get(id)?.family ?? 'shared';
-const GROUPED = (['shared', 'dtc', 'b2b'] as BlockFamily[])
-  .map((f) => ({ family: f, name: FAMILY_NAME[f], list: BLOCKS.filter((b) => b.family === f) }));const PICK = ['zh-cn', 'en', 'zh-tw', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'ar', 'pt', 'id'];
+const GROUPED = (['factory', 'shared', 'dtc', 'b2b'] as BlockFamily[])
+  .map((f) => ({ family: f, name: FAMILY_NAME[f], list: BLOCKS.filter((b) => b.family === f) }));const PICK = ['zh-cn', 'en', 'jp', 'kr', 'es', 'fr', 'de', 'ru', 'ar', 'pt', 'id', 'my'];
 
 /** 某语种没有译文时,拿已有语种的结构做骨架 —— 让运营直接在上面译,而不是面对一片空白 */
 const parse = (s?: string) => { try { return s ? JSON.parse(s) : null; } catch { return null; } };
@@ -101,10 +124,43 @@ const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
     </div>
     <div class="hd-a">
       <button type="button" class="btn addblk" data-after={-1}>＋ 加版块</button>
-      <a class="btn" href={`/zh-cn/${pg.slug}${pg.slug ? '/' : ''}?site=${pg.site_id}&preview=${Date.now()}`} target="_blank">预览前台</a>
-      <button class="btn pri" id="saveall">保存全部</button>
+      {/* 实时预览默认关着:它要占掉近一半屏宽,而多数时候人是在专心改一块文案。
+          需要看整页效果时再打开,开关状态记在 localStorage 里,不用每次点。 */}
+      <button type="button" class="btn" id="pvtoggle" aria-pressed="false">▣ 实时预览</button>
+      <a class="btn" href={`/zh-cn/${pg.slug}${pg.slug ? '/' : ''}?site=${pg.site_id}&preview=${Date.now()}`} target="_blank">新窗口打开</a>
+      <button type="button" class="btn" id="undo" disabled={!undo?.n}
+        title={undo?.last ? `回到「${undo.last}」时的样子(UTC)` : '还没有可撤销的改动'}>↶ 撤销上一次改动</button>
+      <button type="button" class="btn" id="savedraft" title="只存起来,线上不变">存草稿</button>
+      <button type="button" class="btn" id="pvdraft" title="先存草稿,再在新窗口看草稿效果">预览草稿</button>
+      <button class="btn pri" id="saveall" title="把改动发布到线上;发布前会自动留一个回退点">发布</button>
     </div>
   </div>
+  {draft && (
+    <p class="note info" id="draftbar">
+      这一页有<b>未发布的草稿</b>(存于 {draft.at} UTC),下面显示的是草稿内容。点「发布」上线,或
+      <button type="button" class="btn" id="discard">丢弃草稿</button>
+    </p>
+  )}
+
+  {/* 预览面板。用 iframe 而不是自己渲染一份 ——
+      自己渲染就会有「后台看到的」和「访客看到的」两套代码,
+      迟早出现预览是对的、线上是错的那种最难查的问题。 */}
+  <aside id="pv" hidden>
+    <div class="pv-h">
+      <b>实时预览</b>
+      <select id="pvlang">
+        {PICK.map((l) => <option value={l}>{LNAME.get(l) ?? l}</option>)}
+      </select>
+      <select id="pvw">
+        <option value="100%">桌面</option>
+        <option value="820px">平板</option>
+        <option value="390px">手机</option>
+      </select>
+      <button type="button" id="pvrefresh" title="重新加载">↻</button>
+      <button type="button" id="pvclose" title="关闭">✕</button>
+    </div>
+    <div class="pv-b"><iframe id="pvframe" title="前台预览" loading="lazy"></iframe></div>
+  </aside>
 
   <section class="card">
     <div class="card-h"><h2>对照编辑的语种</h2></div>
@@ -164,6 +220,9 @@ const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
         {/* 操作按钮放在折叠头里。type=button 是必须的 ——
             summary 里的 button 默认是 submit,点一下会连带把 details 开合掉。 */}
         <span class="ops" data-blk={b.id}>
+          {/* 拖拽手柄单独一个,不让整张卡片可拖 ——
+              卡片里有输入框,整卡可拖会让「选中一段文字」变成「拖走整屏」。 */}
+          <span class="grip" draggable="true" title="拖动调整顺序" aria-label="拖动调整顺序">⠿</span>
           <button type="button" class="op" data-op="move" data-dir="-1" title="上移" aria-label="上移">↑</button>
           <button type="button" class="op" data-op="move" data-dir="1" title="下移" aria-label="下移">↓</button>
           <button type="button" class="op" data-op="duplicate" title="复制这一屏">复制</button>
@@ -350,11 +409,116 @@ const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
              box-shadow: 0 10px 30px -8px rgb(0 0 0 / .35); }
     .toast.bad { background: var(--ad-bad); }
     [hidden] { display: none !important; }
+
+    /* ── 拖拽排序 ─────────────────────────────────────── */
+    .grip { cursor: grab; user-select: none; padding: 0 .375rem; opacity: .45;
+            font-size: 1rem; line-height: 1; letter-spacing: -.1em; }
+    .grip:hover { opacity: 1; }
+    .grip:active { cursor: grabbing; }
+    .blk.dragging { opacity: .4; }
+    /* 落点提示画在卡片上边缘。用 outline 而不是 border ——
+       border 会让卡片高度跳一下,拖动时整列跟着抖。 */
+    .blk.over-top { box-shadow: 0 -3px 0 0 var(--ad-accent); }
+    .blk.over-bot { box-shadow: 0 3px 0 0 var(--ad-accent); }
+
+    /* ── 实时预览 ─────────────────────────────────────── */
+    body.pv-on .wrap { max-width: none; margin-right: min(46vw, 40rem); }
+    #pv { position: fixed; top: 0; right: 0; bottom: 0; width: min(46vw, 40rem);
+          background: var(--ad-panel); border-left: 1px solid var(--ad-line, #e5e5e5);
+          display: flex; flex-direction: column; z-index: 8; }
+    .pv-h { display: flex; gap: .5rem; align-items: center; padding: .625rem .875rem;
+            border-bottom: 1px solid var(--ad-line, #e5e5e5); font-size: .8125rem; }
+    .pv-h b { flex: 1; }
+    .pv-h select, .pv-h button { font-size: .75rem; padding: .25rem .5rem; }
+    .pv-b { flex: 1; overflow: auto; background: #f2f2f2; display: flex; justify-content: center; }
+    #pvframe { width: 100%; height: 100%; border: 0; background: #fff; transition: width .2s; }
+    @media (max-width: 60rem) {
+      body.pv-on .wrap { margin-right: 0; }
+      #pv { position: fixed; inset: 0; width: auto; }
+    }
   </style>
 
-  <script is:inline>
+  <script is:inline define:vars={{ PV_SLUG: pg.slug, PV_SITE: pg.site_id, PV_PAGE: pg.id }}>
   (() => {
     const toast = document.getElementById('toast');
+
+    /* ══ 实时预览 ═══════════════════════════════════════════
+       用 iframe 装真实前台页,而不是在后台再渲染一份。
+       自己渲染就会有「后台看到的」和「访客看到的」两套代码,
+       迟早出现预览对、线上错那种最难查的问题。 */
+    const pv = document.getElementById('pv');
+    const frame = document.getElementById('pvframe');
+    const pvUrl = (lang) =>
+      `/${lang}/${PV_SLUG}${PV_SLUG ? '/' : ''}?site=${PV_SITE}&preview=${Date.now()}`;
+    const reloadPv = () => {
+      if (pv.hidden) return;
+      frame.src = pvUrl(document.getElementById('pvlang').value);
+    };
+    const setPv = (on) => {
+      pv.hidden = !on;
+      document.body.classList.toggle('pv-on', on);
+      document.getElementById('pvtoggle').setAttribute('aria-pressed', String(on));
+      try { localStorage.setItem('bohui_pv', on ? '1' : '0'); } catch {}
+      if (on) reloadPv();
+    };
+    document.getElementById('pvtoggle').addEventListener('click', () => setPv(pv.hidden));
+    document.getElementById('pvclose').addEventListener('click', () => setPv(false));
+    document.getElementById('pvrefresh').addEventListener('click', reloadPv);
+    document.getElementById('pvlang').addEventListener('change', reloadPv);
+    document.getElementById('pvw').addEventListener('change', (e) => { frame.style.width = e.target.value; });
+    try { if (localStorage.getItem('bohui_pv') === '1') setPv(true); } catch {}
+    // 保存/增删/排序之后都要刷预览 —— 不刷的话人会以为改动没生效
+    window.__pvRefresh = reloadPv;
+
+    /* ══ 拖拽排序 ═══════════════════════════════════════════
+       只有手柄可拖:卡片里有输入框,整卡可拖会把「选中一段文字」变成「拖走整屏」。
+       落点按指针在目标卡片的上半还是下半决定,而不是按卡片中心 ——
+       后者在卡片高度差很大时(有的展开有的折叠)会很难对准。 */
+    const list = () => [...document.querySelectorAll('.blk[data-id]')];
+    let dragEl = null;
+
+    document.querySelectorAll('.grip').forEach((g) => {
+      const card = g.closest('.blk');
+      g.addEventListener('dragstart', (e) => {
+        dragEl = card;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        // Firefox 不设 data 就不触发 drop
+        e.dataTransfer.setData('text/plain', card.dataset.id);
+      });
+      g.addEventListener('dragend', async () => {
+        card.classList.remove('dragging');
+        list().forEach((c) => c.classList.remove('over-top', 'over-bot'));
+        if (!dragEl) return;
+        dragEl = null;
+        const ids = list().map((c) => Number(c.dataset.id));
+        const r = await fetch('/api/admin/block', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'reorder', pageId: PV_PAGE, ids }),
+        }).then((x) => x.json()).catch(() => ({ ok: false }));
+        if (r.ok) { say('顺序已保存'); window.__pvRefresh?.(); }
+        else { say(r.msg || '排序没保存成功,刷新一下再试', true); }
+      });
+    });
+
+    document.addEventListener('dragover', (e) => {
+      if (!dragEl) return;
+      e.preventDefault();
+      const over = e.target.closest?.('.blk[data-id]');
+      list().forEach((c) => c.classList.remove('over-top', 'over-bot'));
+      if (!over || over === dragEl) return;
+      const box = over.getBoundingClientRect();
+      const after = e.clientY > box.top + box.height / 2;
+      over.classList.add(after ? 'over-bot' : 'over-top');
+      // 连同后面那个「＋ 在这里加一屏」一起搬,否则插入位会错位
+      const ins = dragEl.nextElementSibling?.classList.contains('insert') ? dragEl.nextElementSibling : null;
+      const overIns = over.nextElementSibling?.classList.contains('insert') ? over.nextElementSibling : null;
+      if (after) (overIns ?? over).after(dragEl); else over.before(dragEl);
+      if (ins) dragEl.after(ins);
+    });
+    document.addEventListener('drop', (e) => { if (dragEl) e.preventDefault(); });
+    // 提示条用下面已有的 say():这里不再定义一个同名的,
+    // 同一作用域里 function say 和 const say 并存会直接 SyntaxError,整段脚本都不执行。
 
     /* ── 图片选择器 ────────────────────────────────────
        点「选择图片」→ 弹媒体库 → 点一张就填进去。
@@ -454,8 +618,8 @@ const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
       return el.querySelector('input,textarea').value;
     }
 
-    document.getElementById('saveall').addEventListener('click', async (ev) => {
-      const btn = ev.currentTarget;
+    async function send(mode, btn) {
+      const label = btn.textContent;
       btn.disabled = true; btn.textContent = '保存中…';
       const meta = [...document.querySelectorAll('[data-meta-lang]')].map((col) => ({
         lang: col.dataset.metaLang,
@@ -473,13 +637,39 @@ const zhTitle = meta.find((m: any) => m.lang === 'zh-cn')?.title;
       try {
         const r = await fetch('/api/admin/page', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ page_id: +location.pathname.split('/').filter(Boolean).pop(), meta, blocks }),
+          body: JSON.stringify({ page_id: PV_PAGE, meta, blocks, mode }),
         });
         const d = await r.json();
         if (!d.ok) throw new Error(d.msg);
-        say(d.meta + d.blocks === 0 ? '内容没有变化,未写入' : `已保存 · 页面信息 ${d.meta} 条,版块译文 ${d.blocks} 条`);
+        btn.disabled = false; btn.textContent = label;
+        if (mode === 'draft') { say('草稿已存,线上没变'); return true; }
+        say(d.meta + d.blocks === 0 ? '内容没有变化,已发布' : `已发布 · 页面信息 ${d.meta} 条,版块译文 ${d.blocks} 条`);
+        setTimeout(() => location.reload(), 900);   // 刷新:草稿条消失、「撤销」按钮亮起
+        return true;
       } catch (e) { say(e.message || '保存失败', true); }
-      btn.disabled = false; btn.textContent = '保存全部';
+      btn.disabled = false; btn.textContent = label;
+      return false;
+    }
+    document.getElementById('saveall').addEventListener('click', (e) => send('publish', e.currentTarget));
+    document.getElementById('savedraft').addEventListener('click', (e) => send('draft', e.currentTarget));
+    document.getElementById('pvdraft').addEventListener('click', async (e) => {
+      const w = window.open('about:blank', '_blank');
+      if (!(await send('draft', e.currentTarget))) { w?.close(); return; }
+      if (w) w.location = `/zh-cn/${PV_SLUG}${PV_SLUG ? '/' : ''}?site=${PV_SITE}&draft=${PV_PAGE}`;
+    });
+    const pageCall = (action) => fetch('/api/admin/page', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ page_id: PV_PAGE, action }),
+    }).then((r) => r.json()).catch(() => ({ ok: false, msg: '网络断了' }));
+    document.getElementById('undo').addEventListener('click', async () => {
+      if (!confirm('把这一页恢复到上一次改动之前的样子?(版块、顺序、全部语种的文字都会回去)')) return;
+      const d = await pageCall('rollback');
+      if (!d.ok) { say(d.msg || '撤销失败', true); return; }
+      say('已撤销,正在刷新…'); setTimeout(() => location.reload(), 600);
+    });
+    document.getElementById('discard')?.addEventListener('click', async () => {
+      if (!confirm('丢弃草稿?线上内容不受影响。')) return;
+      const d = await pageCall('discard');
+      if (d.ok) location.reload(); else say(d.msg || '没丢掉', true);
     });
 
     document.querySelectorAll('.langbar input').forEach((cb) => cb.addEventListener('change', () => {

@@ -1,0 +1,9 @@
+---
+/** /regulations/changes/ → 最新一期(pulse 'regdigest:YYYY-MM',tools/reg-digest.py 每月 1 号写)。还没有任何一期就回法规总页。 */
+import { env } from 'cloudflare:workers';
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn';
+const db = (env as any).DB as D1Database | undefined;
+const row = db ? await db.prepare(`SELECT k FROM pulse WHERE k LIKE 'regdigest:%' ORDER BY k DESC LIMIT 1`).first<{ k: string }>().catch(() => null) : null;
+return Astro.redirect(row ? `/${lang}/regulations/changes/${row.k.slice(10)}/` : `/${lang}/regulations/`, 302);
+---

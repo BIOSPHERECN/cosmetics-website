@@ -1,0 +1,97 @@
+---
+/**
+ * 全球爆款配方(后台参考库)—— 创始人 2026-09-17:「要有个专门的爆款,全球爆款配方,并配产品链接」「资料是英文的,要显示中文」
+ * 「不可以展示在前台,只可以在我们的后台数据参考」。
+ * 数据源 market_products(助手每日采集 + tools/market/import_hot.py 导入 + hot_zh.py 中文化);本页只给登录的实验室 / 业务 / 老板看。
+ */
+import LabShell from '../../../layouts/LabShell.astro';
+import { pageGuard } from '../../../lib/guard';
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+const url = new URL(Astro.request.url);
+const mk = (url.searchParams.get('mk') ?? '').slice(0, 8);
+const cat = (url.searchParams.get('cat') ?? '').slice(0, 20);
+const q = (url.searchParams.get('q') ?? '').trim().slice(0, 60);
+const page = Math.max(1, Number(url.searchParams.get('p') ?? 1) || 1);
+const PER = 50;
+const MK_ZH: Record<string, string> = { us: '美国', kr: '韩国', jp: '日本', eu: '欧盟 / 英国', uk: '英国', id: '印尼', my: '马来西亚', th: '泰国', vn: '越南', au: '澳洲', cn: '中国', gl: '全球' };
+const conds: string[] = [`inci IS NOT NULL AND length(inci) > 30`]; const bind: unknown[] = [];
+if (mk) { conds.push(`country = ?`); bind.push(mk); }
+if (cat) { conds.push(`COALESCE(cat_zh, cat) = ?`); bind.push(cat); }
+if (q) { conds.push(`(title LIKE ? OR title_zh LIKE ? OR brand LIKE ? OR inci LIKE ? OR inci_zh LIKE ?)`); const l = `%${q}%`; bind.push(l, l, l, l, l); }
+const W = `WHERE ${conds.join(' AND ')}`;
+const total = (await c.db.prepare(`SELECT COUNT(*) n FROM market_products ${W}`).bind(...bind).first<{ n: number }>())?.n ?? 0;
+const { results: rows } = await c.db.prepare(`SELECT id, platform, country, brand, title, title_zh, cat, cat_zh, url, inci, inci_zh, claims, size, last_seen FROM market_products ${W} ORDER BY last_seen DESC, id DESC LIMIT ? OFFSET ?`)
+  .bind(...bind, PER, (page - 1) * PER).all<any>();
+const { results: mks } = await c.db.prepare(`SELECT country, COUNT(*) n FROM market_products WHERE inci IS NOT NULL AND length(inci) > 30 GROUP BY country ORDER BY n DESC`).all<any>();
+const { results: cats } = await c.db.prepare(`SELECT COALESCE(cat_zh, cat) k, COUNT(*) n FROM market_products WHERE inci IS NOT NULL AND length(inci) > 30 GROUP BY k ORDER BY n DESC LIMIT 20`).all<any>();
+const pages = Math.max(1, Math.ceil(total / PER));
+const allN = mks.reduce((a: number, m: any) => a + Number(m.n || 0), 0);   // 「全部」也要带数字(创始人 17:2x)
+const link = (over: Record<string, string | number>) => { const u = new URLSearchParams({ mk, cat, q, p: String(page), ...Object.fromEntries(Object.entries(over).map(([k, v]) => [k, String(v)])) }); for (const k of [...u.keys()]) if (!u.get(k)) u.delete(k); return `/bohui/formula-lab/hot/?${u.toString()}`; };
+const meta = (s: string | null) => { const m = /‖\s*(.*)$/.exec(s ?? ''); return m ? m[1] : ''; };
+const claimsOnly = (s: string | null) => (s ?? '').split('‖')[0].trim();
+---
+<LabShell title="全球爆款配方" email={c.sess.email} tenant={c.tenant}>
+  <div class="hot">
+    <header class="hh">
+      <div><h1>配方库 · 海外爆款配方 <small>同一个配方库的参考分区 · 共 {total} 条有全成分 · 只在后台看,不上前台</small></h1></div>
+      <a class="btn" href="/bohui/formulas/">公司配方</a> <a class="btn" href="/bohui/formula-lab/">配方实验室</a>
+    </header>
+    <form class="filters" method="get">
+      <div class="row">
+        <span>市场</span>
+        <a class:list={['chip', !mk && 'on']} href={link({ mk: '', p: 1 })}>全部 {allN}</a>
+        {mks.map((m: any) => <a class:list={['chip', mk === m.country && 'on']} href={link({ mk: m.country, p: 1 })}>{MK_ZH[m.country] ?? m.country} {m.n}</a>)}
+      </div>
+      <div class="row">
+        <span>类目</span>
+        <a class:list={['chip', !cat && 'on']} href={link({ cat: '', p: 1 })}>全部 {allN}</a>
+        {cats.map((k: any) => <a class:list={['chip', cat === k.k && 'on']} href={link({ cat: k.k, p: 1 })}>{k.k} {k.n}</a>)}
+      </div>
+      <div class="row">
+        <span>搜索</span>
+        <input type="hidden" name="mk" value={mk} /><input type="hidden" name="cat" value={cat} />
+        <input name="q" value={q} placeholder="品牌、产品名、成分(中英都行)" /><button class="btn pri" type="submit">找</button>
+      </div>
+    </form>
+    <table class="tbl">
+      <thead><tr><th>市场</th><th>类目</th><th>品牌 · 产品</th><th>全成分(中文)</th><th>信息</th></tr></thead>
+      <tbody>
+        {rows.map((r: any) => (
+          <tr>
+            <td class="nw">{MK_ZH[r.country] ?? r.country}<br /><small>{r.platform}</small></td>
+            <td class="nw">{r.cat_zh ?? r.cat}</td>
+            <td><b>{r.brand}</b><br />{r.title_zh || r.title}{r.title_zh && <small class="soft"><br />{r.title}</small>}<br />{r.url && <a href={r.url} target="_blank" rel="noopener">产品链接 ↗</a>}</td>
+            <td class="inci"><details><summary>{(r.inci_zh || r.inci || '').slice(0, 60)}…</summary><p>{r.inci_zh || r.inci}</p>{r.inci_zh && <p class="soft mono">{r.inci}</p>}</details></td>
+            <td class="nw soft"><small>{claimsOnly(r.claims) && <>{claimsOnly(r.claims).slice(0, 40)}<br /></>}{meta(r.claims).slice(0, 90)}<br />{r.size}{r.last_seen && ` · ${String(r.last_seen).slice(0, 10)}`}</small></td>
+          </tr>
+        ))}
+        {rows.length === 0 && <tr><td colspan="5" class="empty">没有匹配的条目</td></tr>}
+      </tbody>
+    </table>
+    <nav class="pager">
+      {page > 1 && <a class="btn" href={link({ p: page - 1 })}>上一页</a>}
+      <span>第 {page} / {pages} 页</span>
+      {page < pages && <a class="btn" href={link({ p: page + 1 })}>下一页</a>}
+    </nav>
+  </div>
+</LabShell>
+<style>
+  .hot { max-width: 112.5rem; margin: 0 auto; }
+  .hh { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: .75rem; }
+  h1 { font-size: 1.375rem; margin: 0; } h1 small { display: block; font-size: .8125rem; font-weight: 400; color: var(--ad-side-dim); margin-top: .25rem; }
+  .filters { background: var(--ad-panel); border: 1px solid var(--ad-side-line); border-radius: 14px; padding: .625rem 1rem; margin-bottom: .75rem; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem; margin: .25rem 0; }
+  .row > span { width: 2.5rem; font-size: .8125rem; color: var(--ad-side-dim); }
+  .chip { border: 1px solid var(--ad-side-line); background: var(--ad-sunk); border-radius: 999px; padding: .25rem .75rem; font-size: .8125rem; color: var(--ad-ink); text-decoration: none; }
+  .chip.on { background: var(--ad-ink); color: #fff; border-color: var(--ad-ink); }
+  .row input[name=q] { flex: 1; min-width: 12rem; padding: .375rem .625rem; border: 1px solid var(--ad-side-line); border-radius: 8px; font-size: .875rem; }
+  .tbl { width: 100%; border-collapse: collapse; background: var(--ad-panel); border: 1px solid var(--ad-side-line); border-radius: 14px; font-size: .875rem; }
+  .tbl th, .tbl td { padding: .5rem .625rem; border-bottom: 1px solid var(--ad-side-line); vertical-align: top; text-align: left; }
+  .tbl th { background: var(--ad-sunk); font-weight: 600; font-size: .8125rem; }
+  .nw { white-space: nowrap; } .soft { color: var(--ad-side-dim); } .mono { font-family: ui-monospace, monospace; font-size: .75rem; }
+  .inci summary { cursor: pointer; } .inci p { margin: .375rem 0 0; line-height: 1.6; }
+  .empty { text-align: center; color: var(--ad-side-dim); padding: 2rem; }
+  .pager { display: flex; gap: .75rem; align-items: center; justify-content: center; margin: 1rem 0; }
+</style>

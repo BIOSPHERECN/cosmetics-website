@@ -31,7 +31,7 @@ export interface Props {
 const { hero, ctaHref, ctaSecondaryHref, highlights = [], texture = 'cream', image, imageAlt } = Astro.props;
 ---
 
-<section class="hero">
+<section class:list={['hero', { compact: !image && highlights.length === 0 }]}>
   <div class="deco" aria-hidden="true"></div>
   {/* 右半幅:有实拍图就铺图,没有则用生成式质地兜底 */}
   <div class="texwrap" aria-hidden={image ? undefined : 'true'}>
@@ -76,6 +76,10 @@ const { hero, ctaHref, ctaSecondaryHref, highlights = [], texture = 'cream', ima
     padding-block: var(--ck-section-py);
     overflow: hidden;
   }
+  /* 子页题头(无实拍图、无数字墙):内容只有三行字 + 一个按钮,
+     撑到首页同款高度就是一大片空白(创始人:「这么大的空白处,这设计不行」)。
+     收成紧凑横幅 —— 高度跟着内容走,只保底一点气场。 */
+  .hero.compact { min-height: clamp(15rem, 34vh, 22rem); }
   /* 装饰层单独一层,保证文字始终在其上、对比度不受影响 */
   .deco {
     position: absolute;

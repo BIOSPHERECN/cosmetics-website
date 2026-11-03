@@ -1,0 +1,270 @@
+---
+/**
+ * SEO 与 GEO。
+ *
+ * 分成两件不同的事,不要混为一谈:
+ *
+ *  SEO —— 让搜索引擎收得到、显示得好看。看的是 title / description 的长度与缺失、
+ *         sitemap 有没有、canonical 与 hreflang 对不对。这套规则二十年没怎么变。
+ *
+ *  GEO —— 让 AI 答案引擎**引用得到**。海外采购越来越多是先问 ChatGPT / Perplexity
+ *         「中国有哪些做草本护肤的 OEM」,再联系名单上的几家。
+ *         这一层看的是:AI 爬虫有没有被挡、llms.txt 里的事实清单准不准、
+ *         结构化数据有没有把「20,000 ㎡」这类数字写成机器能确定的字段。
+ *         页面正文里的数字对机器要靠猜,JSON-LD 里的是一条确定的数据 —— 差别就在这。
+ *
+ * 页面上不放"分数",只放**能动手改的具体项**:哪一页缺描述、哪一条太长、
+ * 哪个爬虫被挡住了。给分数只会让人盯着分数,不会让人去改。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { LANGS, LANG_LABEL, DEFAULT_LANG } from '../../lib/db';
+import { GET as robotsGET } from '../robots.txt';
+import { GET as sitemapGET } from '../sitemap.xml';
+import { GET as llmsGET } from '../llms.txt';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const site = await c.db.prepare(`SELECT id, domain, is_live FROM sites WHERE id = ?`)
+  .bind(c.tenant.siteId).first<{ id: string; domain: string; is_live: number }>();
+const base = `https://${site?.domain}`;
+
+/* 页面 SEO 字段。只查中英两门 —— 其余语种由翻译中心统一管,
+   在这里铺 17 列会让表宽到没法用,而真正要人工润色的就是这两门。 */
+const { results: pages } = await c.db.prepare(
+  `SELECT p.id, p.slug, p.status, p.in_nav,
+          (SELECT nav_label FROM page_i18n WHERE page_id=p.id AND lang='zh-cn') AS n_zh,
+          (SELECT nav_label FROM page_i18n WHERE page_id=p.id AND lang='en')    AS n_en,
+          (SELECT title    FROM page_i18n WHERE page_id=p.id AND lang='zh-cn') AS t_zh,
+          (SELECT seo_desc FROM page_i18n WHERE page_id=p.id AND lang='zh-cn') AS d_zh,
+          (SELECT title    FROM page_i18n WHERE page_id=p.id AND lang='en')    AS t_en,
+          (SELECT seo_desc FROM page_i18n WHERE page_id=p.id AND lang='en')    AS d_en,
+          (SELECT COUNT(*) FROM page_i18n WHERE page_id=p.id)                  AS langs,
+          (SELECT COUNT(*) FROM blocks b WHERE b.page_id=p.id AND b.is_visible=1) AS blocks
+     FROM pages p WHERE p.site_id = ? ORDER BY p.sort_order, p.id`,
+).bind(c.tenant.siteId).all<any>();
+
+/* 长度规矩:标题超过 60 个字符会在搜索结果里被截断,描述低于 70 个字符
+   搜索引擎多半会弃用、自己从正文里抓一段。中文按字符数算已经够用。 */
+const tooLongT = (s: string | null) => !!s && s.length > 60;
+const tooShortD = (s: string | null) => !s || s.length < 70;
+const tooLongD = (s: string | null) => !!s && s.length > 160;
+
+const issues = pages.filter((p: any) =>
+  p.status === 'published' && (!p.t_zh || !p.d_zh || !p.t_en || !p.d_en
+    || tooLongT(p.t_zh) || tooLongT(p.t_en) || tooShortD(p.d_zh) || tooShortD(p.d_en)));
+
+/* 端点自检。原先对自己的域名发真网络请求 —— 但 Worker 请求自己所在的域
+   会被 Cloudflare 递归防护拦下,拿到空 body,于是六个 AI 爬虫全显「未声明」、
+   sitemap/llms 显示拉取失败(创始人 2026-09-01 实锤:「很多还是未声明」,
+   而站外 curl 三件套全绿)。改为直接调用同一份端点代码:跑的就是线上那段逻辑,
+   判据不变,只是不再绕公网一圈。 */
+type Probe = { ok: boolean; status: number; body: string };
+const probe = async (fn: (ctx: any) => Promise<Response> | Response, path: string): Promise<Probe> => {
+  try {
+    const r = await fn({ url: new URL(base + path) });
+    return { ok: r.ok, status: r.status, body: r.ok ? await r.text() : '' };
+  } catch { return { ok: false, status: 0, body: '' }; }
+};
+const [rb, smFull, llRaw] = await Promise.all([
+  probe(robotsGET as any, '/robots.txt'),
+  probe(sitemapGET as any, '/sitemap.xml'),
+  probe(llmsGET as any, '/llms.txt'),
+]);
+/* sitemap 全量能有几 MB:统计完立刻丢掉正文,别让后台页背着它渲染 */
+const sm = { ok: smFull.ok, status: smFull.status, body: '' };
+const smLocs = (smFull.body.match(/<loc>/g) || []).length;
+const smHreflang = /xhtml:link/.test(smFull.body);
+smFull.body = '';
+const ll = { ...llRaw, body: llRaw.body.slice(0, 20000) };
+
+/* 2026-09 UA 三层体系:训练 / 搜索索引 / 用户代取 —— 检查名单同步扩充 */
+const AI_BOTS = ['GPTBot', 'OAI-SearchBot', 'ClaudeBot', 'Claude-SearchBot', 'PerplexityBot', 'Google-Extended', 'Applebot-Extended', 'DuckAssistBot'];
+const botState = AI_BOTS.map((b) => {
+  /* robots 允许多行 User-agent 叠同一个规则组 —— 匹配时要跨过中间的其他 UA 行 */
+  const m = new RegExp(`User-agent:\\s*${b}\\s*\\n(?:User-agent:[^\\n]*\\n)*(Allow|Disallow):\\s*([^\\n]*)`, 'i').exec(rb.body);
+  return { bot: b, state: !m ? '未声明' : (m[1] === 'Disallow' && m[2].trim() === '/' ? '被封禁' : '放行') };
+});
+const blocked = botState.filter((b) => b.state === '被封禁');
+const managed = /Cloudflare Managed Content|Content-Signal/.test(rb.body);
+---
+
+<AdminShell title="SEO 与 GEO" active="seo" email={c.sess.email} tenant={c.tenant}>
+  <h1>SEO 与 GEO</h1>
+  <p class="lead">
+    上半部分是<b>搜索引擎</b>(收得到、显示得好看),下半部分是<b>AI 答案引擎</b>(被不被引用)。
+    两件事的判据不一样,分开看。所有状态都是刚才对 <code>{base}</code> 真实请求得到的,不是读配置猜的。
+  </p>
+
+  {site?.is_live !== 1 && (
+    <p class="alert">
+      这个站的「已上线」开关是关的,所有页面都会带 <code>noindex</code>,搜索引擎不会收录。
+      内容核实完再到<a href="/bohui/">站点总览</a>打开。
+    </p>
+  )}
+
+  <section class="card">
+    <h2>基础设施</h2>
+    <table class="kv">
+      <tr>
+        <th>robots.txt</th>
+        <td>
+          {rb.ok ? <span class="pill p-ok">HTTP 200 · {rb.body.length}B</span> : <span class="pill p-bad">HTTP {rb.status}</span>}
+          {managed && <span class="pill p-bad">被 Cloudflare 托管规则接管</span>}
+          {managed && <span class="hint">Cloudflare 会在我们的规则**前面**插一段,而爬虫按先匹配到的组走 —— 等于我们的放行不生效。到 Cloudflare → AI Crawl Control → 关掉「Managed robots.txt」。</span>}
+        </td>
+      </tr>
+      <tr>
+        <th>sitemap.xml</th>
+        <td>
+          {sm.ok ? <span class="pill p-ok">{smLocs} 个 URL</span> : <span class="pill p-bad">HTTP {sm.status}</span>}
+          {sm.ok && !smHreflang && <span class="pill p-bad">缺 hreflang 互指</span>}
+          <span class="hint">{LANGS.length} 语 × 已发布页面。没有它,非默认语言的页面往往几个月进不了索引。</span>
+        </td>
+      </tr>
+      <tr>
+        <th>llms.txt</th>
+        <td>
+          {ll.ok ? <span class="pill p-ok">HTTP 200 · {ll.body.length}B</span> : <span class="pill p-bad">HTTP {ll.status}</span>}
+          <span class="hint">给 AI 引擎读的纯事实清单。模型抓 HTML 要吞几十 KB 版式,事实取错取漏很常见;一份 4KB 的清单被正确引用的概率完全不是一个量级。</span>
+        </td>
+      </tr>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>AI 爬虫准入(GEO 的前提)</h2>
+    {blocked.length > 0
+      ? <p class="alert">有 {blocked.length} 个 AI 爬虫被挡在门外:{blocked.map((b) => b.bot).join('、')}。GEO 这一层等于白做。</p>
+      : <p class="good">全部放行 —— 这是被 AI 答案引擎引用的前提。</p>}
+    <ul class="bots">
+      {botState.map((b) => (
+        <li>
+          <code>{b.bot}</code>
+          <span class={b.state === '放行' ? 'pill p-ok' : b.state === '被封禁' ? 'pill p-bad' : 'pill'}>{b.state}</span>
+        </li>
+      ))}
+    </ul>
+    <p class="hint">
+      我们**主动放行**而不是封禁,是因为这是个外贸 B2B 站:产能、认证、可做品类本来就希望被人知道,
+      而海外采购已经在用这些入口找代工厂。封掉等于在新的流量入口上直接消失。
+    </p>
+  </section>
+
+  <section class="card">
+    <h2>逐页 SEO{issues.length > 0 && <span class="pill p-bad">{issues.length} 页需要处理</span>}</h2>
+    <p class="hint">
+      标题超过 60 字符会在搜索结果里被截断;描述短于 70 字符,搜索引擎多半会弃用、自己从正文抓一段 ——
+      那段抓出来的话你控制不了。改完点保存,其余 15 门语种由<a href="/bohui/i18n/">翻译中心</a>跟上。
+    </p>
+    <table class="seo">
+      <thead><tr>
+        <th style="width:12rem">页面</th>
+        <th>中文标题 / 描述</th>
+        <th>英文标题 / 描述</th>
+        <th style="width:5rem"></th>
+      </tr></thead>
+      <tbody>
+        {pages.map((p: any) => (
+          <tr data-id={p.id} class={p.status !== 'published' ? 'draft' : ''}>
+            <td data-nav-zh={p.n_zh ?? ''} data-nav-en={p.n_en ?? ''}>
+              <b>/{p.slug || '(首页)'}</b>
+              <span class="hint">{p.blocks} 版块 · {p.langs}/{LANGS.length} 语{p.status !== 'published' && ' · 草稿'}</span>
+            </td>
+            <td>
+              <input class="t" data-lang="zh-cn" value={p.t_zh ?? ''} placeholder="页面标题" />
+              <span class={`len ${tooLongT(p.t_zh) ? 'bad' : ''}`}>{(p.t_zh ?? '').length}/60</span>
+              <textarea class="d" data-lang="zh-cn" rows="2" placeholder="SEO 描述(70–160 字)">{p.d_zh ?? ''}</textarea>
+              <span class={`len ${tooShortD(p.d_zh) || tooLongD(p.d_zh) ? 'bad' : ''}`}>{(p.d_zh ?? '').length}/160</span>
+            </td>
+            <td>
+              <input class="t" data-lang="en" value={p.t_en ?? ''} placeholder="Page title" />
+              <span class={`len ${tooLongT(p.t_en) ? 'bad' : ''}`}>{(p.t_en ?? '').length}/60</span>
+              <textarea class="d" data-lang="en" rows="2" placeholder="Meta description">{p.d_en ?? ''}</textarea>
+              <span class={`len ${tooShortD(p.d_en) || tooLongD(p.d_en) ? 'bad' : ''}`}>{(p.d_en ?? '').length}/160</span>
+            </td>
+            <td><button class="save">保存</button></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>llms.txt 现在的内容</h2>
+    <p class="hint">
+      由代码按数据库里的真实数据生成(<code>apps/web/src/pages/llms.txt.ts</code>)。
+      纪律:这里只能写公司资料里有的数字 —— 写页面上没有的内容,就是在给 AI 喂幻觉,而它会以我们的名义讲出去。
+    </p>
+    <pre class="llms">{ll.ok ? ll.body : `拉取失败(HTTP ${ll.status})`}</pre>
+  </section>
+</AdminShell>
+
+<style>
+  .card { border: 1px solid var(--ad-line); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; background: var(--ad-panel); }
+  .card h2 { margin: 0 0 .75rem; font-size: 1rem; display: flex; gap: .5rem; align-items: center; }
+  .kv { width: 100%; }
+  .kv th { text-align: left; width: 9rem; vertical-align: top; padding: .5rem .5rem .5rem 0; font-weight: 600; }
+  .kv td { padding: .5rem 0; }
+  code { background: rgb(0 0 0 / .06); padding: .125rem .375rem; border-radius: 3px; font-size: .8125rem; }
+  .hint { color: var(--ad-faint); font-size: .75rem; display: block; margin-top: .25rem; line-height: 1.6; }
+  .alert { background: #fdecea; border: 1px solid #f5c6cb; border-radius: 6px; padding: .75rem .875rem; font-size: .8125rem; line-height: 1.7; }
+  .good { background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 6px; padding: .75rem .875rem; font-size: .8125rem; }
+  .bots { list-style: none; margin: .75rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
+  .bots li { display: flex; gap: .375rem; align-items: center; }
+  .seo { width: 100%; table-layout: fixed; }
+  .seo td { vertical-align: top; padding: .625rem .5rem; border-top: 1px solid var(--ad-line); }
+  .seo .draft { opacity: .55; }
+  .seo input.t { width: 100%; font-size: .8125rem; }
+  .seo textarea.d { width: 100%; font-size: .75rem; margin-top: .25rem; resize: vertical; }
+  .len { font-size: .75rem; color: var(--ad-faint); font-variant-numeric: tabular-nums; }
+  .len.bad { color: #c62828; font-weight: 700; }
+  .llms { background: rgb(0 0 0 / .04); padding: 1rem; border-radius: 6px; font-size: .75rem;
+          line-height: 1.65; max-height: 26rem; overflow: auto; white-space: pre-wrap; }
+</style>
+
+<script is:inline>
+  (() => {
+    // 长度提示要**边打字边更新** —— 等保存后刷新才看到,人就不会改了
+    const sync = (el) => {
+      const box = el.nextElementSibling;
+      if (!box || !box.classList.contains('len')) return;
+      const max = Number(box.textContent.split('/')[1]);
+      const n = el.value.length;
+      box.textContent = `${n}/${max}`;
+      const short = el.classList.contains('d') && n < 70;
+      box.classList.toggle('bad', n > max || short);
+    };
+    document.querySelectorAll('.seo input.t, .seo textarea.d').forEach((el) => {
+      el.addEventListener('input', () => sync(el));
+    });
+
+    document.querySelectorAll('.seo button.save').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const tr = btn.closest('tr');
+        /* nav_label 必须原样带回去。接口里写的是 `nav_label || title`,
+           传空字符串会把**导航上显示的名字**覆盖成页面标题 ——
+           「关于我们」会变成「关于我们 | BIOSPHERE-AI」那种长标题。 */
+        const cell = tr.querySelector('td[data-nav-zh]');
+        const nav = { 'zh-cn': cell?.dataset.navZh ?? '', en: cell?.dataset.navEn ?? '' };
+        const meta = ['zh-cn', 'en'].map((lang) => {
+          const t = tr.querySelector(`input.t[data-lang="${lang}"]`).value.trim();
+          const d = tr.querySelector(`textarea.d[data-lang="${lang}"]`).value.trim();
+          return { lang, nav_label: nav[lang] || t, title: t, seo_desc: d };
+        }).filter((m) => m.title);
+        btn.disabled = true; btn.textContent = '保存中…';
+        try {
+          const r = await fetch('/api/admin/page', {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ page_id: Number(tr.dataset.id), meta, blocks: [] }),
+          }).then((x) => x.json());
+          btn.textContent = r.ok ? '已保存' : '失败';
+          if (!r.ok) alert(r.msg || '保存失败');
+        } catch { btn.textContent = '失败'; }
+        setTimeout(() => { btn.disabled = false; btn.textContent = '保存'; }, 1500);
+      });
+    });
+  })();
+</script>

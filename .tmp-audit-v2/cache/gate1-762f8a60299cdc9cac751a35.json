@@ -1,0 +1,271 @@
+{
+ "tree": "da1f50da54f22579923cefafe1258f1f54c232f2",
+ "base_tree": "51db0dce9020c0099428b3cfc1ae5759b4d97393",
+ "worker": "bohui-web",
+ "mode": "ship",
+ "repo": "F:/0cosmetic/cosmetic-sites",
+ "rules_hash": "sha256:7aa081a24470d292129570eb9b44f0dd5d9f906e8d5c47a3be4e94317f1ccbca",
+ "gate_hash": "sha256:65cc8f36d09e94c2d094ab7cc17fa65da794021f715c96eadd3230df2f914663",
+ "files": 23,
+ "lines": 348,
+ "changes": [
+  [
+   "M",
+   "apps/web/astro.config.mjs",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/c-botanical-set.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/c-color-tubes.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/c-fruit-cans.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/c-pink-serum.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/c-starry-premium.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/d-cucumber-set.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/d-gold-set.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/d-papaya-set.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/hero-beach-lineup.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/insight-pool.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/m1-trend-pastel.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/m2-judge-gold.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/m3-verify-market.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/fd/m4-launch-tropical-box.webp",
+   null
+  ],
+  [
+   "M",
+   "apps/web/src/components/B2oBlock.astro",
+   null
+  ],
+  [
+   "M",
+   "apps/web/src/components/_HomeFactory.astro.retired-0921",
+   null
+  ],
+  [
+   "M",
+   "apps/web/src/middleware.ts",
+   null
+  ],
+  [
+   "M",
+   "apps/web/src/pages/[lang]/insights.astro",
+   null
+  ],
+  [
+   "M",
+   "apps/web/src/styles/b2o.css",
+   null
+  ],
+  [
+   "M",
+   "packages/core/src/blocks.ts",
+   null
+  ],
+  [
+   "M",
+   "packages/core/src/content/org.ts",
+   null
+  ],
+  [
+   "M",
+   "tools/ship.sh",
+   null
+  ]
+ ],
+ "stats": {
+  "apps/web/astro.config.mjs": 48,
+  "apps/web/public/b2o/img/fd/c-botanical-set.webp": 0,
+  "apps/web/public/b2o/img/fd/c-color-tubes.webp": 0,
+  "apps/web/public/b2o/img/fd/c-fruit-cans.webp": 0,
+  "apps/web/public/b2o/img/fd/c-pink-serum.webp": 0,
+  "apps/web/public/b2o/img/fd/c-starry-premium.webp": 0,
+  "apps/web/public/b2o/img/fd/d-cucumber-set.webp": 0,
+  "apps/web/public/b2o/img/fd/d-gold-set.webp": 0,
+  "apps/web/public/b2o/img/fd/d-papaya-set.webp": 0,
+  "apps/web/public/b2o/img/fd/hero-beach-lineup.webp": 0,
+  "apps/web/public/b2o/img/fd/insight-pool.webp": 0,
+  "apps/web/public/b2o/img/fd/m1-trend-pastel.webp": 0,
+  "apps/web/public/b2o/img/fd/m2-judge-gold.webp": 0,
+  "apps/web/public/b2o/img/fd/m3-verify-market.webp": 0,
+  "apps/web/public/b2o/img/fd/m4-launch-tropical-box.webp": 0,
+  "apps/web/src/components/B2oBlock.astro": 157,
+  "apps/web/src/components/_HomeFactory.astro.retired-0921": 6,
+  "apps/web/src/middleware.ts": 2,
+  "apps/web/src/pages/[lang]/insights.astro": 2,
+  "apps/web/src/styles/b2o.css": 115,
+  "packages/core/src/blocks.ts": 8,
+  "packages/core/src/content/org.ts": 4,
+  "tools/ship.sh": 6
+ },
+ "new_queries": 0,
+ "binaries": [
+  "apps/web/public/b2o/img/fd/c-botanical-set.webp",
+  "apps/web/public/b2o/img/fd/c-color-tubes.webp",
+  "apps/web/public/b2o/img/fd/c-fruit-cans.webp",
+  "apps/web/public/b2o/img/fd/c-pink-serum.webp",
+  "apps/web/public/b2o/img/fd/c-starry-premium.webp",
+  "apps/web/public/b2o/img/fd/d-cucumber-set.webp",
+  "apps/web/public/b2o/img/fd/d-gold-set.webp",
+  "apps/web/public/b2o/img/fd/d-papaya-set.webp",
+  "apps/web/public/b2o/img/fd/hero-beach-lineup.webp",
+  "apps/web/public/b2o/img/fd/insight-pool.webp",
+  "apps/web/public/b2o/img/fd/m1-trend-pastel.webp",
+  "apps/web/public/b2o/img/fd/m2-judge-gold.webp",
+  "apps/web/public/b2o/img/fd/m3-verify-market.webp",
+  "apps/web/public/b2o/img/fd/m4-launch-tropical-box.webp"
+ ],
+ "block": [],
+ "doubt": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 16,
+   "text": "AV2=F:/0cosmetic/tools-review/audit_v2   # 审核部 v2.1:ENABLED 在 → v2(审核单 + 三家共判,从已批准副本执行);不在 → v1 四道闸(gate.sh 留档)",
+   "level": "doubt",
+   "cat": "安全",
+   "file": "tools/ship.sh"
+  }
+ ],
+ "exceptions": [],
+ "risks": [
+  {
+   "rule": "RK1",
+   "cat": "费用",
+   "level": "高",
+   "item": "CACHE_V 改成 const CACHE_V = 'v85';   // 09-24 beauty2oem 数据区改为分项数字卡并修正市场:全站缓存失效",
+   "mitigation": "上线后 1–2 小时 D1 读量尖峰;D1 灯不绿时说明须带【降读】【安全】【急修】"
+  },
+  {
+   "rule": "RK2",
+   "cat": "回归",
+   "level": "高",
+   "item": "middleware.ts 变了:所有请求都经过它",
+   "mitigation": "冒烟跑全表"
+  },
+  {
+   "rule": "RK12",
+   "cat": "安全",
+   "level": "高",
+   "item": "碰到部署或上线脚本 apps/web/astro.config.mjs",
+   "mitigation": "闸门完整性问题,L3"
+  },
+  {
+   "rule": "RK7",
+   "cat": "合规",
+   "level": "中",
+   "item": "对外文案/页面变了 apps/web/src/components/B2oBlock.astro",
+   "mitigation": "合规审核员看语种与页面"
+  },
+  {
+   "rule": "RK7",
+   "cat": "合规",
+   "level": "中",
+   "item": "对外文案/页面变了 apps/web/src/components/_HomeFactory.astro.retired-0921",
+   "mitigation": "合规审核员看语种与页面"
+  },
+  {
+   "rule": "RK7",
+   "cat": "合规",
+   "level": "中",
+   "item": "对外文案/页面变了 apps/web/src/middleware.ts",
+   "mitigation": "合规审核员看语种与页面"
+  },
+  {
+   "rule": "RK7",
+   "cat": "合规",
+   "level": "中",
+   "item": "对外文案/页面变了 apps/web/src/pages/[lang]/insights.astro",
+   "mitigation": "合规审核员看语种与页面"
+  },
+  {
+   "rule": "RK7",
+   "cat": "合规",
+   "level": "中",
+   "item": "对外文案/页面变了 packages/core/src/blocks.ts",
+   "mitigation": "合规审核员看语种与页面"
+  },
+  {
+   "rule": "RK7",
+   "cat": "合规",
+   "level": "中",
+   "item": "对外文案/页面变了 packages/core/src/content/org.ts",
+   "mitigation": "合规审核员看语种与页面"
+  },
+  {
+   "rule": "RK12",
+   "cat": "安全",
+   "level": "高",
+   "item": "碰到部署或上线脚本 tools/ship.sh",
+   "mitigation": "闸门完整性问题,L3"
+  },
+  {
+   "cat": "合规",
+   "level": "中",
+   "rule": "R11",
+   "item": "apps/web/src/styles/b2o.css /* 创始人图库的主体焦点：桌面产品保留中下部，人物保留脸部。 */",
+   "mitigation": ""
+  }
+ ],
+ "seconds": {
+  "tree": 0.0,
+  "diff": 0.1,
+  "semgrep": 10.0,
+  "rules": 0.1,
+  "total": 10.3
+ },
+ "result": "过",
+ "hard": false
+}

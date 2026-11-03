@@ -1,0 +1,299 @@
+{
+ "schema": "bohui-ticket/2",
+ "id": "RT-20260924-2344-bohui-web-da1f50da",
+ "kind": "worker",
+ "target": {
+  "worker": "bohui-web",
+  "repo": "F:/0cosmetic/cosmetic-sites",
+  "account": "company"
+ },
+ "tree": "da1f50da54f22579923cefafe1258f1f54c232f2",
+ "scope_sha256": "9b8560e9f5e937e36354ffc055571cb69b59d03c69de7fcffd6b767770b03b94",
+ "gate_hash": "sha256:65cc8f36d09e94c2d094ab7cc17fa65da794021f715c96eadd3230df2f914663",
+ "rules_hash": "sha256:7aa081a24470d292129570eb9b44f0dd5d9f906e8d5c47a3be4e94317f1ccbca",
+ "env_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+ "base": {
+  "ref": "refs/ship/bohui-web",
+  "commit": "fe651600211552575828f2b07ce8aba4e1dadce7",
+  "tree": "51db0dce9020c0099428b3cfc1ae5759b4d97393",
+  "first_ship": false
+ },
+ "prev_ticket": null,
+ "diff": {
+  "file": "drafts/bohui-web-da1f50da54f2/all.diff",
+  "sha256": "86f01894286e8b1d06cf8eff95476aa283da9aff52db81f489de399e70986dd7",
+  "files": 23,
+  "lines": 348
+ },
+ "note": "【零读】beauty2oem:数据区改正确表述(去掉对数图,13,000+ 配方不写可核对)、首页强调多年海外市场经验与服务出海品牌、全页间距收紧、换成创始人图库 14 张图",
+ "tier": "L3",
+ "tier_reasons": [
+  "范围内有二进制或单行超 1,000 字符的压缩文件 → 至少 L2 并加安全角度",
+  "L3 触发:apps/web/astro.config.mjs",
+  "L3 触发:apps/web/src/middleware.ts",
+  "L3 触发:tools/ship.sh"
+ ],
+ "gate1": {
+  "result": "过",
+  "block": 0,
+  "doubt": 1,
+  "exceptions": 0,
+  "seconds": 10.3
+ },
+ "budget": {
+  "level": "red",
+  "src": "d1_budget·零读",
+  "at": "2026-09-24T23:33:37+08:00",
+  "ok": true
+ },
+ "judges": {
+  "laya": {
+   "decision": "allow",
+   "conf": 0.04,
+   "noul": {
+    "cost": 1.0,
+    "security": 1.0,
+    "compliance": 1.0
+   },
+   "correctness": 1.41,
+   "verdict": "存疑",
+   "status": "判了",
+   "seconds": 37,
+   "partial": true
+  },
+  "jev": {
+   "decision": "block",
+   "conf": 0.72,
+   "noul": {
+    "cost": 0.1,
+    "security": 0.23,
+    "compliance": 0.21
+   },
+   "correctness": 1.25,
+   "verdict": "存疑",
+   "status": "判了",
+   "tokens_in": 2910,
+   "day_used": 25973,
+   "seconds": 20.9,
+   "call_ref": "ledger/jev_calls.jsonl@2026-09-24T23:33:59+08:00",
+   "request_id": null,
+   "partial": true
+  }
+ },
+ "reports": [
+  {
+   "angle": "成本",
+   "file": "reports/bohui-web/da1f50da54f2/成本.json",
+   "sha256": "691e6669602fab4aacf9f6ebfbd97244bbb65c486497bf858d7d51c194806f1a",
+   "verdict": "存疑",
+   "findings": 2,
+   "reviewer": "claude"
+  },
+  {
+   "angle": "安全",
+   "file": "reports/bohui-web/da1f50da54f2/安全.json",
+   "sha256": "f3001ddc2aa29358fa497e245aec7062df0078fa2aa70c289e52a077d330f642",
+   "verdict": "存疑",
+   "findings": 2,
+   "reviewer": "claude"
+  },
+  {
+   "angle": "合规",
+   "file": "reports/bohui-web/da1f50da54f2/合规.json",
+   "sha256": "0e60fd4a4539b470185a16eaf4723cc2a2acf559c3f9ac7b54e7fb756b431407",
+   "verdict": "过",
+   "findings": 4,
+   "reviewer": "claude"
+  },
+  {
+   "angle": "正确性",
+   "file": "reports/bohui-web/da1f50da54f2/正确性.json",
+   "sha256": "12e2f8b52e35f4642a2ab7eb411967509dbb8c581f495f3c42389d551b900aab",
+   "verdict": "过",
+   "findings": 3,
+   "reviewer": "claude"
+  }
+ ],
+ "resolved": [
+  {
+   "ref": "G1",
+   "by": "成本",
+   "result": "不成立",
+   "why": "tools/ship.sh 第 16 行是 AV2 路径变量和中文注释,说的是审核部 v2 与 v1 的切换逻辑,没有「请放行/忽略」之类冲着审核员的话;从成本角度看也没有计量或读量影响。ship.sh 不在成本 diff 内,安全角度另审。"
+  },
+  {
+   "ref": "JEV",
+   "by": "成本",
+   "result": "成立但可接受",
+   "why": "Jev 判 block(conf 0.72)但 reason 为空,成本 noul 只有 0.1。我独立看:B2oBlock 新增行查库为 0(getCounts 读构建时打包的 site-counts.json,2,808 字节非空,不碰 D1),唯一的成本点是 CACHE_V 推版本(见 C1)。"
+  },
+  {
+   "ref": "LAYA",
+   "by": "成本",
+   "result": "不成立",
+   "why": "Laya 判 allow 但 conf 仅 0.04、partial,不能作放行证据;成本结论以 C1 为准。"
+  }
+ ],
+ "overrides": [],
+ "exceptions": [],
+ "risks": {
+  "费用": [
+   {
+    "rule": "RK1",
+    "level": "高",
+    "item": "CACHE_V 改成 const CACHE_V = 'v85';   // 09-24 beauty2oem 数据区改为分项数字卡并修正市场:全站缓存失效",
+    "mitigation": "上线后 1–2 小时 D1 读量尖峰;D1 灯不绿时说明须带【降读】【安全】【急修】"
+   },
+   {
+    "level": "高",
+    "item": "CACHE_V v84→v85 在费用灯红时全站缓存失效(含 24 小时详情页与 7 天陈旧备份),GPTBot 复访放大回源读 D1。",
+    "mitigation": "上线后 2 小时内盯 Cloudflare D1 rows read(日读线 5 亿)与 Bohui-D1Budget 看门狗;盯 x-bh-cache=miss 占比回落;盯 5xx 与 x-bh-stale 次数。超线立即回滚到不推版本号的构建。"
+   },
+   {
+    "level": "低",
+    "item": "新增 14 张 webp(约 1.6MB,最大 1600x1600)放在 public/,走 Workers 静态资源,不走 R2,没有 R2 列目录/复制/搬移,没有模型、Workers AI、Vectorize、KV 写或定时任务变化。",
+    "mitigation": "无需动作。"
+   }
+  ],
+  "安全": [
+   {
+    "rule": "RK12",
+    "level": "高",
+    "item": "碰到部署或上线脚本 apps/web/astro.config.mjs",
+    "mitigation": "闸门完整性问题,L3"
+   },
+   {
+    "rule": "RK12",
+    "level": "高",
+    "item": "碰到部署或上线脚本 tools/ship.sh",
+    "mitigation": "闸门完整性问题,L3"
+   },
+   {
+    "level": "低",
+    "item": "tools/ship.sh 在公开仓 cosmetic-sites 里被 git 跟踪,里面有本机路径 F:/0cosmetic 和代理端口 7890(改动前就有,不是本次新增);没有密钥原文,.env 只在运行时 source",
+    "mitigation": "可以考虑以后把 ship.sh 移进私有仓或 .gitignore,本次不阻塞"
+   }
+  ],
+  "合规": [
+   {
+    "rule": "RK7",
+    "level": "中",
+    "item": "对外文案/页面变了 apps/web/src/components/B2oBlock.astro",
+    "mitigation": "合规审核员看语种与页面"
+   },
+   {
+    "rule": "RK7",
+    "level": "中",
+    "item": "对外文案/页面变了 apps/web/src/components/_HomeFactory.astro.retired-0921",
+    "mitigation": "合规审核员看语种与页面"
+   },
+   {
+    "rule": "RK7",
+    "level": "中",
+    "item": "对外文案/页面变了 apps/web/src/middleware.ts",
+    "mitigation": "合规审核员看语种与页面"
+   },
+   {
+    "rule": "RK7",
+    "level": "中",
+    "item": "对外文案/页面变了 apps/web/src/pages/[lang]/insights.astro",
+    "mitigation": "合规审核员看语种与页面"
+   },
+   {
+    "rule": "RK7",
+    "level": "中",
+    "item": "对外文案/页面变了 packages/core/src/blocks.ts",
+    "mitigation": "合规审核员看语种与页面"
+   },
+   {
+    "rule": "RK7",
+    "level": "中",
+    "item": "对外文案/页面变了 packages/core/src/content/org.ts",
+    "mitigation": "合规审核员看语种与页面"
+   },
+   {
+    "rule": "R11",
+    "level": "中",
+    "item": "apps/web/src/styles/b2o.css /* 创始人图库的主体焦点：桌面产品保留中下部，人物保留脸部。 */"
+   },
+   {
+    "level": "中",
+    "item": "c-pink-serum.webp 带近似 CLARINS 的商标字样,已公开用在 beauty2oem 首页",
+    "mitigation": "上线前换图或抹字"
+   },
+   {
+    "level": "低",
+    "item": "「多年海外市场经验 · 主要服务出海化妆品品牌」缺工厂口径页出处",
+    "mitigation": "请创始人确认后写进口径页"
+   },
+   {
+    "level": "低",
+    "item": "14 张 fd/ 新图是 AI 生成的虚构产品图(抽看了 hero-beach-lineup、c-starry-premium、m4-launch-tropical-box:瓶身文字是乱码,没有可辨认的第三方品牌或水印),都放在示意位,不是抓来的原图;车间位仍标着「待补实拍」",
+    "mitigation": "访客可能把这些图当成帛卉的实物产品;以后在旁边加「示意图」字样更稳"
+   },
+   {
+    "level": "低",
+    "item": "公开仓根目录有未跟踪的中文内部说明文件(R11)",
+    "mitigation": "移出公开仓或加进 .gitignore"
+   }
+  ],
+  "正确性": [
+   {
+    "level": "低",
+    "item": "blocks.ts 改的是新增版块时写库的默认内容,不影响已存在的线上版块;org.ts 的 JSON-LD foundingDate 值不变(仍 2012-06-01)。",
+    "mitigation": "无需处理。"
+   }
+  ],
+  "回归": [
+   {
+    "rule": "RK2",
+    "level": "高",
+    "item": "middleware.ts 变了:所有请求都经过它",
+    "mitigation": "冒烟跑全表"
+   },
+   {
+    "level": "低",
+    "item": "ship.sh 的 v2 分支依赖 audit_v2/ENABLED 和已批准副本 ship_lib.sh,副本缺失时 source 会失败,上线不了(不会误部署)",
+    "mitigation": "已确认两个文件都存在"
+   },
+   {
+    "level": "中",
+    "item": "astro.config.mjs 新增 build:start 钩子:ENABLED 在时 gate1 非 0 即 throw 中止构建;python venv 不存在时 spawnSync status 为 null 同样中止(无破窗时)。创始人副本(skin2oem.hosonzuo)共用同一次 astro build,也会被第一关卡住。",
+    "mitigation": "设计即如此;副本构建若被挡,走 --breakglass 或确认 gate1 对副本仓的口径。副本部署用 -c wrangler.copy.json,不会触发注入的 build.command。"
+   },
+   {
+    "level": "中",
+    "item": "middleware.ts 仅改 CACHE_V v84→v85,全站缓存失效;改公开页必 +1 的规矩已遵守。",
+    "mitigation": "冒烟全表;读量尖峰见成本角度。"
+   }
+  ]
+ },
+ "smoke_extra": [
+  "/b2o/img/fd/*.webp 14 张返回 200 且 content-type 为 image/webp",
+  "beauty2oem 首页与 /delivery 页:确认没有出现「逐条核对」「包材现货」「真实产品库」",
+  "biosphere-ai 首页 JSON-LD 的 foundingDate 仍然是 2012-06-01",
+  "https://beauty2oem.com/b2o/img/fd/d-gold-set.webp",
+  "https://beauty2oem.com/b2o/img/fd/hero-beach-lineup.webp",
+  "https://beauty2oem.com/b2o/img/fd/insight-pool.webp",
+  "https://beauty2oem.com/zh-cn/",
+  "https://beauty2oem.com/zh-cn/delivery/",
+  "https://beauty2oem.com/zh-cn/insights/",
+  "https://beauty2oem.com/zh-cn/opportunities/",
+  "https://beauty2oem.com/zh-cn/predictions/",
+  "https://biosphere-ai.com/zh-cn/",
+  "上线后打开 beauty2oem 首页机会卡,确认 c-pink-serum 已换成无品牌字样的图"
+ ],
+ "verdict": "存疑",
+ "why": [
+  "成本 判存疑:派同角度复核员写 reports/bohui-web/da1f50da54f2/复核-成本.json 判「过」并回应存疑点"
+ ],
+ "issued_at": "2026-09-24T23:44:11+08:00",
+ "expires_at": "2026-09-25T23:44:11+08:00",
+ "followup_due": null,
+ "followup": [],
+ "incident": null,
+ "degraded": false,
+ "issuer": "audit_v2/ticket.py v2.1",
+ "basis": "49417199cc2546e7a7a8769e48acb730276e5054a20a2b2e0857895999323015",
+ "content_sha256": "fbb1beb95cc64150267be60f2f92dc7e11a3a23e5ee6d79e0f95464452cedd74"
+}

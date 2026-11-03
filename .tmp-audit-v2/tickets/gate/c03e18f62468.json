@@ -1,0 +1,176 @@
+{
+ "schema": "bohui-ticket/2",
+ "id": "RT-20260924-2319-gate-c03e18f6",
+ "kind": "worker",
+ "target": {
+  "worker": "gate",
+  "repo": "F:/0cosmetic/tools-review",
+  "account": "none"
+ },
+ "tree": "c03e18f62468817d772ef6ec17c12dce0ded255d",
+ "scope_sha256": "efa2554b9e7bbbc7f00cf4e81d330e3a080eefdfc328590edd5ca39b367d5ea9",
+ "gate_hash": "sha256:1992cd6c1dcbb26e1bacb8ae5f8eb5d3284d55464a5afd11bd06442e20fe6b3f",
+ "rules_hash": "sha256:8ad32e1ca060f822deaa9f08b8504a24d9b5ca0bcdd5676a39854c249af17ef3",
+ "env_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+ "base": {
+  "ref": "refs/ship/gate",
+  "commit": "b40d5554d600206b95b6105697c04fb0c9609d57",
+  "tree": "2d24696a5aff260e8ada57153ff225362df36e93",
+  "first_ship": false
+ },
+ "prev_ticket": null,
+ "diff": {
+  "file": "drafts/gate-c03e18f62468/all.diff",
+  "sha256": "49a58422bb862392e9312359ee9d4dba01f50f7fe526e16cc83adb6f8ca8c45d",
+  "files": 6,
+  "lines": 243
+ },
+ "note": "①红线去掉「自有工厂」:sites.json 巡查词表 + rules-v2-strict.yml 硬规则同批改(审核员 F1),只禁「自有厂房/非租赁」;②交付说明旧口径标作废(F2/C1);③gate.sh【零读】计数补强:封装函数、换行 .prepare、大写 SQL 关键词都计入(审核员 S1),已用 4 个样例自测",
+ "tier": "L2",
+ "tier_reasons": [
+  "254 行 > 80"
+ ],
+ "gate1": {
+  "result": "过",
+  "block": 0,
+  "doubt": 0,
+  "exceptions": 0,
+  "seconds": 9.6
+ },
+ "budget": {
+  "level": "n/a",
+  "src": "闸门自身不看 D1 灯",
+  "at": "2026-09-24T23:11:29+08:00",
+  "ok": true
+ },
+ "judges": {
+  "laya": {
+   "decision": "allow",
+   "conf": 0.04,
+   "noul": {
+    "cost": 0.98,
+    "security": 0.99,
+    "compliance": 0.99
+   },
+   "correctness": 1.39,
+   "verdict": "存疑",
+   "status": "判了",
+   "seconds": 38,
+   "partial": true
+  },
+  "jev": {
+   "decision": "block",
+   "conf": 0.64,
+   "noul": {
+    "cost": 0.18,
+    "security": 0.12,
+    "compliance": 0.21
+   },
+   "correctness": 0.63,
+   "verdict": "存疑",
+   "status": "判了",
+   "tokens_in": 4327,
+   "day_used": 21194,
+   "seconds": 21.5,
+   "call_ref": "ledger/jev_calls.jsonl@2026-09-24T23:11:51+08:00",
+   "request_id": null,
+   "partial": true
+  }
+ },
+ "reports": [
+  {
+   "angle": "成本+正确性",
+   "file": "reports/gate/c03e18f62468/成本+正确性.json",
+   "sha256": "bf4d134cd7e15596322f1c26d203931b785a46cae02de0bb23faef4b600aed7e",
+   "verdict": "过",
+   "findings": 5,
+   "reviewer": "claude"
+  },
+  {
+   "angle": "安全+合规",
+   "file": "reports/gate/c03e18f62468/安全+合规.json",
+   "sha256": "0fc0075c113bbbb154310addf38def45a7f442d54a710a72542e5a84026957b7",
+   "verdict": "过",
+   "findings": 2,
+   "reviewer": "claude"
+  }
+ ],
+ "resolved": [
+  {
+   "ref": "JEV",
+   "by": "成本+正确性",
+   "result": "不成立",
+   "why": "Jev 判拦置信 0.64(<0.8,不触发反驳员),reason 为空,没有给出文件/行号。本角度逐文件核对:5 个文件都是闸门本机工具与文档,无访客路径、无 D1/R2/付费 API、无 CACHE_V 变化;gate.sh 正则改动已用样例实测,只有 C1/C2 两条低级漏/误报;gate1 缓存键含 rules_hash 与 gate_hash(lib.py:411、gate1.py:399,sites.json 属 GATE_EXT 计入 gate_hash),规则改动不会命中旧缓存。找不到支持『拦』的证据。"
+  },
+  {
+   "ref": "LAYA",
+   "by": "成本+正确性",
+   "result": "不成立",
+   "why": "Laya 判 allow 但置信 0.04,本身不构成放行依据,也不构成风险;本角度独立复核结论同上,只有低级发现(C1–C5)。"
+  }
+ ],
+ "overrides": [],
+ "exceptions": [],
+ "risks": {
+  "费用": [
+   {
+    "level": "低",
+    "item": "本次无访客请求路径、无 D1 查询、无 R2 列目录/复制、无模型/KV/Vectorize 调用、无 CACHE_V 变化、无 GitHub Actions;唯一计划任务 Bohui-AuditWatch 频率不变(每小时 :47,本机运行)。",
+    "mitigation": "上线后看 Jev 日用量与巡查单次耗时(日报『巡查心跳』)。"
+   }
+  ],
+  "安全": [
+   "已查:S1–S10、RK3/4/5/11/12,未发现"
+  ],
+  "合规": [
+   {
+    "level": "低",
+    "item": "英文 own(ed) factory/facility 规则一并删除(C5)。",
+    "mitigation": "交安全+合规角度与创始人确认英文口径。"
+   },
+   {
+    "level": "低",
+    "item": "红线规则收窄后,英文 owned facility 不再被机审拦截(见 C1,不在本片 diff 内)。",
+    "mitigation": "第二关人工审英文文案时,把「owned facility / own premises」当作「自有厂房」处理;或者在规则里补回这段英文。"
+   }
+  ],
+  "正确性": [
+   {
+    "level": "低",
+    "item": "NEWQ 计数仍可被封装函数+小写 SQL 绕过(C1),且 Promise.all 等误报使【零读】通道偏难用(C2)。",
+    "mitigation": "只影响 D1 红灯期间【零读】放行;盯 d1_budget override 日志里【零读】放行条目,逐条人工复看。"
+   }
+  ],
+  "回归": [
+   {
+    "level": "低",
+    "item": "放宽『自有工厂』只在本单批准、gate_approved 副本更新后生效;在此之前 cache/gate_approved 里仍是旧规则,公司站含 B2oBlock.astro:322 的构建会继续被拦。",
+    "mitigation": "批准后确认 cache/gate_approved/audit_v2/rules-v2-strict.yml 与 sites.json 已同步为新版。"
+   },
+   {
+    "level": "低",
+    "item": "删除的备份是 gate.sh 零读改动之前的版本。如果新 gate.sh 出问题需要对照,本地没有现成副本了。",
+    "mitigation": "从基准提交 b40d5554 用 git show 取回即可,不需要保留 .bak 文件。"
+   }
+  ]
+ },
+ "smoke_extra": [
+  "Grep F:/0cosmetic/tools-review 查 'bak-0924-zero':0 处引用",
+  "gate.sh NEWQ 样例:纯文案 diff 应为 0;含 env.DB.prepare 换行写法应 ≥1",
+  "https://beauty2oem.com/zh-cn/?kk=1 (含『广州自有工厂』,巡查红线词不应再报红)",
+  "第一关样例:新增行含『自有工厂』应过、含『自有厂房』『非租赁』应拦"
+ ],
+ "verdict": "过",
+ "why": [
+  "三家合并:第一关过、审核员无未推翻的拦、存疑逐条回应"
+ ],
+ "issued_at": "2026-09-24T23:19:05+08:00",
+ "expires_at": "2026-09-25T23:19:05+08:00",
+ "followup_due": null,
+ "followup": [],
+ "incident": null,
+ "degraded": false,
+ "issuer": "audit_v2/ticket.py v2.1",
+ "basis": "88f36d418f927f5effa7942188df0dd1ccb2bc994889099ff81042a3f1f33aa6",
+ "content_sha256": "3573d96bfc12b482d36e3d2b53cece2e0f485f2f04b37ff00d73e15153d397c6"
+}

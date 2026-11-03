@@ -1,0 +1,135 @@
+---
+/**
+ * 工序流程带 —— 这一页的标志性元素。
+ *
+ * 为什么值得单独做一个:
+ *   参照的阿里工厂店里,所有版块都是「标题 + 一堆图」,连着看五屏就疲了。
+ *   而工厂真正独有的信息是**顺序** —— 一批料从称量到出柜要经过哪几道、
+ *   每道之间交接什么。图网格表达不了顺序,只能表达"我们有这些东西"。
+ *
+ *   所以这里用横向流程带:编号 + 连接线 + 小图。
+ *   编号在这里是**有意义的**(工序确实有先后),不是装饰性的 01/02/03 ——
+ *   这也是它和上面那些网格的根本区别。
+ *
+ * 版式上的一个决定:图小、字大。
+ *   这一带的读者不是在看图,是在确认"流程完不完整"。
+ *   图只是给每一步一个视觉锚点,真正被读的是工序名和交接物。
+ */
+export interface Step {
+  /** 工序名,如「称量配料」 */
+  name: string;
+  /** 这一步交出什么,如「配料单 + 复核签字」 */
+  hand?: string;
+  image?: string;
+}
+export interface Props {
+  eyebrow?: string;
+  title: string;
+  intro?: string;
+  steps: Step[];
+  tone?: 'paper' | 'sand' | 'deep';
+}
+const { eyebrow, title, intro, steps = [], tone = 'deep' } = Astro.props;
+---
+
+<section class:list={['ribbon', tone]} aria-label={title}>
+  <div class="dtc-wrap-wide">
+    <header class="head">
+      {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+      <h2 class="title">{title}</h2>
+      {intro && <p class="intro">{intro}</p>}
+    </header>
+
+    <ol class="track">
+      {steps.map((s, i) => (
+        <li class="step">
+          <div class="marker" aria-hidden="true">
+            <span class="n">{String(i + 1).padStart(2, '0')}</span>
+            <span class="line"></span>
+          </div>
+          {s.image && (
+            <div class="thumb"><img src={s.image} alt="" loading="lazy" decoding="async" /></div>
+          )}
+          <h3 class="nm">{s.name}</h3>
+          {s.hand && <p class="hand">{s.hand}</p>}
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .ribbon { padding-block: var(--dtc-py-lg); }
+  .ribbon.paper { background: var(--dtc-paper); }
+  .ribbon.sand { background: var(--dtc-sand); }
+  /* 深色档:整页唯一的暗场。
+     不用纯黑 —— 纯黑配暖白纸色会显得是两个设计拼的;
+     用带一点绿的深墨,和草本主题同源,压得住又不割裂。 */
+  .ribbon.deep { background: #101a16; color: #f2f4f1; }
+
+  .head { max-width: 46rem; }
+  .eyebrow {
+    margin: 0;
+    font-size: max(0.6875rem, 14px);
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    opacity: 0.55;
+  }
+  .title {
+    margin: 0.75rem 0 0;
+    font-size: clamp(1.25rem, 1rem + 0.9vw, 1.625rem);   /* 全局审查:45px 级标题砍到 29px 顶 */
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+  .intro { margin: 1rem 0 0; font-size: 0.9375rem; line-height: 1.75; opacity: 0.68; }
+
+  .track {
+    list-style: none;
+    margin: 3rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: 1.75rem 1.25rem;
+  }
+  .step { position: relative; min-width: 0; }
+
+  /* 编号与连接线:线从编号右侧延伸到下一格,最后一格自然没有(用 :last-child 收掉) */
+  .marker { display: flex; align-items: center; gap: 0.625rem; }
+  .n {
+    flex: none;
+    font-family: var(--ck-font-mono, ui-monospace, monospace);
+    font-size: max(0.75rem, 14px);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    opacity: 0.9;
+  }
+  .line { flex: 1; height: 1px; background: currentColor; opacity: 0.22; }
+  .step:last-child .line { display: none; }
+
+  .thumb {
+    margin-top: 0.875rem;
+    aspect-ratio: 3 / 2;
+    overflow: hidden;
+    background: rgb(255 255 255 / 0.06);
+    border-radius: 2px;
+  }
+  .deep .thumb { background: rgb(255 255 255 / 0.06); }
+  .paper .thumb, .sand .thumb { background: rgb(0 0 0 / 0.05); }
+  .thumb img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    /* 轻微去饱和,让六张图看起来是一组而不是六张各自为政的照片 */
+    filter: saturate(0.88);
+    transition: filter 0.4s ease, transform 0.6s ease;
+  }
+  .step:hover .thumb img { filter: saturate(1); transform: scale(1.05); }
+
+  .nm { margin: 0.875rem 0 0; font-size: 0.9375rem; font-weight: 600; line-height: 1.35; }
+  .hand { margin: 0.375rem 0 0; font-size: max(0.75rem, 14px); line-height: 1.6; opacity: 0.6; }
+
+  @media (max-width: 40rem) {
+    .track { grid-template-columns: repeat(2, 1fr); }
+    .step:last-child .line { display: block; }
+  }
+</style>

@@ -12,3 +12,64 @@ dist/
 .DS_Store
 Thumbs.db
 .self-eval-scores.jsonl
+
+# HyperFrames 出片的中间产物,不进仓库
+.video/
+
+# 各国目录原始资料(第三方转录与大 PDF,不进公开仓)
+data/registries/
+
+# 配方实验室脚本的生成物与拉取缓存(专家判断口径全文、原料全表、密钥工具),不进公开仓
+tools/_*.sql
+tools/_wiki-fetch.json
+tools/_bohui.py
+tools/_KEYS*
+tools/_*.log
+tools/ingredients/structures-r2-state.json
+
+# 09-23 回滚点前补:本地状态与数据不进仓
+.wrangler/
+**/.wrangler/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+tools/_*.jsonl
+__pycache__/
+nul
+**/nul
+
+# B2 历史产品导入的临时文件(SQL 里带配方比例/成本/客户名,图可能带客户商标),不进公开仓
+tools/b2o-products/_*
+# 09-23 回滚点:数据与缓存不进公开仓
+data/ingredients/
+data/pack1688/
+data/brands/
+data/prospect*/
+tools/.*/
+.media-originals/
+旧版/
+# 09-23 两仓分离:本机跑的自动化脚本不进公开仓
+tools/social/
+tools/intel/
+tools/knowledge/
+tools/prospect/
+tools/b2o-products/
+# 09-23 23:1x 回滚提交重做:数据库备份、密钥备份、本机自动化脚本一律不进公开仓
+data/dump/
+tools/crm/
+tools/*.bak*
+*.bak
+*.bak-*
+tools/_*.py.bak*
+crm/
+.agnes-image.json
+data/cosdna/
+# 09-24 S04:data/ 整目录不进公开仓(数据、备份、语料一律只留本机)
+data/
+# 09-24 S04:tools 下的探针产物、下划线开头的本机草稿/缓存/备份、探针截图,不进公开仓
+tools/.*
+tools/**/_*
+tools/*.jpg
+tools/*.png
+tools/*.webp
+tools/*.pdf

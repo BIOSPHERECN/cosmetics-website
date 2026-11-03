@@ -1,0 +1,170 @@
+# 审核部 v2.1 · 第一关新增 semgrep 规则(可行内豁免:// nosemgrep: <规则id> 理由,缺 id 或理由 → K6 拦)。
+# v1 的 rules.yml 不动,三份一起加载。级别在 metadata.level:block=拦,doubt=存疑(构建照常,上线要审核员逐条回应)。
+# metadata.repos 限定仓库(gate1.py 过滤);C7/C8/C10/R6/R7/R11/K*/S2–S5/S8–S10 这类要名单或 diff 的写在 gate1.py。
+# 改本文件 = 改闸门,走 ship_ops.sh gate。
+rules:
+  - id: C4-r2-list
+    languages: [regex]
+    severity: ERROR
+    message: R2 列目录(Class A 计费,大桶一扫就烧钱)。用 D1 清单构造 key,零 LIST;确实要列请写 nosemgrep 理由。
+    metadata: {gid: C4, level: block, cat: 费用}
+    patterns:
+      - pattern-either:
+          - pattern-regex: '\b[A-Z][A-Z0-9_]{2,}\s*\.\s*list\s*\('
+          - pattern-regex: '(?i)\b\w*bucket\w*\s*\.\s*list\s*\('
+          - pattern-regex: '\blist_objects(_v2)?\s*\(|\bListObjectsV2\b'
+          - pattern-regex: '\brclone\s+(ls|lsd|lsf|lsl|lsjson|size|ncdu|sync|copy|move|check)\b'
+          - pattern-regex: '\baws\s+s3(api)?\s+(ls|sync|list-objects)'
+          - pattern-regex: '\bwrangler\s+r2\s+object\s+list\b'
+      - pattern-not-regex: '(?m)^[ \t]*(//|/\*|\*|#).*$'
+    paths:
+      exclude: ["*.md"]
+
+  - id: C4-r2-list-ast
+    languages: [typescript]
+    severity: WARNING
+    message: 疑似 R2 列目录(别名 / 可选链 / 下标写法)。成本审核员确认不是 list。
+    metadata: {gid: C4, level: doubt, cat: 费用}
+    pattern-either:
+      - pattern: '$X.list({..., prefix: $P, ...})'
+      - pattern: '$X.list({..., cursor: $C, ...})'
+      - pattern: '$X?.list(...)'
+      - pattern: '$X[$K].list(...)'
+    paths:
+      exclude: ["*.md"]
+
+  - id: C6-metered-binding
+    languages: [regex]
+    severity: WARNING
+    message: 访客路径调用计量绑定(Workers AI / Vectorize / Browser / KV·R2 写)。成本审核员确认有每日硬上限。
+    metadata: {gid: C6, level: doubt, cat: 费用}
+    patterns:
+      - pattern-either:
+          - pattern-regex: '\b(env\.)?AI\s*\.\s*run\s*\('
+          - pattern-regex: '\bVECTORIZE\w*\s*\.\s*(query|upsert|insert|getByIds)\s*\('
+          - pattern-regex: '\bBROWSER\b'
+          - pattern-regex: '\b[A-Z][A-Z0-9_]{2,}\s*\.\s*put\s*\('
+      - pattern-not-regex: '(?m)^[ \t]*(//|/\*|\*).*$'
+    paths: &V
+      include:
+        - "/apps/web/src/pages/"
+        - "/apps/web/src/middleware.ts"
+        - "/apps/web/src/components/"
+        - "/apps/web/src/layouts/"
+        - "/apps/web/src/lib/"
+        - "/packages/*/src/"
+      exclude:
+        - "/apps/web/src/pages/bohui/"
+        - "/apps/web/src/pages/*/bohui/"
+        - "/apps/web/src/pages/hosonzuo/"
+        - "/apps/web/src/pages/api/admin/"
+        - "/apps/web/src/pages/api/cron/"
+        - "*.md"
+
+  - id: S6-raw-html
+    languages: [regex]
+    severity: WARNING
+    message: 原样输出 HTML(set:html / innerHTML)。安全审核员确认有没有转义。
+    metadata: {gid: S6, level: doubt, cat: 安全}
+    pattern-either:
+      - pattern-regex: 'set:html=\{(?!\s*(JSON\.stringify|jsonLd|safeJson))'
+      - pattern-regex: '\.innerHTML\s*=\s*(?![''"`])'
+    paths: *V
+
+  - id: S7-sql-interp
+    languages: [regex]
+    severity: WARNING
+    message: 模板串拼 SQL。拼表名/列名的由审核员确认,值一律走 bind。
+    metadata: {gid: S7, level: doubt, cat: 安全}
+    pattern-regex: '\.prepare\(\s*`[^`]*\$\{'
+    paths:
+      include: ["*.ts", "*.astro", "*.mjs", "*.js"]
+      exclude: ["*.md"]
+
+  - id: R1-group-branding-doubt
+    languages: [regex]
+    severity: WARNING
+    message: 「集团旗下/集团品牌」可能是资讯页在说别家集团(欧莱雅集团旗下品牌),合规审核员判。
+    metadata: {gid: R1, level: doubt, cat: 合规}
+    patterns:
+      - pattern-regex: '集团旗下|集团品牌'
+      - pattern-not-regex: '(?m)^[ \t]*(//|/\*|\*).*$'
+    paths: &P
+      include:
+        - "/apps/web/src/pages/"
+        - "/apps/web/src/middleware.ts"
+        - "/apps/web/src/components/"
+        - "/apps/web/src/layouts/"
+        - "/apps/web/src/lib/"
+        - "/packages/*/src/"
+        - "/apps/web/public/**/*.txt"
+        - "/apps/web/public/**/*.xml"
+        - "/apps/web/public/**/*.json"
+        - "/apps/web/public/**/*.html"
+        - "/apps/web/public/**/*.webmanifest"
+      exclude:
+        - "/apps/web/src/pages/bohui/"
+        - "/apps/web/src/pages/*/bohui/"
+        - "/apps/web/src/pages/hosonzuo/"
+        - "/apps/web/src/pages/api/admin/"
+        - "/apps/web/src/pages/api/cron/"
+        - "*.md"
+
+  - id: R3-indonesia-production-doubt
+    languages: [regex]
+    severity: WARNING
+    message: 「印尼生产」:法规句正常,「我们在印尼生产」是泄露,合规审核员判。
+    metadata: {gid: R3, level: doubt, cat: 合规}
+    patterns:
+      - pattern-regex: '印尼生产'
+      - pattern-not-regex: '(?m)^[ \t]*(//|/\*|\*).*$'
+    paths: *P
+
+  - id: R5-reference-names
+    languages: [regex]
+    severity: ERROR
+    message: 参考站名 / 内部工具名不上前台(莱诺鸟、INCIDecoder、WorkBuddy、OpenWork),一律写「参考样例」。
+    metadata: {gid: R5, level: block, cat: 合规}
+    patterns:
+      - pattern-regex: '莱诺鸟|INCIDecoder|WorkBuddy|OpenWork'
+      - pattern-not-regex: '(?m)^[ \t]*(//|/\*|\*).*$'
+    paths: *P
+
+  - id: R8-price-words
+    languages: [regex]
+    severity: WARNING
+    message: 价格字样(帛卉站只接单不报价)。
+    metadata: {gid: R8, level: doubt, cat: 合规, repos: [cosmetic-sites]}
+    patterns:
+      # 源码里的 $1 $2 是正则反向引用、${…} 是模板串,所以美元只认两位以上数字或带小数/千分位
+      - pattern-regex: '[¥€£₹]\s?\d|(?<![\w''"`])\$\s?\d{2,}|\$\s?\d+\.\d|\b(USD|CNY|EUR|GBP|RMB|IDR|MYR)\b|单价|售价|报价|价格表|价目|每支[\d.]|元/(支|瓶|克|kg)'
+      - pattern-not-regex: '(?m)^[ \t]*(//|/\*|\*).*$'
+    paths: *P
+
+  - id: R9-stale-numbers
+    languages: [regex]
+    severity: ERROR
+    message: 包材 18,815 是总行数(含草稿),对外一律用货架口径 4,410。
+    metadata: {gid: R9, level: block, cat: 合规}
+    pattern-regex: '18[,，]?815'
+    paths: *P
+
+  - id: R9-alibaba-doubt
+    languages: [regex]
+    severity: WARNING
+    message: 阿里国际站已弃,数字全作废,不得作真源。
+    metadata: {gid: R9, level: doubt, cat: 合规}
+    patterns:
+      - pattern-regex: '阿里国际站|alibaba\.com'
+      - pattern-not-regex: '(?m)^[ \t]*(//|/\*|\*).*$'
+    paths: *P
+
+  - id: R10-low-moq-slogan
+    languages: [regex]
+    severity: WARNING
+    message: 接大单不打小批量牌(定位 = 规模化代工)。
+    metadata: {gid: R10, level: doubt, cat: 合规, repos: [cosmetic-sites]}
+    patterns:
+      - pattern-regex: '小批量|低起订|起订量低|(?i)\blow\s+MOQ\b|(?i)\bsmall\s+batch'
+      - pattern-not-regex: '(?m)^[ \t]*(//|/\*|\*).*$'
+    paths: *P

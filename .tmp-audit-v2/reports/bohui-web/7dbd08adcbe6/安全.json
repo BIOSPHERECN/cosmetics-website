@@ -1,0 +1,85 @@
+{
+ "angle": "安全",
+ "tree": "7dbd08adcbe6ff64c412b22bd6d39a3b55fd2453",
+ "worker": "bohui-web",
+ "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-7dbd08adcbe6.json",
+ "run_label": "review-ticket 7dbd08adcbe6 安全",
+ "reviewer": "claude",
+ "skills_loaded": ["claude-guard:guard-rules", "bohui-data-security-formula-confidentiality"],
+ "verdict": "过",
+ "checked": ["安全-①", "安全-②", "安全-③", "安全-④", "安全-⑤", "安全-⑥", "安全-⑦"],
+ "findings": [
+  {
+   "id": "S-note-1",
+   "level": "低",
+   "file": "(审核流程)",
+   "claim": "security-review 技能没加载成功",
+   "failure_scenario": "技能里预置的 git diff origin/HEAD... 在本仓报 no merge base,技能内容没注入;本角度改成按草稿给的 安全.diff 人工逐项审,不影响结论",
+   "evidence": "Skill(security-review) 返回:fatal: origin/HEAD...HEAD: no merge base"
+  },
+  {
+   "id": "S-1",
+   "level": "低",
+   "file": "tools/ship.sh",
+   "line": 17,
+   "claim": "上线脚本在 ENABLED 不存在时退回 v1 四道闸;有人删 ENABLED 就会从 v2 审核单降级到 v1",
+   "failure_scenario": "本机有人(或某个自动化脚本)删掉 F:/0cosmetic/tools-review/audit_v2/ENABLED,ship.sh 就改走 gate.sh 的 v1 四道闸,跳过 v2 的审核单和三家共判;但 v1 仍然有四道闸,不是直接放行",
+   "evidence": "安全.diff 第 88-89 行;ENABLED 现在存在;cache/gate_approved/audit_v2/ship_lib.sh 存在(12,654 字节,和 audit_v2/ship_lib.sh 大小一致)",
+   "fix": "可以不改;以后要加固的话,让 v1 分支打印一条醒目的降级警告,并写进上线闸门日志"
+  },
+  {
+   "id": "S-2",
+   "level": "低",
+   "file": "tools/ship.sh",
+   "line": 16,
+   "claim": "ship.sh 已被公开仓 BIOSPHERECN/cosmetics-website 跟踪,新增注释和路径暴露了本机审核部目录结构(F:/0cosmetic/tools-review/audit_v2、cache/gate_approved)",
+   "failure_scenario": "外部读者能看到本机路径和闸门机制,但拿不到任何密钥,也碰不到本机;只是信息暴露,不能直接利用",
+   "evidence": "git ls-files tools/ship.sh 有结果;remote origin=BIOSPHERECN/cosmetics-website;diff 里只有路径和 source .env 语句,没有密钥值;这个问题以前就有,本次只多了一个路径",
+   "fix": "以后可以考虑把 ship.sh 挪进私有仓,或者只在公开仓留一个薄壳(两仓分离铁令)"
+  }
+ ],
+ "addressed": [
+  {
+   "ref": "G1",
+   "result": "不成立",
+   "why": "S9 命中的是 ship.sh 第 16 行的普通注释,只说明 ENABLED 在走 v2、不在走 v1,没有「审核员放行 / 忽略以上」这类对审核员下的指令,所以不算提示注入。后面第 17 行从已批准副本 cache/gate_approved 执行 ship_lib.sh,比直接执行工作副本更安全"
+  },
+  {
+   "ref": "JEV",
+   "result": "成立但可接受",
+   "why": "Jev 判 block,但 reason 为空、partial=true;security 分 0.21,没指出具体安全问题。人工逐项看完安全 diff:14 张 webp 都是简单 VP8 格式,不能带 EXIF/XMP;middleware 只改了注释;ship.sh 只改了闸门分支。安全面没有可以落到行号的问题",
+   "mitigation": "block 主要来自 correctness 分(1.26),交给正确性审核员复核"
+  },
+  {
+   "ref": "LAYA",
+   "result": "成立但可接受",
+   "why": "Laya conf 只有 0.06、partial=true,三项 noul 全是 1.0,是没判完的缺省值,不是有依据的判断;安全面人工复核后没有具体问题",
+   "mitigation": "低置信度,不单独作拦截依据;正确性和成本由对应角度审核员复核"
+  }
+ ],
+ "risks": [
+  {
+   "cat": "安全",
+   "level": "低",
+   "item": "ship.sh 删掉 ENABLED 会从 v2 降级到 v1 四道闸",
+   "mitigation": "v1 仍然有四道闸;建议降级时写日志提醒"
+  },
+  {
+   "cat": "安全",
+   "level": "低",
+   "item": "公开仓里的 ship.sh 暴露本机审核目录结构(没有密钥)",
+   "mitigation": "以后按两仓分离挪进私有仓"
+  },
+  {
+   "cat": "回归",
+   "level": "低",
+   "item": "草稿 RK1 说 CACHE_V 变了,实际 diff 里值还是 'v84',只改了注释,跟 note 写的「不推 CACHE_V」一致",
+   "mitigation": "费用角度以成本审核员为准"
+  }
+ ],
+ "smoke_extra": [
+  "上线后抽查 /b2o/img/fd/hero-beach-lineup.webp 等 14 张图能返回 200,Content-Type 是 image/webp"
+ ],
+ "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/7dbd08adcbe6/安全.json",
+ "_evidence_read": "读了:口径摘要.md;草稿 JSON;drafts/bohui-web-7dbd08adcbe6/安全.diff 全文;14 张 webp 的文件头(第 12-15 字节全是 'VP8 ' 简单格式,没有 VP8X,所以不能带 EXIF/XMP/ICC 块;全文 grep EXIF/XMP/GPS 都是 0 命中);目检了 4 张(insight-pool、m3-verify-market、m2-judge-gold、hero-beach-lineup),都是 AI 生成的场景图,没有配方、价格、内部编号、界面截图或真实个人信息;确认了 cache/gate_approved/audit_v2/ship_lib.sh 存在、ENABLED 存在;git ls-files 确认 ship.sh 在公开仓。逐项:①密钥:diff 里没有密钥,只有 source .env 语句;注释里的 WhatsApp 号是以前就有的公开业务联系方式,而且在服务端 middleware 里,不下发到前端。②鉴权:middleware 只改注释,x-bohui-dept 和 canCost 都没动。③注入:没有新增 SQL、set:html 或跳转。④SSRF:没有新增对外抓取。⑤依赖:没有新依赖,也没动 allowBuilds。⑥绑定:部署仍然是 source 公司 .env 后 wrangler deploy -c wrangler.json,没改。⑦public:14 张新图没有元数据,也没有内部数据。本角度 diff 不含 astro.config.mjs(L3 触发项之一),由正确性审核员复核。"
+}

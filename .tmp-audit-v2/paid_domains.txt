@@ -1,0 +1,21 @@
+# C7 按量付费模型/API 域名(一行一个,# 开头是注释)。访客路径命中 = 拦;tools/ 等其余路径 = 存疑(要写明每日上限)。
+# 例外路径写在 gate1.py 的 C7_ALLOW:apps/web/src/lib/fleet.ts、tools/gateway/**(网关硬上限管着);typesafe 只许 tools-review/audit_v2。
+api.openai.com
+openai.azure.com
+api.anthropic.com
+api.typesafe.ai
+api.deepseek.com
+api.moonshot.cn
+api.moonshot.ai
+volces.com
+api.x.ai
+dashscope.aliyuncs.com
+dashscope-intl.aliyuncs.com
+open.bigmodel.cn
+hunyuan.tencentcloudapi.com
+hunyuan.cloud.tencent.com
+api.hunyuan.cloud.tencent.com
+api.siliconflow.cn
+api.siliconflow.com
+aip.baidubce.com
+qianfan.baidubce.com

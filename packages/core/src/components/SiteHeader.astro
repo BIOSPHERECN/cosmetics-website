@@ -7,6 +7,7 @@
  */
 import { t, type Locale } from '../i18n/index.ts';
 import LocaleSwitch from './LocaleSwitch.astro';
+import CurrencySwitch from './CurrencySwitch.astro';   // 币种切换(2026-09-16):和语言并排,一处实现
 
 export interface Props {
   locale: Locale;
@@ -25,6 +26,8 @@ export interface Props {
    * 不传时退回到只有「联系询盘」的最小导航(静态站与实验室预览用)。
    */
   nav?: NavNode[];
+  /** 站点 id。只有 'beauty2oem' 走专用分支(字标、主按钮、AI 客服);其它站不传或传别的,走原路径 */
+  brand?: string;
 }
 
 export interface NavNode {
@@ -33,10 +36,18 @@ export interface NavNode {
   children?: NavNode[];
 }
 
-const { locale, path, siteName, siteNameZh, showLocaleSwitch = true, inert = false, nav } = Astro.props;
+const { locale, path, siteName, siteNameZh, showLocaleSwitch = true, inert = false, nav, brand } = Astro.props;
+/* 09-24 图文版:BEAUTY2OEM 字标(2 绿色放大、OEM 红色、BEAUTY 取 --b2o-beauty)+ 主按钮「提交店铺，拿简报」;样式在 apps/web/src/styles/b2o.css */
+const b2o = brand === 'beauty2oem';
+/* 品牌标全局单一指向(创始人 2026-10-23):除 beauty2oem 外,所有站点左上角一律渲染
+   同一个「公司 logo 锁图(logo.png,内含双环+biosphere 字标)+ AI 文字」组合,拼成 biosphere-AI。
+   不再按 brand 分支、也不再显示 siteName/siteNameZh 双行文案 —— 任何页面改此一处即全站生效。 */
 const tr = t(locale);
 
 const L = (p: string) => (inert ? '#' : `/${locale}${p}`);
+/* 导航项链接:普通 slug 走 /lang/slug/;带查询串的 slug(如 products/?cat=skincare)
+   免加尾斜杠 —— 「产品品类」下拉的品类子项就是这种(创始人:「产品品类也下拉分类!」) */
+const H = (slug: string) => (inert ? '#' : slug.includes('?') ? `/${locale}/${slug}` : `/${locale}/${slug}/`);
 
 /** 数据库没给导航时的兜底:只放确实存在的页面,绝不放死链 */
 const items: NavNode[] = nav?.length
@@ -45,6 +56,11 @@ const items: NavNode[] = nav?.length
 ---
 
 <header class="hdr">
+  {/* 手机端汉堡开关。必须是 header 第一个孩子:开合状态全靠
+      `#mnav-t:checked ~ .bar …` 兄弟组合器传播 —— 不用 :has()。
+      教训(2026-08-31 实测)::has 版规则命中、媒体激活、优先级全对,
+      浏览器就是不重算样式(:has 状态失效怪癖);兄弟组合器二十年没坏过。 */}
+  <input type="checkbox" id="mnav-t" class="mnav-t" aria-label={tr('footer.nav')} />
   {/*
    * 顶部工具条 —— 语言切换单独占一行,而不是挤在主导航那一排。
    *
@@ -61,22 +77,18 @@ const items: NavNode[] = nav?.length
     <div class="util">
       <div class="ck-wrap util-in">
         <LocaleSwitch locale={locale} path={path} />
+        <CurrencySwitch />
       </div>
     </div>
   )}
 
   <div class="ck-wrap bar">
-    <a class="mark" href={L('/')} aria-label={siteName}>
-      {/* 站内绘制的几何标记:同心方 + 斜线,任何流派下都成立;正式 logo 到位后替换 */}
-      <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <rect x="1.5" y="1.5" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.5" />
-        <path d="M6 18 L18 6" stroke="currentColor" stroke-width="1.5" />
-        <circle cx="12" cy="12" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5" />
-      </svg>
-      <span class="words">
-        <strong class="name">{siteName}</strong>
-        <span class="zh">{siteNameZh}</span>
-      </span>
+    <a class:list={['mark', { 'bio-mark': !b2o }]} href={L('/')} aria-label={siteName}>
+      {/* 品牌标:beauty2oem 走专用字标;其余站点一律用公司 logo 锁图 + AI 文字(全局单文件) */}
+      {b2o ? <span class="b2o-mark"><b class="m-b">BEAUTY</b><b class="m-2">2</b><b class="m-o">OEM</b></span> : <>
+      <img class="glyph" src="/logo.png" alt="biosphere-AI" />
+      <span class="ai">AI</span>
+      </>}
     </a>
 
     {/* 两级导航:零 JS,靠 :hover / :focus-within 展开 —— 键盘 Tab 同样能打开 */}
@@ -84,31 +96,56 @@ const items: NavNode[] = nav?.length
       {items.map((n) => (
         n.children?.length ? (
           <div class="grp">
-            <a class="link" href={L(`/${n.slug}/`)} aria-haspopup="true">{n.label}</a>
+            <a class="link" href={H(n.slug)} aria-haspopup="true">{n.label}</a>
             <ul class="sub">
               {n.children.map((c) => (
-                <li><a class="sublink" href={L(`/${c.slug}/`)}>{c.label}</a></li>
+                <li><a class="sublink" href={H(c.slug)}>{c.label}</a></li>
               ))}
             </ul>
           </div>
         ) : (
-          <a class="link" href={L(`/${n.slug}/`)}>{n.label}</a>
+          <a class="link" href={H(n.slug)}>{n.label}</a>
         )
       ))}
+      {/* 手机端:语言切换从顶部工具条挪到这里,页头省下 44px */}
+      {showLocaleSwitch && (
+        <div class="mnav-locale">
+          <LocaleSwitch locale={locale} path={path} />
+        </div>
+      )}
     </nav>
 
     <div class="right">
-      <a class="cta" href={L('/contact/')}>{tr('cta.inquiry')}</a>
+      {/* 字体 A- / A+:创始人 2026-09-11「全部页面也要有调整字体大小的 +-」。改 html 的 font-size,全站 rem 一起缩放;记在 localStorage */}
+      <div class="fz" aria-label="font size"><button type="button" data-fz="-1" aria-label="A-">A−</button><button type="button" data-fz="1" aria-label="A+">A+</button></div>
+      {b2o && <button type="button" class="b2o-ai" data-b2o-ai>AI 客服</button>}
+      <a class="cta" href={b2o ? L('/brief/') : L('/contact/')}>{b2o ? '提交店铺，拿简报' : tr('cta.inquiry')}</a>
+      {/* 汉堡钮 = 纯 label(点击联动顶部 checkbox),≥52rem 整块隐藏 */}
+      <label class="burger" for="mnav-t" aria-hidden="true">
+        <span class="bl"></span>
+      </label>
     </div>
   </div>
 </header>
+<script is:inline>
+(function(){try{var k='bh-fz',v=parseInt(localStorage.getItem(k)||'0')||0;var ap=function(){document.documentElement.style.fontSize=(100+v*10)+'%';};ap();document.querySelectorAll('.fz button').forEach(function(b){b.addEventListener('click',function(){v=Math.max(-2,Math.min(3,v+parseInt(b.dataset.fz)));localStorage.setItem(k,String(v));ap();});});}catch(e){}})();
+</script>
 
 <style>
+  .fz { display: inline-flex; gap: .125rem; }
+  .fz button { min-width: 2.25rem; min-height: 2.25rem; border: 1px solid var(--ck-line); background: transparent; color: var(--ck-ink-soft); border-radius: var(--ck-radius); font: inherit; font-size: .8125rem; cursor: pointer; }
+  .fz button:hover { color: var(--ck-ink); border-color: var(--ck-ink); }
+  @media (max-width: 52rem) { .fz { display: none; } }
   .hdr {
     background: var(--ck-bg);
     border-bottom: var(--ck-border-w) solid var(--ck-line);
-    position: relative;
-    z-index: 5;
+    /* 吸顶。sticky 而不是 fixed:fixed 会把头部抽出文档流,
+       每一页都得手工补一个等高的占位,少补一处就被盖掉一条 ——
+       sticky 占着原来的位置,零补丁。通告条(在 header 外)正常滚走,
+       导航到顶后钉住。 */
+    position: sticky;
+    top: 0;
+    z-index: 50;
   }
   .bar {
     display: flex;
@@ -128,33 +165,43 @@ const items: NavNode[] = nav?.length
     margin-inline-end: auto;
   }
   .glyph {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 2.25rem;
+    height: 2.25rem;
     flex: none;
-    color: var(--ck-accent);
-  }
-  .words {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.15;
-  }
-  .name {
-    font-family: var(--ck-font-head);
-    font-size: 0.9375rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-  }
-  .zh {
-    font-size: 0.6875rem;
-    color: var(--ck-ink-faint);
-    letter-spacing: 0.04em;
-    margin-top: 0.125rem;
+    object-fit: contain;
   }
 
-  /* ── 主导航 ───────────────────────────── */
+  /* ── 品牌标全局样式:官方 logo 锁图 + 「AI」文字,整体放大 ──
+     创始人 2026-10-23:「左上角只用公司 logo 图,文字用 biosphere-AI,
+     另外加文字 AI,现在那么小不合适」。logo.png 是透明底双环+biosphere
+     字标锁图,「AI」用品牌紫加粗拼出 biosphere-AI。全部站点共用这一套。 */
+  .bio-mark { gap: 0.4rem; }
+  .bio-mark .glyph { width: auto; height: 3rem; }
+  .bio-mark .ai {
+    font-family: var(--ck-font-head);
+    font-size: 1.625rem;
+    font-weight: 800;
+    line-height: 1;
+    color: #84569f;
+    letter-spacing: 0.01em;
+  }
+
+  /* ── 主导航 ─────────────────────────────
+     ★ align-items: center 不能省 ★
+     导航项有两种:带二级菜单的外面裹了一层 .grp,不带的就是裸的 .link。
+     flex 默认 align-items: stretch —— 于是 .grp 被拉满高度、里面的链接贴顶,
+     而裸链接自己撑高度、文字居中。**实测两者文字中线差 8px**:
+     六个导航项三高三低,眼睛读到的就是「导航栏是歪的」。
+     盒子中线是齐的(都 135),所以只量盒子永远查不出来 ——
+     必须量真实文字框(Range.getClientRects)才看得见。 */
   .nav {
     display: flex;
+    align-items: center;
     gap: clamp(1rem, 2.2vw, 2rem);
+    /* 桌面端导航居中(创始人 2026-09-11:「电脑导航栏放到中间,别靠右」):
+       字标在左、询盘按钮在右,导航吃掉中间全部空间并居中 */
+    flex: 1 1 auto;
+    justify-content: center;
   }
   .link {
     font-size: var(--ck-small);
@@ -168,9 +215,20 @@ const items: NavNode[] = nav?.length
     color: var(--ck-ink);
     border-bottom-color: var(--ck-accent);
   }
+  /* 中等宽度(笔记本 1280–1440):10 个导航项 + 字标 + 询盘按钮挤不进一行,
+     询盘按钮会掉到第二排 —— 头部又是吸顶的,那一大块一直钉在屏幕上。
+     收紧间距和字号让它保持单行;再窄交给 52rem 那条换行规则。
+     ★ 这段必须写在 .link 基础规则**之后** ★
+     第一版写在之前,同特异度下后写的基础规则赢,媒体查询整段是死的 ——
+     产物里看得见、浏览器里不生效,这种最难查。 */
+  @media (max-width: 90rem) {
+    .nav { gap: 0.875rem; }
+    .link { font-size: max(0.8125rem, 14px); }
+  }
 
   /* ── 二级下拉(零 JS)────────────────────────── */
-  .grp { position: relative; }
+  /* 和裸 .link 用同一种对齐方式,两者文字才落在同一条线上 */
+  .grp { position: relative; display: flex; align-items: center; }
   .sub {
     position: absolute;
     top: 100%;
@@ -212,6 +270,17 @@ const items: NavNode[] = nav?.length
     gap: 1rem;
   }
 
+  /* 汉堡:桌面/平板整块不存在,只在 ≤52rem 出场。
+     checkbox 常驻视觉隐藏(不能 display:none —— 那样键盘就够不到了) */
+  .burger { display: none; }
+  .mnav-t {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: 0; padding: 0;
+    clip-path: inset(50%);
+    opacity: 0;
+  }
+
   /* ── 顶部工具条 ─────────────────────────────
      贴着页面最上沿,底色比页面深一格、字更小 ——
      让它读起来是「工具」而不是「内容」,眼睛会自动略过,
@@ -245,11 +314,134 @@ const items: NavNode[] = nav?.length
   }
   .cta:hover { background: var(--ck-accent-deep); }
 
-  /* 窄屏:导航换行到第二排,不做汉堡菜单(零 JS 纪律) */
-  @media (max-width: 52rem) {
+  /* 窄屏:导航换行到第二排,不做汉堡菜单(零 JS 纪律)
+   *
+   * ★ flex-wrap: wrap 和 white-space: nowrap 这两条缺一不可 ★
+   *
+   * 实测在 375px 下栽过:这里只写了 width: 100%,没有开换行。
+   * 于是 9 个导航项仍然挤在一行里,每项被压到 20–25px 宽,
+   * 中文只能**一列一个字竖排** —— 量出来是 20×131、25×159 这种细长条。
+   * 移动端导航等于废掉,而移动端多半占一半以上流量。
+   *
+   * 光加 wrap 还不够:不加 white-space: nowrap,单个词仍可能被拆成两行。
+   * 要的是「整项作为一个单位换行」,不是「字符随便折」。
+   */
+  /* 中窄屏(966px 一类)原来落在 52–90rem 的空档:十个导航项和字标、
+     CTA 挤在同一行随机折行 —— 创始人放大浏览的「乱」第一眼就是它。
+     78rem 起导航就整行退到第二排,排满一行、左对齐,和内容同轴。 */
+  @media (max-width: 78rem) {
     .bar { padding-block: 0.875rem; }
-    .nav { order: 3; width: 100%; border-top: var(--ck-border-w) solid var(--ck-line); padding-top: 0.5rem; }
-    .zh { display: none; }
+    .nav {
+      order: 3;
+      width: 100%;
+      flex: none;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+      gap: 0.25rem 1.125rem;
+      border-top: var(--ck-border-w) solid var(--ck-line);
+      padding-top: 0.5rem;
+    }
+    .link { white-space: nowrap; }
   }
+  /* ── 手机端(≤52rem):汉堡菜单 ──────────────────────────────
+   * 创始人实机验收:「导航栏卡死了!字体太大,空间都没了!」
+   * 之前的做法是导航换行到第二排 —— 966px 下一行放得下,没问题;
+   * 但 375px 下 10 项折成四行、每项还有 44px 触控高,吸顶头部吃掉 1/3 屏,
+   * 页面还没开始就结束了。手机端唯一正确答案就是国际站标准的汉堡收纳:
+   * 吸顶栏只留「字标 + 询盘 + 汉堡」一行,导航全部进下拉面板。
+   * checkbox + :has 实现:零 JS(脚本挂了菜单也能开)、checkbox 可聚焦可空格切换。 */
+  @media (max-width: 52rem) {
+    .bar {
+      flex-wrap: nowrap;
+      gap: 0.5rem;
+      min-height: 3.5rem;
+      padding-block: 0.5rem;
+    }
+    .right { gap: 0.375rem; }
+    /* QA 舰队量出的英文档:CTA「Start an inquiry」199.6px 把汉堡挤出视口 7px。
+       字标、CTA、间距各收一档,375px 下英文全套 ≈343px 放得下 */
+    .glyph { width: 1.5rem; height: 1.5rem; }
+    .bio-mark .glyph { width: auto; height: 2rem; }
+    .bio-mark .ai { font-size: 1.25rem; }
+    .cta { padding: 0.5rem 0.75rem; font-size: max(0.75rem, 14px); letter-spacing: 0.01em; }
+
+    /* 汉堡本体:44px 触控方块(label 原生联动 checkbox) */
+    .burger { display: block; position: relative; width: 2.75rem; height: 2.75rem; flex: none; cursor: pointer; }
+    .mnav-t:focus-visible ~ .bar .burger { outline: 2px solid var(--ck-accent); outline-offset: 2px; border-radius: var(--ck-radius); }
+    .bl, .bl::before, .bl::after {
+      content: '';
+      position: absolute;
+      inset-inline: 0.625rem;
+      height: 2px;
+      border-radius: 1px;
+      background: var(--ck-ink);
+      transition: transform 0.2s var(--ck-ease), opacity 0.2s var(--ck-ease), background 0.2s;
+      pointer-events: none;
+    }
+    .bl { top: calc(50% - 1px); }
+    .bl::before { inset-inline: 0; top: -0.4375rem; }
+    .bl::after { inset-inline: 0; top: 0.4375rem; }
+    .mnav-t:checked ~ .bar .bl { background: transparent; }
+    .mnav-t:checked ~ .bar .bl::before { transform: translateY(0.4375rem) rotate(45deg); }
+    .mnav-t:checked ~ .bar .bl::after { transform: translateY(-0.4375rem) rotate(-45deg); }
+
+    /* 导航面板:挂在整个页头正下方,展开即全宽下拉;项目一行一个、44px 触控高 */
+    .nav {
+      position: absolute;
+      top: 100%;
+      inset-inline: 0;
+      width: auto;   /* 压掉 78rem 档的 width:100%,避免与 inset 双重约束 */
+      display: block;
+      background: var(--ck-bg);
+      border-top: var(--ck-border-w) solid var(--ck-line);
+      border-bottom: var(--ck-border-w) solid var(--ck-line);
+      box-shadow: 0 18px 30px -18px rgb(0 0 0 / 0.25);
+      padding: 0.25rem 1.25rem 0.625rem;
+      max-height: calc(100dvh - 7rem);
+      overflow-y: auto;
+      visibility: hidden;
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: opacity 0.2s var(--ck-ease), transform 0.2s var(--ck-ease), visibility 0.2s;
+    }
+    .mnav-t:checked ~ .bar .nav { visibility: visible; opacity: 1; transform: none; }
+    .nav > * + * { border-top: var(--ck-border-w) solid var(--ck-line); }
+    .link {
+      display: block;
+      padding-block: 0.75rem;   /* 44px 触控行 */
+      font-size: 0.9375rem;
+      border-bottom: none;
+      white-space: normal;
+    }
+    /* 二级:触屏没有 hover,下拉改为面板内缩进平铺,一直可见 */
+    .grp { display: block; position: static; }
+    .sub {
+      position: static;
+      visibility: visible;
+      opacity: 1;
+      transform: none;
+      min-width: 0;
+      padding: 0 0 0.5rem;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+    }
+    /* 二级项也要 44px 触控高。原来 0.5rem 上下 padding + 14px 行高 ≈ 36px,
+       实测首页 110 个可点元素里 81 个不到 44px,其中 34 个就是这一条。 */
+    .sublink { padding: 0.75rem 0 0.75rem 1.125rem; font-size: 0.875rem; min-height: 2.75rem; }
+
+    /* 顶部语言条在手机上单独占 44px,是永久成本:
+       375×812 的屏,页头本来就吃掉 104px(12.8%)。
+       语言切换挪进汉堡面板底部,页头回到 60px 一档。 */
+    .util { display: none; }
+    .mnav-locale {
+      display: block;
+      border-top: var(--ck-border-w) solid var(--ck-line);
+      padding-block: 0.5rem;
+    }
+  }
+
+  /* 桌面端不需要面板里那份语言切换 —— 顶部工具条已经有了 */
+  .mnav-locale { display: none; }
 </style>
 

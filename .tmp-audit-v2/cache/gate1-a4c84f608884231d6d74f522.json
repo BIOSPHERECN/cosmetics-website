@@ -1,0 +1,548 @@
+{
+ "tree": "27fd7ebaaa711c796767a643431348eb0d5d19d3",
+ "base_tree": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+ "worker": "gate",
+ "mode": "gate",
+ "repo": "F:/0cosmetic/tools-review",
+ "rules_hash": "sha256:7a832521a5185baada3b4231a6ed9cffa830c8e82c1784a29a1b5c17547d2430",
+ "gate_hash": "sha256:ab15f7cb3e8defb98bef4166379e5b6f5ff08b2fcfc0740c6a3ceeec12b3185f",
+ "files": 40,
+ "lines": 8881,
+ "changes": [
+  [
+   "A",
+   ".gitattributes",
+   null
+  ],
+  [
+   "A",
+   ".gitignore",
+   null
+  ],
+  [
+   "A",
+   "audit_dept/audit_local.cmd",
+   null
+  ],
+  [
+   "A",
+   "audit_dept/expected_tasks.json",
+   null
+  ],
+  [
+   "A",
+   "audit_dept/local_audit.py",
+   null
+  ],
+  [
+   "A",
+   "audit_dept/开源选型.md",
+   null
+  ],
+  [
+   "A",
+   "audit_dept/设计-v1.md",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/allow_domains.txt",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/bg_log.py",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/gate1.py",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/hook_guard.py",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/judges.json",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/judges.py",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/lib.py",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/ops.py",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/paid_domains.txt",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/redteam/fakewr.cjs",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/redteam/run.py",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/redteam/run.sh",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/register_watch_task.ps1",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/rules-v2-strict.yml",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/rules-v2.yml",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/ship_lib.sh",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/ship_ops.sh",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/sites.json",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/smoke.py",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/terms_whitelist.json",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/ticket.py",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/v1现状-0924-1038版.md",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/v1现状.md",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/verify_or_bg.cmd",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/watch.cmd",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/watch.py",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/口径摘要.md",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/设计-v2.1.md",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/设计-v2.md",
+   null
+  ],
+  [
+   "A",
+   "deploy_audit.py",
+   null
+  ],
+  [
+   "A",
+   "gate.sh",
+   null
+  ],
+  [
+   "A",
+   "laya_judge.py",
+   null
+  ],
+  [
+   "A",
+   "rules.yml",
+   null
+  ]
+ ],
+ "stats": {
+  ".gitattributes": 2,
+  ".gitignore": 12,
+  "audit_dept/audit_local.cmd": 8,
+  "audit_dept/expected_tasks.json": 12,
+  "audit_dept/local_audit.py": 490,
+  "audit_dept/开源选型.md": 60,
+  "audit_dept/设计-v1.md": 250,
+  "audit_v2/allow_domains.txt": 18,
+  "audit_v2/bg_log.py": 46,
+  "audit_v2/gate1.py": 568,
+  "audit_v2/hook_guard.py": 459,
+  "audit_v2/judges.json": 12,
+  "audit_v2/judges.py": 240,
+  "audit_v2/lib.py": 525,
+  "audit_v2/ops.py": 436,
+  "audit_v2/paid_domains.txt": 21,
+  "audit_v2/redteam/fakewr.cjs": 25,
+  "audit_v2/redteam/run.py": 665,
+  "audit_v2/redteam/run.sh": 3,
+  "audit_v2/register_watch_task.ps1": 17,
+  "audit_v2/rules-v2-strict.yml": 113,
+  "audit_v2/rules-v2.yml": 170,
+  "audit_v2/ship_lib.sh": 152,
+  "audit_v2/ship_ops.sh": 16,
+  "audit_v2/sites.json": 105,
+  "audit_v2/smoke.py": 141,
+  "audit_v2/terms_whitelist.json": 6,
+  "audit_v2/ticket.py": 1184,
+  "audit_v2/v1现状-0924-1038版.md": 81,
+  "audit_v2/v1现状.md": 70,
+  "audit_v2/verify_or_bg.cmd": 20,
+  "audit_v2/watch.cmd": 8,
+  "audit_v2/watch.py": 320,
+  "audit_v2/口径摘要.md": 54,
+  "audit_v2/设计-v2.1.md": 1243,
+  "audit_v2/设计-v2.md": 1020,
+  "deploy_audit.py": 65,
+  "gate.sh": 132,
+  "laya_judge.py": 24,
+  "rules.yml": 88
+ },
+ "binaries": [],
+ "block": [
+  {
+   "rule": "C5",
+   "id": "C5-r2-copy-move",
+   "line": 13,
+   "text": "- pattern-regex: '(?i)\\bcopy_?object\\s*\\(|x-amz-copy-source|\\bCopySource\\b|r2-migrate|\\bmove_?object\\s*\\('",
+   "level": "block",
+   "cat": "费用",
+   "strict": true,
+   "file": "audit_v2/rules-v2-strict.yml"
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 75,
+   "text": "# 09-24 行内豁免必须写成「// nosemgrep: <规则id>[, <规则id>] 理由」(命中行行尾或上一行)。",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true,
+   "file": "gate.sh"
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 76,
+   "text": "# 光秃秃的 nosemgrep 会放过该行全部规则,缺理由的事后没人看得懂 → 本次新增行里出现就拦",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true,
+   "file": "gate.sh"
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 78,
+   "text": "| grep -vE 'nosemgrep:[[:space:]]*[A-Za-z0-9_.-]+([[:space:]]*,[[:space:]]*[A-Za-z0-9_.-]+)*[[:space:]]+[^[:space:]]' | head -3)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true,
+   "file": "gate.sh"
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 80,
+   "text": "R1=\"$R1;行内 nosemgrep 缺规则 id 或理由 → 拦截\"; echo \"   行内 nosemgrep 必须写成「nosemgrep: <规则id> 理由」:\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true,
+   "file": "gate.sh"
+  }
+ ],
+ "doubt": [
+  {
+   "rule": "S1",
+   "id": "S1-split-secret",
+   "line": 230,
+   "text": "m, part = material('站点 x', [('apps/web/src/a.ts', '+const k = \"sk-' + 'A' * 30 + '\"\\n+mail a@b.com https://x.y/z\\n'), ('data/cost.json', '+1\\n')])",
+   "level": "doubt",
+   "cat": "安全",
+   "file": "audit_v2/judges.py"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 3,
+   "text": "api.openai.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.openai.com",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 4,
+   "text": "openai.azure.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "openai.azure.com",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 5,
+   "text": "api.anthropic.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.anthropic.com",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 7,
+   "text": "api.deepseek.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.deepseek.com",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 8,
+   "text": "api.moonshot.cn",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.moonshot.cn",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 9,
+   "text": "api.moonshot.ai",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.moonshot.ai",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 10,
+   "text": "volces.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "volces.com",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 11,
+   "text": "api.x.ai",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.x.ai",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 12,
+   "text": "dashscope.aliyuncs.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "dashscope.aliyuncs.com",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 13,
+   "text": "dashscope-intl.aliyuncs.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "dashscope-intl.aliyuncs.com",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 14,
+   "text": "open.bigmodel.cn",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "open.bigmodel.cn",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 15,
+   "text": "hunyuan.tencentcloudapi.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "hunyuan.tencentcloudapi.com",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 16,
+   "text": "hunyuan.cloud.tencent.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "hunyuan.cloud.tencent.com",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 17,
+   "text": "api.hunyuan.cloud.tencent.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.hunyuan.cloud.tencent.com",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 18,
+   "text": "api.siliconflow.cn",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.siliconflow.cn",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 19,
+   "text": "api.siliconflow.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.siliconflow.com",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 20,
+   "text": "aip.baidubce.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "aip.baidubce.com",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 21,
+   "text": "qianfan.baidubce.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "qianfan.baidubce.com",
+   "file": "audit_v2/paid_domains.txt"
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 13,
+   "text": "'decision': {'type': 'choice', 'instructions': 'Should a careful reviewer allow or block deploying the change in `change`?',",
+   "level": "doubt",
+   "cat": "安全",
+   "file": "laya_judge.py"
+  }
+ ],
+ "exceptions": [],
+ "risks": [
+  {
+   "rule": "RK11",
+   "cat": "安全",
+   "level": "高",
+   "item": "碰到鉴权/会话 audit_v2/hook_guard.py",
+   "mitigation": ""
+  },
+  {
+   "rule": "RK12",
+   "cat": "安全",
+   "level": "高",
+   "item": "碰到部署或上线脚本 audit_v2/ship_lib.sh",
+   "mitigation": "闸门完整性问题,L3"
+  },
+  {
+   "rule": "RK12",
+   "cat": "安全",
+   "level": "高",
+   "item": "碰到部署或上线脚本 audit_v2/ship_ops.sh",
+   "mitigation": "闸门完整性问题,L3"
+  },
+  {
+   "rule": "RK12",
+   "cat": "安全",
+   "level": "高",
+   "item": "碰到部署或上线脚本 deploy_audit.py",
+   "mitigation": "闸门完整性问题,L3"
+  }
+ ],
+ "seconds": {
+  "tree": 0.0,
+  "diff": 0.2,
+  "semgrep": 5.4,
+  "rules": 0.1,
+  "total": 5.7
+ },
+ "result": "拦",
+ "hard": true
+}

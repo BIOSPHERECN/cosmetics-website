@@ -1,0 +1,43 @@
+---
+/**
+ * 今日待办 —— 业务员打开后台第一眼该看的不是列表,是「今天干嘛」。
+ * WorkBuddy 原型的 SLA 思路照搬:待办由数据现状推导(SQL),不是手工维护的清单;做了就自动消失。
+ * 推导 SQL 与规则天数在 ../../lib/today.ts(2026-09-18 抽出去,业务协同工作台右栏复用同一段);本页只管渲染。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { loadToday } from '../../lib/today';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+const { groups, total } = await loadToday(c.db);
+---
+
+<AdminShell title="今日待办" active="today" email={c.sess.email} tenant={c.tenant} badges={{ today: total }}>
+  <h1>今日待办</h1>
+  <p class="lead">从数据推导,不用手工维护:处理完状态一改,这里就消失。共 {total} 件。</p>
+
+  <div class="cols">
+    {groups.map((g) => (
+      <section class="box">
+        <h2>{g.label} {g.n != null && <span class="n">{g.n}</span>}</h2>
+        {g.items.map((r) => (
+          <a class:list={['item', r.late && 'late']} href={r.href} target={r.blank ? '_blank' : undefined}>
+            <b>{r.title}</b><span>{r.text}</span>
+          </a>
+        ))}
+        {g.items.length === 0 && <p class="empty">{g.empty}</p>}
+      </section>
+    ))}
+  </div>
+
+  <style>
+    .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.75rem} @media (max-width:70rem){.cols{grid-template-columns:1fr}}
+    .box{background:var(--ad-panel);border:1px solid var(--ad-line);border-radius:9px;padding:.875rem 1rem}
+    h2{font-size:.9375rem;margin:0 0 .625rem;display:flex;gap:.5rem;align-items:center} .n{font-size:.75rem;background:#10131a;color:#fff;border-radius:999px;padding:.0625rem .5rem}
+    .item{display:grid;gap:.125rem;padding:.5rem .625rem;border-radius:7px;text-decoration:none;color:inherit;border:1px solid transparent;margin-bottom:.25rem}
+    .item:hover{border-color:var(--ad-line);background:#fafbfc} .item b{font-size:.8125rem} .item span{font-size:.75rem;color:var(--ad-soft)}
+    .item.late{border-inline-start:3px solid #dc2626} .empty{color:var(--ad-faint);font-size:.8125rem}
+  </style>
+</AdminShell>

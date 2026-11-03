@@ -1,0 +1,259 @@
+---
+/**
+ * 邮件中心 —— 发到公司域名邮箱的信统一在这里看、回、分派(2026-09-18 创始人:「客户邮件统一在后台可以看到,并有提醒,避免错过」)。
+ *
+ * 三栏:左 箱子 + 搜索 / 中 列表(未读优先)/ 右 详情(JS 拉 /api/admin/mail?op=get)。
+ * 首屏列表服务端渲染 —— 没有 JS 也能看到有没有新邮件;详情与操作才靠 JS。
+ * 收信不在这里:apps/mail-worker 写 mails 表,本页只读。
+ */
+import AdminShell from '../../../layouts/AdminShell.astro';
+import { pageGuard } from '../../../lib/guard';
+import { listMails, CATEGORIES } from '../../../lib/mail';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const box = url.searchParams.get('box') ?? 'inbox';
+const q = (url.searchParams.get('q') ?? '').trim();
+const cat = url.searchParams.get('cat') ?? '';
+const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
+const openId = Number(url.searchParams.get('id')) || 0;
+
+const L = await listMails(c.db, { box, q, cat, page });
+const { results: users } = await c.db.prepare(`SELECT id, email, display_name FROM users WHERE role IN ('admin','editor','sales') ORDER BY id`).all<{ id: number; email: string; display_name: string | null }>();
+
+const BOXES: [string, string, number][] = [
+  ['inbox', '收件箱', L.counts.inbox], ['replied', '已回复', L.counts.replied], ['archived', '已归档', L.counts.archived],
+  ['spam', '垃圾', L.counts.spam], ['sent', '已发送', L.counts.sent],
+];
+const CAT_PILL: Record<string, string> = { 询盘: 'p-bad', 报价: 'p-warn', 样品: 'p-warn', 投诉: 'p-bad', 供应商: 'p-wait', 垃圾: 'p-wait', 其他: 'p-wait' };
+const link = (o: Record<string, string | number>) => {
+  const u = new URLSearchParams();
+  const all = { box, q, cat, p: page, ...o };
+  for (const [k, v] of Object.entries(all)) if (v && !(k === 'p' && Number(v) <= 1)) u.set(k, String(v));
+  const s = u.toString(); return `/bohui/mail/${s ? '?' + s : ''}`;
+};
+const who = (r: any) => r.assignee_name || (r.assignee_email ? String(r.assignee_email).replace(/@.*$/, '') : '');
+---
+
+<AdminShell title="邮件中心" active="mail" email={c.sess.email} tenant={c.tenant} badges={{ mail: L.counts.unread }}>
+  <h1>邮件中心</h1>
+  <p class="lead">发到公司域名邮箱的信都在这里。未读 <b>{L.counts.unread}</b> 封排最前;AI 先分好类、写好摘要与建议回复,你改一改就能发。</p>
+
+  <div class="mc" data-users={JSON.stringify(users.map((u) => ({ id: u.id, name: u.display_name || u.email.replace(/@.*$/, '') })))} data-open={openId || ''}>
+    <aside class="boxes">
+      <form method="get" class="q">
+        <input type="hidden" name="box" value={box} />
+        <input name="q" value={q} placeholder="搜主题 / 发件人 / 摘要" />
+      </form>
+      {BOXES.map(([id, label, n]) => (
+        <a class:list={['bx', box === id && 'on']} href={link({ box: id, p: 1, q: '' })}><span>{label}</span>{n > 0 && <b class:list={['n', id === 'inbox' && L.counts.unread > 0 && 'hot']}>{id === 'inbox' && L.counts.unread > 0 ? L.counts.unread : n}</b>}</a>
+      ))}
+      <div class="grp">按 AI 分类</div>
+      <a class:list={['bx', 'sub', !cat && 'on']} href={link({ cat: '', p: 1 })}>全部</a>
+      {CATEGORIES.map((k) => <a class:list={['bx', 'sub', cat === k && 'on']} href={link({ cat: k, p: 1 })}>{k}</a>)}
+    </aside>
+
+    <section class="list">
+      {L.rows.length === 0 ? (
+        <div class="empty">{q || cat ? '没有匹配的邮件。' : box === 'inbox' ? '收件箱是空的。Email Routing 接通后,发到 *@biosphere-ai.com 的信会实时出现在这里。' : '这个箱子是空的。'}</div>
+      ) : L.rows.map((r: any) => (
+        <a class:list={['row', r.status === 'unread' && 'unread', openId === r.id && 'on']} href={link({ id: r.id })} data-id={r.id}>
+          <div class="l1">
+            <b class="from">{r.direction === 'out' ? `→ ${r.to_addrs}` : (r.from_name || r.from_addr)}</b>
+            {r.ai_category && <span class:list={['pill', CAT_PILL[r.ai_category] ?? 'p-wait']}>{r.ai_category}</span>}
+            {r.spam_score >= 40 && r.status !== 'spam' && <span class="pill p-warn" title={`SPF ${r.spf} · 规则分 ${r.spam_score}`}>可疑</span>}
+            {r.has_attach ? <span class="clip" title="有附件">📎</span> : null}
+            <time class="dt" data-utc={r.received_at}>{String(r.received_at ?? '').slice(5, 16)}</time>
+          </div>
+          <div class="l2"><span class="sub">{r.subject || '(无主题)'}</span>{who(r) && <span class="who">{who(r)}</span>}</div>
+          <div class="l3">{r.snippet}</div>
+        </a>
+      ))}
+      {L.pages > 1 && (
+        <div class="pager">
+          {page > 1 && <a class="btn" href={link({ p: page - 1 })}>上一页</a>}
+          <span>{page} / {L.pages} · 共 {L.total} 封</span>
+          {page < L.pages && <a class="btn" href={link({ p: page + 1 })}>下一页</a>}
+        </div>
+      )}
+    </section>
+
+    <section class="detail" id="detail">
+      <div class="empty" id="d-empty">点左边一封邮件查看。</div>
+      <div id="d-body" hidden>
+        <div class="dh">
+          <h2 id="d-subject"></h2>
+          <div class="meta" id="d-meta"></div>
+          <div class="tags" id="d-tags"></div>
+        </div>
+        <div class="ops" id="d-ops">
+          <button class="btn" data-st="unread">标未读</button>
+          <button class="btn" data-st="replied">标已回复</button>
+          <button class="btn" data-st="archived">归档</button>
+          <button class="btn" data-st="spam">垃圾</button>
+          <button class="btn" data-trust="trusted" data-scope="email" title="以后这个邮箱来的附件直接存;已被拦的附件请对方重发">信任此发件人</button>
+          <button class="btn" data-trust="trusted" data-scope="domain" title="整个域名(@公司.com)都信任">信任整个域名</button>
+          <button class="btn danger" data-trust="blocked" data-scope="email" title="以后这个邮箱的信直接进垃圾,附件不存">拉黑</button>
+          <select id="d-assign" title="分配给"><option value="">未分配</option></select>
+          <button class="btn" data-op="to_inquiry">转为询盘</button>
+          <button class="btn" data-op="to_matter">转为事项</button>
+          <button class="btn" data-op="ai" title="重跑分类 / 摘要 / 建议回复">AI 重判</button>
+        </div>
+        <div class="ai" id="d-ai" hidden><b>AI 摘要</b><p id="d-summary"></p></div>
+        <div class="att" id="d-att" hidden></div>
+        <div class="bodybar"><button class="btn" id="d-view-text">纯文本</button><button class="btn" id="d-view-html" hidden>HTML 版</button></div>
+        <pre class="text" id="d-text"></pre>
+        <iframe id="d-html" class="html" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" hidden></iframe>
+        <div class="thread" id="d-thread" hidden><b>同一会话</b><ol></ol></div>
+        <div class="reply" id="d-reply">
+          <b>回复</b>
+          <input id="r-to" placeholder="收件人" />
+          <input id="r-subject" placeholder="主题" />
+          <textarea id="r-text" rows="9" placeholder="AI 会把建议回复填在这里;改好再发。"></textarea>
+          <div class="rb"><button class="btn pri" id="r-send">发送回复</button><span class="hint" id="r-hint"></span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</AdminShell>
+
+<style>
+  .mc { display: grid; grid-template-columns: 11rem minmax(0, 24rem) minmax(0, 1fr); gap: 1rem; align-items: start; }
+  .boxes { position: sticky; top: 1rem; }
+  .boxes .q { margin-bottom: .75rem; }
+  .bx { display: flex; align-items: center; justify-content: space-between; padding: .4rem .625rem; border-radius: var(--ad-r-s); color: var(--ad-soft); text-decoration: none; font-size: .875rem; }
+  .bx:hover { background: var(--ad-panel); color: var(--ad-ink); }
+  .bx.on { background: var(--ad-accent-soft); color: var(--ad-accent-deep); font-weight: 600; }
+  .bx.sub { padding-left: 1.125rem; font-size: .8125rem; }
+  .bx .n { font-size: .75rem; font-weight: 600; color: var(--ad-faint); font-variant-numeric: tabular-nums; }
+  .bx .n.hot { background: var(--ad-accent); color: #fff; border-radius: 999px; padding: 0 .4rem; }
+  .grp { padding: .875rem .625rem .25rem; font-family: var(--ad-mono); font-size: .75rem; letter-spacing: .1em; color: var(--ad-faint); text-transform: uppercase; }
+
+  .list { background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: var(--ad-r); box-shadow: var(--ad-shadow); overflow: hidden; }
+  .row { display: block; padding: .6875rem .875rem; border-bottom: 1px solid var(--ad-line-soft); color: var(--ad-ink); text-decoration: none; }
+  .row:last-of-type { border-bottom: 0; }
+  .row:hover { background: color-mix(in srgb, var(--ad-accent-soft) 45%, transparent); }
+  .row.on { background: var(--ad-accent-soft); box-shadow: inset 3px 0 0 var(--ad-accent); }
+  .row .l1 { display: flex; align-items: center; gap: .375rem; }
+  .row .from { font-weight: 500; font-size: .875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+  .row.unread .from, .row.unread .sub { font-weight: 700; }
+  .row .dt { font-size: .75rem; color: var(--ad-faint); font-variant-numeric: tabular-nums; flex: none; }
+  .row .clip { font-size: .75rem; }
+  .row .l2 { display: flex; gap: .5rem; align-items: baseline; font-size: .875rem; margin-top: .125rem; }
+  .row .sub { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .who { font-size: .75rem; color: var(--ad-accent-deep); background: var(--ad-accent-soft); border-radius: 999px; padding: 0 .4rem; flex: none; }
+  .row .l3 { font-size: .8125rem; color: var(--ad-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: .125rem; }
+  .list .pager { padding: .75rem; margin: 0; border-top: 1px solid var(--ad-line-soft); }
+
+  .detail { background: var(--ad-panel); border: 1px solid var(--ad-line); border-radius: var(--ad-r); box-shadow: var(--ad-shadow); padding: 1.125rem 1.25rem; min-height: 20rem; }
+  .detail .empty { border: 0; background: transparent; }
+  .dh h2 { font-size: 1.125rem; margin: 0 0 .25rem; }
+  .meta { font-size: .8125rem; color: var(--ad-soft); line-height: 1.7; }
+  .meta b { color: var(--ad-ink); font-weight: 600; }
+  .tags { display: flex; gap: .375rem; flex-wrap: wrap; margin: .5rem 0; }
+  .ops { display: flex; gap: .375rem; flex-wrap: wrap; align-items: center; padding: .625rem 0; border-top: 1px solid var(--ad-line-soft); border-bottom: 1px solid var(--ad-line-soft); margin: .5rem 0 .875rem; }
+  .ops select { width: auto; font-size: .8125rem; padding: .3rem .5rem; }
+  .ai { background: var(--ad-accent-soft); border-radius: var(--ad-r); padding: .6875rem .875rem; margin-bottom: .875rem; font-size: .875rem; }
+  .ai b { display: block; font-size: .6875rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ad-accent-deep); margin-bottom: .125rem; }
+  .ai p { margin: 0; }
+  .att { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .875rem; }
+  .att a, .att span { font-size: .8125rem; padding: .25rem .625rem; border: 1px solid var(--ad-line); border-radius: 999px; background: var(--ad-sunk); color: var(--ad-ink); text-decoration: none; }
+  .att span { color: var(--ad-faint); text-decoration: line-through; }
+  .bodybar { display: flex; gap: .375rem; margin-bottom: .5rem; }
+  .text { white-space: pre-wrap; word-break: break-word; font: inherit; font-size: .875rem; line-height: 1.7; background: var(--ad-sunk); border-radius: var(--ad-r); padding: .875rem 1rem; max-height: 32rem; overflow: auto; margin: 0 0 1rem; }
+  .html { width: 100%; height: 32rem; border: 1px solid var(--ad-line); border-radius: var(--ad-r); background: #fff; margin-bottom: 1rem; }
+  .thread { font-size: .8125rem; margin-bottom: 1rem; }
+  .thread ol { margin: .25rem 0 0; padding-left: 1.25rem; }
+  .thread a { color: var(--ad-accent-deep); }
+  .reply { border-top: 1px solid var(--ad-line-soft); padding-top: .875rem; display: grid; gap: .5rem; }
+  .reply b { font-size: .875rem; }
+  .reply .rb { display: flex; align-items: center; gap: .75rem; }
+  .reply .hint { font-size: .8125rem; color: var(--ad-warn); }
+
+  @media (max-width: 72rem) { .mc { grid-template-columns: 10rem minmax(0, 1fr); } .detail { grid-column: 1 / -1; } }
+  @media (max-width: 56rem) { .mc { grid-template-columns: 1fr; } .boxes { position: static; display: flex; flex-wrap: wrap; gap: .25rem; } .boxes .q { width: 100%; } .grp { display: none; } }
+</style>
+
+<script is:inline>
+(function () {
+  var root = document.querySelector('.mc');
+  var users = JSON.parse(root.dataset.users || '[]');
+  var API = '/api/admin/mail';
+  var cur = null;
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var CAT = { 询盘: 'p-bad', 报价: 'p-warn', 样品: 'p-warn', 投诉: 'p-bad' };
+  var ST = { unread: ['未读', 'p-bad'], read: ['已读', 'p-wait'], replied: ['已回复', 'p-ok'], archived: ['已归档', 'p-wait'], spam: ['垃圾', 'p-wait'] };
+  function toast(msg, bad) { var t = document.createElement('div'); t.className = 'toast' + (bad ? ' bad' : ''); t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2600); }
+  function fmt(utc) { if (!utc) return ''; var d = new Date(utc.replace(' ', 'T') + (/[Zz]|[+-]\d{2}:?\d{2}$/.test(utc) ? '' : 'Z')); return isNaN(d) ? utc : d.toLocaleString(); }
+  async function post(body) { var r = await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); var j = await r.json().catch(function () { return { ok: false, msg: 'HTTP ' + r.status }; }); if (!j.ok) toast(j.msg || '失败', true); return j; }
+
+  var sel = $('d-assign');
+  users.forEach(function (u) { var o = document.createElement('option'); o.value = u.id; o.textContent = u.name; sel.appendChild(o); });
+
+  async function open(id, push) {
+    var r = await fetch(API + '?op=get&id=' + id); var j = await r.json();
+    if (!j.ok) return toast(j.msg || '打不开', true);
+    var m = j.mail; cur = m;
+    $('d-empty').hidden = true; $('d-body').hidden = false;
+    $('d-subject').textContent = m.subject || '(无主题)';
+    $('d-meta').innerHTML = (m.direction === 'out' ? '<b>发给</b> ' + esc(m.to_addrs) + '(' + esc(m.from_name) + ' 经后台发出)' : '<b>' + esc(m.from_name || m.from_addr) + '</b> &lt;' + esc(m.from_addr) + '&gt; → ' + esc(m.to_addrs))
+      + (m.cc ? '<br>抄送 ' + esc(m.cc) : '') + '<br>' + esc(fmt(m.received_at)) + (m.direction === 'in' ? ' · SPF ' + esc(m.spf || 'none') + ' · DKIM ' + esc(m.dkim || 'none') + ' · 规则分 ' + (m.spam_score || 0) : '');
+    var tags = [];
+    var st = ST[m.status] || [m.status, 'p-wait']; tags.push('<span class="pill ' + st[1] + '">' + st[0] + '</span>');
+    if (m.direction === 'in') { var TR = { trusted: ['可信发件人', 'p-ok'], unknown: ['陌生发件人 · 附件未存', 'p-warn'], spam: ['垃圾 / 已拉黑', 'p-bad'] }; var tr = TR[m.trust]; if (tr) tags.push('<span class="pill ' + tr[1] + '" title="陌生发件人的附件不落存储,点「信任此发件人」后请对方重发">' + tr[0] + '</span>'); }
+    if (m.ai_category) tags.push('<span class="pill ' + (CAT[m.ai_category] || 'p-wait') + '">' + esc(m.ai_category) + '</span>');
+    if (m.inquiry_id) tags.push('<a class="pill p-ok" href="/bohui/inquiries/?q=' + encodeURIComponent(m.from_addr || '') + '">询盘 #' + m.inquiry_id + '</a>');
+    if (m.matter_id) tags.push('<a class="pill p-ok" href="/bohui/workbench/?open=' + m.matter_id + '">事项 #' + m.matter_id + '</a>');
+    if (m.company_id) tags.push('<a class="pill p-wait" href="/bohui/companies/?open=' + m.company_id + '">客户 #' + m.company_id + '</a>');
+    $('d-tags').innerHTML = tags.join('');
+    sel.value = m.assignee_uid || '';
+    $('d-ai').hidden = !m.ai_summary; $('d-summary').textContent = m.ai_summary || '';
+    var att = $('d-att'); att.hidden = !(m.attachments && m.attachments.length);
+    att.innerHTML = (m.attachments || []).map(function (a) {
+      var size = a.size > 1048576 ? (a.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(a.size / 1024)) + ' KB';
+      return a.r2_key ? '<a href="' + API + '?op=attach&id=' + m.id + '&key=' + encodeURIComponent(a.r2_key) + '">' + esc(a.name) + ' · ' + size + '</a>'
+        : '<span title="' + esc(a.blocked || '') + '">' + esc(a.name) + ' · ' + esc(a.blocked || '未存') + '</span>';
+    }).join('');
+    $('d-text').textContent = m.text || '(无正文)';
+    var hf = $('d-html'); hf.removeAttribute('src'); hf.hidden = true; $('d-text').hidden = false;
+    $('d-view-html').hidden = !m.html_key; $('d-view-text').hidden = true;
+    var th = $('d-thread'); th.hidden = !(j.thread && j.thread.length);
+    th.querySelector('ol').innerHTML = (j.thread || []).map(function (t) { return '<li>' + (t.direction === 'out' ? '我方 → ' : esc(t.from_name || t.from_addr) + ' · ') + '<a href="/bohui/mail/?id=' + t.id + '" data-id="' + t.id + '">' + esc(t.subject || '(无主题)') + '</a> <span class="dt" style="color:var(--ad-faint)">' + esc(fmt(t.received_at)) + '</span></li>'; }).join('');
+    // 回复框:AI 建议回复的第一段是主题,后面是正文(与询盘首回同一格式)
+    var parts = String(m.ai_reply || '').split('\n\n');
+    $('r-to').value = m.direction === 'out' ? m.to_addrs : m.from_addr;
+    $('r-subject').value = m.ai_reply ? parts[0] : 'Re: ' + (m.subject || '');
+    $('r-text').value = m.ai_reply ? parts.slice(1).join('\n\n') : '';
+    $('r-send').disabled = !j.canSend; $('r-hint').textContent = j.canSend ? '' : '待创始人在 Cloudflare「电子邮件发送」接入域名(或配 Resend);接入前可复制正文用自己的邮箱发';
+    document.querySelectorAll('.row').forEach(function (el) { el.classList.toggle('on', Number(el.dataset.id) === m.id); if (Number(el.dataset.id) === m.id) el.classList.remove('unread'); });
+    if (push) history.replaceState(null, '', (function () { var u = new URL(location.href); u.searchParams.set('id', m.id); return u.toString(); })());
+  }
+
+  document.querySelectorAll('.row').forEach(function (el) { el.addEventListener('click', function (e) { if (window.innerWidth > 56 * 18) { e.preventDefault(); open(Number(el.dataset.id), true); } }); });
+  $('d-thread').addEventListener('click', function (e) { var a = e.target.closest('a[data-id]'); if (a) { e.preventDefault(); open(Number(a.dataset.id), true); } });
+  $('d-view-html').addEventListener('click', function () { var hf = $('d-html'); hf.src = API + '?op=attach&id=' + cur.id + '&key=' + encodeURIComponent(cur.html_key); hf.hidden = false; $('d-text').hidden = true; this.hidden = true; $('d-view-text').hidden = false; });
+  $('d-view-text').addEventListener('click', function () { $('d-html').hidden = true; $('d-text').hidden = false; this.hidden = true; $('d-view-html').hidden = false; });
+  $('d-ops').addEventListener('click', async function (e) {
+    var b = e.target.closest('button'); if (!b || !cur) return;
+    if (b.dataset.trust) { if (b.dataset.trust === 'blocked' && !confirm('拉黑 ' + (cur.from_addr || '') + '?以后它的信直接进垃圾。')) return; var jt = await post({ op: 'trust', id: cur.id, level: b.dataset.trust, scope: b.dataset.scope }); if (jt.ok) { toast(jt.level === 'blocked' ? '已拉黑 ' + jt.pattern : '已信任 ' + jt.pattern + ';之前被拦的附件请对方重发'); open(cur.id); } else toast(jt.msg || '失败', true); return; }
+    if (b.dataset.st) { var j = await post({ op: 'set_status', id: cur.id, status: b.dataset.st }); if (j.ok) { toast('已更新'); open(cur.id); } return; }
+    var op = b.dataset.op; if (!op) return;
+    if (op === 'to_inquiry' && !confirm('把这封邮件转成一条询盘?')) return;
+    if (op === 'to_matter' && !confirm('把这封邮件转成一条业务事项?')) return;
+    b.disabled = true; var r = await post({ op: op, id: cur.id }); b.disabled = false;
+    if (r.ok) { toast(op === 'ai' ? 'AI 已重判:' + (r.category || '') : r.msg || '已转'); open(cur.id); }
+  });
+  sel.addEventListener('change', async function () { if (!cur) return; var j = await post({ op: 'assign', id: cur.id, uid: sel.value || null }); if (j.ok) toast(sel.value ? '已分配' : '已取消分配'); });
+  $('r-send').addEventListener('click', async function () {
+    if (!cur) return; var text = $('r-text').value.trim(); if (!text) return toast('正文是空的', true);
+    if (!confirm('发送给 ' + $('r-to').value + '?')) return;
+    this.disabled = true; var j = await post({ op: 'send', id: cur.id, to: $('r-to').value, subject: $('r-subject').value, text: text }); this.disabled = false;
+    if (j.ok) { toast('已发出' + (j.via === 'cloudflare' ? '(Cloudflare)' : j.via === 'resend' ? '(Resend)' : '')); open(cur.id); }
+  });
+  var openId = Number(root.dataset.open); if (openId) open(openId);
+})();
+</script>

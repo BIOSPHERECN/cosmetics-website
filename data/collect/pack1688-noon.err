@@ -1,0 +1,2 @@
+F:\0cosmetic\cosmetic-sites\tools\pack-scrape-1688.py:86: SyntaxWarning: invalid escape sequence '\s'
+  head = page.evaluate("() => document.body.innerText.replace(/\s+/g, ' ').slice(0, 600)")

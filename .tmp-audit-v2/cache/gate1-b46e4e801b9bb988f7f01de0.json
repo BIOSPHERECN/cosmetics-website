@@ -1,0 +1,190 @@
+{
+ "tree": "3a56150af3611f26c2c0bfce1ae04eaeeca61d07",
+ "base_tree": "7dbd08adcbe6ff64c412b22bd6d39a3b55fd2453",
+ "worker": "bohui-web",
+ "mode": "ship",
+ "repo": "F:/0cosmetic/cosmetic-sites",
+ "rules_hash": "sha256:7aa081a24470d292129570eb9b44f0dd5d9f906e8d5c47a3be4e94317f1ccbca",
+ "gate_hash": "sha256:65cc8f36d09e94c2d094ab7cc17fa65da794021f715c96eadd3230df2f914663",
+ "files": 20,
+ "lines": 151,
+ "changes": [
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/hero-full.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/m1.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/m2.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/m3.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/m4.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/wall-01.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/wall-02.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/wall-03.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/wall-04.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/wall-05.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/wall-06.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/wall-07.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/wall-08.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/wall-09.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/wall-10.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/wall-11.webp",
+   null
+  ],
+  [
+   "A",
+   "apps/web/public/b2o/img/vi/wall-12.webp",
+   null
+  ],
+  [
+   "M",
+   "apps/web/src/components/B2oBlock.astro",
+   null
+  ],
+  [
+   "M",
+   "apps/web/src/middleware.ts",
+   null
+  ],
+  [
+   "M",
+   "apps/web/src/styles/b2o.css",
+   null
+  ]
+ ],
+ "stats": {
+  "apps/web/public/b2o/img/vi/hero-full.webp": 0,
+  "apps/web/public/b2o/img/vi/m1.webp": 0,
+  "apps/web/public/b2o/img/vi/m2.webp": 0,
+  "apps/web/public/b2o/img/vi/m3.webp": 0,
+  "apps/web/public/b2o/img/vi/m4.webp": 0,
+  "apps/web/public/b2o/img/vi/wall-01.webp": 0,
+  "apps/web/public/b2o/img/vi/wall-02.webp": 0,
+  "apps/web/public/b2o/img/vi/wall-03.webp": 0,
+  "apps/web/public/b2o/img/vi/wall-04.webp": 0,
+  "apps/web/public/b2o/img/vi/wall-05.webp": 0,
+  "apps/web/public/b2o/img/vi/wall-06.webp": 0,
+  "apps/web/public/b2o/img/vi/wall-07.webp": 0,
+  "apps/web/public/b2o/img/vi/wall-08.webp": 0,
+  "apps/web/public/b2o/img/vi/wall-09.webp": 0,
+  "apps/web/public/b2o/img/vi/wall-10.webp": 0,
+  "apps/web/public/b2o/img/vi/wall-11.webp": 0,
+  "apps/web/public/b2o/img/vi/wall-12.webp": 0,
+  "apps/web/src/components/B2oBlock.astro": 84,
+  "apps/web/src/middleware.ts": 12,
+  "apps/web/src/styles/b2o.css": 55
+ },
+ "new_queries": 0,
+ "binaries": [
+  "apps/web/public/b2o/img/vi/hero-full.webp",
+  "apps/web/public/b2o/img/vi/m1.webp",
+  "apps/web/public/b2o/img/vi/m2.webp",
+  "apps/web/public/b2o/img/vi/m3.webp",
+  "apps/web/public/b2o/img/vi/m4.webp",
+  "apps/web/public/b2o/img/vi/wall-01.webp",
+  "apps/web/public/b2o/img/vi/wall-02.webp",
+  "apps/web/public/b2o/img/vi/wall-03.webp",
+  "apps/web/public/b2o/img/vi/wall-04.webp",
+  "apps/web/public/b2o/img/vi/wall-05.webp",
+  "apps/web/public/b2o/img/vi/wall-06.webp",
+  "apps/web/public/b2o/img/vi/wall-07.webp",
+  "apps/web/public/b2o/img/vi/wall-08.webp",
+  "apps/web/public/b2o/img/vi/wall-09.webp",
+  "apps/web/public/b2o/img/vi/wall-10.webp",
+  "apps/web/public/b2o/img/vi/wall-11.webp",
+  "apps/web/public/b2o/img/vi/wall-12.webp"
+ ],
+ "block": [],
+ "doubt": [],
+ "exceptions": [],
+ "risks": [
+  {
+   "rule": "RK2",
+   "cat": "回归",
+   "level": "高",
+   "item": "middleware.ts 变了:所有请求都经过它",
+   "mitigation": "冒烟跑全表"
+  },
+  {
+   "rule": "RK7",
+   "cat": "合规",
+   "level": "中",
+   "item": "对外文案/页面变了 apps/web/src/components/B2oBlock.astro",
+   "mitigation": "合规审核员看语种与页面"
+  },
+  {
+   "rule": "RK7",
+   "cat": "合规",
+   "level": "中",
+   "item": "对外文案/页面变了 apps/web/src/middleware.ts",
+   "mitigation": "合规审核员看语种与页面"
+  }
+ ],
+ "seconds": {
+  "tree": 0.0,
+  "diff": 0.2,
+  "semgrep": 6.0,
+  "rules": 3.1,
+  "total": 9.3
+ },
+ "result": "过",
+ "hard": false
+}
