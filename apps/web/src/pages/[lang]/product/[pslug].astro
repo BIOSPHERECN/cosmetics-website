@@ -99,6 +99,15 @@ const sales = real(specs.sales) as { text?: string } | null;
 const versus = real(specs.versus) as { rows?: { them: string; us: string }[] } | null;
 
 const zh = lang === 'zh-cn';
+/* W5: RFQ 深链 product_id 必须非空 — 库主键优先，否则 slug */
+const rfqHref = (intent: 'inquiry' | 'sample' | 'custom') => {
+  const q = new URLSearchParams();
+  q.set('product_id', String(product.id ?? product.slug));
+  q.set('about', String(product.name ?? product.slug));
+  if (product.category) q.set('category', String(product.category));
+  q.set('intent', intent);
+  return `/${lang}/rfq/?${q.toString()}`;
+};
 const T = lang === 'zh-cn'
   ? { back: '返回产品列表', moq: '起订量', inquiry: '就这款发起询盘', more: '同品类还有', desc: '产品说明',
       tech: '产品特点', specs: '产品规格', position: '产品定位', posMarket: '目标市场', posAudience: '目标客户',
@@ -247,10 +256,10 @@ const jsonLd = [
           {product.summary && <p class="sum">{product.summary}</p>}
           {(zh || product.moq) && <p class="moq"><b>{T.moq}</b> {zh ? '按品类与包材议定,以书面确认为准' : 'Agreed per category & packaging, confirmed in writing'}</p>}
           <div class="acts">
-            {/* 创始人 2026-10-23 最高原则:每个详情页必须有三个明确行动,降低询盘门槛 */}
-            <a class="cta primary" href={`/${lang}/contact/?about=${encodeURIComponent(product.name)}&type=inquiry`}>{T.inquiry}</a>
-            <a class="cta" href={`/${lang}/contact/?about=${encodeURIComponent(product.name)}&type=sample`}>{zh ? '拿样品' : 'Request sample'}</a>
-            <a class="cta" href={`/${lang}/contact/?about=${encodeURIComponent(product.name)}&type=custom`}>{zh ? '发参考开发同款/升级款' : 'Develop similar / upgrade'}</a>
+            {/* W5: 商务 CTA 统一进 RFQ，深链必须带非空 product_id（勿再 /contact/?type=） */}
+            <a class="cta primary" href={rfqHref('inquiry')}>{T.inquiry}</a>
+            <a class="cta" href={rfqHref('sample')}>{zh ? '拿样品' : 'Request sample'}</a>
+            <a class="cta" href={rfqHref('custom')}>{zh ? '发参考开发同款/升级款' : 'Develop similar / upgrade'}</a>
             {contactWa && (
               <a class="wa" href={`https://wa.me/${contactWa.replace(/[^0-9]/g, '')}?text=${encodeURIComponent((zh ? '我对这款产品感兴趣: ' : 'I am interested in this product: ') + product.name + ' | ' + Astro.url.href)}`} target="_blank" rel="noopener">💬 WhatsApp</a>
             )}

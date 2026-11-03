@@ -1,0 +1,16 @@
+---
+/**
+ * /services/{slug}/ → /services/#{slug} 永久跳转（W5 P-W5-3 方案 B）。
+ *
+ * 枢纽 /services/ 已有无 JS 可见的七步 / held-only 三证 / 打样逻辑 / RFQ CTA；
+ * 子路径若仍走 CMS 空壳，抽检会缺 GMPC·ISO 22716·HALAL 与 /rfq/ 真链。
+ * 已知 SOLUTIONS slug 一律 301 到枢纽锚点；未知 slug 回枢纽首页，不把任意串塞进 Location。
+ */
+import { SOLUTIONS } from '@cosmetic/core/content/solutions.ts';
+
+export const prerender = false;
+const lang = Astro.params.lang ?? 'zh-cn';
+const slug = String(Astro.params.slug ?? '').trim();
+const known = SOLUTIONS.some((s) => s.slug === slug);
+return Astro.redirect(`/${lang}/services/${known ? `#${slug}` : ''}`, 301);
+---

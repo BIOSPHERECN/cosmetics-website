@@ -170,14 +170,21 @@ const jsonLd = ldJson({
               <span class="cat-sec-more">{zh ? '查看全部 →' : 'View all →'}</span>
             </a>
             <div class="cat-sec-grid">
-              {catItems.map((p: any, mi: number) => (
-                <a class="card mini" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`} data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
-                  {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="450" loading={mi === 0 && c === catCounts[0] ? 'eager' : 'lazy'} decoding="async" /> : <div class="ph" />}
-                  <h3>{p.name ?? p.slug}</h3>
-                  <small class="meta">{p.moq ? `${zh ? '起订' : 'MOQ'} ${p.moq}` : T.moq} · {T.sample}</small>
-                  <span class="sample" data-href={`${B}/rfq/?product_id=${encodeURIComponent(String(p.id ?? ''))}&about=${encodeURIComponent(String(p.name ?? p.slug))}&category=${encodeURIComponent(String(p.category ?? ''))}`}>{T.sampleCta}</span>
-                </a>
-              ))}
+              {catItems.map((p: any, mi: number) => {
+                const pid = String(p.id ?? p.slug ?? '').trim();
+                const sampleHref = `${B}/rfq/?product_id=${encodeURIComponent(pid)}&about=${encodeURIComponent(String(p.name ?? p.slug))}&category=${encodeURIComponent(String(p.category ?? ''))}&intent=sample`;
+                return (
+                <article class="card mini" data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
+                  <a class="card-main" href={pid ? `${B}/product/${p.slug}/?product_id=${encodeURIComponent(pid)}` : `${B}/product/${p.slug}/`}>
+                    {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="450" loading={mi === 0 && c === catCounts[0] ? 'eager' : 'lazy'} decoding="async" /> : <div class="ph" />}
+                    <h3>{p.name ?? p.slug}</h3>
+                    <small class="meta">{p.moq ? `${zh ? '起订' : 'MOQ'} ${p.moq}` : T.moq} · {T.sample}</small>
+                  </a>
+                  {/* W5: 真 <a href>，无 JS 可点；禁止 span+JS 劫持 */}
+                  <a class="sample" href={sampleHref}>{T.sampleCta}</a>
+                </article>
+                );
+              })}
             </div>
           </section>
         );
@@ -186,22 +193,27 @@ const jsonLd = ldJson({
 
     {/* 桌面端:平铺全部+翻页+搜索 */}
     <ul class="grid" id="pg-grid" data-page-size="60">
-      {items.map((p, idx) => (
-        <li class="pg-item" data-idx={idx} data-id={String(p.id ?? '')} data-name={(p.name ?? p.slug).toLowerCase()} data-summary={(p.summary ?? '').toLowerCase()} data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
+      {items.map((p, idx) => {
+        const pid = String(p.id ?? p.slug ?? '').trim();
+        const productHref = pid ? `${B}/product/${p.slug}/?product_id=${encodeURIComponent(pid)}` : `${B}/product/${p.slug}/`;
+        const sampleHref = `${B}/rfq/?product_id=${encodeURIComponent(pid)}&about=${encodeURIComponent(String(p.name ?? p.slug))}&category=${encodeURIComponent(String(p.category ?? ''))}&intent=sample`;
+        return (
+        <li class="pg-item" data-idx={idx} data-id={pid} data-name={(p.name ?? p.slug).toLowerCase()} data-summary={(p.summary ?? '').toLowerCase()} data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
           <article class="card">
-            <a class="card-main" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>
+            <a class="card-main" href={productHref}>
               {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="600" loading={idx < 4 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" /> : <div class="ph" />}
               <h2>{p.name ?? p.slug}</h2>
               {p.summary && <p>{p.summary}</p>}
             </a>
             <p class="meta">{catLabel(p.category)} · {p.moq ? `${zh ? '起订量' : 'MOQ'}: ${p.moq}` : T.moq} · {T.sample}</p>
             <div class="cta-row">
-              <a class="more" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>{T.more} →</a>
-              <a class="sample" href={`${B}/rfq/?product_id=${encodeURIComponent(String(p.id ?? ''))}&about=${encodeURIComponent(String(p.name ?? p.slug))}&category=${encodeURIComponent(String(p.category ?? ''))}`}>{T.sampleCta}</a>
+              <a class="more" href={productHref}>{T.more} →</a>
+              <a class="sample" href={sampleHref}>{T.sampleCta}</a>
             </div>
           </article>
         </li>
-      ))}
+        );
+      })}
     </ul>
     <section class="faq" aria-label={zh ? '采购常见问题' : 'Buying FAQ'}>
       <h2>{zh ? '采购常见问题' : 'Buying FAQ'}</h2>
@@ -264,9 +276,12 @@ const jsonLd = ldJson({
     .cat-sec-more { margin-left: auto; font-size: .75rem; color: var(--ck-accent, #333); white-space: nowrap; }
     /* 品类内4卡双列 */
     .cat-sec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; padding: .5rem; }
-    .card.mini { padding: .375rem; gap: .25rem; border: none; border-radius: 8px; }
-    .card.mini img, .card.mini .ph { aspect-ratio: 4/3; border-radius: 6px; }
+    .card.mini { display: grid; padding: .375rem; gap: .25rem; border: none; border-radius: 8px; }
+    .card.mini .card-main { display: grid; gap: .25rem; text-decoration: none; color: inherit; }
+    .card.mini img, .card.mini .ph { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 6px; background: var(--ck-surface-alt, #f3f3f1); }
     .card.mini h3 { font-size: .75rem; line-height: 1.3; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .card.mini .meta { margin: 0; opacity: .65; font-size: .6875rem; line-height: 1.4; }
+    .card.mini .sample { justify-self: start; margin-top: .125rem; }
     /* 紧凑头部+chip */
     .hd { gap: .5rem; margin-bottom: 1rem; }
     h1 { font-size: 1.25rem; }
@@ -456,14 +471,6 @@ const jsonLd = ldJson({
         }, 200);
       });
     }
-
-    /* 手机卡 Request sample（嵌在 <a.card> 内，用 data-href 跳 RFQ） */
-    document.querySelectorAll('.card.mini .sample[data-href]').forEach(function(el) {
-      el.addEventListener('click', function(e) {
-        e.preventDefault(); e.stopPropagation();
-        location.href = el.getAttribute('data-href');
-      });
-    });
 
     /* 初始渲染 */
     renderPage(1);
