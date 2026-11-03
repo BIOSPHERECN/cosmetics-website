@@ -52,6 +52,9 @@ const PARAMS: [RegExp, Reg][] = [
   [/^\/[\w-]+\/selector\/$/, { k: { formula: T40, pack: T40, code: T40 } }],
   [/^\/[\w-]+\/login\/$/, { u: ['next', 'sent', 'e', 'email'] }],
   [/^\/[\w-]+\/search\/$/, { c: ['q'] }],   // 站内 AI 检索:q 由前端读、调会员接口,服务端 HTML 与 q 无关
+  /* RFQ 深链预填写进服务端 HTML(rfq/index.astro)。必须进缓存键,否则和空白表单共用一份边缘缓存。
+     intent 只出现在产品页链接里,页面不读,留下但不进键。长度与页面 slice 一致。 */
+  [/^\/[\w-]+\/rfq\/$/, { k: { product_id: txt(40), category: T40, market: txt(80), about: txt(160) }, c: ['intent'] }],
   [/^\/sitemap\.xml$/, { k: { part: (v) => (SITEMAP_PARTS.includes(v) ? v : ''), p: int(0, 99) } }],
 ];
 /* 所有页面都允许:BEAUTY2OEM 简报表单提交后回跳的状态(服务端读,只收小写短词);询盘表单预填(前端读) */
