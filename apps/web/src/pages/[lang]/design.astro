@@ -1,11 +1,11 @@
 ---
 /**
- * AI 在线设计 —— 3D 瓶身预览 + 画布编辑器(上传 logo + 文字合成)。
+ * AI 在线设计中心 —— 工具库 + 3D 瓶身预览 + 画布编辑器。
  *
- * 设计功能不依赖实时 AI 出图,主路径是用户自己的产品图 + logo + 文字合成:
- *   签页一:3D 瓶身预览 —— 选瓶型、换颜色、贴标签文字,360° 转着看。
- *   签页二:画布编辑器 —— 上传产品图 + 上传 logo + 添加文字,导出 PNG 方案图。
- * 底部:导出方案 + "用这版发询盘"按钮。
+ * 2026-10-28 改版：从「单页编辑器」升级为「工具中心」。
+ * 参照莱诺鸟的结构（工具卡片按用途分组、每张卡配真实样图），
+ * 但只展示我们**真的能立刻做**的工具，未上线的明确标「即将上线」——
+ * 不做假入口，这是设计技能 A8/Pitfalls 里最硬的一条。
  */
 import { t as uiT, type Locale } from '@cosmetic/core/i18n';
 import { env } from 'cloudflare:workers';
@@ -15,6 +15,7 @@ import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import DesignEditor from '@cosmetic/core/components/DesignEditor.astro';
 import BottlePreview3D from '@cosmetic/core/components/BottlePreview3D.astro';
 import { pageShell } from '../../lib/shell';
+import '@cosmetic/core/styles/tool.css';
 
 export const prerender = false;
 
@@ -23,27 +24,103 @@ const zh = lang.startsWith('zh');
 const db = (env as any).DB as D1Database | undefined;
 
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+
+/* 设计案例展示（2026-10-30）：从 design_showcase 表读；为空则不渲染区块。
+   用户提供图片后入库，前端自动出现，不需要改代码。 */
+type Showcase = { media_id: number; title_zh: string | null; title_en: string | null; cat: string | null };
+const showcase: Showcase[] = db
+  ? ((await db.prepare(`SELECT media_id,title_zh,title_en,cat FROM design_showcase WHERE enabled=1 ORDER BY sort_order, id LIMIT 12`)
+      .all<Showcase>().catch(() => ({ results: [] as Showcase[] }))).results ?? [])
+  : [];
 const path = `/${lang}/design/`;
 
 const T = zh ? {
   eyebrow: 'AI 在线设计',
-  title: '在线设计:3D 预览 + 画布编辑',
-  lead: '选瓶型、换颜色、贴标签,360° 转着看;或上传你的产品图,叠上 logo 和文字,导出方案图后一键发询盘。不依赖 AI 出图,你自己的素材就能合成。',
+  title: '从产品图到包装方案，一站完成',
+  lead: '上传你的产品图或 logo，在浏览器里直接排版、贴标签、预览 3D 瓶身，导出方案图后带着它发询盘。不依赖 AI 出图，你自己的素材就能合成。',
+  now: '现在就能用',
+  allTools: '全部工具页',
+  soon: '即将上线',
+  soonNote: '下面这些已在开发中，上线前不会出现可点入口——避免点进去发现是空页。',
+  start: '立即开始',
+  cta: '用这版发询盘',
+  cards: [
+    { img: 169, t: '包装设计工作台', d: '从包材库选真实瓶型 → 3D 预览 → 叠 logo 与文字 → 出方案，三步拿到可开会的提案。', to: '/pack/' },
+    { img: 170, t: '3D 瓶身预览',  d: '选瓶型、换颜色、贴标签，360° 转动查看瓶型与标签方向。', to: '/pack/' },
+    { img: 171, t: '包装图库',      d: '12 套已量产包装实拍，按品类与材质筛选，直接引用到方案。', to: '/packaging/' },
+    { img: 172, t: '配方与 INCI 查询', d: '按成分或功效反查配方库与 INCI 目录，为产品定位找依据。', to: '/inci/' },
+    { img: 173, t: '报关与合规索引', d: '目标市场的备案路径、责任人规则与标签语言要求，一页查完。', to: '/compliance/' },
+    { img: 174, t: '礼盒与标签设计', d: '礼盒结构、材质工艺与标签必备要素，先看规范再出稿。', to: '/tools/gift-box-design/' },
+  ],
+  planned: [
+    'AI 电商套图', '详情页生成', '场景图与模特手持', '爆款视频复刻', '一键去背景', '图片转可编辑矢量', '宣称合规检查',
+  ],
   tab3d: '3D 瓶身预览',
   tabCanvas: '画布编辑器',
-  exportHint: '在画布编辑器中导出 PNG 后,可直接带着设计图发询盘。',
-  cta: '用这版发询盘',
-  fine: '3D 预览为参数化模型,用于沟通瓶型与标签方向;画布合成为你自己的素材,导出图不保存到服务器。',
+  aiTitle: 'AI 电商套图（试用）',
+  aiLead: '输入产品名称，生成 4 张电商用图：白底主图、生活场景、功效特写、礼盒陈列。当前为文生图，暂不支持上传产品图换背景。',
+  aiPh: '例如：草本祛痘精华 30ml',
+  aiCat: '品类（可选）',
+  showcaseTitle: '设计案例',
+  showcaseMore: '看全部成品',
+  brandTitle: '品牌色彩系统',
+  brandLead: '上传一张 logo 或包装图，自动提取主色，生成可直接交付的色板（HEX / RGB）。纯浏览器计算，不上传服务器。',
+  brandPick: '选择图片',
+  brandEmpty: '还没有提取结果。',
+  brandCopy: '点击色块复制色值',
+  modelTitle: '选择模型',
+  modelHint: '点卡片切换；灰色为未配置密钥',
+  aiBtn: '生成 4 张场景图',
+  aiBusy: '正在出图，约 30–90 秒…',
+  aiEmpty: '还没有结果。',
+  aiNote: '图片为模型临时链接（约 24 小时有效），需要长期使用请下载保存。每次生成消耗 4 次出图配额。',
+  exportHint: '在画布编辑器中导出 PNG 后，可直接带着设计图发询盘。',
+  fine: '3D 预览为参数化模型，用于沟通瓶型与标签方向；画布合成为你自己的素材，导出图不保存到服务器。',
 } : {
   eyebrow: 'AI Online Design',
-  title: 'Online Design: 3D Preview + Canvas Editor',
-  lead: 'Pick a bottle, switch colors, stick a label and spin 360; or upload your product photo, overlay logo and text, export the draft and send an inquiry. No AI rendering needed — your own assets do the work.',
+  title: 'From product photo to packaging concept, in one place',
+  lead: 'Upload your product photo or logo, lay it out in the browser, add a label, preview a 3D bottle, export the draft and send an inquiry with it. No AI rendering needed — your own assets do the work.',
+  now: 'Available now',
+  allTools: 'All tool pages',
+  soon: 'Coming soon',
+  soonNote: 'These are in development. No clickable entries until they ship — we would rather show nothing than a dead button.',
+  start: 'Start now',
+  cta: 'Send an inquiry with this draft',
+  cards: [
+    { img: 169, t: 'Packaging design workbench', d: 'Pick a real bottle from the library, preview in 3D, overlay logo and text, get a concept to share.', to: '/pack/' },
+    { img: 170, t: '3D bottle preview',       d: 'Pick a bottle, switch colors, stick a label and spin 360 to check orientation.', to: '/pack/' },
+    { img: 171, t: 'Packaging gallery',       d: '12 production packaging shots, filterable by category and material.', to: '/packaging/' },
+    { img: 172, t: 'Formula & INCI lookup',   d: 'Search by ingredient or claim to ground your product positioning.', to: '/inci/' },
+    { img: 173, t: 'Compliance index',        d: 'Filing route, responsible-person rule and label language per market.', to: '/compliance/' },
+    { img: 174, t: 'Gift box & label design', d: 'Structure, material and the label elements regulators require — read the rules before artwork.', to: '/tools/gift-box-design/' },
+  ],
+  planned: [
+    'AI e-commerce image sets', 'Detail-page generation', 'Scene & model-in-hand shots', 'Viral video replication', 'One-click background removal', 'Image to editable vector', 'Claim compliance check',
+  ],
   tab3d: '3D Bottle Preview',
   tabCanvas: 'Canvas Editor',
+  aiTitle: 'AI e-commerce image set (beta)',
+  aiLead: 'Enter a product name and generate 4 e-commerce shots: white-background hero, lifestyle scene, ingredient close-up, gift-set display. Text-to-image only for now — uploading your own product photo is not supported yet.',
+  aiPh: 'e.g. herbal acne serum 30ml',
+  aiCat: 'Category (optional)',
+  showcaseTitle: 'Design examples',
+  showcaseMore: 'See the full showcase',
+  brandTitle: 'Brand colour system',
+  brandLead: 'Upload a logo or packaging shot to extract the dominant colours and get a deliverable palette (HEX / RGB). Runs entirely in your browser — nothing uploaded.',
+  brandPick: 'Choose an image',
+  brandEmpty: 'No palette yet.',
+  brandCopy: 'Click a swatch to copy',
+  modelTitle: 'Choose a model',
+  modelHint: 'Click a card to switch; grey = no API key yet',
+  aiBtn: 'Generate 4 shots',
+  aiBusy: 'Generating, about 30–90s…',
+  aiEmpty: 'No results yet.',
+  aiNote: 'Images are temporary model links (valid ~24h); download to keep them. Each run uses 4 image-generation credits.',
   exportHint: 'Export a PNG from the canvas editor, then send an inquiry with your design attached.',
-  cta: 'Send an inquiry with this draft',
-  fine: '3D preview is a parametric model for aligning on bottle type and label direction. Canvas compositing uses your own assets; exported images are not stored on the server.',
+  fine: 'The 3D preview is a parametric model for aligning on bottle type and label direction. Canvas compositing uses your own assets; exported images are not stored on the server.',
 };
+
+const href = (n: number) => `/media/${n}`;
 ---
 
 <BaseLayout
@@ -64,35 +141,126 @@ const T = zh ? {
   <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
               siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
 
-  <main id="main" class="ds dtc-wrap-wide">
-    <header class="ds-head">
-      <p class="dtc-eyebrow">{T.eyebrow}</p>
-      <h1>{T.title}</h1>
-      <p class="ds-lead">{T.lead}</p>
-    </header>
-
-    <!-- 签页切换 -->
-    <div class="ds-tabs" role="tablist">
-      <button type="button" class="ds-tab on" role="tab" aria-selected="true" data-tab="3d">{T.tab3d}</button>
-      <button type="button" class="ds-tab" role="tab" aria-selected="false" data-tab="canvas">{T.tabCanvas}</button>
+  {/* 首屏：香水瓶大图铺满 + 渐变遮罩 + 标题叠加（2026-10-30 视觉升级） */}
+  <section class="ds-hero" aria-label={T.title}>
+    <div class="ds-hero-bg" style={`background-image:url('/media/9555')`}></div>
+    <div class="ds-hero-content">
+      <p class="ds-hero-eyebrow">{T.eyebrow}</p>
+      <h1 class="ds-hero-title">{T.title}</h1>
+      <p class="ds-hero-lead">{T.lead}</p>
     </div>
+  </section>
 
-    <!-- 签页一:3D 瓶身预览 -->
-    <section class="ds-panel" data-panel="3d" role="tabpanel">
-      <BottlePreview3D locale={lang} />
+  <main id="main" class="tw ds dtc-wrap-wide">
+    {showcase.length > 0 && (
+      <section class="ds-showcase" aria-labelledby="ds-showcase-h">
+        <div class="ds-showcase-head">
+          <h2 id="ds-showcase-h">{T.showcaseTitle}</h2>
+          <a class="ds-showcase-more" href={`/${lang}/portfolio/`}>{T.showcaseMore} →</a>
+        </div>
+        <ul class="ds-showcase-grid">
+          {showcase.map((s) => (
+            <li>
+              <img src={`/media/${s.media_id}`} alt={zh ? (s.title_zh || '') : (s.title_en || '')} loading="lazy" width="320" height="400" />
+              <span>{zh ? (s.title_zh || s.title_en || '') : (s.title_en || s.title_zh || '')}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <!-- 工具卡片：现在就能用 -->
+    <section class="ds-tools" aria-labelledby="ds-now">
+      <div class="ds-sec-head">
+        <h2 id="ds-now">{T.now}</h2>
+        <span class="ds-jump-wrap"><a class="ds-jump" href={`/${lang}/tools/`}>{T.allTools} →</a><a class="ds-jump" href="#start">{T.start} ↓</a></span>
+      </div>
+      <div class="ds-grid">
+        {T.cards.map((c) => (
+          <a class="ds-card" href={c.to.startsWith('#') ? c.to : `/${lang}${c.to}`}>
+            <span class="ds-thumb"><img src={href(c.img)} alt="" loading="lazy" width="640" height="480" /></span>
+            <span class="ds-card-body">
+              <span class="ds-card-t">{c.t}</span>
+              <span class="ds-card-d">{c.d}</span>
+            </span>
+          </a>
+        ))}
+      </div>
     </section>
 
-    <!-- 签页二:画布编辑器 -->
-    <section class="ds-panel" data-panel="canvas" role="tabpanel" hidden>
-      <DesignEditor locale={lang} source="design-page" />
+    <!-- 即将上线：不做可点入口 -->
+    <section class="ds-soon" aria-labelledby="ds-soon">
+      <h2 id="ds-soon">{T.soon}</h2>
+      <p class="ds-soon-note">{T.soonNote}</p>
+      <ul class="ds-chips">
+        {T.planned.map((p) => <li class="ds-chip">{p}</li>)}
+      </ul>
     </section>
 
-    <!-- 底部:导出提示 + 询盘按钮 -->
-    <div class="ds-foot">
-      <p class="ds-export-hint">{T.exportHint}</p>
-      <a class="dtc-btn primary" href={`/${lang}/contact/`}>{T.cta} →</a>
-      <p class="ds-fine">{T.fine}</p>
-    </div>
+    <!-- AI 电商套图（试用） -->
+    <section class="ds-ai" id="ecom-set" aria-labelledby="ds-ai-h">
+      <h2 id="ds-ai-h">{T.aiTitle}</h2>
+      <p class="ds-ai-lead">{T.aiLead}</p>
+      <section class="ds-brand" aria-labelledby="ds-brand-h">
+        <h3 id="ds-brand-h">{T.brandTitle}</h3>
+        <p class="ds-brand-lead">{T.brandLead}</p>
+        <div class="ds-brand-row">
+          <label class="ds-brand-pick">
+            <input type="file" accept="image/*" id="brand-file" hidden />
+            <span>{T.brandPick}</span>
+          </label>
+          <span class="ds-brand-hint">{T.brandCopy}</span>
+        </div>
+        <div class="ds-palette" id="brand-palette"></div>
+      </section>
+
+      <div class="ds-models" aria-labelledby="ds-models-h">
+        <div class="ds-models-head">
+          <h3 id="ds-models-h">{T.modelTitle}</h3>
+          <span class="ds-models-hint">{T.modelHint}</span>
+        </div>
+        <div class="ds-models-grid" id="es-models"></div>
+      </div>
+
+      <form id="es-form" class="ds-ai-form">
+        <input name="product" required minlength="2" maxlength="100" placeholder={T.aiPh} aria-label={T.aiTitle} />
+        <select name="category" aria-label={T.aiCat}>
+          <option value="">{T.aiCat}</option>
+          <option value="skincare">护肤 / skincare</option>
+          <option value="makeup">彩妆 / makeup</option>
+          <option value="hair">洗护 / hair &amp; body</option>
+          <option value="oral">口腔 / oral</option>
+          <option value="suncare">防晒 / sun care</option>
+          <option value="fragrance">香氛 / fragrance</option>
+          <option value="pet">宠物 / pet</option>
+        </select>
+        <button type="submit" class="dtc-btn primary">{T.aiBtn}</button>
+      </form>
+      <p class="ds-ai-msg" id="es-msg"></p>
+      <div class="ds-ai-grid" id="es-out"></div>
+      <p class="ds-ai-note">{T.aiNote}</p>
+    </section>
+
+    <!-- 编辑器 -->
+    <section id="start" class="ds-start">      <div class="ds-tabs" role="tablist">
+        <button type="button" class="ds-tab on" role="tab" aria-selected="true" data-tab="3d">{T.tab3d}</button>
+        <button type="button" class="ds-tab" role="tab" aria-selected="false" data-tab="canvas">{T.tabCanvas}</button>
+      </div>
+
+      <section class="ds-panel" data-panel="3d" role="tabpanel">
+        <BottlePreview3D locale={lang} />
+      </section>
+
+      <section class="ds-panel" data-panel="canvas" role="tabpanel" hidden>
+        <DesignEditor locale={lang} source="design-page" />
+      </section>
+
+      <div class="ds-foot">
+        <p class="ds-export-hint">{T.exportHint}</p>
+        <a class="dtc-btn primary" href={`/${lang}/contact/`}>{T.cta} →</a>
+        <p class="ds-fine">{T.fine}</p>
+      </div>
+    </section>
   </main>
 
   <SiteFooter locale={lang} path={path}
@@ -115,13 +283,222 @@ const T = zh ? {
     })();
   </script>
 
+  <script is:inline>
+    /* 品牌色彩提取（2026-10-30）：纯客户端 canvas，不上传、不花钱。
+       算法：缩到 120px → 每通道 5bit 分桶 → 统计 → 合并相近色 → 取前 8 个。
+       只做「能交付的东西」：HEX + RGB，点一下复制。 */
+    (function () {
+      var input = document.getElementById('brand-file');
+      var palette = document.getElementById('brand-palette');
+      if (!input || !palette) return;
+
+      function rgbToHex(r, g, b) {
+        return '#' + [r, g, b].map(function (v) {
+          return ('0' + Math.max(0, Math.min(255, Math.round(v))).toString(16)).slice(-2);
+        }).join('');
+      }
+      function luminance(r, g, b) { return 0.2126 * r + 0.7152 * g + 0.0722 * b; }
+
+      function extract(img) {
+        var W = 120, H = 120;
+        var c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        var ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, W, H);
+        var data = ctx.getImageData(0, 0, W, H).data;
+        var buckets = {};
+        for (var i = 0; i < data.length; i += 4) {
+          var a = data[i + 3];
+          if (a < 128) continue;
+          var r = data[i], g = data[i + 1], b = data[i + 2];
+          /* 跳过接近纯白/纯黑的背景 */
+          var lum = luminance(r, g, b);
+          if (lum > 245 || lum < 12) continue;
+          var key = (r >> 3) + ',' + (g >> 3) + ',' + (b >> 3);
+          if (!buckets[key]) buckets[key] = { n: 0, r: 0, g: 0, b: 0 };
+          var bk = buckets[key];
+          bk.n++; bk.r += r; bk.g += g; bk.b += b;
+        }
+        var list = Object.keys(buckets).map(function (k) {
+          var bk = buckets[k];
+          return { n: bk.n, r: bk.r / bk.n, g: bk.g / bk.n, b: bk.b / bk.n };
+        }).sort(function (a, b) { return b.n - a.n; });
+
+        /* 合并相近色（欧氏距离 < 32），最多 8 个 */
+        var out = [];
+        list.forEach(function (c1) {
+          if (out.length >= 8) return;
+          for (var i = 0; i < out.length; i++) {
+            var d = Math.sqrt(Math.pow(c1.r - out[i].r, 2) + Math.pow(c1.g - out[i].g, 2) + Math.pow(c1.b - out[i].b, 2));
+            if (d < 32) return;
+          }
+          out.push(c1);
+        });
+        return out;
+      }
+
+      input.addEventListener('change', function () {
+        var f = input.files && input.files[0];
+        if (!f) return;
+        var url = URL.createObjectURL(f);
+        var img = new Image();
+        img.onload = function () {
+          var cols = extract(img);
+          URL.revokeObjectURL(url);
+          if (!cols.length) { palette.innerHTML = '<p class="ds-brand-hint">这张图里没有可提取的颜色</p>'; return; }
+          palette.innerHTML = cols.map(function (c) {
+            var hex = rgbToHex(c.r, c.g, c.b);
+            var rgb = Math.round(c.r) + ', ' + Math.round(c.g) + ', ' + Math.round(c.b);
+            var onDark = luminance(c.r, c.g, c.b) < 140;
+            return '<button type="button" class="ds-swatch" data-hex="' + hex + '" style="background:' + hex + ';color:' + (onDark ? '#fff' : '#111') + '">' +
+                   '<span class="ds-swatch-hex">' + hex.toUpperCase() + '</span>' +
+                   '<span class="ds-swatch-rgb">' + rgb + '</span>' +
+                   '</button>';
+          }).join('');
+          palette.addEventListener('click', function (e) {
+            var b = e.target.closest('.ds-swatch');
+            if (!b) return;
+            var hex = b.getAttribute('data-hex');
+            if (navigator.clipboard) navigator.clipboard.writeText(hex);
+            b.classList.add('copied');
+            setTimeout(function () { b.classList.remove('copied'); }, 900);
+          });
+        };
+        img.onerror = function () { palette.innerHTML = '<p class="ds-brand-hint">图片读取失败</p>'; };
+        img.src = url;
+      });
+    })();
+  </script>
+
+  <script is:inline define:vars={{ MSG: { busy: T.aiBusy, empty: T.aiEmpty } }}>
+    (function () {
+      var form = document.getElementById('es-form');
+      var out = document.getElementById('es-out');
+      var msg = document.getElementById('es-msg');
+      if (!form || !out || !msg) return;
+      var btn = form.querySelector('button[type=submit]');
+
+      /* 模型卡片:从 /api/ai/models 拉取,方块展示;选中项随表单提交 */
+      var modelsBox = document.getElementById('es-models');
+      var pickedModel = '';
+      if (modelsBox) {
+        fetch('/api/ai/models').then(function (r) { return r.json(); }).then(function (d) {
+          var list = (d && d.models) || [];
+          if (!list.length) { modelsBox.innerHTML = '<p class="ds-models-empty">暂无可用模型</p>'; return; }
+          modelsBox.textContent = '';
+          list.forEach(function (m) {
+            var cls = 'ds-model' + (m.ready ? '' : ' off') + (m.id === pickedModel ? ' on' : '');
+            var tag = m.task === 'video' ? '视频' : (m.task === 'vision' ? '读图' : '出图');
+            var b = document.createElement('button');
+            b.type = 'button'; b.className = cls; b.setAttribute('data-model', String(m.id || '')); b.setAttribute('aria-pressed', 'false');
+            var sp1 = document.createElement('span'); sp1.className = 'ds-model-tag'; sp1.textContent = tag;
+            var sp2 = document.createElement('span'); sp2.className = 'ds-model-name'; sp2.textContent = String(m.label || m.id || '');
+            b.appendChild(sp1); b.appendChild(sp2);
+            if (m.note) { var sp3 = document.createElement('span'); sp3.className = 'ds-model-note'; sp3.textContent = String(m.note).slice(0, 28); b.appendChild(sp3); }
+            modelsBox.appendChild(b);
+          });
+          modelsBox.addEventListener('click', function (e) {
+            var b = e.target.closest('.ds-model');
+            if (!b) return;
+            if (b.classList.contains('off')) { msg.textContent = '该模型还没配置密钥'; return; }
+            pickedModel = b.getAttribute('data-model') || '';
+            Array.prototype.forEach.call(modelsBox.querySelectorAll('.ds-model'), function (x) {
+              var on = x === b;
+              x.classList.toggle('on', on);
+              x.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+          });
+        }).catch(function () { modelsBox.innerHTML = ''; });
+      }
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var fd = new FormData(form);
+        var payload = { product: fd.get('product'), category: fd.get('category') };
+        if (pickedModel) payload.model = pickedModel;
+        btn.disabled = true;
+        msg.textContent = MSG.busy;
+        out.innerHTML = '';
+        fetch('/api/ai/ecom-set', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            var j = res.j || {};
+            if (!j.ok) { msg.textContent = j.msg || '生成失败'; return; }
+            msg.textContent = '';
+            var drawn = 0;
+            (j.images || []).forEach(function (im) {
+              var u = String((im && im.url) || '');
+              if (!/^https:\/\//.test(u)) return;
+              var fig = document.createElement('figure'); fig.className = 'ds-ai-item';
+              var img = document.createElement('img');
+              img.src = u; img.alt = String((im && im.label) || ''); img.loading = 'lazy';
+              var cap = document.createElement('figcaption'); cap.textContent = String((im && im.label) || '');
+              fig.appendChild(img); fig.appendChild(cap); out.appendChild(fig); drawn++;
+            });
+            if (!drawn) msg.textContent = MSG.empty;
+          })
+          .catch(function () { msg.textContent = '网络错误，请重试'; })
+          .then(function () { btn.disabled = false; });
+      });
+    })();
+  </script>
+
   <style>
-    .ds { padding-block: var(--dtc-py, 48px) calc(var(--dtc-py, 48px) * 1.5); }
-    .ds-head { text-align: left; max-width: 64ch; }
-    .ds-head h1 { margin: .5rem 0 0; font-size: var(--ck-h1); line-height: 1.15; text-wrap: balance; }
+    .ds { padding-block: 0 calc(var(--dtc-py, 48px) * 1.5); }
+    .ds-head { text-align: left; max-width: 62ch; }
+    .ds-head h1 { margin: .5rem 0 0; font-size: var(--ck-h1); line-height: 1.12; letter-spacing: -.02em; text-wrap: balance; }
     .ds-lead { margin: .75rem 0 0; color: var(--ck-ink-soft); line-height: 1.7; }
 
-    .ds-tabs { display: flex; gap: .5rem; margin-top: 1.5rem; border-bottom: 1px solid var(--ck-line); }
+    /* 分节标题 */
+    .ds-sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin: 2.5rem 0 1rem; }
+    .ds-sec-head h2, .ds-soon h2 { margin: 0; font-size: 1.0625rem; letter-spacing: .01em; }
+    .ds-jump { font-size: .875rem; color: var(--ck-accent); text-decoration: none; white-space: nowrap; }
+    .ds-jump:hover { text-decoration: underline; }
+    .ds-jump-wrap { display: inline-flex; gap: .875rem; flex-wrap: wrap; }
+
+    /* 工具卡片网格 */
+    .ds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr)); gap: 1rem; }
+    .ds-card { display: flex; flex-direction: column; text-decoration: none; color: inherit;
+      border: 1px solid var(--ck-line); border-radius: 14px; overflow: hidden; background: var(--ck-bg);
+      transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+    .ds-card:hover { transform: translateY(-2px); border-color: var(--ck-accent);
+      box-shadow: 0 12px 28px -18px rgb(0 0 0 / .45); }
+    .ds-card:focus-visible { outline: 2px solid var(--ck-accent); outline-offset: 2px; }
+    .ds-thumb { display: block; aspect-ratio: 4 / 3; overflow: hidden; background: color-mix(in srgb, var(--ck-line) 40%, transparent); }
+    .ds-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .ds-card-body { display: grid; gap: .375rem; padding: .875rem 1rem 1.0625rem; }
+    .ds-card-t { font-size: .9688rem; font-weight: 600; }
+    .ds-card-d { font-size: .8438rem; line-height: 1.6; color: var(--ck-ink-soft); }
+
+    /* 即将上线 */
+    .ds-soon { margin-top: 2.5rem; padding: 1.125rem 1.25rem; border: 1px dashed var(--ck-line); border-radius: 14px; }
+    .ds-soon-note { margin: .375rem 0 .875rem; font-size: .8438rem; line-height: 1.65; color: var(--ck-ink-soft); }
+    .ds-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+    .ds-chip { font-size: .8125rem; padding: .375rem .75rem; border-radius: 999px;
+      background: color-mix(in srgb, var(--ck-line) 45%, transparent); color: var(--ck-ink-soft); }
+
+    /* AI 电商套图 */
+    .ds-ai { margin-top: 2.5rem; padding: 1.25rem; border: 1px solid var(--ck-line); border-radius: 14px; }
+    .ds-ai h2 { margin: 0 0 .375rem; font-size: 1.0625rem; }
+    .ds-ai-lead { margin: 0 0 .875rem; font-size: .875rem; line-height: 1.65; color: var(--ck-ink-soft); }
+    .ds-ai-form { display: flex; flex-wrap: wrap; gap: .5rem; align-items: stretch; }
+    .ds-ai-form input, .ds-ai-form select { min-height: 2.75rem; padding: .5rem .75rem; font: inherit; font-size: .875rem;
+      border: 1px solid var(--ck-line); border-radius: 10px; background: var(--ck-bg); color: inherit; }
+    .ds-ai-form input { flex: 1 1 16rem; }
+    .ds-ai-form button[disabled] { opacity: .6; cursor: progress; }
+    .ds-ai-msg { margin: .75rem 0 0; font-size: .8125rem; color: var(--ck-ink-soft); min-height: 1em; }
+    .ds-ai-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: .75rem; margin-top: .875rem; }
+    .ds-ai-item { margin: 0; border: 1px solid var(--ck-line); border-radius: 12px; overflow: hidden; background: var(--ck-bg); }
+    .ds-ai-item img { width: 100%; height: auto; display: block; aspect-ratio: 1 / 1; object-fit: cover; }
+    .ds-ai-item figcaption { padding: .5rem .625rem; font-size: .75rem; color: var(--ck-ink-soft); }
+    .ds-ai-note { margin: .875rem 0 0; font-size: .75rem; line-height: 1.6; color: var(--ck-ink-faint); }
+
+    /* 编辑器区 */
+    .ds-start { margin-top: 2.5rem; scroll-margin-top: 5rem; }    .ds-tabs { display: flex; gap: .5rem; border-bottom: 1px solid var(--ck-line); }
     .ds-tab { padding: .625rem 1.125rem; border: 0; border-bottom: 2px solid transparent;
       background: none; color: var(--ck-ink-soft); font: inherit; font-size: .875rem; cursor: pointer;
       transition: color .15s ease, border-color .15s ease; }
@@ -131,9 +508,83 @@ const T = zh ? {
     .ds-panel { padding-top: 1.5rem; }
     .ds-panel[hidden] { display: none !important; }
 
-    .ds-foot { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--ck-line);
-      display: grid; gap: .75rem; }
+    .ds-foot { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--ck-line); display: grid; gap: .75rem; }
     .ds-export-hint { margin: 0; font-size: .875rem; color: var(--ck-ink-soft); }
     .ds-fine { margin: 0; font-size: .75rem; line-height: 1.7; color: var(--ck-ink-faint); }
-  </style>
+
+    @media (prefers-reduced-motion: reduce) {
+      .ds-card { transition: none; }
+      .ds-card:hover { transform: none; }
+    }
+    /* 模型方块卡片 */
+  .ds-models { margin: 0 0 1rem; }
+  .ds-models-head { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; margin-bottom: .5rem; }
+  .ds-models-head h3 { margin: 0; font-size: .875rem; font-weight: 600; }
+  .ds-models-hint { font-size: 11px; color: var(--tw-text-3, rgba(0,0,0,.45)); }
+  .ds-models-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: .5rem; }
+  .ds-model { position: relative; display: grid; gap: .1875rem; text-align: left; padding: .625rem .6875rem;
+    border: 1px solid var(--tw-border, #d9d9d9); border-radius: 8px; background: #fff; cursor: pointer;
+    font: inherit; transition: border-color .2s, background .2s, box-shadow .2s; }
+  .ds-model:hover { border-color: var(--tw-primary, #7c4da8); }
+  .ds-model.on { border-color: var(--tw-primary, #7c4da8); background: var(--tw-primary-bg, #f7f3fb);
+    box-shadow: 0 0 0 2px rgb(124 77 168 / .14); }
+  .ds-model.off { opacity: .5; cursor: not-allowed; }
+  .ds-model-tag { font-size: 10px; color: var(--tw-primary, #7c4da8); font-weight: 600; letter-spacing: .02em; }
+  .ds-model.off .ds-model-tag { color: var(--tw-text-3, rgba(0,0,0,.45)); }
+  .ds-model-name { font-size: 12.5px; font-weight: 600; color: var(--tw-text, rgba(0,0,0,.88)); line-height: 1.35; }
+  .ds-model-note { font-size: 10.5px; color: var(--tw-text-3, rgba(0,0,0,.45));
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ds-models-empty { margin: 0; font-size: 12px; color: var(--tw-text-3, rgba(0,0,0,.45)); }
+  /* 品牌色彩 */
+  .ds-brand { margin: 0 0 1.25rem; padding: 1rem; border: 1px solid var(--tw-border-2, #f0f0f0);
+    border-radius: 8px; background: #fff; }
+  .ds-brand h3 { margin: 0 0 .25rem; font-size: .875rem; font-weight: 600; }
+  .ds-brand-lead { margin: 0 0 .75rem; font-size: 12px; line-height: 1.6; color: var(--tw-text-3, rgba(0,0,0,.45)); }
+  .ds-brand-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+  .ds-brand-pick { display: inline-flex; align-items: center; min-height: 2rem; padding: 0 .875rem;
+    border: 1px solid var(--tw-border, #d9d9d9); border-radius: 6px; font-size: 13px; cursor: pointer;
+    background: #fff; transition: border-color .2s, color .2s; }
+  .ds-brand-pick:hover { border-color: var(--tw-primary, #7c4da8); color: var(--tw-primary, #7c4da8); }
+  .ds-brand-hint { font-size: 11px; color: var(--tw-text-3, rgba(0,0,0,.45)); }
+  .ds-palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); gap: .5rem; margin-top: .75rem; }
+  .ds-swatch { position: relative; display: grid; gap: .125rem; padding: .625rem .5rem .5rem; border: 0;
+    border-radius: 8px; cursor: pointer; text-align: center; min-height: 4.5rem;
+    font: inherit; transition: transform .15s; }
+  .ds-swatch:hover { transform: translateY(-2px); }
+  .ds-swatch-hex { font-size: 11.5px; font-weight: 700; letter-spacing: .02em; }
+  .ds-swatch-rgb { font-size: 10px; opacity: .78; }
+  .ds-swatch.copied::after { content: '✓ 已复制'; position: absolute; inset: 0; display: grid; place-items: center;
+    background: rgb(0 0 0 / .55); color: #fff; font-size: 11px; border-radius: 8px; }
+  /* 首屏大图（与 /pack 一致的视觉语言） */
+  .ds-hero {
+    position: relative; min-height: clamp(20rem, 40vh, 28rem);
+    display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden;
+  }
+  .ds-hero-bg { position: absolute; inset: 0; background-size: cover; background-position: center 30%; filter: brightness(.48); }
+  .ds-hero::after { content: ''; position: absolute; inset: 0; z-index: 0;
+    background: linear-gradient(180deg, transparent 0%, rgba(26,23,38,.28) 45%, rgba(26,23,38,.86) 100%); }
+  .ds-hero-content { position: relative; z-index: 1; width: 100%; max-width: 64rem; margin: 0 auto;
+    padding: 0 clamp(1rem, 3vw, 2rem) 2.5rem; }
+  .ds-hero-eyebrow { margin: 0 0 .625rem; font-size: 13px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase; color: #c4a8e8; }
+  .ds-hero-title { margin: 0 0 .875rem; font-size: clamp(1.75rem, 1rem + 2.6vw, 2.5rem);
+    font-weight: 700; line-height: 1.12; color: #fff; letter-spacing: -.02em; text-wrap: balance; }
+  .ds-hero-lead { margin: 0; font-size: 16px; line-height: 1.7; color: rgba(255,255,255,.82); max-width: 34rem; }
+
+  /* 设计案例展示 */
+  .ds-showcase { margin: 0 0 2rem; }
+  .ds-showcase-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .875rem; }
+  .ds-showcase-head h2 { margin: 0; font-size: 15px; font-weight: 600; color: var(--tw-text, rgba(0,0,0,.88)); }
+  .ds-showcase-more { font-size: 13px; color: var(--tw-primary, #7c4da8); text-decoration: none; white-space: nowrap; }
+  .ds-showcase-more:hover { text-decoration: underline; }
+  .ds-showcase-grid { list-style: none; margin: 0; padding: 0 0 .5rem; display: flex; gap: .625rem; overflow-x: auto; }
+  .ds-showcase-grid::-webkit-scrollbar { height: 6px; }
+  .ds-showcase-grid::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 99px; }
+  .ds-showcase-grid li { flex: 0 0 auto; margin: 0; }
+  .ds-showcase-grid img { width: 10rem; height: 12.5rem; object-fit: cover; display: block;
+    border-radius: 8px; border: 1px solid var(--tw-border-2, #f0f0f0); background: var(--tw-fill, #f5f5f5); }
+  .ds-showcase-grid span { display: block; margin-top: .375rem; font-size: 11px; color: var(--tw-text-3, rgba(0,0,0,.45));
+    max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+</style>
 </BaseLayout>

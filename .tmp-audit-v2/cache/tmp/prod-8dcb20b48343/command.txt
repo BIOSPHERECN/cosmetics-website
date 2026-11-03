@@ -1,0 +1,3 @@
+worker: bohui-web
+cwd: apps/web
+command: node F:/0cosmetic/cosmetic-sites/tools/set-probe-secret.mjs

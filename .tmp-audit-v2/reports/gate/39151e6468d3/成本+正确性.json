@@ -1,0 +1,57 @@
+{
+  "angle": "成本+正确性",
+  "tree": "39151e6468d33929f8c016dcd4737de825d15db4",
+  "worker": "gate",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-39151e6468d3.json",
+  "run_label": "review-ticket 39151e6468d3 成本+正确性",
+  "reviewer": "claude",
+  "skills_loaded": ["zero-r2-move", "karpathy-coder", "code-reviewer"],
+  "verdict": "过",
+  "checked": ["成本-①", "成本-②", "成本-③", "成本-④", "成本-⑤", "成本-⑥", "成本-⑦", "正确性-①", "正确性-②", "正确性-③", "正确性-④", "正确性-⑤", "正确性-⑥", "正确性-⑦"],
+  "findings": [
+    {
+      "id": "F1",
+      "level": "中",
+      "file": "audit_v2/smoke.py",
+      "line": 43,
+      "claim": "本机 .env 有 PROBE_SECRET 就先把 ?kk= 剥掉再带探针头;若 bohui-web 的 Worker secret 没设、和本机不一致,或线上 middleware 还是没有探针分支的旧版,请求会不带 kk 直接命中边缘缓存,冒烟拿到的是旧版页面,从「误报」变成「漏报」。这和 _probe 注释里写的「等于旧行为」不一致(那句话只在本机没有 secret 时成立)",
+      "failure_scenario": "有人轮换了本机 .env 的 PROBE_SECRET,却没跑 tools/set-probe-secret.mjs;下一次公司站 deploy 冒烟时 middleware 的 probeDiff!=0 → cacheable=true → 回 v84 缓存里的旧页 200 → 新版渲染抛错(catch-all 吞成 404,或 5xx)没被发现 → 不回退",
+      "evidence": "读了 smoke.py 第 36-50、95-135 行;apps/web/src/middleware.ts 第 469-479 行(probe 判定)、第 512-516 行(cacheable 里有 !probe);tools/set-probe-secret.mjs 第 1-9 行(靠手工跑,把本机值同步到 Worker)。本机 .env 里 PROBE_SECRET 出现 1 次。无法只读核实线上 Worker 的 secret 是否已设(规矩禁止碰 wrangler)",
+      "fix": "让 middleware 在 probe 命中时回一个响应头(如 x-bohui-probe: 1),smoke 对带头请求要求见到这个回头,见不到就算错;或者至少加一个 cf-cache-status 不为 HIT 的检查。不必拦本次"
+    },
+    {
+      "id": "F2",
+      "level": "低",
+      "file": "audit_v2/smoke.py",
+      "line": 16,
+      "claim": "_probe 的正则只去掉双引号;.env 里写成单引号 PROBE_SECRET='x' 时读到的值带引号,和 Worker 端对不上,触发 F1 的漏报路径。set-probe-secret.mjs 用的是同一个正则,两边会一起带引号,所以现在是一致的,只是脆",
+      "failure_scenario": "有人把 .env 改成单引号写法,两边都带引号,依然对得上;只有一边改了才出问题,概率低",
+      "evidence": "smoke.py 第 16 行和 tools/set-probe-secret.mjs 第 7 行正则相同",
+      "fix": "不用改;真要改就把读 .env 的逻辑两边收成一份"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "JEV",
+      "result": "不成立",
+      "why": "Jev 给了 block,但 reason 为空,noul.cost 0.03、compliance 0.02、只有 security 0.42 偏高。本角度核实:ops.py 把 subparsers 的 dest 从 cmd 改成 op 后,第 246 行 prod 读的 a.cmd 就是 REMAINDER 列表,其他函数都没用子命令名字段(grep 过 a.cmd 只剩第 246 行),修复正确;smoke.py 探针头只在正则 ^https://(www\\.)?(biosphere-ai|beauty2oem)\\.com/ 命中时才加,opener 里有 NoRedirect,不会把头带到跳转目标,走 https,密钥不落盘、不打印(res 里记的是 it['url'])。没有可复现的失败场景支持拦截。安全+合规那一份的 diff 是 0 个文件,密钥处理这段在这里一并看过了"
+    },
+    {
+      "ref": "LAYA",
+      "result": "成立但可接受",
+      "why": "Laya conf 0.02、reason 为空,信号基本没用;把它当「存疑」来看,本角度能找到的实际风险是 F1(Worker secret 没同步时冒烟漏报),属于条件触发,不影响本次功能正确性",
+      "mitigation": "上线后第一次公司站 deploy 冒烟时手工确认:任选一条带探针头的请求,响应 cf-cache-status 不能是 HIT,且结果和 ?kk= 时代的基线一致;后续按 F1 的修法补回头检查"
+    }
+  ],
+  "risks": [
+    {"cat": "正确性", "level": "中", "item": "公司站冒烟从「?kk= 被 301 误报」变成「secret 不同步时静默吃缓存漏报」", "mitigation": "盯下一次 biosphere-ai / beauty2oem deploy 冒烟:通过数应该从 4/23 回到接近全过,并且至少一条确认不是缓存命中;轮换 PROBE_SECRET 时必须同时跑 set-probe-secret.mjs"},
+    {"cat": "费用", "level": "低", "item": "探针请求绕开缓存、现渲染读 D1,每次 deploy 冒烟多出约 23 次现渲染(和以前 ?kk= 破缓存一样多),hourly 模式不带 kk 也不带头,仍走缓存;不涉及 CACHE_V、R2、模型、KV 写、定时任务", "mitigation": "盯 Bohui-D1Budget 的日读线,预期看不出变化"},
+    {"cat": "回归", "level": "低", "item": "ops.py prod 子命令是第一次真正能跑通,调用方拿到的是 wrangler 真执行,之前这条路从没跑过", "mitigation": "第一次用 ops.py prod 时先挑只读命令试一下,确认 --worker/--note 之后 -- 的拼接正确"}
+  ],
+  "smoke_extra": [
+    "python audit_v2/ops.py prod --worker <任一> --note 自测 -- --version(本地确认 a.cmd 是列表、a.op=='prod')",
+    "https://biosphere-ai.com/ 带 x-bohui-probe 头:200 且 cf-cache-status 不是 HIT",
+    "https://www.beauty2oem.com/ 带 x-bohui-probe 头:200 且不 301"
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/gate/39151e6468d3/成本+正确性.json"
+}

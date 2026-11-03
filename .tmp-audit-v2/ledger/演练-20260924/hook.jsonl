@@ -1,0 +1,3 @@
+{"ts": "2026-09-24T20:29:29+08:00", "session": null, "tool": "Bash", "text": "npx wrangler deploy", "why": "wrangler deploy(上线只走 ship.sh)", "mode": "observe"}
+{"ts": "2026-09-24T20:29:43+08:00", "session": null, "tool": "Bash", "text": "npx wrangler deploy | x", "why": "wrangler deploy(上线只走 ship.sh)", "mode": "observe"}
+{"ts": "2026-09-24T20:29:44+08:00", "session": null, "tool": "Bash", "text": "npx wrangler deploy | x", "why": "wrangler deploy(上线只走 ship.sh)", "mode": "observe"}

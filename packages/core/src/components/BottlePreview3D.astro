@@ -37,6 +37,9 @@ const PROFILES: Record<string, { label_zh: string; label_en: string }> = {
   tube:    { label_zh: '软管',   label_en: 'Tube' },
   jar:     { label_zh: '广口瓶', label_en: 'Jar' },
   spray:   { label_zh: '喷雾瓶', label_en: 'Spray' },
+  pump:    { label_zh: '泵头瓶', label_en: 'Pump' },
+  airless: { label_zh: '真空瓶', label_en: 'Airless' },
+  roller:  { label_zh: '走珠瓶', label_en: 'Roller' },
 };
 
 const COLORS = [
@@ -61,12 +64,22 @@ const T = zh
       labelOff: '隐藏标签',
       reset: '复位视角',
       snapshot: '截图当前角度',
+      compare: '多瓶型对比',
+      compareHint: '至少勾选两个瓶型',
       shotDone: '已截图,长按或右键保存',
       shotFail: '截图失败,请重试',
       dragHint: '鼠标拖拽旋转 · 滚轮缩放',
       noWebgl: '你的浏览器不支持 WebGL,无法显示 3D 预览。',
       caps: '瓶盖',
       body: '瓶身',
+      material: '材质与表面',
+      preset: '快速预设',
+      prGlass: '玻璃', prFrosted: '磨砂', prMatte: '哑光', prMetal: '金属',
+      background: '背景', bgLight: '浅色', bgGray: '灰色', bgDark: '深色',
+      capGroup: '瓶盖', capColor: '盖色', capMetal: '镜面度',
+      roughness: '粗糙度',
+      metalness: '金属性',
+      opacity: '透明度',
     }
   : {
       title: '3D Bottle Preview',
@@ -80,12 +93,22 @@ const T = zh
       labelOff: 'Hide label',
       reset: 'Reset view',
       snapshot: 'Snapshot this angle',
+      compare: 'Compare bottles',
+      compareHint: 'Select at least two bottle types',
       shotDone: 'Captured — long-press or right-click to save',
       shotFail: 'Capture failed, please retry',
       dragHint: 'Drag to rotate · Scroll to zoom',
       noWebgl: 'Your browser does not support WebGL.',
       caps: 'Cap',
       body: 'Body',
+      material: 'Material & finish',
+      preset: 'Presets',
+      prGlass: 'Glass', prFrosted: 'Frosted', prMatte: 'Matte', prMetal: 'Metal',
+      background: 'Background', bgLight: 'Light', bgGray: 'Grey', bgDark: 'Dark',
+      capGroup: 'Cap', capColor: 'Cap colour', capMetal: 'Cap metalness',
+      roughness: 'Roughness',
+      metalness: 'Metalness',
+      opacity: 'Opacity',
     };
 
 /** 唯一实例 id —— 一页可能放多个预览(不同瓶型对比),id 不能撞。 */
@@ -103,12 +126,14 @@ const uid = 'bp3d-' + Math.random().toString(36).slice(2, 8);
       <aside class="bp3d-controls">
         <fieldset class="bp3d-types">
           <legend>{T.bottleType}</legend>
-          {Object.entries(PROFILES).map(([key, p]) => (
-            <label class="bp3d-type">
-              <input type="radio" name={`${uid}-type`} value={key} checked={key === 'dropper'} />
-              <span>{zh ? p.label_zh : p.label_en}</span>
-            </label>
-          ))}
+          <div class="bp3d-typegrid">
+            {Object.entries(PROFILES).map(([key, p]) => (
+              <label class="bp3d-typecard">
+                <input type="checkbox" name={`${uid}-type`} value={key} checked={key === 'dropper'} />
+                <span class="bp3d-typecard-name">{zh ? p.label_zh : p.label_en}</span>
+              </label>
+            ))}
+          </div>
         </fieldset>
 
         <fieldset class="bp3d-colors">
@@ -129,6 +154,56 @@ const uid = 'bp3d-' + Math.random().toString(36).slice(2, 8);
           </label>
         </fieldset>
 
+        <fieldset class="bp3d-material">
+          <legend>{T.material}</legend>
+          <div class="bp3d-presets" role="group" aria-label={T.preset}>
+            <button type="button" data-preset="glass" aria-pressed="false">{T.prGlass}</button>
+            <button type="button" data-preset="frosted" aria-pressed="false">{T.prFrosted}</button>
+            <button type="button" data-preset="matte" aria-pressed="false">{T.prMatte}</button>
+            <button type="button" data-preset="metal" aria-pressed="false">{T.prMetal}</button>
+          </div>
+          <div class="bp3d-matrow">
+            <label for={`${uid}-rough`}>{T.roughness}</label>
+            <input id={`${uid}-rough`} type="range" min="0" max="1" step="0.01" value="0.35" data-mat="roughness" />
+            <output>0.35</output>
+          </div>
+          <div class="bp3d-matrow">
+            <label for={`${uid}-metal`}>{T.metalness}</label>
+            <input id={`${uid}-metal`} type="range" min="0" max="1" step="0.01" value="0.05" data-mat="metalness" />
+            <output>0.05</output>
+          </div>
+          <div class="bp3d-matrow">
+            <label for={`${uid}-opac`}>{T.opacity}</label>
+            <input id={`${uid}-opac`} type="range" min="0.3" max="1" step="0.01" value="0.88" data-mat="opacity" />
+            <output>88%</output>
+          </div>
+          <div class="bp3d-matrow">
+            <label>{T.background}</label>
+            <div class="bp3d-bgs" role="group" aria-label={T.background}>
+              <button type="button" data-bg="light" style="--sw:#f4f4f6" aria-pressed="true">{T.bgLight}</button>
+              <button type="button" data-bg="gray" style="--sw:#dcdce2" aria-pressed="false">{T.bgGray}</button>
+              <button type="button" data-bg="dark" style="--sw:#1b1b22" aria-pressed="false">{T.bgDark}</button>
+            </div>
+            <output></output>
+          </div>
+        </fieldset>
+
+        <fieldset class="bp3d-material bp3d-cap">
+          <legend>{T.capGroup}</legend>
+          <div class="bp3d-caps">
+            <button type="button" class="bp3d-cap-sw" data-cap="#333333" style="--sw:#333333" aria-pressed="true" aria-label="#333333"></button>
+            <button type="button" class="bp3d-cap-sw" data-cap="#c9a227" style="--sw:#c9a227" aria-pressed="false" aria-label="#c9a227"></button>
+            <button type="button" class="bp3d-cap-sw" data-cap="#e8e8e8" style="--sw:#e8e8e8" aria-pressed="false" aria-label="#e8e8e8"></button>
+            <button type="button" class="bp3d-cap-sw" data-cap="#b03a48" style="--sw:#b03a48" aria-pressed="false" aria-label="#b03a48"></button>
+            <input type="color" class="bp3d-cap-custom" value="#333333" aria-label={T.capColor} />
+          </div>
+          <div class="bp3d-matrow">
+            <label for={`${uid}-capm`}>{T.capMetal}</label>
+            <input id={`${uid}-capm`} type="range" min="0" max="1" step="0.01" value="0.3" data-capmat="metalness" />
+            <output>0.30</output>
+          </div>
+        </fieldset>
+
         <fieldset class="bp3d-label-fs">
           <legend>{T.label}</legend>
           <input type="text" class="bp3d-label-text" placeholder={T.labelPh} value="" maxlength="40" />
@@ -140,11 +215,13 @@ const uid = 'bp3d-' + Math.random().toString(36).slice(2, 8);
       </aside>
 
       <div class="bp3d-view">
+        <div class="bp3d-compare" data-compare hidden></div>
         <div class="bp3d-canvas-wrap" data-canvas-wrap>
           <noscript><p>{T.noWebgl}</p></noscript>
         </div>
         <div class="bp3d-toolbar">
           <button type="button" class="bp3d-btn" data-action="reset">{T.reset}</button>
+          <button type="button" class="bp3d-btn" data-action="compare">{T.compare}</button>
           <button type="button" class="bp3d-btn bp3d-btn-primary" data-action="snapshot">{T.snapshot}</button>
           <span class="bp3d-fb" role="status" aria-live="polite"></span>
         </div>
@@ -287,11 +364,68 @@ const uid = 'bp3d-' + Math.random().toString(36).slice(2, 8);
     };
   }
 
+  /* 泵头瓶:直身 + 收肩 + 宽矮泵头(比滴管帽更矮更宽) */
+  function profilePump() {
+    var pts = [];
+    pts.push([0, 0], [12.5, 0], [13, 1.3], [13, 3]);
+    for (var y = 3; y <= 45; y += 6) pts.push([13, y]);
+    /* 肩部收窄 */
+    pts.push([12, 47], [10, 49.5], [7.5, 51.5], [6, 53]);
+    /* 颈 */
+    pts.push([6, 53], [6, 55]);
+    /* 泵头:宽扁,顶部略收 */
+    pts.push([6, 55], [8, 56], [8.5, 58], [8.5, 61], [0, 61]);
+    return {
+      points: pts.map(function (p) { return { x: p[0], y: p[1] }; }),
+      straightBand: { yBottom: 5, yTop: 43, radius: 13 },
+      capRange: { yBottom: 55, yTop: 61 },
+      capRadius: 8.5,
+    };
+  }
+
+  /* 真空瓶:直身更高、圆肩、泵头较窄(全包裹设计,标签区更长) */
+  function profileAirless() {
+    var pts = [];
+    pts.push([0, 0], [13.5, 0], [14, 1.4], [14, 3]);
+    for (var y = 3; y <= 48; y += 6) pts.push([14, y]);
+    /* 圆肩 */
+    pts.push([13.5, 50], [12, 52], [10, 53.5], [8, 54.5], [7, 55]);
+    pts.push([7, 55], [7, 57]);
+    /* 泵头:窄圆柱 + 顶片 */
+    pts.push([7, 57], [7.5, 58], [7.5, 61], [0, 61]);
+    return {
+      points: pts.map(function (p) { return { x: p[0], y: p[1] }; }),
+      straightBand: { yBottom: 5, yTop: 46, radius: 14 },
+      capRange: { yBottom: 56, yTop: 61 },
+      capRadius: 7.5,
+    };
+  }
+
+  /* 走珠瓶:细长瓶身 + 小球头 */
+  function profileRoller() {
+    var pts = [];
+    pts.push([0, 0], [6.5, 0], [7, 1.2], [7, 2.5]);
+    for (var y = 2.5; y <= 52; y += 6) pts.push([7, y]);
+    /* 肩部收窄 */
+    pts.push([6.8, 53.5], [6, 55], [5.5, 56]);
+    /* 球头:较小的球形容器 */
+    pts.push([5.5, 56], [5.5, 58], [4.8, 60], [3.2, 61.5], [0, 62]);
+    return {
+      points: pts.map(function (p) { return { x: p[0], y: p[1] }; }),
+      straightBand: { yBottom: 4, yTop: 50, radius: 7 },
+      capRange: { yBottom: 56, yTop: 62 },
+      capRadius: 5.5,
+    };
+  }
+
   var PROFILES = {
     dropper: profileDropper,
     tube: profileTube,
     jar: profileJar,
     spray: profileSpray,
+    pump: profilePump,
+    airless: profileAirless,
+    roller: profileRoller,
   };
 
   function initScene(libs) {
@@ -375,6 +509,87 @@ const uid = 'bp3d-' + Math.random().toString(36).slice(2, 8);
       roughness: 0.5,
       metalness: 0.3,
     });
+
+    /* 材质面板(2026-10-30):粗糙度 / 金属性 / 透明度实时作用到瓶身材质。
+       透明度 < 1 时保持 transparent,到 1 时关掉以省一次混合计算。 */
+    (function bindMaterial() {
+      var rows = host.querySelectorAll('[data-mat]');
+      rows.forEach(function (el) {
+        var key = el.getAttribute('data-mat');
+        var out = el.parentElement ? el.parentElement.querySelector('output') : null;
+        function apply() {
+          var v = Number(el.value);
+          if (!isFinite(v)) return;
+          bodyMat[key] = v;
+          if (key === 'opacity') bodyMat.transparent = v < 0.999;
+          bodyMat.needsUpdate = true;
+          if (out) out.textContent = key === 'opacity' ? Math.round(v * 100) + '%' : v.toFixed(2);
+        }
+        el.addEventListener('input', apply);
+        apply();
+      });
+
+      /* 快速预设:一次把三个滑块设到目标值,再触发 input 让上面的 apply 生效 */
+      var PRESETS = {
+        glass:   { roughness: 0.05, metalness: 0.0,  opacity: 0.55 },
+        frosted: { roughness: 0.75, metalness: 0.0,  opacity: 0.90 },
+        matte:   { roughness: 0.95, metalness: 0.0,  opacity: 1.00 },
+        metal:   { roughness: 0.25, metalness: 0.90, opacity: 1.00 },
+      };
+      host.querySelectorAll('[data-preset]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var pr = PRESETS[btn.getAttribute('data-preset')];
+          if (!pr) return;
+          ['roughness', 'metalness', 'opacity'].forEach(function (k) {
+            var el = host.querySelector('[data-mat="' + k + '"]');
+            if (el) { el.value = String(pr[k]); el.dispatchEvent(new Event('input', { bubbles: true })); }
+          });
+          host.querySelectorAll('[data-preset]').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+          btn.setAttribute('aria-pressed', 'true');
+        });
+      });
+
+      /* 背景:改 scene.background,浅色/灰/深色三档 */
+      var BG = { light: 0xf4f4f6, gray: 0xdcdce2, dark: 0x1b1b22 };
+      host.querySelectorAll('[data-bg]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var c = BG[btn.getAttribute('data-bg')];
+          if (typeof c === 'number' && scene) {
+            scene.background = new THREE.Color(c);
+            if (renderer) renderer.render(scene, camera);
+          }
+          host.querySelectorAll('[data-bg]').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+          btn.setAttribute('aria-pressed', 'true');
+        });
+      });
+
+      /* 瓶盖材质(2026-10-30):颜色色块 + 自定义取色 + 镜面度 */
+      host.querySelectorAll('[data-cap]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          capMat.color.set(btn.getAttribute('data-cap'));
+          host.querySelectorAll('[data-cap]').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+          btn.setAttribute('aria-pressed', 'true');
+        });
+      });
+      var capCustom = host.querySelector('.bp3d-cap-custom');
+      if (capCustom) {
+        capCustom.addEventListener('input', function () {
+          capMat.color.set(capCustom.value);
+          host.querySelectorAll('[data-cap]').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
+        });
+      }
+      host.querySelectorAll('[data-capmat]').forEach(function (el) {
+        var out = el.parentElement ? el.parentElement.querySelector('output') : null;
+        function apply() {
+          var v = Number(el.value);
+          if (!isFinite(v)) return;
+          capMat.metalness = v;
+          if (out) out.textContent = v.toFixed(2);
+        }
+        el.addEventListener('input', apply);
+        apply();
+      });
+    })();
 
     /* ── 构建瓶身 ────────────────────────────────────── */
     function buildBottle(type) {
@@ -556,13 +771,30 @@ const uid = 'bp3d-' + Math.random().toString(36).slice(2, 8);
     animate();
 
     /* ── 事件绑定 ──────────────────────────────────── */
-    /* 瓶型切换 */
-    host.querySelectorAll('input[name="' + uid + '-type"]').forEach(function (input) {
+    /* 瓶型:方块卡片 + 多选(2026-10-30)
+       多选用于批量出图;3D 只显示「最后选中的那个」作为主预览。 */
+    var typeInputs = host.querySelectorAll('input[name="' + uid + '-type"]');
+    function syncTypes() {
+      var picked = Array.prototype.filter.call(typeInputs, function (i) { return i.checked; });
+      if (!picked.length) { typeInputs[0].checked = true; picked = [typeInputs[0]]; }
+      var primary = picked[picked.length - 1];
+      state.type = primary.value;
+      buildBottle(state.type);
+      typeInputs.forEach(function (i) {
+        var card = i.closest('.bp3d-typecard');
+        if (card) card.classList.toggle('is-primary', i === primary);
+      });
+    }
+    typeInputs.forEach(function (input) {
       input.addEventListener('change', function () {
-        state.type = input.value;
-        buildBottle(state.type);
+        if (!input.checked) {
+          var still = Array.prototype.some.call(typeInputs, function (i) { return i.checked; });
+          if (!still) { input.checked = true; return; }   /* 至少保留一个 */
+        }
+        syncTypes();
       });
     });
+    syncTypes();
 
     /* 颜色色板 */
     host.querySelectorAll('.bp3d-swatch').forEach(function (btn) {
@@ -611,6 +843,32 @@ const uid = 'bp3d-' + Math.random().toString(36).slice(2, 8);
     }
 
     /* 工具栏:复位 + 截图 */
+    /* 多瓶型对比:逐个切换 → 渲染 → toDataURL,零网络成本、瞬时出图 */
+    var compareBox = host.querySelector('[data-compare]');
+    function renderCompare() {
+      if (!compareBox) return;
+      var picked = Array.prototype.filter.call(typeInputs, function (i) { return i.checked; });
+      if (picked.length < 2) { if (fb) fb.textContent = TXT.compareHint; return; }
+      var prev = state.type;
+      var frag = document.createDocumentFragment();
+      picked.forEach(function (input) {
+        buildBottle(input.value);
+        renderer.render(scene, camera);
+        var url = renderer.domElement.toDataURL('image/png');
+        var fig = document.createElement('figure');
+        var img = document.createElement('img');
+        img.src = url; img.alt = input.value;
+        var cap = document.createElement('figcaption');
+        cap.textContent = input.value;
+        fig.appendChild(img); fig.appendChild(cap); frag.appendChild(fig);
+      });
+      compareBox.innerHTML = '';
+      compareBox.appendChild(frag);
+      compareBox.hidden = false;
+      buildBottle(prev);
+      renderer.render(scene, camera);
+    }
+
     host.querySelectorAll('[data-action]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var action = btn.getAttribute('data-action');
@@ -620,6 +878,8 @@ const uid = 'bp3d-' + Math.random().toString(36).slice(2, 8);
           controls.update();
         } else if (action === 'snapshot') {
           snapshot();
+        } else if (action === 'compare') {
+          renderCompare();
         }
       });
     });
@@ -667,7 +927,24 @@ const uid = 'bp3d-' + Math.random().toString(36).slice(2, 8);
                               background: var(--ck-paper, #fff); }
   .bp3d-controls legend { font-size: var(--ck-small); font-weight: 600;
                             color: var(--ck-ink-soft); padding: 0 .375rem; }
-  .bp3d-types { display: grid; gap: .375rem; }
+  .bp3d-types { display: grid; gap: .5rem; }
+  .bp3d-typegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); gap: .375rem; }
+  .bp3d-typecard { position: relative; display: grid; place-items: center; gap: .25rem;
+    padding: .625rem .375rem; border: 1px solid var(--tw-border, #d9d9d9); border-radius: 8px;
+    background: #fff; cursor: pointer; text-align: center;
+    transition: border-color .2s, background .2s, box-shadow .2s; }
+  .bp3d-typecard:hover { border-color: var(--tw-primary, #7c4da8); }
+  .bp3d-typecard input { position: absolute; opacity: 0; pointer-events: none; }
+  .bp3d-typecard-name { font-size: .75rem; color: var(--ck-ink-soft); line-height: 1.3; }
+  .bp3d-typecard:has(input:checked) { border-color: var(--tw-primary, #7c4da8); background: var(--tw-primary-bg, #f7f3fb); }
+  .bp3d-typecard:has(input:checked) .bp3d-typecard-name { color: var(--tw-primary-active, #603a86); font-weight: 600; }
+  .bp3d-typecard:has(input:checked)::after { content: '✓'; position: absolute; top: .25rem; right: .3125rem;
+    width: 1rem; height: 1rem; border-radius: 50%; display: grid; place-items: center;
+    font-size: 10px; color: #fff; background: var(--tw-primary, #7c4da8); }
+  .bp3d-typecard.is-primary { box-shadow: 0 0 0 2px rgb(124 77 168 / .22); }
+  .bp3d-typecard.is-primary::before { content: ''; position: absolute; inset: 0; border-radius: 8px;
+    border: 2px solid var(--tw-primary, #7c4da8); pointer-events: none; }
+
   .bp3d-type { display: flex; align-items: center; gap: .5rem; font-size: .875rem;
                 cursor: pointer; padding: .3125rem .25rem; border-radius: 6px;
                 transition: background .15s; }
@@ -721,4 +998,46 @@ const uid = 'bp3d-' + Math.random().toString(36).slice(2, 8);
     .bp3d-grid { grid-template-columns: 1fr; }
     .bp3d-canvas-wrap { aspect-ratio: 1 / 1; }
   }
+  /* 材质滑块（Ant 直线滑块观感） */
+  .bp3d-material { border: 0; margin: 0; padding: 0; }
+  .bp3d-material legend { padding: 0; font-size: .75rem; color: var(--ck-ink-soft); margin-bottom: .5rem; }
+  .bp3d-matrow { display: grid; grid-template-columns: 4.25rem minmax(0, 1fr) 2.75rem; gap: .5rem; align-items: center; margin-bottom: .5rem; }
+  .bp3d-matrow:last-child { margin-bottom: 0; }
+  .bp3d-matrow label { font-size: .75rem; color: var(--ck-ink-soft); }
+  .bp3d-matrow input[type=range] { width: 100%; accent-color: var(--tw-primary, #7c4da8); height: 1.25rem; cursor: pointer; }
+  .bp3d-matrow output { font-size: .6875rem; color: var(--ck-ink-faint); text-align: right; font-variant-numeric: tabular-nums; }
+  /* 快速预设 + 背景 */
+  .bp3d-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: .25rem; margin-bottom: .625rem; }
+  .bp3d-presets button { padding: .3125rem .25rem; border: 1px solid var(--tw-border, #d9d9d9); border-radius: 6px;
+    background: #fff; color: var(--ck-ink-soft); font: inherit; font-size: .6875rem; cursor: pointer;
+    transition: border-color .2s, background .2s, color .2s; }
+  .bp3d-presets button:hover { border-color: var(--tw-primary, #7c4da8); color: var(--ck-ink); }
+  .bp3d-presets button[aria-pressed='true'] { border-color: var(--tw-primary, #7c4da8);
+    background: var(--tw-primary-bg, #f7f3fb); color: var(--tw-primary-active, #603a86); font-weight: 600; }
+  .bp3d-bgrow { margin-top: .5rem; }
+  .bp3d-bgs { display: flex; gap: .25rem; }
+  .bp3d-bgs button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
+    padding: .25rem; border: 1px solid var(--tw-border, #d9d9d9); border-radius: 6px; background: #fff;
+    color: var(--ck-ink-soft); font: inherit; font-size: .6875rem; cursor: pointer; }
+  .bp3d-bgs button::before { content: ''; width: .625rem; height: .625rem; border-radius: 2px;
+    background: var(--sw, #ccc); border: 1px solid rgb(0 0 0 / .1); }
+  .bp3d-bgs button[aria-pressed='true'] { border-color: var(--tw-primary, #7c4da8);
+    background: var(--tw-primary-bg, #f7f3fb); color: var(--tw-primary-active, #603a86); font-weight: 600; }
+  /* 瓶盖色块 */
+  .bp3d-caps { display: flex; flex-wrap: wrap; gap: .375rem; align-items: center; margin-bottom: .625rem; }
+  .bp3d-cap-sw { width: 1.5rem; height: 1.5rem; padding: 0; border-radius: 50%; cursor: pointer;
+    background: var(--sw, #999); border: 2px solid transparent;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / .12); }
+  .bp3d-cap-sw[aria-pressed='true'] { border-color: var(--tw-primary, #7c4da8);
+    box-shadow: 0 0 0 2px rgb(124 77 168 / .18); }
+  .bp3d-cap-custom { width: 1.75rem; height: 1.75rem; padding: 0; cursor: pointer;
+    border: 1px solid var(--tw-border, #d9d9d9); border-radius: 6px; background: #fff; }
+  /* 多瓶型对比 */
+  .bp3d-compare { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: .5rem;
+    margin-bottom: .75rem; }
+  .bp3d-compare[hidden] { display: none; }
+  .bp3d-compare figure { margin: 0; border: 1px solid var(--tw-border-2, #f0f0f0); border-radius: 8px;
+    overflow: hidden; background: #fff; }
+  .bp3d-compare img { width: 100%; display: block; aspect-ratio: 3 / 4; object-fit: cover; }
+  .bp3d-compare figcaption { padding: .3125rem .5rem; font-size: 11px; color: var(--tw-text-3, rgba(0,0,0,.45)); text-align: center; }
 </style>

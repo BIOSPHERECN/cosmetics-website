@@ -1,0 +1,32 @@
+[
+ {
+  "gate_hash": "sha256:68c2d1d5d49d762bf9f002f8425e4e1eeb7d287f53fd82c60828c94d04a08a07",
+  "ticket": "RT-20260924-2156-gate-d408c549",
+  "commit": "b40d5554d600206b95b6105697c04fb0c9609d57",
+  "at": "2026-09-24T21:56:49+08:00"
+ },
+ {
+  "gate_hash": "sha256:1992cd6c1dcbb26e1bacb8ae5f8eb5d3284d55464a5afd11bd06442e20fe6b3f",
+  "ticket": "RT-20260924-2319-gate-c03e18f6",
+  "commit": "be5836b5f6b7abebdfbd8311249a1c4d21323c1b",
+  "at": "2026-09-24T23:19:08+08:00"
+ },
+ {
+  "gate_hash": "sha256:65cc8f36d09e94c2d094ab7cc17fa65da794021f715c96eadd3230df2f914663",
+  "ticket": "RT-20260924-2333-gate-6d5d33b8",
+  "commit": "726a45bf07ae280ed91ae05e4c9349afcf2faa99",
+  "at": "2026-09-24T23:33:14+08:00"
+ },
+ {
+  "gate_hash": "sha256:2206b0ee5a20f2762b99fca7d12fcb76ecde3e44ce2fe8d447a8e5ed3621d900",
+  "ticket": "RT-20260925-0414-gate-39151e64",
+  "commit": "6abee03cdacbfc3c014a1d38d283a4f10503cd7a",
+  "at": "2026-09-25T04:14:43+08:00"
+ },
+ {
+  "gate_hash": "sha256:a015f35a00d1ebf2f62583f372aced19544801d6a62314c1178bd00feff16d06",
+  "ticket": "RT-20260925-0452-gate-1751a8d5",
+  "commit": "4a39461ea6ef68591f2d908eb15c4f9bb15c7056",
+  "at": "2026-09-25T04:52:22+08:00"
+ }
+]

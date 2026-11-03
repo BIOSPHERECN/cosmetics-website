@@ -1,0 +1,42 @@
+{
+ "tree": "39151e6468d33929f8c016dcd4737de825d15db4",
+ "base_tree": "6d5d33b84bde60937d51f4778f621567d9657fa4",
+ "worker": "gate",
+ "mode": "gate",
+ "repo": "F:/0cosmetic/tools-review",
+ "rules_hash": "sha256:7aa081a24470d292129570eb9b44f0dd5d9f906e8d5c47a3be4e94317f1ccbca",
+ "gate_hash": "sha256:65cc8f36d09e94c2d094ab7cc17fa65da794021f715c96eadd3230df2f914663",
+ "files": 2,
+ "lines": 26,
+ "changes": [
+  [
+   "M",
+   "audit_v2/ops.py",
+   null
+  ],
+  [
+   "M",
+   "audit_v2/smoke.py",
+   null
+  ]
+ ],
+ "stats": {
+  "audit_v2/ops.py": 6,
+  "audit_v2/smoke.py": 20
+ },
+ "new_queries": 0,
+ "binaries": [],
+ "block": [],
+ "doubt": [],
+ "exceptions": [],
+ "risks": [],
+ "seconds": {
+  "tree": 0.0,
+  "diff": 0.2,
+  "semgrep": 9.4,
+  "rules": 0.1,
+  "total": 9.7
+ },
+ "result": "过",
+ "hard": false
+}

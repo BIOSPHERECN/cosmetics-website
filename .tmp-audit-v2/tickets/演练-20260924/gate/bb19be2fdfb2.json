@@ -1,0 +1,109 @@
+{
+ "schema": "bohui-ticket/2",
+ "id": "RT-20260924-2113-gate-bb19be2f",
+ "kind": "gate",
+ "target": {
+  "worker": "gate",
+  "repo": "F:/0cosmetic/tools-review",
+  "account": "none"
+ },
+ "tree": "bb19be2fdfb2c29deccd7ddba6a4b4fc0c8786f7",
+ "scope_sha256": "efa2554b9e7bbbc7f00cf4e81d330e3a080eefdfc328590edd5ca39b367d5ea9",
+ "gate_hash": "sha256:4d2b8805151a79b5fbd481c1dd9828cbbfa827e2a4aceb006f156d2f648181be",
+ "rules_hash": "sha256:21ea2f39ec91180b6436262b09fba288b35156388a18c3f17b72623a30bacf50",
+ "env_sha256": null,
+ "base": {
+  "ref": "refs/ship/gate",
+  "commit": null,
+  "tree": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+  "first_ship": true
+ },
+ "prev_ticket": null,
+ "diff": {
+  "files": 40,
+  "lines": 8884
+ },
+ "note": "审核部 v2.1 第一版闸门(三道关 + 审核单 + 紧急通道 + 存版回退 + 巡查 + hook)",
+ "tier": "引导",
+ "tier_reasons": [
+  "批准清单为空,第一版闸门只能引导批准:红队全过 + Laya/Jev 机审留痕;Claude 审核员 24 小时内追审(ticket.py followup --worker gate)"
+ ],
+ "gate1": {
+  "result": "过",
+  "block": 0,
+  "doubt": 1,
+  "exceptions": 0,
+  "seconds": 6.2
+ },
+ "budget": {
+  "level": "n/a"
+ },
+ "judges": {
+  "laya": {
+   "decision": "block",
+   "conf": 0.3,
+   "noul": {
+    "cost": 0.98,
+    "security": 0.93,
+    "compliance": 0.9
+   },
+   "correctness": 1.18,
+   "verdict": "存疑",
+   "status": "判了",
+   "seconds": 48,
+   "partial": true
+  },
+  "jev": {
+   "decision": "block",
+   "conf": 0.86,
+   "noul": {
+    "cost": 0.21,
+    "security": 0.5,
+    "compliance": 0.04
+   },
+   "correctness": 0.06,
+   "verdict": "拦",
+   "status": "判了",
+   "tokens_in": 3108,
+   "day_used": 3108,
+   "seconds": 1.9,
+   "call_ref": "ledger/jev_calls.jsonl@2026-09-24T21:12:58+08:00",
+   "request_id": null,
+   "partial": true
+  }
+ },
+ "reports": [],
+ "resolved": [],
+ "overrides": [],
+ "exceptions": [],
+ "risks": {
+  "费用": [
+   "Jev 按量付费(每天 200 万 token 硬上限,约 0.084 美元)"
+  ],
+  "安全": [
+   "同一 Windows 用户下本地签名防不了蓄意伪造(§6.4),靠每小时对账兜底"
+  ],
+  "合规": [
+   "已查:本批不含对外文案"
+  ],
+  "正确性": [
+   "急修 worktree 的 pnpm install --offline 未在真仓实测"
+  ],
+  "回归": [
+   "两站 ship.sh 切到 v2 后首次上线是 L3 大审"
+  ]
+ },
+ "smoke_extra": [],
+ "verdict": "过",
+ "why": [
+  "引导批准"
+ ],
+ "issued_at": "2026-09-24T21:13:44+08:00",
+ "expires_at": "2026-09-25T21:13:44+08:00",
+ "followup_due": "2026-09-25T21:13:44+08:00",
+ "followup": [],
+ "incident": null,
+ "degraded": true,
+ "issuer": "audit_v2/ticket.py v2.1",
+ "content_sha256": "00abb61273148f8f59d176955f83bbe0b1ef4eb5c6de12c9242a3e6fab6c9c24"
+}

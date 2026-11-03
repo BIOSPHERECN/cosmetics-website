@@ -118,9 +118,14 @@ def write_config(d1_id: str, kv_id: str):
     for k in cfg.get("kv_namespaces", []):
         if k.get("binding") == "SESSION":
             k["id"] = kv_id
+    # 删掉 CAPBANK 绑定（创始人账号没有这个 KV，点选码在副本上不需要）
+    cfg["kv_namespaces"] = [k for k in cfg.get("kv_namespaces", []) if k.get("binding") != "CAPBANK"]
+    # 副本不需要 send_email 绑定（创始人账号可能没开通 Email Service）
+    cfg.pop("send_email", None)
     cfg.setdefault("vars", {})["TURNSTILE_SITE_KEY"] = ""
     cfg["vars"]["COPY_OF"] = "biosphere-ai.com"
-    cfg.pop("routes", None); cfg.pop("workers_dev", None)
+    cfg.pop("routes", None)
+    cfg["workers_dev"] = True
     dst = os.path.join(DIST, "wrangler.copy.json")
     io.open(dst, "w", encoding="utf-8").write(json.dumps(cfg, ensure_ascii=False, indent=1))
     return dst
@@ -143,7 +148,20 @@ def copy_db(d1_id: str):
     if os.path.exists(dump) and time.time() - os.path.getmtime(dump) < 1800 and os.path.getsize(dump) > 10_000_000:
         print(f"  导出文件 {os.path.getsize(dump)/1e6:.1f} MB 是 30 分钟内的,复用")
     else:
-        run(["d1", "export", DB_NAME, "--remote", "--output", dump], company=True, timeout=3600)
+        # D1 不能 export 含虚拟表的库:先删 FTS(页面自动回退有上限的旧写法),导完按 0113 / 0125 重建(rebuild 约 1–3 分钟)
+        run(["d1", "execute", DB_NAME, "--remote", "--command",
+             "DROP TRIGGER IF EXISTS inci_catalog_fts_ai; DROP TRIGGER IF EXISTS inci_catalog_fts_ad; "
+             "DROP TRIGGER IF EXISTS inci_catalog_fts_au; DROP TABLE IF EXISTS inci_catalog_fts; "
+             "DROP TRIGGER IF EXISTS market_products_fts_ai; DROP TRIGGER IF EXISTS market_products_fts_ad; "
+             "DROP TRIGGER IF EXISTS market_products_fts_au; DROP TABLE IF EXISTS market_products_fts; "
+             "DROP TRIGGER IF EXISTS kg_nodes_fts_ai; DROP TRIGGER IF EXISTS kg_nodes_fts_ad; "
+             "DROP TRIGGER IF EXISTS kg_nodes_fts_au; DROP TABLE IF EXISTS kg_nodes_fts;"], company=True)
+        try:
+            run(["d1", "export", DB_NAME, "--remote", "--output", dump], company=True, timeout=3600)
+        finally:
+            for mig in ("0113_w12_inci_fts.sql", "0125_sec_search_fts.sql"):
+                run(["d1", "execute", DB_NAME, "--remote", "--file",
+                     os.path.join(ROOT, "db", "migrations", mig).replace("\\", "/")], company=True)
         print(f"  导出 {os.path.getsize(dump)/1e6:.1f} MB · {time.time()-t:.0f}s")
     t = time.time()
     # 必须带副本的配置:apps/web/wrangler.toml 里同名库写的是公司账号的 database_id,

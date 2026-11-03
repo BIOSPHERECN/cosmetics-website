@@ -17,6 +17,7 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../../lib/shell';
 import InquiryFormLite from '@cosmetic/core/components/InquiryFormLite.astro';
+import { ORG } from '@cosmetic/core/content/org.ts';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'zh-cn';
@@ -29,12 +30,20 @@ const C = OEM_CATEGORIES.find((c) => c.id === String(Astro.params.category ?? ''
 if (!M || !C) return new Response(null, { status: 404 });
 
 const reg = db ? await db.prepare('SELECT * FROM regulations WHERE id = ?').bind(M.id).first<any>().catch(() => null) : null;
-const nf = db ? Number((await db.prepare(`SELECT COUNT(*) n FROM formulas WHERE status IN ('sample','active') AND category IN (${C.cats.map(() => '?').join(',')})`).bind(...C.cats).first<any>().catch(() => null))?.n ?? 0) : 0;
-const formats = db ? (await db.prepare(`SELECT format, COUNT(*) n FROM formulas WHERE status IN ('sample','active') AND category IN (${C.cats.map(() => '?').join(',')}) AND format IS NOT NULL AND format<>'' GROUP BY format ORDER BY n DESC LIMIT 6`).bind(...C.cats).all<any>().catch(() => ({ results: [] as any[] }))).results : [];
-/* 09-21 创始人:「开发信要有相对应的产品,要不然就只是空谈」—— 落地页列本品类在库基底(真编号,点进 /formula/<code>/),不只报计数 */
+/* 事实库口径(org.ts):对外配方数一律用 13,000+ 总库,不用 formula 表行数 —— 那只是内部工作库的一部分。
+   2026-10-23 修:原来按 status sample/active 查品类行数,库里全 draft → 每页都输出 "0 proven formulations",
+   被 AI 引用后给采购商传达"这厂没有配方"的错误能力判断。{np} 用包材库在库总数(不限 status)。 */
+const nfact = ORG.formulas.value;
+/* C1 纪律:访客路由不写 COUNT。包材每类在库数有限,取行数在 JS 里数,上限 500 足以表达口径 */
+const npRows = db ? (((await db.prepare(`SELECT id FROM packaging WHERE type IN (${C.packs.map(() => '?').join(',')}) LIMIT 500`).bind(...C.packs).all<any>().catch(() => ({ results: [] }))).results ?? []) as any[]) : [];
+const np = npRows.length;
+/* 2026-11-02 修「整片意图页 404」:上午那版把 nf / formats / bases 三条声明一起删了,
+   但第 56 行 formats.map 与模板里的 bases.length 还在用 —— 渲染时 ReferenceError,
+   线上 102 条 sitemap 已收录的意图页全数挂掉,而构建与闸门都不会叫(它是运行时错误)。
+   剂型不再为它单开一条聚合查询(C1:访客路由不写聚合),从下面的在库基底里去重得到。 */
 const MK_CODE: Record<string, string> = { id: 'ID', my: 'MY', sa: 'SA', ae: 'MEA', ph: 'SEA', vn: 'SEA', th: 'SEA', us: 'US', br: 'LATAM', mx: 'LATAM', co: 'LATAM', cl: 'LATAM', ar: 'LATAM', pe: 'LATAM' };   // formulas.markets 里的市场码;本市场已核过的基底排前
 const bases = db ? (await db.prepare(`SELECT code, format, benefits FROM formulas WHERE status IN ('sample','active') AND category IN (${C.cats.map(() => '?').join(',')}) ORDER BY (',' || COALESCE(markets,'') || ',') LIKE ? DESC, (format = 'tooth-tablet') DESC, updated_at DESC LIMIT 8`).bind(...C.cats, `%,${MK_CODE[M.id] ?? 'XX'},%`).all<any>().catch(() => ({ results: [] as any[] }))).results : [];
-const np = db ? Number((await db.prepare(`SELECT COUNT(*) n FROM packaging WHERE status IN ('sample','active') AND type IN (${C.packs.map(() => '?').join(',')})`).bind(...C.packs).first<any>().catch(() => null))?.n ?? 0) : 0;
+const formats = [...new Set((bases as any[]).map((r: any) => r.format).filter(Boolean))].slice(0, 6).map((format) => ({ format }));
 /* 2026-09-18 扩到 100 题后按 market / category 列挂(迁移 0096):本市场×本品类的题最前,其次本市场、本品类,再补通用;老库没这两列时退回只按 slug。 */
 const related = db ? (await db.prepare(`SELECT slug, q_zh, q_en FROM geo_answers WHERE slug IN (?, 'how-to-audit-oem', 'stability-how-long', 'halal-cosmetics', 'multilingual-labels', 'jar-vs-airless') OR market = ? OR category = ? ORDER BY (market = ? AND category = ?) DESC, (slug = ?) DESC, (market = ?) DESC, (category = ?) DESC, updated_at DESC, slug LIMIT 6`)
   .bind(`notify-${M.id}`, M.id, C.id, M.id, C.id, `notify-${M.id}`, M.id, C.id).all<any>().catch(() => db.prepare(`SELECT slug, q_zh, q_en FROM geo_answers WHERE slug IN (?, 'how-to-audit-oem', 'stability-how-long', 'halal-cosmetics', 'multilingual-labels', 'jar-vs-airless') ORDER BY (slug = ?) DESC, slug LIMIT 5`).bind(`notify-${M.id}`, `notify-${M.id}`).all<any>().catch(() => ({ results: [] as any[] })))).results : [];
@@ -107,7 +116,7 @@ if (!zh && !isEn && db) {
 const marketName = zh ? M.zh : (T[`market.${M.id}`] || M.en); const catName = zh ? C.zh : (T[`cat.${C.id}`] || C.en); const adjName = zh ? M.zh : (T[`adj.${M.id}`] || M.adj);
 const formatsText = fmtNames ? (T.formatsPrefix || '').replace(/\{formats\}/g, fmtNames) : '';
 const fill = (s: string) => (s || '')
-  .replace(/\{market\}/g, marketName).replace(/\{adj\}/g, adjName).replace(/\{category\}/g, catName).replace(/\{n\}/g, String(nf)).replace(/\{np\}/g, String(np))
+  .replace(/\{market\}/g, marketName).replace(/\{adj\}/g, adjName).replace(/\{category\}/g, catName).replace(/\{n\}/g, String(nfact)).replace(/\{np\}/g, String(np))
   .replace(/\{authority\}/g, authority || (zh ? '主管机构' : 'the competent authority')).replace(/\{certs\}/g, certs).replace(/\{lines\}/g, lines).replace(/\{sd\}/g, SAMPLE_DAYS)
   .replace(/\{formats\}/g, formatsText)
   .replace(/\{rp\}/g, first(pick('rp'), 240) || (zh ? '见法规页' : 'See the regulation digest.')).replace(/\{labeling\}/g, first(pick('labeling'), 240) || (zh ? '见法规页' : 'See the regulation digest.'));
@@ -162,7 +171,7 @@ const ld = [
     <p class="ask">{fill(T.ask)} <a href="#inquiry">{T.inquiry}</a></p>
   </main>
   {/* 09-24 W7:开发信落地页就地收询盘(带 utm 进 source_path),不再只给一个跳联系页的链接 */}
-  <InquiryFormLite lang={lang} email={shell.email} source="oem" />
+  <InquiryFormLite lang={lang} email={shell.email} whatsapp={((Astro.locals as any)?.contact ?? {}).whatsapp ?? null} source="oem" />
   <SiteFooter locale={lang as any} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} />
 </BaseLayout>
 

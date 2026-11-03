@@ -120,7 +120,7 @@ def greenness(im: Image.Image) -> float:
 # 用文件名关键词判最准:Commons 的命名和分类里几乎一定带这些词,而照片不会带。
 BLOCK = re.compile(
     r"herbarium|specimen|botany|botanical\s*(plate|illustration)|illustration|drawing|"
-    r"engraving|lithograph|woodcut|plate\s*\d|map|diagram|logo|watermark|"
+    r"engraving|lithograph|woodcut|plate\s*\d|\bmap\b|diagram|logo|watermark|"
     r"museum|catalogue|manuscript|stamp|coin|banknote",
     re.I)
 

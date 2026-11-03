@@ -1,0 +1,98 @@
+{
+  "angle": "复核",
+  "tree": "78d41e9fba9268994a34ced8c53cc999b6f73b2d",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-78d41e9fba92.json",
+  "run_label": "review-ticket 78d41e9fba92 复核-合规",
+  "reviewer": "claude",
+  "skills_loaded": ["code-reviewer"],
+  "verdict": "存疑",
+  "checked": [
+    "复核-① 原报告 C1 图源:17 张逐张对到源文件夹,核创始人原话",
+    "复核-② 原报告 C2 AI 标识:页脚声明是否在 beauty2oem 首页生效",
+    "复核-③ 原报告 C3 公开仓注释:新增内容有无密钥或敏感口径",
+    "复核-④ JEV / LAYA 两条机审存疑",
+    "复核-⑤ 上轮合规拦单(3a56150af361 的 C1、C2)在本树是否已修",
+    "复核-⑥ 本次新出现的 6 张墙图(wall-07~12)加 wall-05、wall-06、hero-full 目检:有无可辨认商标、SPF/功效字样",
+    "复核-⑦ 工作区文件与合规 diff 行号一致",
+    "复核-⑧ diff、注释、说明文档里有无提示注入"
+  ],
+  "findings": [
+    {
+      "id": "R1",
+      "level": "中",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 53,
+      "claim": "17 张图里有 15 张的来源已经坐实是创始人自己的设计,剩下 wall-05、wall-06(第 53、54 行)这 2 张仍然没有出处证据:它们不在创始人认领的「防晒霜」文件夹,而是在「化妆品」文件夹,文件名前缀是 Midjourney 用户名 urvi787_。",
+      "failure_scenario": "如果 urvi787 不是创始人的 Midjourney 账号,这 2 张就是别人的出图原件,被放到 beauty2oem 首页作品墙。原作者认出来后可以投诉、要求下图,也可能走民事索赔(不预测金额)。这 2 张图 09-24 起已经以 d-gold-set、d-papaya-set 出现在 /delivery 页,这次是把曝光面扩大到首页。",
+      "evidence": "① 会话记录 C:/Users/Administrator/.claude/projects/F--0cosmetic/9c9aec8d-36c0-40f1-8422-d1cf7dcc8dd8.jsonl 第 129576 行:origin=human,2026-09-24T14:27:45Z(北京时间 22:27),原话是「E:\\0Data\\图片\\防晒霜 你看看我以前设计的…」,只点名了「防晒霜」文件夹。② 在创始人的消息里搜「化妆品」文件夹路径、midjourney、urvi787,都没有结果。③ F:/0cosmetic/助手交付/beauty2oem-UI重做/视觉冲击-选图.json:hero-full、m1~m4、wall-01~04、wall-07~12 都来自 E:/0Data/图片/防晒霜;只有 wall-05、wall-06 来自 E:/0Data/图片/化妆品/urvi787_*。④ ls E:/0Data/图片/化妆品(28 个文件):文件名前缀有 urvi787_ 8 个、atomossocial_ 6 个、03050918_ 3 个、AlbedoBase_ 1 个。同一个文件夹里有 4 种出图账号或模型前缀,更像是从多位用户那里收集来的,不像一个人自己出的图。⑤ 目检 vi/wall-05.webp、vi/wall-06.webp:都是 Midjourney 典型的四宫格原样输出,瓶身文字是乱码,没有可辨认的品牌或 SPF 字样,所以商标和宣称方面没有问题,问题只在著作权归属。⑥ 上次合规审核(reports/bohui-web/7dbd08adcbe6/合规.json)判了「过」,但当时也写了 d-gold-set/d-papaya-set「无法排除取自参考样例或第三方站」,出处一直没补。缺的证据:创始人确认 urvi787 是他自己的 Midjourney 账号,或者提供这 2 张的商用授权记录。",
+      "fix": "二选一:(a) 创始人一句话确认 urvi787 是他的账号,记进图库 README,就可以直接判过;(b) 把 B2oBlock.astro 第 53、54 行换成「防晒霜」文件夹里的图(该文件夹有 213 张),重新生成 vi/wall-05.webp、vi/wall-06.webp。只改这两行加两张图,其他不用动。"
+    },
+    {
+      "id": "R2",
+      "level": "低",
+      "file": "F:/0cosmetic/助手交付/beauty2oem-UI重做/图片来源说明-20260925.md",
+      "line": 5,
+      "claim": "04:28 补写的《图片来源说明》说 17 张「都是创始人以前自己用 AI 工具设计的」,把创始人只针对「防晒霜」文件夹说的话套到了「化妆品」文件夹,说过头了。",
+      "failure_scenario": "以后审核或法务把这份说明当成授权凭证,wall-05/06 以及 /delivery 页的 d-gold-set、d-papaya-set、d-cucumber-set(同属 urvi787)就会被当作「已确认自有」放过,出处缺口就被掩盖了。",
+      "evidence": "说明文档第 5~6 行把两个文件夹合在一起写,引用的创始人原话(会话记录第 129576 行)只有「防晒霜」。这份文档不在仓库里,也不影响线上,所以定低级。它第 21~23 行「不适用的规矩」是在论证,不是写给审核员的放行指令,不算提示注入。",
+      "fix": "说明文档改成分两个文件夹写:「防晒霜」有创始人原话佐证;「化妆品」待确认。"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "JEV",
+      "result": "不成立",
+      "why": "Jev 判了 block,但 conf 只有 0.01,reason 为空,compliance 分也只有 0.07,没有指向任何文件或行。我逐项复核:红线词零命中;没有新增起订量、出样、交期、价格数字;「24 小时 / 1 至 2 页 / 3 个方向」是简报服务承诺,旧文案原样挪到第 157~161 行;没有医疗或功效宣称;新墙图目检也没有品牌或 SPF 字样。唯一没清掉的是 R1 那 2 张图的出处,这只够判存疑,不够判拦。"
+    },
+    {
+      "ref": "LAYA",
+      "result": "不成立",
+      "why": "Laya 判了 block,conf 0.06,partial=true,reason 为空。上一轮真正能定位的合规拦点是 3a56150af361 的 C1:作品墙写成「我们做出来的产品」。本树第 168、169 行已经改成「包装与视觉方向参考」,并加了「这些是效果图…不是已交付的客户产品」,工作区和 diff 一致,已经修好。上一轮的 C2 是中文内部探针注释,本树第 469、470 行改成了一句中性英文,不含事故编号,也不含 secret 值,也已修好。Laya 的分数没有对应任何剩余问题,剩下的只有 R1。"
+    },
+    {
+      "ref": "合规-C1",
+      "result": "成立",
+      "why": "范围缩小到 2 张。hero-full、m1~m4、wall-01~04、wall-07~12 这 15 张来自创始人自己认领的 E:/0Data/图片/防晒霜(会话记录第 129576 行,human 原话),属于记忆 feedback-crawled-content-must-be-rewritten 明文允许的「自己生成的效果图」,这部分不成立。「原图不上前台」管的是抓来的图,不管这批。wall-05、wall-06 来自「化妆品」文件夹,前缀是 urvi787_,没有任何出处证据,这部分仍然成立,见 R1。",
+      "mitigation": "创始人确认 urvi787 是他的账号,或者把 wall-05、wall-06 换成「防晒霜」文件夹里的图(B2oBlock.astro 第 53、54 行)"
+    },
+    {
+      "ref": "合规-C2",
+      "result": "成立但可接受",
+      "why": "首屏 hero-full 是 AI 写实人物,图旁确实没有就近标注。不过 [...path].astro 第 150 行 cnOnly = site.id==='beauty2oem',第 787 行把 cnOnly 传给页脚;SiteFooter.astro 第 125 行在 cnOnly 时输出「页面中的场景照片为 AI 生成的示意图,不代表具体产品,也不是帛卉车间实拍」,beauty2oem 所有页面都有这句。作品墙第 169 行也就地写了效果图。同一张源图 09-24 起已经作为 insight-pool 在洞察页上线,不是新的暴露面。首屏没有 SPF/防晒功效文字,不构成功效宣称。",
+      "mitigation": "可选:首屏角落加小号「AI 效果图」角标;以后首屏如果要叠加 SPF/PA 文字,必须先过特殊化妆品宣称口径"
+    },
+    {
+      "ref": "合规-C3",
+      "result": "成立但可接受",
+      "why": "middleware.ts 第 524 行 CACHE_V 的注释新增的是「09-25 beauty2oem 视觉重排改了 b2o.css…必须 +1」,纯粹是技术原因,没有密钥、价格或工厂敏感信息。注释里原有的 WhatsApp 号码不是本次新加的,而且本来就公开显示在站点页脚。",
+      "mitigation": "以后把变更记录挪进私有仓 CHANGELOG,CACHE_V 注释只留版本号"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "合规",
+      "level": "中",
+      "item": "wall-05、wall-06(B2oBlock.astro 第 53、54 行)出处未证实,源文件名带第三方 Midjourney 前缀 urvi787_;/delivery 页的 d-gold-set、d-papaya-set、d-cucumber-set 也是同一来源,09-24 起已经在线上",
+      "mitigation": "创始人确认账号归属并记进图库 README,否则换成「防晒霜」文件夹里的图;/delivery 那 3 张按同一结论处理"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "首屏写实 AI 人物图没有就近标识,只靠页脚声明",
+      "mitigation": "可选加角标"
+    },
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "《图片来源说明-20260925》把创始人对「防晒霜」文件夹的认领套到了「化妆品」文件夹",
+      "mitigation": "说明文档改成分两个文件夹写,「化妆品」标待确认"
+    }
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/78d41e9fba92/复核-合规.json",
+  "smoke_extra": [
+    "上线后打开 beauty2oem 首页,确认作品墙标题是「包装与视觉方向参考」,副标题含「不是已交付的客户产品」",
+    "确认首页页脚有 b2o-aigen「页面中的场景照片为 AI 生成的示意图」",
+    "如果换了 wall-05、wall-06,用 ?kk=1 取 /b2o/img/vi/wall-05.webp 和 wall-06.webp,确认已经是新图(?cb= 破不了缓存)"
+  ]
+}

@@ -1,0 +1,163 @@
+---
+/**
+ * 后台 · 设计模型配置（2026-10-30）
+ *
+ * 与「模型舰队」(providers 表) 分开：这里管的是 design_providers 表，
+ * 即"加一行就能出现在 /design 的模型卡片里"的那种配置。
+ *
+ * 表单填：id / label / tasks / kind / base_url / model / api_key / extra_json
+ * 保存后自动出现在前端的模型选择卡片里。
+ */
+import { env } from 'cloudflare:workers';
+import AdminShell from '../../layouts/AdminShell.astro';
+import { readSession, readCookie, COOKIE } from '../../lib/auth';
+import '@cosmetic/core/styles/tool.css';
+
+export const prerender = false;
+const db = (env as any).DB as D1Database | undefined;
+const secret = (env as any).AUTH_SECRET as string | undefined;
+const sess = await readSession(readCookie(Astro.request.headers.get('cookie'), COOKIE), secret ?? '');
+if (!sess) return Astro.redirect('/bohui/login/');
+
+type DMRow = {
+  id: string; label: string; tasks: string; kind: string;
+  base_url: string; model: string; has_key: number; key_prefix: string | null;
+  extra_json: string | null; enabled: number; note: string | null; updated_at: string | null;
+};
+let rows: DMRow[] = [];
+if (db) {
+  const { results } = await db.prepare(
+    `SELECT id,label,tasks,kind,base_url,model,
+            CASE WHEN api_key='' OR api_key IS NULL THEN 0 ELSE 1 END AS has_key,
+            substr(coalesce(api_key,''),1,6) AS key_prefix,
+            extra_json,enabled,note,updated_at
+       FROM design_providers ORDER BY enabled DESC, rowid`,
+  ).all<DMRow>().catch(() => ({ results: [] as DMRow[] }));
+  rows = results ?? [];
+}
+const KINDS = [
+  { v: 'openai-images', d: 'OpenAI 兼容（图片生成）' },
+  { v: 'ark-tasks', d: '火山引擎方舟（视频异步）' },
+  { v: 'openai-video', d: '通用视频异步' },
+];
+---
+
+<AdminShell title="设计模型配置" active="models" email={sess.email}>
+  <h1>设计模型配置</h1>
+  <p class="lead">
+    这里管 <code>design_providers</code> 表。加一行配置，前端 <a href="/zh-cn/design/">/design</a> 的模型卡片里就会自动出现。
+    与「模型舰队」分开：舰队是底层的文本/读图模型，这里是设计工具专用的出图/视频模型。
+  </p>
+
+  {rows.length === 0 && (
+    <div class="note warn">还没有配置任何设计模型。下方表单填一行就能接入。</div>
+  )}
+
+  {/* 现有配置表 */}
+  {rows.length > 0 && (
+    <div class="tblwrap">
+      <table>
+        <thead><tr>
+          <th>ID</th><th>名称</th><th>任务</th><th>协议</th>
+          <th>接口地址</th><th>模型</th><th>Key</th><th>状态</th><th></th>
+        </tr></thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr class={r.enabled ? '' : 'off'}>
+              <td><code>{r.id}</code></td>
+              <td>{r.label}</td>
+              <td>{r.tasks}</td>
+              <td>{r.kind}</td>
+              <td><span style="font-size:.75rem">{r.base_url}</span></td>
+              <td><span style="font-size:.75rem">{r.model}</span></td>
+              <td>{r.has_key ? <span class="tag">已配 {r.key_prefix}…</span> : <span class="tag" style="color:#a02b20">未配</span>}</td>
+              <td>{r.enabled ? '启用' : '停用'}</td>
+              <td><button class="btn sm" data-del={r.id}>删</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  {/* 新增/编辑表单 */}
+  <h2 style="margin-top:2rem">添加模型</h2>
+  <form id="dm-form" class="card" style="max-width:42rem;display:grid;gap:.875rem">
+    <label>
+      ID（唯一标识，如 seedream5）
+      <input name="id" required pattern="[a-z0-9-]{2,40}" placeholder="seedream5" />
+    </label>
+    <label>
+      显示名称（前端卡片上的名字）
+      <input name="label" required placeholder="Seedream 5.0 Pro" />
+    </label>
+    <label>
+      任务类型（逗号分隔）
+      <input name="tasks" required placeholder="t2i" value="t2i" />
+      <span class="hintline">t2i=文生图, i2i=图生图, t2v=文生视频, i2v=图生视频</span>
+    </label>
+    <label>
+      协议类型
+      <select name="kind">
+        {KINDS.map((k) => <option value={k.v}>{k.d}</option>)}
+      </select>
+    </label>
+    <label>
+      接口地址（base_url）
+      <input name="base_url" required placeholder="https://ark.cn-beijing.volces.com/api/v3" />
+    </label>
+    <label>
+      模型名
+      <input name="model" required placeholder="doubao-seedream-5-0-pro" />
+    </label>
+    <label>
+      API Key
+      <input name="api_key" type="password" placeholder="留空则不更新已有 key" />
+    </label>
+    <label>
+      附加参数（JSON，可选）
+      <input name="extra_json" placeholder='{"watermark":false}' />
+    </label>
+    <label>
+      备注（可选）
+      <input name="note" placeholder="火山引擎方舟，图片+视频都走这个" />
+    </label>
+    <div style="display:flex;gap:.625rem">
+      <button type="submit" class="btn pri">保存</button>
+      <span class="msg" id="dm-msg" style="font-size:.8125rem;align-self:center"></span>
+    </div>
+  </form>
+
+  <script is:inline>
+    (function () {
+      var form = document.getElementById('dm-form');
+      var msg = document.getElementById('dm-msg');
+      if (!form) return;
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var fd = new FormData(form);
+        var payload = {};
+        fd.forEach(function (v, k) { payload[k] = v; });
+        payload.enabled = 1;
+        msg.textContent = '保存中…';
+        fetch('/api/admin/design-models', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload),
+        }).then(function (r) { return r.json(); }).then(function (d) {
+          if (d.ok) { msg.textContent = '已保存，刷新查看'; msg.style.color = '#52c41a'; setTimeout(function(){location.reload();},800); }
+          else { msg.textContent = d.msg || '失败'; msg.style.color = '#a02b20'; }
+        }).catch(function () { msg.textContent = '网络错误'; msg.style.color = '#a02b20'; });
+      });
+      document.querySelectorAll('[data-del]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.getAttribute('data-del');
+          if (!confirm('删除 ' + id + '？')) return;
+          fetch('/api/admin/design-models?id=' + id, { method: 'DELETE' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { if (d.ok) location.reload(); else alert(d.msg); });
+        });
+      });
+    })();
+  </script>
+</AdminShell>

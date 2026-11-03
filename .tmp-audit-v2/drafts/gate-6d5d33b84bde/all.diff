@@ -1,0 +1,72 @@
+diff --git a/audit_v2/gate1.py b/audit_v2/gate1.py
+index aea778c..bccbb76 100644
+--- a/audit_v2/gate1.py
++++ b/audit_v2/gate1.py
+@@ -462,8 +462,19 @@ def check_tree(worker, tree=None, base_tree=None, mode='ship', note=''):
+     risks = dR + [dict(cat=x['cat'], level='中', rule=x['rule'], item=f"{x['file']} {x['text'][:80]}", mitigation='') for x in dF if x['level'] == 'risk']
+     secs['rules'] = round(time.time() - t3, 1)
+     lines = sum(stats.values())
++    # 09-24 23:2x【零读】:代码文件新增行里的查库写法条数(与 v1 gate.sh 同一口径,含封装函数、换行 .prepare、大写 SQL 关键词)。
++    # 费用灯红时,说明带【零读】且这里为 0 才放行(ticket.budget)
++    qrx = re.compile(r'\.(prepare|batch)\b|\.(all|first|run|exec|raw)\s*\(|\b(SELECT|INSERT|UPDATE|DELETE|REPLACE|UPSERT)\b'
++                     r'|\bWITH\s+[a-z_]+\s+AS\b|\b(d1|many|one|q|query|sql|dbq)\s*\(|env\.DB\b|locals\.db\b')
++    codeext = re.compile(r'\.(ts|tsx|js|mjs|cjs|astro|py|sql|sh)$', re.I)
++    nq, curf = 0, ''
++    for ln in udiff.splitlines():
++        if ln.startswith('+++ '):
++            curf = ln[6:] if ln.startswith('+++ b/') else ''
++        elif ln.startswith('+') and codeext.search(curf) and not re.match(r'^\+\s*(//|#|\*|/\*)', ln) and qrx.search(ln):
++            nq += 1
+     res = dict(tree=tree, base_tree=base_tree, worker=worker, mode=mode, repo=repo, rules_hash=lib.rules_hash(), gate_hash=lib.gate_hash(),
+-               files=len(changes), lines=lines, changes=[list(c) for c in changes], stats=stats,
++               files=len(changes), lines=lines, changes=[list(c) for c in changes], stats=stats, new_queries=nq,
+                binaries=[c[1] for c in changes if c[0] != 'D' and not textish(c[1])])
+     res = finish(res, block, doubt, exc, risks, t0, secs)
+     lib.dump(cp, res)
+diff --git a/audit_v2/ticket.py b/audit_v2/ticket.py
+index 403411a..eb1fc69 100644
+--- a/audit_v2/ticket.py
++++ b/audit_v2/ticket.py
+@@ -68,7 +68,7 @@ def repo_of(w, override=None):
+ 
+ 
+ # ---------------- 费用灯(§2.8 第 8 步) ----------------
+-def budget(note):
++def budget(note, g1=None):
+     now = lib.dt.datetime.now(lib.dt.timezone.utc)
+     src = 'd1_budget'
+     d = lib.load('F:/0cosmetic/bohui-automation/local/logs/d1_budget.json') if lib.LIVE else lib.load(lib.rt('state', 'fixture_budget.json'))
+@@ -88,7 +88,9 @@ def budget(note):
+         except Exception:
+             level, src = 'yellow', 'default'
+     ok = level != 'red' or any(m in (note or '') for m in lib.MARKS_RED_OK)
+-    return {'level': level, 'src': src, 'at': lib.iso(), 'ok': ok}
++    # 09-24 23:2x【零读】:纯文案/样式/图片改动,第一关数出新增查库写法为 0,红灯也放行(旧缓存 g1 没有这个字段 → 不放)
++    zero = level == 'red' and '【零读】' in (note or '') and isinstance(g1, dict) and g1.get('new_queries') == 0
++    return {'level': level, 'src': src + ('·零读' if zero else ''), 'at': lib.iso(), 'ok': ok or zero}
+ 
+ 
+ # ---------------- 定级与分角度(§2.2、§2.4) ----------------
+@@ -574,8 +576,8 @@ def prepare(a):
+     print(gate1.summary(g1))
+     if g1['block']:
+         return 3 if g1.get('hard') else 1
+-    bud = budget(a.note) if lib.wcfg(w).get('kind') != 'gate' else {'level': 'n/a', 'src': '闸门自身不看 D1 灯', 'at': lib.iso(), 'ok': True}
+-    print(f"-- 费用灯 {bud['level']}({bud['src']})" + ('' if bud['ok'] else ' → 红灯:说明里要带【降读】【安全】或【急修】才放行'))
++    bud = budget(a.note, g1) if lib.wcfg(w).get('kind') != 'gate' else {'level': 'n/a', 'src': '闸门自身不看 D1 灯', 'at': lib.iso(), 'ok': True}
++    print(f"-- 费用灯 {bud['level']}({bud['src']})· 新增查库写法 {g1.get('new_queries', '?')} 条" + ('' if bud['ok'] else ' → 红灯:说明里要带【降读】【安全】【急修】,或带【零读】且新增查库为 0 才放行'))
+     if not bud['ok']:
+         return 1
+     tk = valid_ticket(w, tree, base[0])
+@@ -746,9 +748,9 @@ def verify(a):
+         if g1['block']:
+             errs.append(f"第 7 步:第一关按当前规则不过({len(g1['block'])} 条拦)")
+     # 8 费用灯
+-    bud = budget(tk.get('note'))
++    bud = budget(tk.get('note'), g1 if T == tk['tree'] else None)
+     if not bud['ok']:
+-        errs.append(f"第 8 步:费用灯红,说明没带【降读】【安全】【急修】")
++        errs.append(f"第 8 步:费用灯红,说明没带【降读】【安全】【急修】,也不是新增查库为 0 的【零读】")
+     # 9 逾期追审
+     if tk.get('tier') != '急修':
+         od = overdue(w)

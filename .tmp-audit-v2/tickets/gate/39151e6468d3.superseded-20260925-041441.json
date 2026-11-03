@@ -1,0 +1,157 @@
+{
+ "schema": "bohui-ticket/2",
+ "id": "RT-20260925-0406-gate-39151e64",
+ "kind": "worker",
+ "target": {
+  "worker": "gate",
+  "repo": "F:/0cosmetic/tools-review",
+  "account": "none"
+ },
+ "tree": "39151e6468d33929f8c016dcd4737de825d15db4",
+ "scope_sha256": "efa2554b9e7bbbc7f00cf4e81d330e3a080eefdfc328590edd5ca39b367d5ea9",
+ "gate_hash": "sha256:65cc8f36d09e94c2d094ab7cc17fa65da794021f715c96eadd3230df2f914663",
+ "rules_hash": "sha256:7aa081a24470d292129570eb9b44f0dd5d9f906e8d5c47a3be4e94317f1ccbca",
+ "env_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+ "base": {
+  "ref": "refs/ship/gate",
+  "commit": "726a45bf07ae280ed91ae05e4c9349afcf2faa99",
+  "tree": "6d5d33b84bde60937d51f4778f621567d9657fa4",
+  "first_ship": false
+ },
+ "prev_ticket": null,
+ "diff": {
+  "file": "drafts/gate-39151e6468d3/all.diff",
+  "sha256": "5fed1ceda486b87d90cb260474084ef93777133bb89d6790394645444dd1529b",
+  "files": 2,
+  "lines": 26
+ },
+ "note": "①ops.py:子命令 dest 从 cmd 改 op,修 prod 位置参数撞名(a.cmd 变列表→TypeError,prod 通道从未跑通,红队也没覆盖);②smoke.py:公司站(biosphere-ai/beauty2oem)deploy 冒烟改用探针头 x-bohui-probe(值从本机 .env PROBE_SECRET 读入内存)代替 ?kk= 破缓存,因 C1 起 ?kk= 被 301,上线冒烟 4/23 误报;平台站仍用 ?kk=",
+ "tier": "L2",
+ "tier_reasons": [
+  "26 行,无敏感文件,第一关无存疑",
+  "改闸门至少 L2(安全、正确性两名审核员必审);只改数据表用 ship_ops.sh gate --data"
+ ],
+ "gate1": {
+  "result": "过",
+  "block": 0,
+  "doubt": 0,
+  "exceptions": 0,
+  "seconds": 9.7
+ },
+ "budget": {
+  "level": "n/a",
+  "src": "闸门自身不看 D1 灯",
+  "at": "2026-09-25T03:56:29+08:00",
+  "ok": true
+ },
+ "judges": {
+  "laya": {
+   "decision": "allow",
+   "conf": 0.02,
+   "noul": {
+    "cost": 0.99,
+    "security": 0.99,
+    "compliance": 0.99
+   },
+   "correctness": 1.3,
+   "verdict": "存疑",
+   "status": "判了",
+   "seconds": 72,
+   "partial": false
+  },
+  "jev": {
+   "decision": "block",
+   "conf": 0.81,
+   "noul": {
+    "cost": 0.03,
+    "security": 0.42,
+    "compliance": 0.02
+   },
+   "correctness": 0.96,
+   "verdict": "拦",
+   "status": "判了",
+   "tokens_in": 1383,
+   "day_used": 1383,
+   "seconds": 21.5,
+   "call_ref": "ledger/jev_calls.jsonl@2026-09-25T03:56:51+08:00",
+   "request_id": null,
+   "partial": false
+  }
+ },
+ "reports": [
+  {
+   "angle": "成本+正确性",
+   "file": "reports/gate/39151e6468d3/成本+正确性.json",
+   "sha256": "db37fe5dc240aabf27fe9b0e6a4f70d56ebee420fac061f22142b34dc01c646d",
+   "verdict": "过",
+   "findings": 2,
+   "reviewer": "claude"
+  },
+  {
+   "angle": "安全+合规",
+   "file": "reports/gate/39151e6468d3/安全+合规.json",
+   "sha256": "cbd71fe1091983123382c0cc9d0d2c3580887773ddac51c5707b7856df95f356",
+   "verdict": "过",
+   "findings": 2,
+   "reviewer": "claude"
+  }
+ ],
+ "resolved": [],
+ "overrides": [],
+ "exceptions": [],
+ "risks": {
+  "费用": [
+   {
+    "level": "低",
+    "item": "探针请求绕开缓存、现渲染读 D1,每次 deploy 冒烟多出约 23 次现渲染(和以前 ?kk= 破缓存一样多),hourly 模式不带 kk 也不带头,仍走缓存;不涉及 CACHE_V、R2、模型、KV 写、定时任务",
+    "mitigation": "盯 Bohui-D1Budget 的日读线,预期看不出变化"
+   }
+  ],
+  "安全": [
+   {
+    "level": "低",
+    "item": "PROBE_SECRET 可绕公司站缓存,泄露即成 D1 读量放大器;本次只在本机内存使用。",
+    "mitigation": "保持只存 .env;中间件常量时间比较;怀疑泄露即轮换。"
+   }
+  ],
+  "合规": [
+   "已查:R1–R11、RK7,未发现"
+  ],
+  "正确性": [
+   {
+    "level": "中",
+    "item": "公司站冒烟从「?kk= 被 301 误报」变成「secret 不同步时静默吃缓存漏报」",
+    "mitigation": "盯下一次 biosphere-ai / beauty2oem deploy 冒烟:通过数应该从 4/23 回到接近全过,并且至少一条确认不是缓存命中;轮换 PROBE_SECRET 时必须同时跑 set-probe-secret.mjs"
+   },
+   {
+    "level": "低",
+    "item": "本机 .env 缺 PROBE_SECRET 时静默退回旧行为(?kk= 被 301),冒烟会继续误报;非安全问题,交成本+正确性角度。"
+   }
+  ],
+  "回归": [
+   {
+    "level": "低",
+    "item": "ops.py prod 子命令是第一次真正能跑通,调用方拿到的是 wrangler 真执行,之前这条路从没跑过",
+    "mitigation": "第一次用 ops.py prod 时先挑只读命令试一下,确认 --worker/--note 之后 -- 的拼接正确"
+   }
+  ]
+ },
+ "smoke_extra": [
+  "https://biosphere-ai.com/ 带 x-bohui-probe 头:200 且 cf-cache-status 不是 HIT",
+  "https://www.beauty2oem.com/ 带 x-bohui-probe 头:200 且不 301",
+  "python audit_v2/ops.py prod --worker <任一> --note 自测 -- --version(本地确认 a.cmd 是列表、a.op=='prod')"
+ ],
+ "verdict": "拦",
+ "why": [
+  "Jev 机审拦(置信 ≥0.8):需要一名审核员在 addressed 判「不成立」并且反驳员(refute-JEV.json)推翻"
+ ],
+ "issued_at": "2026-09-25T04:06:33+08:00",
+ "expires_at": "2026-09-26T04:06:33+08:00",
+ "followup_due": null,
+ "followup": [],
+ "incident": null,
+ "degraded": false,
+ "issuer": "audit_v2/ticket.py v2.1",
+ "basis": "6af198709366d04e76edbe9971faafdd6c2e2a7cad6eceeddb64c6e08f7043dd",
+ "content_sha256": "9bfcb03ee15ece103b10ecbf11613cdf82614f660d89f10e07b191d0b6c5d6fa"
+}

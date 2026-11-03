@@ -43,7 +43,7 @@ const mktZh = {
   intro: '孵化不止做出产品,还要送得进市场 —— 四条通道,各有各的合规底牌。',
   items: [
     { id: 'sea', title: '东南亚', desc: '印尼工厂本土化交付 —— 关税、物流与本地合规一次解决。' },
-    { id: 'me', title: '中东', desc: 'HALAL 认证畅通准入,清真合规从原料端就开始管理。' },
+    { id: 'me', title: '中东', desc: '持 HALAL 证书,覆盖范围以证书为准,目的地认不认由当地主管机构决定;清真合规从原料端就开始管理。' },
     { id: 'west', title: '欧美', desc: 'ISO 22716 国际标准背书,欧盟 CPNP 通报与美国 FDA 设施注册经验支撑上架。' },
     { id: 'latam', title: '巴西 / 南美', desc: '亚马逊植物双源战略 —— 用本土认同的成分故事切入南美市场。' },
   ],
@@ -53,7 +53,7 @@ const mktEn = {
   intro: 'Incubation is not finished when the product exists — it has to enter the market. Four channels, each with its own compliance card.',
   items: [
     { id: 'sea', title: 'Southeast Asia', desc: 'Local delivery from the Indonesia plant — tariffs, logistics and local compliance solved in one move.' },
-    { id: 'me', title: 'Middle East', desc: 'HALAL certification clears entry; halal compliance is managed from the raw-material end.' },
+    { id: 'me', title: 'Middle East', desc: 'HALAL certificate held, scope as stated on the certificate; acceptance is decided by each destination’s own authority. Halal compliance is managed from the raw-material end.' },
     { id: 'west', title: 'Europe & North America', desc: 'Backed by ISO 22716, with EU CPNP notification and US FDA facility-registration experience behind listings.' },
     { id: 'latam', title: 'Brazil & South America', desc: 'The Amazonian-botanical dual-source strategy — enter South America with an ingredient story locals recognise.' },
   ],

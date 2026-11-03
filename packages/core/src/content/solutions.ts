@@ -692,6 +692,202 @@ export const SOLUTIONS: Solution[] = [
       ],
     },
   },
+
+  /* ── 品类方案:口腔护理(SOP第8节要求) ─────────────────────────── */
+  {
+    slug: 'oral-care',
+    axis: 'category',
+    match: { category: ['oral'] },
+    packCat: 't=tube',
+    zh: {
+      title: '口腔护理代工',
+      tagline: '牙膏、洁牙片、漱口水 —— 有配方库、有法规方向、有产线',
+      lede: `口腔护理不是护肤的附属品:配方体系不同(摩擦剂/保湿剂/活性成分),
+             法规要求不同(含氟/不含氟/各市场备案),产线也不同。
+             我们把已经做过的19条口腔配方摊开,你能直接对上品类和剂型。`,
+      pains: [
+        ['牙膏备案到底要走哪个流程', '不同市场的备案要求不同:含氟牙膏在中国按化妆品管理,在部分海外市场按药品或医疗器械管理。先确认目标市场的分类,再选配方方向。'],
+        ['洁牙片是新剂型,工厂没做过', '配方库里有三条洁牙片基底,可以做直接压片也可以做崩解片。但这是新剂型,打样周期比传统牙膏长,需要提前规划。'],
+        ['漱口水的防腐体系不好定', '漱口水最大的技术难点不是功效,是防腐。pH值、醇含量、防腐剂配伍都要打样验证,不是配方表上写上就行。'],
+      ],
+      steps: [
+        ['确认目标市场与法规分类', '含氟/不含氟、化妆品/药品/医疗器械分类,决定配方可选范围。'],
+        ['选剂型', '牙膏(膏体)/洁牙片(片剂)/漱口水(液体),配方库按剂型分类。'],
+        ['打样', '寄样确认口感、泡沫量、使用感。口腔产品一定要试口感,不能只看成分表。'],
+        ['备案与量产', '目标市场的备案文件由责任人提交,我们提供配方资料和检测报告。'],
+      ],
+      proof: [
+        ['配方库', '19条口腔配方(含三条洁牙片基底),按剂型和功效分类。'],
+        ['包材库', '牙膏管、口腔护理瓶按规格分类,有现货款。'],
+        ['法规方向', '各市场的口腔护理法规方向已梳理,以最新官方文本为准。'],
+      ],
+      faq: [
+        ['牙膏含氟可以吗?', '可以,但含氟牙膏在部分市场需要额外备案。建议先确认目标市场再决定。'],
+        ['洁牙片最小起订量?', '洁牙片是压片工艺,起订量取决于压片线的最小批量。以书面确认为准。'],
+        ['漱口水可以加酒精吗?', '可以,但醇含量影响防腐体系和运输分类。打样时一起测试。'],
+        ['可以同时做牙膏和漱口水吗?', '可以,但两条产线分别计MOQ,不能合并。'],
+      ],
+    },
+    en: {
+      title: 'Oral care manufacturing',
+      tagline: 'Toothpaste, tooth tablets, mouthwash — formulas, regulatory direction, production lines',
+      lede: `Oral care is not skincare's side project: different formula systems (abrasives, humectants, actives),
+             different regulatory requirements (fluoride classification varies by market),
+             different production lines. We show you our 19 oral formulas so you can match category and format.`,
+      pains: [
+        ['Which registration path does toothpaste need?', 'Fluoride toothpaste is classified differently across markets — cosmetic in some, drug or medical device in others. Confirm the market classification before selecting a formula direction.'],
+        ['Tooth tablets are new — has the factory done them?', 'Our formula library includes three tooth tablet bases — direct compression or dispersible. But this is a newer format; sampling takes longer than conventional toothpaste.'],
+        ['Mouthwash preservative systems are tricky', 'The hardest part of mouthwash is not efficacy — it is preservation. pH, alcohol content, preservative compatibility must all be sampled and tested.'],
+      ],
+      steps: [
+        ['Confirm target market and regulatory class', 'Fluoride/non-fluoride, cosmetic/drug/medical device classification determines the formula space.'],
+        ['Select format', 'Toothpaste (paste) / tooth tablets (tablet) / mouthwash (liquid). Formula library is sorted by format.'],
+        ['Sample', 'Test taste, foam, mouthfeel. Oral products must be trialled for sensory experience, not just read off an ingredient list.'],
+        ['Register and produce', 'Registration documents are filed by the responsible person. We provide formulation data and test reports.'],
+      ],
+      proof: [
+        ['Formula library', '19 oral formulas (including three tooth tablet bases), sorted by format and function.'],
+        ['Packaging library', 'Toothpaste tubes and oral care bottles by specification, stock items available.'],
+        ['Regulatory direction', 'Oral care regulatory direction by market compiled; latest official text prevails.'],
+      ],
+      faq: [
+        ['Can we use fluoride?', 'Yes, but fluoride toothpaste may require additional registration in some markets. Confirm your target market first.'],
+        ['What is the MOQ for tooth tablets?', 'Tooth tablets use a tableting process. MOQ depends on the minimum batch of the tableting line. Subject to written confirmation.'],
+        ['Can mouthwash contain alcohol?', 'Yes, but alcohol content affects preservation and transport classification. Test during sampling.'],
+        ['Can we do toothpaste and mouthwash together?', 'Yes, but the two production lines carry separate MOQs and cannot be combined.'],
+      ],
+    },
+  },
+
+  /* ── 行业方案:产品开发与打样(SOP第8节要求) ─────────────────── */
+  {
+    slug: 'product-development',
+    axis: 'audience',
+    match: { benefits: ['hydrating', 'brightening', 'barrier', 'soothing'] },
+    zh: {
+      title: '产品开发与打样',
+      tagline: '从概念到可以寄的样品 —— 六步选品链路走完出一套方案',
+      lede: `很多客户不是来「下大单」的,是来「开发一个新品」的。
+             需要的是:能不能做、大概多少钱、打样要多久、什么时候能上。
+             我们的六步选品链路把不确定的部分摊在台面上,走完出一份带编码的方案。`,
+      pains: [
+        ['只有一个概念,不知道能不能做', '能不能做取决于剂型、活性成分稳定性、包材适配。先过一遍选品链路,出一份可行性判断。'],
+        ['打样周期不确定,排不上上市节奏', '打样不是提交需求等结果,中间要试肤感、调香型、确认包材。每一步都卡时间。'],
+        ['开发完了发现某个成分在目标市场不能用', '选品阶段就先过一遍成分合规,而不是等标签出来才发现要改配方。'],
+      ],
+      steps: [
+        ['说清你的概念和目标市场', '什么功效、什么剂型、卖到哪个国家、什么价位段。这四件决定后续一切。'],
+        ['配方可行性判断', '配方库里有没有接近的基底?活性成分稳定性够不够?包材有没有现货?'],
+        ['选品链路六步走', '品类→剂型→包材→功效→市场→打样周期,每步出一个可核对的编码。'],
+        ['打样与反馈', '寄样确认。样品不确认,量产全是返工。'],
+      ],
+      proof: [
+        ['配方库', '按品类和功效分类,每条配方有编码,可以按编码报样。'],
+        ['包材库', '5000+页实物图册,按泵头/瓶身/软管/膏霜罐分类。'],
+        ['选品链路', '六步走完,出一份可以直接发给同事的方案:剂型/包材/可售市场/打样周期。'],
+      ],
+      faq: [
+        ['打一次样要多久?', '取决于剂型和包材。常规剂型约2-3周,新剂型或开模包材更长。以实际排产确认为准。'],
+        ['打样费用多少?', '打样费用取决于配方复杂度和包材。具体费用以书面报价为准,不在此做范围承诺。'],
+        ['可以只打样不下单吗?', '可以。打样和量产是分开的,打样确认后可以选择不下单。'],
+        ['打样样品可以改吗?', '可以。打样就是用来调整的,肤感/香型/颜色/包材都可以在打样阶段调。'],
+      ],
+    },
+    en: {
+      title: 'Product development and sampling',
+      tagline: 'From concept to a sample you can send — six-step selection path outputs a plan',
+      lede: `Many clients come not to place a large order, but to develop a new product.
+             They need to know: can we make it, roughly how much, how long to sample, when can it launch.
+             Our six-step selection path puts the unknowns on the table and outputs a coded plan.`,
+      pains: [
+        ['Only have a concept — no idea if it is feasible', 'Feasibility depends on format, active stability, packaging compatibility. Run it through the selection path first.'],
+        ['Sampling timeline is unclear — cannot plan launch', 'Sampling is not submit-and-wait. It involves testing feel, adjusting fragrance, confirming packaging. Each step takes time.'],
+        ['Developed the formula, only to find an ingredient is banned in the target market', 'Ingredient compliance is checked during selection, not after labels are printed.'],
+      ],
+      steps: [
+        ['State your concept and target market', 'What benefit, what format, which country, what price tier. These four determine everything that follows.'],
+        ['Formula feasibility check', 'Is there a close base in the formula library? Is the active stable enough? Is the packaging available?'],
+        ['Six-step selection path', 'Category → format → packaging → benefit → market → sampling timeline. Each step outputs a verifiable code.'],
+        ['Sample and feedback', 'Send samples for confirmation. Without sample sign-off, mass production is all rework.'],
+      ],
+      proof: [
+        ['Formula library', 'Sorted by category and benefit. Each formula has a code; request samples by code.'],
+        ['Packaging library', '5,000+ pages of physical catalogues, sorted by pump / bottle / tube / jar.'],
+        ['Selection path', 'Six steps output a plan you can forward to a colleague: format / packaging / markets / sampling timeline.'],
+      ],
+      faq: [
+        ['How long does one sampling round take?', 'Depends on format and packaging. Conventional formats about 2-3 weeks; new formats or custom moulds longer. Subject to production schedule.'],
+        ['How much does sampling cost?', 'Depends on formula complexity and packaging. Specific pricing by written quote only — no range commitments here.'],
+        ['Can we sample without placing an order?', 'Yes. Sampling and mass production are separate. You can choose not to order after sampling.'],
+        ['Can samples be modified?', 'Yes. Sampling exists for adjustment — feel, fragrance, colour, packaging can all be changed at this stage.'],
+      ],
+    },
+  },
+
+  /* ── 行业方案:工厂质量体系(SOP第8节要求) ─────────────────────── */
+  {
+    slug: 'factory-quality',
+    axis: 'audience',
+    match: {},
+    zh: {
+      title: '广州工厂质量体系',
+      tagline: 'GMPC · ISO 22716 · HALAL —— 看得见的认证,摸得着的流程',
+      lede: `买家最怕的不是价格高,是工厂说不清自己的质量标准。
+             我们把认证、生产流程、质检节点摊开:每一项认证是什么、覆盖了什么,
+             每一步生产谁检查、查什么。不吹「质量第一」,给证据。`,
+      pains: [
+        ['工厂说有认证,但不清楚认证覆盖了什么', 'GMPC和ISO 22716是化妆品良好生产规范,HALAL是清真认证。每项认证覆盖范围不同,不能笼统说「有认证」。'],
+        ['不知道生产过程中哪里有质检', '质检不是出厂前统一查,是每个关键节点都有:原料入库/半成品/灌装/包装/成品出厂。每个节点查什么,我们列出来。'],
+        ['打样和量产的质量标准不一样怎么办', '打样确认的配方和包材就是量产标准。量产时每批留样,有偏差可以对照。'],
+      ],
+      steps: [
+        ['查看认证清单', 'GMPC(化妆品良好生产规范)/ISO 22716(化妆品GMP)/HALAL(清真)。以证书原件为准。'],
+        ['了解生产流程质检节点', '原料入库检测→乳化过程监控→灌装前检验→包装后抽检→成品留样。每个节点有记录。'],
+        ['打样确认即量产标准', '打样确认的肤感/香型/包材/印刷就是量产标准,有偏差可对照留样。'],
+        ['量产留样追溯', '每批量产留样,有偏差可以对照。留样保存期限按品类定。'],
+      ],
+      proof: [
+        ['认证墙', 'GMPC/ISO 22716/HALAL证书展示,以原件为准。'],
+        ['工厂照片', '生产车间/乳化设备/灌装线/质检实验室实拍。'],
+        ['生产流程', '从原料到出库的完整流程,标注每个质检节点。'],
+      ],
+      faq: [
+        ['工厂有FDA注册吗?', 'FDA是美国的注册/通报机制,不是工厂认证。我们的工厂认证是GMPC和ISO 22716。FDA相关注册由责任人提交。'],
+        ['可以参观工厂吗?', '可以。提前预约,安排参观生产车间和质检实验室。'],
+        ['每批产品都有质检报告吗?', '每批有质检记录和留样。完整质检报告根据需要提供。'],
+        ['HALAL认证覆盖所有产品吗?', 'HALAL认证覆盖符合清真要求的产品。不含HALAL认证的产品按常规生产。'],
+      ],
+    },
+    en: {
+      title: 'Guangzhou factory quality system',
+      tagline: 'GMPC · ISO 22716 · HALAL — visible certifications, tangible processes',
+      lede: `What buyers fear most is not high prices — it is a factory that cannot articulate its own quality standards.
+             We lay out our certifications, production flow, and inspection checkpoints: what each certification covers,
+             who checks what at each stage. Not empty claims of "quality first" — evidence.`,
+      pains: [
+        ['Factory claims certifications but cannot explain coverage', 'GMPC and ISO 22716 are cosmetics good manufacturing practice standards. HALAL is a halal certification. Each covers different scopes — "we have certs" is not enough.'],
+        ['No idea where quality checks happen in production', 'Quality checks are not just at the end — they are at every key node: raw material intake, bulk, filling, packaging, finished goods. We list what is checked at each.'],
+        ['How do sampling and mass production standards differ?', 'The formula and packaging confirmed during sampling become the mass production standard. Each batch retains samples for comparison.'],
+      ],
+      steps: [
+        ['Review certification list', 'GMPC (cosmetics GMP) / ISO 22716 (cosmetics GMP) / HALAL (halal). Subject to original certificates.'],
+        ['Understand production quality checkpoints', 'Raw material intake testing → emulsion process monitoring → pre-filling inspection → post-packaging sampling → finished goods retention. Each node logged.'],
+        ['Sample sign-off equals mass production standard', 'Feel, fragrance, packaging, print confirmed during sampling are the mass production standard. Deviations checked against retained samples.'],
+        ['Mass production sample retention', 'Every batch retains samples for deviation comparison. Retention period by category.'],
+      ],
+      proof: [
+        ['Certification wall', 'GMPC / ISO 22716 / HALAL certificates on display. Originals prevail.'],
+        ['Factory photos', 'Production floor, emulsion equipment, filling line, QC lab — real photos.'],
+        ['Production flow', 'Full flow from raw materials to dispatch, with each quality checkpoint marked.'],
+      ],
+      faq: [
+        ['Is the factory FDA-registered?', 'FDA is a US registration/notification mechanism, not a factory certification. Our factory certifications are GMPC and ISO 22716. FDA-related filings are submitted by the responsible person.'],
+        ['Can we visit the factory?', 'Yes. Make an appointment in advance. Tours of production floor and QC lab arranged.'],
+        ['Does every batch come with a quality report?', 'Every batch has quality records and retained samples. Full quality reports provided on request.'],
+        ['Does HALAL certification cover all products?', 'HALAL covers products that meet halal requirements. Non-HALAL products are produced under standard process.'],
+      ],
+    },
+  },
 ];
 
 export const byAxis = (axis: Axis) => SOLUTIONS.filter((s) => s.axis === axis);

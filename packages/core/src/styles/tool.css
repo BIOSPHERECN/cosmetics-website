@@ -1,0 +1,261 @@
+/**
+ * 工具页设计系统（2026-10-30）
+ *
+ * 为什么单独一套：内容站走「报刊编辑风」（衬线、细线、墨色），适合读；
+ * 工具页需要「产品工作区」的观感——Ant Design 那套规格已被大量 B2B SaaS 验证：
+ * 8px 栅格、6px 圆角、32/40px 控件高度、克制的阴影、单一强调色。
+ *
+ * 这里不引第三方库：只把 Ant Design 的**设计规格**复刻成本项目可用的 token 与类，
+ * 零 JS 依赖、零额外字体（Ant 的设计语言是 Apache-2.0，规格可自由实现）。
+ *
+ * 用法：工具页 <main> 上加 class="tw"，内部用 .tw-btn / .tw-card / .tw-slider 等。
+ */
+
+.tw {
+  /* —— 基础色（Ant 语义色） —— */
+  --tw-primary: #7c4da8;
+  --tw-primary-hover: #9164bb;
+  --tw-primary-active: #603a86;
+  --tw-primary-bg: #f7f3fb;
+  --tw-primary-border: #d9c8ea;
+
+  --tw-success: #52c41a;
+  --tw-warning: #faad14;
+  --tw-error: #ff4d4f;
+
+  /* —— 中性色（Ant 的文字/边框/填充层级） —— */
+  --tw-text: rgb(0 0 0 / .88);
+  --tw-text-2: rgb(0 0 0 / .65);
+  --tw-text-3: rgb(0 0 0 / .45);
+  --tw-text-4: rgb(0 0 0 / .25);
+  --tw-border: #d9d9d9;
+  --tw-border-2: #f0f0f0;
+  --tw-fill: #f5f5f5;
+  --tw-fill-2: #fafafa;
+  --tw-bg: #ffffff;
+  --tw-bg-layout: #f5f5f7;
+
+  /* —— 圆角 / 控件高度 —— */
+  --tw-radius-sm: 4px;
+  --tw-radius: 6px;
+  --tw-radius-lg: 8px;
+  --tw-radius-xl: 12px;
+  --tw-ctrl-sm: 24px;
+  --tw-ctrl: 32px;
+  --tw-ctrl-lg: 40px;
+
+  /* —— 阴影（Ant 三级） —— */
+  --tw-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / .03), 0 1px 6px -1px rgb(0 0 0 / .02), 0 2px 4px 0 rgb(0 0 0 / .02);
+  --tw-shadow: 0 6px 16px 0 rgb(0 0 0 / .08), 0 3px 6px -4px rgb(0 0 0 / .12), 0 9px 28px 8px rgb(0 0 0 / .05);
+  --tw-shadow-lg: 0 9px 28px 8px rgb(0 0 0 / .05), 0 6px 16px 0 rgb(0 0 0 / .08), 0 3px 6px -4px rgb(0 0 0 / .12);
+
+  /* —— 动效（Ant 标准缓动） —— */
+  --tw-ease: cubic-bezier(.645, .045, .355, 1);
+  --tw-dur: .2s;
+
+  color: var(--tw-text);
+  font-size: 14px;
+  line-height: 1.5714;
+  background: var(--tw-bg-layout);
+}
+
+/* 页面骨架：玻璃态头部 + 工作区 */
+.tw-shell { min-height: 100vh; display: flex; flex-direction: column; }
+.tw-header {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  min-height: 56px; padding: 0 clamp(1rem, 3vw, 2rem);
+  background: rgb(255 255 255 / .72);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid var(--tw-border-2);
+}
+.tw-main { flex: 1; width: 100%; max-width: 96rem; margin: 0 auto; padding: clamp(1rem, 2.4vw, 2rem); }
+
+/* 工作区：左侧参数栏 + 右侧主区域 */
+.tw-workspace {
+  display: grid;
+  grid-template-columns: 20rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 64rem) { .tw-workspace { grid-template-columns: minmax(0, 1fr); } }
+
+/* 侧边栏 */
+.tw-sidebar {
+  background: var(--tw-bg);
+  border: 1px solid var(--tw-border-2);
+  border-radius: var(--tw-radius-lg);
+  box-shadow: var(--tw-shadow-sm);
+  position: sticky; top: 4.5rem;
+  max-height: calc(100vh - 6rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+@media (max-width: 64rem) { .tw-sidebar { position: static; max-height: none; } }
+.tw-sidebar::-webkit-scrollbar { width: 6px; }
+.tw-sidebar::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 99px; }
+
+/* 分组：标题 + 内容 */
+.tw-group { padding: 1rem 1rem .875rem; border-bottom: 1px solid var(--tw-border-2); }
+.tw-group:last-child { border-bottom: 0; }
+.tw-group-title {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  margin: 0 0 .75rem; font-size: 13px; font-weight: 600; color: var(--tw-text);
+}
+.tw-group-title small { font-weight: 400; color: var(--tw-text-3); font-size: 12px; }
+
+/* —— 按钮 —— */
+.tw-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .375rem;
+  height: var(--tw-ctrl); padding: 0 .9375rem;
+  font: inherit; font-size: 14px; line-height: 1;
+  color: var(--tw-text); background: var(--tw-bg);
+  border: 1px solid var(--tw-border); border-radius: var(--tw-radius);
+  cursor: pointer; white-space: nowrap;
+  transition: all var(--tw-dur) var(--tw-ease);
+}
+.tw-btn:hover { color: var(--tw-primary); border-color: var(--tw-primary); }
+.tw-btn:active { color: var(--tw-primary-active); border-color: var(--tw-primary-active); }
+.tw-btn:focus-visible { outline: 2px solid var(--tw-primary); outline-offset: 1px; }
+.tw-btn[disabled], .tw-btn:disabled { color: var(--tw-text-4); background: var(--tw-fill-2); border-color: var(--tw-border); cursor: not-allowed; }
+.tw-btn-lg { height: var(--tw-ctrl-lg); padding: 0 1.25rem; font-size: 16px; border-radius: var(--tw-radius-lg); }
+.tw-btn-sm { height: var(--tw-ctrl-sm); padding: 0 .5rem; font-size: 12px; border-radius: var(--tw-radius-sm); }
+.tw-btn-block { width: 100%; }
+.tw-btn-primary {
+  color: #fff; border-color: transparent;
+  background: var(--tw-primary);
+  box-shadow: 0 2px 0 rgb(124 77 168 / .1);
+}
+.tw-btn-primary:hover { color: #fff; background: var(--tw-primary-hover); border-color: transparent; }
+.tw-btn-primary:active { color: #fff; background: var(--tw-primary-active); }
+.tw-btn-primary[disabled] { color: #fff; background: var(--tw-fill); border-color: transparent; box-shadow: none; }
+.tw-btn-text { border-color: transparent; background: transparent; padding-inline: .5rem; }
+.tw-btn-text:hover { background: var(--tw-fill); border-color: transparent; color: var(--tw-text); }
+
+/* —— 输入 —— */
+.tw-input, .tw-textarea, .tw-select {
+  width: 100%; font: inherit; font-size: 14px; color: var(--tw-text);
+  background: var(--tw-bg); border: 1px solid var(--tw-border); border-radius: var(--tw-radius);
+  padding: 0 .6875rem; height: var(--tw-ctrl);
+  transition: border-color var(--tw-dur) var(--tw-ease), box-shadow var(--tw-dur) var(--tw-ease);
+}
+.tw-textarea { height: auto; min-height: 6rem; padding: .5rem .6875rem; line-height: 1.6; resize: vertical; }
+.tw-input:hover, .tw-textarea:hover, .tw-select:hover { border-color: var(--tw-primary-hover); }
+.tw-input:focus, .tw-textarea:focus, .tw-select:focus {
+  outline: none; border-color: var(--tw-primary);
+  box-shadow: 0 0 0 2px rgb(124 77 168 / .12);
+}
+.tw-input::placeholder, .tw-textarea::placeholder { color: var(--tw-text-4); }
+.tw-label { display: block; margin-bottom: .375rem; font-size: 13px; color: var(--tw-text-2); }
+
+/* —— 标签页（下划线式，Ant 默认） —— */
+.tw-tabs { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--tw-border-2); }
+.tw-tab {
+  position: relative; padding: .75rem 0; border: 0; background: none;
+  font: inherit; font-size: 14px; color: var(--tw-text-2); cursor: pointer;
+  transition: color var(--tw-dur) var(--tw-ease);
+}
+.tw-tab:hover { color: var(--tw-primary-hover); }
+.tw-tab[aria-selected='true'] { color: var(--tw-primary); font-weight: 500; }
+.tw-tab[aria-selected='true']::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+  background: var(--tw-primary); border-radius: 1px;
+}
+
+/* —— 分段控制器（Ant Segmented） —— */
+.tw-segmented {
+  display: inline-flex; padding: 2px; gap: 2px;
+  background: var(--tw-fill); border-radius: var(--tw-radius);
+}
+.tw-segmented button {
+  border: 0; background: none; font: inherit; font-size: 13px; color: var(--tw-text-2);
+  padding: .3125rem .75rem; border-radius: 4px; cursor: pointer;
+  transition: all var(--tw-dur) var(--tw-ease);
+}
+.tw-segmented button:hover { color: var(--tw-text); }
+.tw-segmented button[aria-pressed='true'] {
+  color: var(--tw-text); background: var(--tw-bg); box-shadow: 0 1px 2px rgb(0 0 0 / .06);
+}
+
+/* —— 滑块（Ant Slider） —— */
+.tw-slider { width: 100%; accent-color: var(--tw-primary); height: var(--tw-ctrl-sm); }
+.tw-slider-row { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr) 3rem; gap: .625rem; align-items: center; }
+.tw-slider-row label { font-size: 13px; color: var(--tw-text-2); }
+.tw-slider-row output { font-size: 12px; color: var(--tw-text-3); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* —— 卡片 —— */
+.tw-card {
+  background: var(--tw-bg); border: 1px solid var(--tw-border-2);
+  border-radius: var(--tw-radius-lg); box-shadow: var(--tw-shadow-sm);
+}
+.tw-card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+  padding: .875rem 1rem; border-bottom: 1px solid var(--tw-border-2);
+}
+.tw-card-head h2, .tw-card-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.tw-card-body { padding: 1rem; }
+
+/* —— 可选卡片（包材/风格） —— */
+.tw-choice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); gap: .5rem; }
+.tw-choice {
+  position: relative; display: grid; gap: .125rem; text-align: left;
+  padding: .5rem .625rem; background: var(--tw-bg);
+  border: 1px solid var(--tw-border); border-radius: var(--tw-radius);
+  font: inherit; cursor: pointer;
+  transition: all var(--tw-dur) var(--tw-ease);
+}
+.tw-choice:hover { border-color: var(--tw-primary-hover); }
+.tw-choice[aria-pressed='true'] {
+  border-color: var(--tw-primary); background: var(--tw-primary-bg);
+  box-shadow: 0 0 0 2px rgb(124 77 168 / .12);
+}
+.tw-choice[aria-pressed='true']::after {
+  content: '✓'; position: absolute; top: .25rem; right: .375rem;
+  width: 1rem; height: 1rem; border-radius: 50%; display: grid; place-items: center;
+  font-size: 10px; color: #fff; background: var(--tw-primary);
+}
+.tw-choice b { font-size: 13px; font-weight: 600; }
+.tw-choice span { font-size: 12px; color: var(--tw-text-3); }
+
+/* —— 空状态 —— */
+.tw-empty {
+  display: grid; place-content: center; justify-items: center; gap: .75rem;
+  min-height: 20rem; padding: 2.5rem 1.5rem; text-align: center;
+  border: 1px dashed var(--tw-border); border-radius: var(--tw-radius-lg);
+  background: var(--tw-bg); color: var(--tw-text-3);
+}
+.tw-empty h2 { margin: 0; font-size: 16px; color: var(--tw-text); }
+.tw-empty p { margin: 0; max-width: 44ch; font-size: 14px; line-height: 1.7; }
+
+/* —— 提示条 —— */
+.tw-alert {
+  display: flex; gap: .5rem; padding: .625rem .875rem;
+  border-radius: var(--tw-radius); font-size: 13px;
+  background: var(--tw-primary-bg); color: var(--tw-primary-active);
+  border: 1px solid var(--tw-primary-border);
+}
+.tw-alert-warn { background: #fffbe6; color: #ad6800; border-color: #ffe58f; }
+.tw-alert-error { background: #fff2f0; color: #a8071a; border-color: #ffccc7; }
+
+/* —— 进度条 —— */
+.tw-progress { height: 6px; border-radius: 99px; background: var(--tw-fill); overflow: hidden; }
+.tw-progress i { display: block; height: 100%; width: 35%; border-radius: inherit;
+  background: var(--tw-primary); animation: tw-slide 1.2s var(--tw-ease) infinite; }
+@keyframes tw-slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+
+/* —— 图片缩略带 —— */
+.tw-rail { list-style: none; margin: 0; padding: 0 0 .5rem; display: flex; gap: .5rem; overflow-x: auto; scroll-snap-type: x proximity; }
+.tw-rail::-webkit-scrollbar { height: 6px; }
+.tw-rail::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 99px; }
+.tw-rail li { margin: 0; flex: 0 0 auto; scroll-snap-align: start; }
+.tw-rail img { display: block; width: 11rem; height: 11rem; object-fit: cover;
+  border-radius: var(--tw-radius-lg); border: 1px solid var(--tw-border-2); background: var(--tw-fill); }
+
+/* 小工具类 */
+.tw-muted { color: var(--tw-text-3); font-size: 12px; }
+.tw-divider { height: 1px; background: var(--tw-border-2); margin: .875rem 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tw *, .tw *::before, .tw *::after { transition: none !important; animation: none !important; }
+}

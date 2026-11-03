@@ -157,7 +157,7 @@ function serveMedia(res, p) {   // GET /images/<日期>/<id>.png · GET /videos/
 }
 
 /* ── 转发 ─────────────────────────────────────────────────────── */
-const hdrs = (hit, extra = {}) => ({ 'x-bohui-provider': hit.ch.id, 'x-bohui-key': String(hit.idx), 'x-bohui-strategy': hit.strategy || 'ordered', 'x-bohui-chars': `${hit.charsRaw}/${hit.chars}`, ...extra });
+const hdrs = (hit, extra = {}) => ({ 'x-bohui-provider': hit.ch.id, 'x-bohui-model': String(hit.model || hit.ch.model || ''),'x-bohui-key': String(hit.idx), 'x-bohui-strategy': hit.strategy || 'ordered', 'x-bohui-chars': `${hit.charsRaw}/${hit.chars}`, ...extra });
 async function relayJson(res, hit, transform) {
   let text = hit.bodyText ?? await hit.r.text(64 << 20);
   let usage = null; try { const j = JSON.parse(text); usage = j.usage || null; if (transform) text = JSON.stringify(await transform(j)); } catch { }

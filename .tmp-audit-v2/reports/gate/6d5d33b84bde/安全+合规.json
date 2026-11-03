@@ -1,0 +1,40 @@
+{
+  "angle": "安全+合规",
+  "tree": "6d5d33b84bde60937d51f4778f621567d9657fa4",
+  "worker": "gate",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-6d5d33b84bde.json",
+  "run_label": "review-ticket 6d5d33b84bde 安全+合规",
+  "reviewer": "claude",
+  "skills_loaded": ["security-review", "claude-guard:guard-rules", "bohui-data-security-formula-confidentiality", "bohui-legal-advertising-claims", "bohui-label-claims-review"],
+  "verdict": "过",
+  "checked": ["安全-①", "安全-②", "安全-③", "安全-④", "安全-⑤", "安全-⑥", "安全-⑦", "合规-①", "合规-②", "合规-③", "合规-④", "合规-⑤", "合规-⑥", "合规-⑦"],
+  "findings": [
+    {
+      "id": "S1",
+      "level": "低",
+      "file": "audit_v2/gate1.py",
+      "line": 467,
+      "claim": "【零读】放行只靠正则数新增查库写法,调用已有数据函数(名字不在 d1/many/one/q/query/sql/dbq 里)、.jsx/.vue/.svelte/.mts 文件、以 /* 开头同行写查询,都会数成 0",
+      "failure_scenario": "费用灯红时,新增 src/pages/x.astro 一行 const rows = await listProducts(Astro.locals) → qrx 不命中(无 locals.db 字面、函数名不在白名单)→ new_queries=0 → 说明带【零读】→ ticket.budget 第 90 行 zero=True 放行;实际新页每次访问都读库。另:改 CACHE_V 引发全站缓存失效也数成 0",
+      "evidence": "读 all.diff(gate1.py 462-475、ticket.py 71/90-91/579-580/751-753);lib.py 第 23 行 MARKS_RED_OK=('【降读】','【安全】','【急修】') 是纯自报字符串、无任何校验,故【零读】比现有口令更严,不构成新的放行缺口;查 F:/0cosmetic 下站点未见 drizzle/kysely/vue/svelte,生产站漏数属理论面",
+      "fix": "可选:qrx 补 locals\\.|getCounts|load[A-Z]\\w*\\( 等已有数据助手名,或对新增 pages/ 与 CACHE_V 变动直接判 new_queries=-1(不放行)"
+    },
+    {
+      "id": "S2",
+      "level": "低",
+      "file": "(流程)",
+      "claim": "security-review 技能加载后报告当前工作目录 F:\\0cosmetic 不是 git 仓库,技能自带的分支 diff 流程没跑;本次按草稿给的 diff 手工审",
+      "failure_scenario": "若只依赖技能自动流程,本票等于没做安全审查;审核编排应把工作目录设成 F:/0cosmetic/tools-review 再加载",
+      "evidence": "技能回显;另 git 只读查询被审核部钩子拦截(对 tools-review 仓 git 操作),改读 .git/config:未配 remote,判定为本地私有仓"
+    }
+  ],
+  "addressed": [
+    {"ref": "JEV", "result": "成立但可接受", "why": "Jev 存疑且 reason 为空、安全 0.06 合规 0.01;人工复核:安全+合规角度分到的 diff 为 0 行,全量 diff 只改闸门自身 Python(gate1.py/ticket.py),无密钥、无路由鉴权、无 SQL 执行(qrx 只是匹配文本不执行)、无 set:html/JSON-LD、无对外抓取、无新依赖、无绑定、无 public/ 文件;唯一安全相关点是放行条件放宽,见 S1", "mitigation": "【零读】需同时满足红灯+说明口令+g1.new_queries==0,旧缓存无字段不放行、verify 里 T 与票 tree 不一致时传 None 不放行,均为失败即拒;且原有【降读】口令无校验,新口令严格更严"},
+    {"ref": "LAYA", "result": "成立但可接受", "why": "Laya conf 0.0、reason 空,三项 noul 0.98+ 与 correctness 1.34 超出区间,属机审输出异常而非具体命中;人工逐行复核同 JEV", "mitigation": "同 JEV;正确性细节交成本+正确性审核员"}
+  ],
+  "risks": [
+    {"cat": "费用", "level": "低", "item": "【零读】靠正则数查库,调用已有数据函数、改 CACHE_V、非白名单扩展名会漏数,红灯日可能误放行读量改动", "mitigation": "说明口令本就是自报;两名审核员仍必审;可按 S1 fix 收紧"},
+    {"cat": "合规", "level": "低", "item": "新增中文注释只在本地私有仓 tools-review(无 remote),不进公开仓;未见集团旗号、自有厂房、印尼工厂、SueAI、18,815、阿里国际站、小批量、商务数字、功效宣称、个人信息", "mitigation": "无需动作"}
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/gate/6d5d33b84bde/安全+合规.json"
+}

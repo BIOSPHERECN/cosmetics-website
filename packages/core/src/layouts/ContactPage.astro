@@ -23,7 +23,7 @@ export interface Props {
 const { site, locale, email } = Astro.props;
 const tr = t(locale);
 const variant = getVariant(site);
-const c = CONTACT[locale];
+const c = CONTACT[locale] ?? CONTACT.en;
 const path = localePath(locale, '/contact/');
 const siblings = SITES.filter((s) => s.id !== site.id);
 

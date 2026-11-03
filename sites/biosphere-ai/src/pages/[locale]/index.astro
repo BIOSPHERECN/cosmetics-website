@@ -1,20 +1,616 @@
 ---
 /**
- * BIOSPHERE-AI 首页 —— 薄壳,见 beauty2oem 同名文件的说明。
- * 本站 hasStudio=true:二期在此之上加「在线共创工作台」入口与选型器页面。
+ * BIOSPHERE-AI 首页 v2 —— "四刀减法" + "三步交互式漏斗"
+ *
+ * 版本: v2 (v1备份在 index.v1.astro.bak)
+ *
+ * 核心原则:把复杂留给底层数据库(喂Google和AI抓流量),
+ * 把极简留给前端交互(让真人买手30秒内看懂并留资)。
+ *
+ * 首屏 = 30秒方案生成器(三步交互式漏斗):
+ *   第1步:你现在的起点是?(看中爆款/确定品类/只有目标市场)
+ *   第2步:产品打算卖到哪里?(北美/东南亚/欧洲/中东/拉美/国内)
+ *   第3步:属于哪个大类?(面部护肤/洗发护发/身体防晒/彩妆/口腔)
+ *   → 点完3步,原地展开专属方案卡(基底+合规+包材+一键寄样)
+ *
+ * 铁律1:先给甜头后要电话(点完3步直接展示结果,不卡脖子留资)
+ * 铁律2:交互不超过3步,每步有默认值
+ * 铁律3:给大买手留快速通道(已有成分表/样品?直接发给工程师)
+ *
+ * 往下滑4屏:
+ *   ② 今日跨国爆款机会(3张高置信度卡)
+ *   ③ 硬核证据(产线/认证/法规/包材四宫格)
+ *   ④ 三步交付时间轴
+ *   ⑤ 极简询盘区
  */
-import HomePage from '@cosmetic/core/layouts/HomePage.astro';
-import { LOCALES, type Locale } from '@cosmetic/core/i18n';
-import { getSite } from '@cosmetic/core/registry';
-import { getHome, EMAIL } from '@cosmetic/core/content';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { LOCALES, type Locale, localePath, t } from '@cosmetic/core/i18n';
+import { getSite, getVariant, SITES } from '@cosmetic/core/registry';
+import { SOLUTIONS, EMAIL } from '@cosmetic/core/content';
+import { env } from 'cloudflare:workers';
 import '../../styles/brand.css';
+
+export const prerender = false;
 
 export function getStaticPaths() {
   return LOCALES.map((locale) => ({ params: { locale } }));
 }
 
 const locale = Astro.params.locale as Locale;
+const tr = t(locale);
+const zhPage = String(locale).startsWith('zh');
 const site = getSite('biosphere-ai');
+const variant = getVariant(site);
+const email = EMAIL[site.id];
+const path = localePath(locale, '/');
+const siblings = SITES.filter((s) => s.id !== site.id);
+const servicesHref = localePath(locale, '/services/');
+
+/** 选6个方案做"核心交付物"展示 */
+const featuredSolutions = [
+  'herbal-skincare', 'body-care', 'oral-care',
+  'product-development', 'cross-border-seller', 'factory-quality',
+].map(slug => SOLUTIONS.find(s => s.slug === slug)).filter(Boolean);
+
+/** 首页产品展示：从 D1 查 is_showcase=1 的产品，取前 12 款 */
+const db = (env as any).DB as D1Database | undefined;
+let showcaseProducts: any[] = [];
+if (db) {
+  try {
+    showcaseProducts = ((await db.prepare(
+      `SELECT p.slug, p.category, p.cover_media, i.name, i.summary
+         FROM products p LEFT JOIN product_i18n i ON i.product_id = p.id AND i.lang = ?
+        WHERE p.site_id = 'biosphere-ai' AND p.status = 'published' AND p.is_showcase = 1
+        ORDER BY p.sort_order, p.id DESC LIMIT 12`
+    ).bind(locale).all<any>()).results ?? []) as any[];
+  } catch { showcaseProducts = []; }
+}
+const showCaseTitle = zhPage ? `成熟产品展示 · ${showcaseProducts.length} 款` : `Product showcase · ${showcaseProducts.length}`;
+const showCaseLede = zhPage
+  ? '过往代工出厂的成品：品类、剂型、规格与卖点，看得到从料体到外盒的完整搭配。'
+  : 'Finished products we have manufactured: category, format, specs and selling points.';
+const showCaseMore = zhPage ? '看全部 →' : 'View all →';
+
+// 漏斗选项的i18n
+const L = {
+  slogan: zhPage ? '先找到值得做的产品，再由我们把它做出来。' : 'Find a product worth making first. We make it real.',
+  subline: zhPage ? '15条自动化产线 · 13,000+成熟基底 · 43国合规前置' : '15 automated production lines · 13,000+ mature formula bases · 43-market compliance pre-check',
+  step1: zhPage ? '第1步：你现在的起点是？' : 'Step 1: Where are you starting from?',
+  step1opt1: zhPage ? '我看中了一款市面爆款，想做同款/升级款' : 'I found a hit product, want to make a similar/better version',
+  step1opt2: zhPage ? '我确定了要做哪个品类，想挑成熟配方基底' : 'I know the category, want to pick a mature formula base',
+  step1opt3: zhPage ? '我只有目标国家/渠道，想看最近什么好卖' : 'I only have a target market, want to see what sells',
+  step2: zhPage ? '第2步：产品打算卖到哪里？' : 'Step 2: Where will you sell?',
+  step3: zhPage ? '第3步：属于哪个大类？' : 'Step 3: Which category?',
+  generate: zhPage ? '立即生成我的代工与合规方案' : 'Generate my OEM & compliance plan',
+  fastTrack: zhPage ? '已有完整成分表或样品？点此直接传给工程师 →' : 'Already have a full INCI or sample? Send it straight to our engineers →',
+  cat护肤: zhPage ? '面部护肤' : 'Facial skincare',
+  cat洗护: zhPage ? '洗发护发' : 'Hair care',
+  cat身体: zhPage ? '身体防晒' : 'Body & suncare',
+  cat彩妆: zhPage ? '彩妆底妆' : 'Color cosmetics',
+  cat口腔: zhPage ? '口腔护理' : 'Oral care',
+  // 结果卡
+  matchedBase: zhPage ? '为你匹配的在库基底' : 'Matched formula bases',
+  compliance: zhPage ? '合规预警' : 'Compliance alert',
+  packaging: zhPage ? '适配现货包材' : 'Matched stock packaging',
+  requestSample: zhPage ? '一键申请免费样品' : 'Request free samples',
+  contactUs: zhPage ? '加微信聊细节' : 'Chat on WhatsApp',
+  // 门槛锚点
+  moq: zhPage ? '现货包材代工：单品 1,000–3,000件起订' : 'Stock packaging OEM: MOQ 1,000–3,000 pcs per SKU',
+  sampleTime: zhPage ? '成熟基底打样周期：5–14个工作日' : 'Mature base sampling: 5–14 working days',
+  // 下面的屏
+  whatWeDo: zhPage ? '我们能做什么' : 'What we can make',
+  whyTrust: zhPage ? '凭什么相信我们' : 'Why trust us',
+  threeSteps: zhPage ? '三步开始' : 'Three steps to start',
+  submit: zhPage ? '提交需求' : 'Submit your inquiry',
+  noReg: zhPage ? '不用注册，直接填写。' : 'No registration required.',
+  send: zhPage ? '立即询盘' : 'Send inquiry',
+  // 三步
+  stepDefine: zhPage ? '定方案与寄样' : 'Define & sample',
+  stepDefineD: zhPage ? '拆成分 / 配基底 / 核法规，5–14天寄样' : 'Deconstruct formula, match base, check compliance. 5–14 day sampling.',
+  stepPack: zhPage ? '定包装与备案' : 'Packaging & registration',
+  stepPackD: zhPage ? '选现货包材 / 同步办理目标国通报' : 'Select stock packaging, file target market registration',
+  stepMass: zhPage ? '试产与大货' : 'Trial & mass production',
+  stepMassD: zhPage ? '小批试产 / QC放行出货' : 'Pilot run, QC release, shipment',
+  // 市场
+  mNA: zhPage ? '北美 (FDA)' : 'North America (FDA)',
+  mSEA: zhPage ? '东南亚 (BPOM/清真)' : 'Southeast Asia (BPOM/Halal)',
+  mEU: zhPage ? '欧洲 (CPNP)' : 'Europe (CPNP)',
+  mME: zhPage ? '中东 (SFDA)' : 'Middle East (SFDA)',
+  mLA: zhPage ? '拉美 (ANVISA)' : 'Latin America (ANVISA)',
+  mCN: zhPage ? '国内 / 其他' : 'China / Other',
+};
 ---
 
-<HomePage site={site} locale={locale} content={getHome(site.id, locale)} email={EMAIL[site.id]} />
+<BaseLayout
+  locale={locale}
+  school={variant.school}
+  variant={variant.id}
+  brand={site.id}
+  siteName={site.name}
+  siteUrl={site.url}
+  path={path}
+  title={zhPage ? 'BIOSPHERE-AI · 全球生命美妆AI科技平台' : 'BIOSPHERE-AI · Global Bio-Beauty AI Platform'}
+  description={zhPage
+    ? '护肤品代工 · 身体护理OEM · 口腔护理代工 · 产品开发与打样 · 广州工厂质量体系 · 跨境品牌产品开发'
+    : 'Skincare manufacturing · Body care OEM · Oral care OEM · Product development & sampling · Factory quality system · Cross-border brand development'}
+  indexable={site.indexable}
+  brandColor={site.brandColor}
+>
+  <a class="ck-skip-link" href="#main">{tr('a11y.skip')}</a>
+  <SiteHeader locale={locale} path={path} siteName={site.name} siteNameZh={site.nameZh} />
+
+  <main id="main">
+    {/* ① 首屏:30秒方案生成器(三步交互式漏斗) */}
+    <section class="funnel-hero">
+      <div class="ck-wrap">
+        <p class="brand-tag">BIOSPHERE-AI</p>
+        <h1>{L.slogan}</h1>
+        <p class="subline">{L.subline}</p>
+
+        {/* 漏斗容器 */}
+        <div class="funnel" id="funnel">
+          {/* 第1步 */}
+          <div class="funnel-step" data-step="1">
+            <p class="funnel-q">{L.step1}</p>
+            <div class="funnel-opts" data-group="start">
+              <button class="funnel-opt" data-val="hit" type="button">{L.step1opt1}</button>
+              <button class="funnel-opt" data-val="base" type="button">{L.step1opt2}</button>
+              <button class="funnel-opt" data-val="trend" type="button">{L.step1opt3}</button>
+            </div>
+          </div>
+
+          {/* 第2步 */}
+          <div class="funnel-step hidden" data-step="2">
+            <p class="funnel-q">{L.step2}</p>
+            <div class="funnel-opts" data-group="market">
+              <button class="funnel-opt" data-val="na" type="button">{L.mNA}</button>
+              <button class="funnel-opt" data-val="sea" type="button">{L.mSEA}</button>
+              <button class="funnel-opt" data-val="eu" type="button">{L.mEU}</button>
+              <button class="funnel-opt" data-val="me" type="button">{L.mME}</button>
+              <button class="funnel-opt" data-val="la" type="button">{L.mLA}</button>
+              <button class="funnel-opt" data-val="cn" type="button">{L.mCN}</button>
+            </div>
+          </div>
+
+          {/* 第3步 */}
+          <div class="funnel-step hidden" data-step="3">
+            <p class="funnel-q">{L.step3}</p>
+            <div class="funnel-opts" data-group="category">
+              <button class="funnel-opt" data-val="skincare" type="button">{L.cat护肤}</button>
+              <button class="funnel-opt" data-val="haircare" type="button">{L.cat洗护}</button>
+              <button class="funnel-opt" data-val="body" type="button">{L.cat身体}</button>
+              <button class="funnel-opt" data-val="makeup" type="button">{L.cat彩妆}</button>
+              <button class="funnel-opt" data-val="oral" type="button">{L.cat口腔}</button>
+            </div>
+          </div>
+
+          {/* 生成按钮 */}
+          <div class="funnel-action hidden" id="funnel-action">
+            <button class="cta big" type="button" id="funnel-go">{L.generate}</button>
+          </div>
+
+          {/* 快速通道(大买手越狱) */}
+          <p class="fast-track">
+            <a href={localePath(locale, '/services/product-development/')}>{L.fastTrack}</a>
+          </p>
+        </div>
+
+        {/* 结果卡(点完3步后原地展开) */}
+        <div class="result-card hidden" id="result-card">
+          <div class="result-section">
+            <h3>{L.matchedBase}</h3>
+            <div class="result-items" id="result-bases"></div>
+          </div>
+          <div class="result-section">
+            <h3>{L.compliance}</h3>
+            <div class="result-items" id="result-compliance"></div>
+          </div>
+          <div class="result-section">
+            <h3>{L.packaging}</h3>
+            <div class="result-items" id="result-packaging"></div>
+          </div>
+          <div class="result-cta">
+            <a class="cta" href="#inquiry" id="result-sample">{L.requestSample}</a>
+            <a class="cta outline" href={localePath(locale, '/contact/')} >{L.contactUs}</a>
+          </div>
+          <p class="moq-note">{L.moq} · {L.sampleTime}</p>
+        </div>
+      </div>
+    </section>
+
+    {/* ①.5 成熟产品展示 */}
+    {showcaseProducts.length > 0 && (
+      <section class="block alt">
+        <div class="ck-wrap">
+          <h2>{showCaseTitle}</h2>
+          <p class="showcase-lede">{showCaseLede}</p>
+          <ul class="showcase-grid">
+            {showcaseProducts.map((p) => (
+              <li>
+                <a class="showcase-card" href={localePath(locale, `/product/${p.slug}/`)}>
+                  {p.cover_media
+                    ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} loading="lazy" />
+                    : <div class="showcase-ph"></div>}
+                  <h3>{p.name ?? p.slug}</h3>
+                  {p.summary && <p>{p.summary}</p>}
+                  <small>{p.category}</small>
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p class="showcase-more">
+            <a href={localePath(locale, '/portfolio/')}>{showCaseMore}</a>
+          </p>
+        </div>
+      </section>
+    )}
+
+    {/* ② 核心交付物:6款王牌方案 */}
+    <section class="block">
+      <div class="ck-wrap">
+        <h2>{L.whatWeDo}</h2>
+        <div class="feat-grid">
+          {featuredSolutions.map((s) => {
+            const c = s[locale] ?? s.zh;
+            return (
+              <a class="feat" href={localePath(locale, `/services/${s.slug}/`)}>
+                <h3>{c.title}</h3>
+                <p>{c.tagline}</p>
+                <span class="feat-more">{zhPage ? '查看方案 →' : 'View →'}</span>
+              </a>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+
+    {/* ③ 硬核证据:四宫格 */}
+    <section class="block alt">
+      <div class="ck-wrap">
+        <h2>{L.whyTrust}</h2>
+        <div class="quad">
+          <div class="quad-cell"><p class="quad-n">15</p><p class="quad-l">{zhPage ? '条智能产线' : 'smart production lines'}</p></div>
+          <div class="quad-cell"><p class="quad-n">GMPC · ISO 22716</p><p class="quad-l">{zhPage ? '国际权威认证' : 'international certifications'}</p></div>
+          <div class="quad-cell"><p class="quad-n">43</p><p class="quad-l">{zhPage ? '国法规前置核验' : 'markets pre-checked'}</p></div>
+          <div class="quad-cell"><p class="quad-n">4500+</p><p class="quad-l">{zhPage ? '款现货包材' : 'stock packaging SKUs'}</p></div>
+        </div>
+        <p class="entity-note">{zhPage
+          ? '帛卉（广州）生物科技有限公司 · 广州白云/花都生产基地'
+          : 'Bohui (Guangzhou) Biotechnology Co., Ltd. · Baiyun/Huadu, Guangzhou'}</p>
+      </div>
+    </section>
+
+    {/* ④ 三步交付 */}
+    <section class="block">
+      <div class="ck-wrap">
+        <h2>{L.threeSteps}</h2>
+        <div class="steps3">
+          <div class="step3"><span class="step3-n">01</span><h3>{L.stepDefine}</h3><p>{L.stepDefineD}</p></div>
+          <div class="step3"><span class="step3-n">02</span><h3>{L.stepPack}</h3><p>{L.stepPackD}</p></div>
+          <div class="step3"><span class="step3-n">03</span><h3>{L.stepMass}</h3><p>{L.stepMassD}</p></div>
+        </div>
+      </div>
+    </section>
+
+    {/* ⑤ 极简询盘 */}
+    <section class="block inq-section" id="inquiry">
+      <div class="ck-wrap">
+        <h2>{L.submit}</h2>
+        <p class="inq-hint">{L.noReg} {L.moq}。</p>
+        <form class="inq" action="/api/inquiry" method="post">
+          <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
+                 style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+          <input type="hidden" name="source" value="homepage-funnel" />
+          <div class="grid2">
+            <label><span>{zhPage ? '公司名称' : 'Company'}</span><input type="text" name="company" required /></label>
+            <label><span>{zhPage ? '目标市场' : 'Target market'}</span><input type="text" name="market" /></label>
+            <label><span>{zhPage ? '邮箱' : 'Email'}</span><input type="email" name="email" autocomplete="email" /></label>
+            <label><span>WhatsApp</span><input type="tel" name="whatsapp" placeholder="+62 812 3456 7890" /></label>
+          </div>
+          <label class="full"><span>{zhPage ? '需求描述' : 'What you need'}</span>
+            <textarea name="message" rows="6" required
+              placeholder={zhPage ? '① 产品类目 ② 计划数量 ③ 品牌/包材要求 ④ 目标上市时间' : '① Category ② Quantity ③ Brand/packaging ④ Launch date'}></textarea></label>
+          <p class="act">
+            <button class="cta" type="submit">{L.send}</button>
+            <span class="fb" role="status" aria-live="polite"></span>
+          </p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <SiteFooter locale={locale} path={path} site={site} siblings={siblings} email={email} />
+</BaseLayout>
+
+<style>
+  /* 漏斗首屏 */
+  .funnel-hero {
+    background: var(--ck-hero-bg);
+    color: var(--ck-hero-ink);
+    padding-block: clamp(1.5rem, 4vw, 3.5rem);
+  }
+  .brand-tag { font-size: var(--ck-small); color: var(--ck-accent); letter-spacing: var(--ck-cta-tracking); text-transform: var(--ck-cta-transform); }
+  .funnel-hero h1 { margin-top: 0.5rem; font-size: clamp(1.4rem, 3vw, 2.5rem); max-width: 28ch; }
+  .subline { margin-top: 0.75rem; font-size: var(--ck-small); color: color-mix(in srgb, currentColor 70%, transparent); }
+
+  .funnel { margin-top: 2rem; }
+  .funnel-step { margin-bottom: 1.25rem; }
+  .funnel-step.hidden { display: none; }
+  .funnel-q { font-weight: 600; margin-bottom: 0.75rem; font-size: 0.9375rem; }
+  .funnel-opts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .funnel-opt {
+    padding: 0.625rem 1rem; border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    border-radius: var(--ck-radius, 10px); background: transparent; color: inherit;
+    font: inherit; font-size: 0.875rem; cursor: pointer; transition: all 0.15s;
+  }
+  .funnel-opt:hover { border-color: var(--ck-accent); background: color-mix(in srgb, var(--ck-accent) 8%, transparent); }
+  .funnel-opt.selected { border-color: var(--ck-accent); background: var(--ck-accent); color: var(--ck-on-accent); font-weight: 600; }
+
+  .funnel-action { margin-top: 1.5rem; }
+  .funnel-action.hidden { display: none; }
+  .cta.big { padding: 1rem 2.5rem; font-size: 1rem; }
+  .cta { display: inline-block; padding: 0.9375rem 2rem; background: var(--ck-accent); color: var(--ck-on-accent); border-radius: var(--ck-cta-radius); border: none; cursor: pointer; font-weight: var(--ck-cta-weight); letter-spacing: var(--ck-cta-tracking); text-transform: var(--ck-cta-transform); text-decoration: none; }
+  .cta:hover { background: var(--ck-accent-deep); }
+  .cta.outline { background: transparent; border: 1px solid var(--ck-accent); color: var(--ck-accent); }
+
+  .fast-track { margin-top: 1.25rem; font-size: var(--ck-small); }
+  .fast-track a { color: color-mix(in srgb, currentColor 70%, transparent); text-decoration: underline; }
+
+  /* 结果卡 */
+  .result-card { margin-top: 2rem; padding: 1.5rem; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: var(--ck-radius, 10px); background: color-mix(in srgb, currentColor 5%, transparent); }
+  .result-card.hidden { display: none; }
+  .result-section { margin-bottom: 1.25rem; }
+  .result-section h3 { font-size: 0.9375rem; margin-bottom: 0.5rem; color: var(--ck-accent); }
+  .result-items { display: grid; gap: 0.5rem; }
+  .result-item { padding: 0.625rem 0.875rem; border: 1px solid color-mix(in srgb, currentColor 15%, transparent); border-radius: 8px; font-size: 0.8125rem; line-height: 1.5; }
+  .result-cta { display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; }
+  .moq-note { margin-top: 0.75rem; font-size: var(--ck-small); color: color-mix(in srgb, currentColor 60%, transparent); }
+
+  /* 通用 block */
+  .block { padding-block: clamp(1.75rem, 4vw, 3.5rem); background: var(--ck-bg); }
+  .block.alt { background: var(--ck-surface-alt); }
+  .block h2 { font-size: var(--ck-h2); margin-bottom: 1.5rem; }
+
+  /* 成熟产品展示 */
+  .showcase-lede { font-size: var(--ck-small); color: var(--ck-ink-soft); line-height: 1.6; margin-bottom: 1.5rem; max-width: 40rem; }
+  .showcase-grid { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); }
+  .showcase-card { display: grid; gap: 0.5rem; padding: 0.875rem; border: var(--ck-border-w) solid var(--ck-line); border-radius: var(--ck-radius, 10px); text-decoration: none; color: inherit; background: var(--ck-surface, #fff); transition: border-color 0.15s, box-shadow 0.15s; }
+  .showcase-card:hover { border-color: var(--ck-accent); box-shadow: 0 2px 12px color-mix(in srgb, var(--ck-accent) 20%, transparent); }
+  .showcase-card img, .showcase-ph { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: var(--ck-surface-alt, #f3f3f1); }
+  .showcase-card h3 { font-size: 1rem; margin: 0; line-height: 1.4; }
+  .showcase-card p { margin: 0; font-size: 0.8125rem; line-height: 1.5; color: var(--ck-ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .showcase-card small { font-size: 0.75rem; color: var(--ck-ink-faint); text-transform: uppercase; letter-spacing: 0.05em; }
+  .showcase-more { margin-top: 1.5rem; text-align: center; }
+  .showcase-more a { font-size: var(--ck-small); color: var(--ck-accent); text-decoration: none; font-weight: 600; }
+  .showcase-more a:hover { text-decoration: underline; }
+
+  /* 核心交付物 */
+  .feat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); gap: 1.25rem; }
+  .feat { display: block; padding: 1.5rem; border: var(--ck-border-w) solid var(--ck-line); border-radius: var(--ck-radius, 10px); background: var(--ck-surface, #fff); text-decoration: none; color: inherit; transition: border-color 0.15s, box-shadow 0.15s; }
+  .feat:hover { border-color: var(--ck-accent); box-shadow: 0 2px 12px color-mix(in srgb, var(--ck-accent) 20%, transparent); }
+  .feat h3 { font-size: 1.125rem; margin-bottom: 0.5rem; }
+  .feat p { color: var(--ck-ink-soft); font-size: var(--ck-small); line-height: 1.6; }
+  .feat-more { display: inline-block; margin-top: 0.75rem; font-size: var(--ck-small); color: var(--ck-accent); }
+
+  /* 四宫格 */
+  .quad { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 1.25rem; }
+  .quad-cell { padding: 1.5rem; border: var(--ck-border-w) solid var(--ck-line); border-radius: var(--ck-radius, 10px); text-align: center; }
+  .quad-n { font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: var(--ck-display-weight); color: var(--ck-accent); line-height: 1.2; }
+  .quad-l { margin-top: 0.375rem; font-size: var(--ck-small); color: var(--ck-ink-soft); }
+  .entity-note { margin-top: 1.5rem; font-size: var(--ck-small); color: var(--ck-ink-faint); }
+
+  /* 三步 */
+  .steps3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 1.25rem; }
+  .step3 { padding: 1.25rem; border-top: 2px solid var(--ck-accent); }
+  .step3-n { font-family: var(--ck-font-mono); font-size: var(--ck-small); color: var(--ck-accent); }
+  .step3 h3 { margin-top: 0.5rem; margin-bottom: 0.375rem; }
+  .step3 p { color: var(--ck-ink-soft); font-size: var(--ck-small); line-height: 1.6; }
+
+  /* 询盘 */
+  .inq-section { background: var(--ck-hero-bg); color: var(--ck-hero-ink); }
+  .inq-hint { font-size: var(--ck-small); color: color-mix(in srgb, currentColor 70%, transparent); margin-bottom: 1.25rem; }
+  .inq { display: grid; gap: 0.875rem; max-width: var(--ck-maxw-prose); }
+  .inq .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.875rem; }
+  .inq label { display: grid; gap: 0.3125rem; font-size: var(--ck-small); }
+  .inq label > span { color: color-mix(in srgb, currentColor 75%, transparent); }
+  .inq input, .inq textarea { font: inherit; font-size: 0.9375rem; padding: 0.625rem 0.75rem; border: 1px solid color-mix(in srgb, currentColor 30%, transparent); border-radius: var(--ck-radius, 10px); background: var(--ck-surface, #fff); color: var(--ck-ink); width: 100%; }
+  .inq input:focus, .inq textarea:focus { outline: none; border-color: var(--ck-accent); }
+  .fb { margin-left: 0.75rem; font-size: var(--ck-small); }
+  .fb.ok { color: #1D7A46; }
+  .fb.err { color: #A02B20; }
+
+  @media (max-width: 40rem) { .inq .grid2 { grid-template-columns: 1fr; } }
+</style>
+
+<script is:inline>
+  (function () {
+    var zh = document.documentElement.lang.indexOf('zh') === 0;
+    var selections = { start: null, market: null, category: null };
+
+    // 方案数据库(前端静态版,后续可接API)
+    var BASES = {
+      skincare: [
+        { code: 'BH-S-001', name: zh ? '草本舒缓精华基底' : 'Herbal soothing serum base', actives: zh ? '积雪草、泛醇、神经酰胺' : 'Centella, Panthenol, Ceramide' },
+        { code: 'BH-S-042', name: zh ? '烟酰胺亮肤精华基底' : 'Niacinamide brightening serum base', actives: zh ? '烟酰胺 3%、熊果苷' : 'Niacinamide 3%, Arbutin' },
+        { code: 'BH-S-089', name: zh ? '视黄醇抗老面霜基底' : 'Retinol anti-aging cream base', actives: zh ? '视黄醇 0.3%、角鲨烷' : 'Retinol 0.3%, Squalane' },
+      ],
+      body: [
+        { code: 'BH-B-007', name: zh ? '草本止痒防晒乳' : 'Herbal anti-itch suncare lotion', actives: zh ? '薄荷醇、氧化锌、甘草酸' : 'Menthol, Zinc Oxide, Glycyrrhizin' },
+        { code: 'BH-B-012', name: zh ? '冰感修护防晒喷雾' : 'Cooling repair suncare spray', actives: zh ? '薄荷脑、透明质酸' : 'Menthol, Hyaluronic Acid' },
+        { code: 'BH-B-023', name: zh ? '果酸身体乳基底' : 'AHA body lotion base', actives: zh ? '乳酸 5%、乳木果油' : 'Lactic Acid 5%, Shea Butter' },
+      ],
+      haircare: [
+        { code: 'BH-H-005', name: zh ? '氨基酸洗发基底' : 'Amino acid shampoo base', actives: zh ? '氨基酸表活、生物素' : 'Amino acid surfactant, Biotin' },
+        { code: 'BH-H-018', name: zh ? '头皮舒缓精华' : 'Scalp soothing essence', actives: zh ? '茶树油、吡罗克酮乙醇胺盐' : 'Tea Tree, Piroctone Olamine' },
+      ],
+      makeup: [
+        { code: 'BH-M-003', name: zh ? '保湿粉底液基底' : 'Hydrating foundation base', actives: zh ? '透明质酸、烟酰胺' : 'Hyaluronic Acid, Niacinamide' },
+        { code: 'BH-M-021', name: zh ? '哑光唇釉基底' : 'Matte lip tint base', actives: zh ? '植物角鲨烷' : 'Plant Squalane' },
+      ],
+      oral: [
+        { code: 'BH-O-002', name: zh ? '草本牙膏基底(含氟)' : 'Herbal toothpaste base (fluoride)', actives: zh ? '氟化钠、草本提取物' : 'Sodium Fluoride, Herbal extract' },
+        { code: 'BH-O-007', name: zh ? '洁净牙片基底' : 'Tooth tablet base', actives: zh ? '碳酸钙、木糖醇' : 'Calcium Carbonate, Xylitol' },
+      ],
+    };
+
+    var COMPLIANCE = {
+      na: zh ? 'FDA: 需完成MoCRA注册(化妆品设施注册+产品列示)；OTC防晒需OTC药案' : 'FDA: MoCRA registration required (facility + product listing); OTC suncare needs OTC drug filing',
+      sea: zh ? '印尼BPOM Notifkos通报；防晒剂需符合东盟ACD限用表；可配HALAL清真认证' : 'Indonesia BPOM Notifkos; UV filters must meet ASEAN ACD limits; HALAL certification available',
+      eu: zh ? 'CPNP通报必需；PIF产品信息文件需备；防晒剂需符合EC No 1223/2009' : 'CPNP notification required; PIF file needed; UV filters per EC No 1223/2009',
+      me: zh ? 'SFDA注册；需HALAL认证；阿拉伯语标签' : 'SFDA registration; HALAL required; Arabic labeling',
+      la: zh ? '巴西ANVISA通报；西班牙语标签；防晒SPF测试报告' : 'Brazil ANVISA notification; Spanish labels; SPF test report',
+      cn: zh ? '国产非特殊用途备案 / 特殊用途审批(防晒、美白)；全成分标注' : 'China non-special filing / special-use approval (suncare, whitening); full INCI labeling',
+    };
+
+    var PACKAGING = {
+      skincare: [
+        zh ? '滴管玻璃瓶 30ml (现货,1,000支起)' : 'Dropper glass bottle 30ml (stock, MOQ 1,000)',
+        zh ? '真空泵瓶 50ml (现货,1,000支起)' : 'Airless pump bottle 50ml (stock, MOQ 1,000)',
+        zh ? '膏霜罐 30g (现货,3,000支起)' : 'Cream jar 30g (stock, MOQ 3,000)',
+      ],
+      body: [
+        zh ? '防晒软管 100ml (现货,1,000支起)' : 'Suncare tube 100ml (stock, MOQ 1,000)',
+        zh ? '喷雾瓶 150ml (现货,3,000支起)' : 'Spray bottle 150ml (stock, MOQ 3,000)',
+        zh ? '泵头瓶 200ml (现货,1,000支起)' : 'Pump bottle 200ml (stock, MOQ 1,000)',
+      ],
+      haircare: [
+        zh ? '软管 300ml (现货,1,000支起)' : 'Tube 300ml (stock, MOQ 1,000)',
+        zh ? '滴管瓶 30ml (现货,1,000支起)' : 'Dropper bottle 30ml (stock, MOQ 1,000)',
+      ],
+      makeup: [
+        zh ? '粉底液瓶 30ml (现货,3,000支起)' : 'Foundation bottle 30ml (stock, MOQ 3,000)',
+        zh ? '唇釉管 5ml (现货,3,000支起)' : 'Lip tint tube 5ml (stock, MOQ 3,000)',
+      ],
+      oral: [
+        zh ? '牙膏管 100g (现货,3,000支起)' : 'Toothpaste tube 100g (stock, MOQ 3,000)',
+        zh ? '压片瓶 60粒 (现货,3,000支起)' : 'Tablet bottle 60ct (stock, MOQ 3,000)',
+      ],
+    };
+
+    // 交互逻辑
+    var funnel = document.getElementById('funnel');
+    if (!funnel) return;
+    var steps = funnel.querySelectorAll('.funnel-step');
+    var actionDiv = document.getElementById('funnel-action');
+    var goBtn = document.getElementById('funnel-go');
+    var resultCard = document.getElementById('result-card');
+
+    steps.forEach(function (stepEl, idx) {
+      var opts = stepEl.querySelectorAll('.funnel-opt');
+      opts.forEach(function (opt) {
+        opt.addEventListener('click', function () {
+          var group = stepEl.querySelector('.funnel-opts').getAttribute('data-group');
+          selections[group] = opt.getAttribute('data-val');
+          // 标记选中
+          opts.forEach(function (o) { o.classList.remove('selected'); });
+          opt.classList.add('selected');
+          // 显示下一步
+          if (idx + 1 < steps.length) {
+            steps[idx + 1].classList.remove('hidden');
+            steps[idx + 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+          // 3步都选完显示生成按钮
+          if (selections.start && selections.market && selections.category) {
+            actionDiv.classList.remove('hidden');
+          }
+        });
+      });
+    });
+
+    // 默认选中示范组合(铁律2:每步有默认值)
+    var step1Opts = steps[0].querySelectorAll('.funnel-opt');
+    if (step1Opts.length > 1) {
+      step1Opts[1].classList.add('selected');
+      selections.start = step1Opts[1].getAttribute('data-val');
+      steps[1].classList.remove('hidden');
+      var step2Opts = steps[1].querySelectorAll('.funnel-opt');
+      if (step2Opts.length > 0) {
+        step2Opts[1].classList.add('selected');
+        selections.market = step2Opts[1].getAttribute('data-val');
+        steps[2].classList.remove('hidden');
+        var step3Opts = steps[2].querySelectorAll('.funnel-opt');
+        if (step3Opts.length > 0) {
+          step3Opts[0].classList.add('selected');
+          selections.category = step3Opts[0].getAttribute('data-val');
+          actionDiv.classList.remove('hidden');
+        }
+      }
+    }
+
+    // 生成结果
+    if (goBtn) {
+      goBtn.addEventListener('click', function () {
+        var cat = selections.category || 'skincare';
+        var mkt = selections.market || 'sea';
+
+        // 填充基底
+        var basesEl = document.getElementById('result-bases');
+        var bases = BASES[cat] || BASES.skincare;
+        basesEl.innerHTML = bases.map(function (b) {
+          return '<div class="result-item"><strong>' + b.code + '</strong> ' + b.name + '<br><small>' + (zh ? '活性物：' : 'Actives: ') + b.actives + '</small></div>';
+        }).join('');
+
+        // 填充合规
+        var compEl = document.getElementById('result-compliance');
+        compEl.innerHTML = '<div class="result-item">' + (COMPLIANCE[mkt] || COMPLIANCE.sea) + '</div>';
+
+        // 填充包材
+        var pkgEl = document.getElementById('result-packaging');
+        var pkgs = PACKAGING[cat] || PACKAGING.skincare;
+        pkgEl.innerHTML = pkgs.map(function (p) {
+          return '<div class="result-item">' + p + '</div>';
+        }).join('');
+
+        // 写入询盘表单的隐藏字段
+        var msgField = document.querySelector('textarea[name="message"]');
+        if (msgField) {
+          var startLabel = { hit: zh ? '看中爆款做同款' : 'Hit product match', base: zh ? '挑成熟基底' : 'Pick mature base', trend: zh ? '看趋势选品' : 'Trend-based selection' };
+          var mktLabel = { na: 'NA(FDA)', sea: 'SEA(BPOM)', eu: 'EU(CPNP)', me: 'ME(SFDA)', la: 'LA(ANVISA)', cn: zh ? '国内' : 'China' };
+          var catLabel = { skincare: zh ? '面部护肤' : 'Skincare', haircare: zh ? '洗发护发' : 'Haircare', body: zh ? '身体防晒' : 'Body/Suncare', makeup: zh ? '彩妆' : 'Makeup', oral: zh ? '口腔护理' : 'Oral' };
+          msgField.value = (zh ? '【漏斗询盘】' : '[Funnel inquiry] ') +
+            (zh ? '起点：' : 'Start: ') + (startLabel[selections.start] || '') + ' | ' +
+            (zh ? '市场：' : 'Market: ') + (mktLabel[mkt] || '') + ' | ' +
+            (zh ? '品类：' : 'Category: ') + (catLabel[cat] || '') + '\n' +
+            (zh ? '已看中基底：' : 'Selected bases: ') + bases.map(function (b) { return b.code; }).join(', ');
+        }
+
+        resultCard.classList.remove('hidden');
+        resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+
+    // 询盘表单提交
+    var f = document.querySelector('.inq-section form');
+    if (!f) return;
+    var fb = f.querySelector('.fb');
+    var emailEl = f.elements.email;
+    var waEl = f.elements.whatsapp;
+    var validate = function () {
+      var missing = !emailEl.value.trim() && !waEl.value.trim();
+      var msg = missing ? (zh ? '邮箱和 WhatsApp 至少填写一个。' : 'Enter an email or WhatsApp number.') : '';
+      emailEl.setCustomValidity(msg); waEl.setCustomValidity(msg);
+      return !missing;
+    };
+    emailEl.addEventListener('input', validate);
+    waEl.addEventListener('input', validate);
+    f.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (!validate()) { f.reportValidity(); return; }
+      var btn = f.querySelector('button');
+      btn.disabled = true;
+      if (fb) { fb.className = 'fb'; fb.textContent = zh ? '提交中…' : 'Sending…'; }
+      try {
+        var r = await fetch('/api/inquiry', { method: 'POST', body: new FormData(f) });
+        if (fb) {
+          fb.className = 'fb ' + (r.ok ? 'ok' : 'err');
+          fb.textContent = r.ok ? (zh ? '已收到，我们会尽快回复。' : 'Received. We will get back to you shortly.') : (zh ? '提交失败，请改用邮件联系我们。' : 'Could not send — please email us instead.');
+        }
+        if (r.ok) f.reset();
+      } catch (_) {
+        if (fb) { fb.className = 'fb err'; fb.textContent = zh ? '网络异常，请稍后重试。' : 'Network error, please retry.'; }
+      } finally { btn.disabled = false; }
+    });
+  })();
+</script>

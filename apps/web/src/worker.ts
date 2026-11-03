@@ -7,7 +7,7 @@
 import server from '@astrojs/cloudflare/entrypoints/server';
 import { runB2oAuto } from './lib/b2o-auto';
 import { runProspectMine, currentMarkets } from './lib/prospect-mine';
-import { runTrendCollect, runD1Backup, runOutreachAuto } from './lib/cron-tasks';
+import { runTrendCollect, runD1Backup, runOutreachAuto, runBuildTrendReport, runEcomCollect, runBuyerRadar } from './lib/cron-tasks';
 import { duckProxy } from './workers/duck-proxy';
 
 const SLOT_MARKETS: Record<number, string[]> = {
@@ -26,8 +26,9 @@ const SLOT_MARKETS: Record<number, string[]> = {
 export default {
   ...server,
   async fetch(request: Request, env: any, ctx: ExecutionContext) {
-    // Duck.ai 代理：绕过国内直连延迟
-    if (request.url.includes('/api/duck-proxy')) {
+    // Duck.ai 代理：绕过国内直连延迟。精确路径匹配,避免任意 ?x=/api/duck-proxy 命中(2026-10-28 安全审核 H1)
+    const duckPath = new URL(request.url).pathname;
+    if (duckPath === '/api/duck-proxy' || duckPath.startsWith('/api/duck-proxy/')) {
       return duckProxy(request, env, ctx);
     }
     // 其他请求：交给 Astro 原生响应
@@ -52,9 +53,22 @@ export default {
     } else if (ev.cron === '0 2 * * *') {
       /* 每日 02:00 UTC = 北京 10:00，D1 数据备份到 123 云盘 */
       ctx.waitUntil(runD1Backup(env, env.DB));
+} else if (ev.cron === '0 3 * * *') {
+      /* 每日 03:00 UTC = 北京 11:00,买家信号雷达(多源搜索高意图买家→AI判定→入库) */
+      ctx.waitUntil(runBuyerRadar(env, env.DB));
     } else if (ev.cron === '0 4 * * *') {
-      /* 每日 04:00 UTC = 北京 12:00，跑趋势收集 */
+      /* 每日 04:00 UTC = 北京 12:00,趋势收集(多源组合)
+         成本#3 C1 审核:报告生成拆到 04:05 独立触发,避免两段重活串在同一 waitUntil 里被平台截断 */
       ctx.waitUntil(runTrendCollect(env, env.DB));
+    } else if (ev.cron === '5 4 * * *') {
+      /* 04:05 UTC = 北京 12:05,当天趋势日报生成(趋势收集跑完后独立执行) */
+      ctx.waitUntil(runBuildTrendReport(env, env.DB, 'day'));
+    } else if (ev.cron === '0 5 * * *') {
+      /* 每日 05:00 UTC = 北京 13:00,爆款单品采集(Amazon zgbs,与趋势采集错峰) */
+      ctx.waitUntil(runEcomCollect(env, env.DB));
+    } else if (ev.cron === '0 8 * * 1') {
+      /* 每周一 08:00 UTC = 北京 16:00,爆款监控周报(每周必交的报告,10-23 起) */
+      ctx.waitUntil(runBuildTrendReport(env, env.DB, 'week'));
     } else if (ev.cron === '0 6 * * *') {
       /* 每日 06:00 UTC = 北京 14:00，跑开发信自动生成+审核 */
       ctx.waitUntil(runOutreachAuto(env, env.DB));

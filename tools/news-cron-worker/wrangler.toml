@@ -2,6 +2,9 @@
 name = "bohui-news-cron"
 main = "index.js"
 compatibility_date = "2026-08-01"
+# 09-24 暴露面:只靠 cron 触发,没有调用方用 workers.dev(手动口 ?key= 也随之关闭)→ 关掉
+workers_dev = false
+preview_urls = false
 
 # 北京时间 07:30 / 13:30 / 19:30 三班
 [triggers]

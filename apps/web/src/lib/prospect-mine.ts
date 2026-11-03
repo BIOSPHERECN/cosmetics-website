@@ -65,10 +65,19 @@ const bjDay = () => new Date(Date.now() + 8 * 36e5).toISOString().slice(0, 10);
 export async function runProspectMine(env: any, seeds: { market: string; url: string }[]): Promise<{ mined: number; new: number; skipped: number }> {
   const db = env.DB as D1Database;
   const photo = env.PHOTO as R2Bucket | undefined;   /* R2 桶，复用现有的 PHOTO 绑定 */
-  if (!db || !seeds.length) return { mined: 0, new: 0, skipped: 0 };
+  if (!db || !seeds.length) {
+    if (db) await db.prepare(`INSERT INTO jobs (name,note,status,heartbeat_at,started_at) VALUES ('prospect-mine',?,?,datetime('now'),datetime('now'))`).bind('无种子','fail').run().catch(() => {});
+    return { mined: 0, new: 0, skipped: 0 };
+  }
 
-  const fleet = paidFirst(await loadFleet(db, env));
-  if (!fleet.length) return { mined: 0, new: 0, skipped: 0 };
+  /* 网关优先:paidFirst 把长期 402/429 的免费家排最前,chat() 试满 4 家就放弃 —— 整点挖掘会静默 0 产出 */
+  const fleet0 = paidFirst(await loadFleet(db, env));
+  const gw = (fleet0 as any[]).filter((p) => p.id === 'bohui-gateway' && p.keys?.length);
+  const fleet = [...gw, ...(fleet0 as any[]).filter((p) => p.id !== 'bohui-gateway' && p.keys?.length)];
+  if (!fleet.length) {
+    await db.prepare(`INSERT INTO jobs (name,note,status,heartbeat_at,started_at) VALUES ('prospect-mine',?,?,datetime('now'),datetime('now'))`).bind('无可用模型','fail').run().catch(() => {});
+    return { mined: 0, new: 0, skipped: 0 };
+  }
 
   let mined = 0, newCount = 0, skipped = 0;
   const today = bjDay();
@@ -165,12 +174,14 @@ export async function runProspectMine(env: any, seeds: { market: string; url: st
         if (exists) continue;
 
         /* 写入轻量摘要，完整数据在 123 云盘 */
-        await db.prepare(
+        /* website NOT NULL UNIQUE:没官网时用内部哨兵值占位(品牌+市场保证唯一),否则整条线索被 NOT NULL 约束吞掉 */
+        const wsite = b.website ? String(b.website).slice(0, 500) : `unknown://${seed.market}/${encodeURIComponent(brand.slice(0, 40))}`;
+        const insR = await db.prepare(
           `INSERT INTO prospects (brand, website, country, segment, categories, positioning, contact_channels, hook, source, status, icp_score, created_at)
            VALUES (?,?,?,?,?,?,?,?,?,?,0,datetime('now'))`,
         ).bind(
           brand.slice(0, 200),
-          b.website ? String(b.website).slice(0, 500) : null,
+          wsite,
           b.country ? String(b.country).slice(0, 100) : seed.market,
           null, null,
           b.note ? String(b.note).slice(0, 500) : null,
@@ -178,13 +189,13 @@ export async function runProspectMine(env: any, seeds: { market: string; url: st
           null,
           coldRef,   /* source 存 123云盘 fileID 或 R2 key，后台按 ref 去读完整数据 */
           'new',
-        ).run().catch(() => {});
-        newCount++;
+        ).run().catch(() => null);
+        if (insR) newCount++;   /* 只在真正入库后计数,不再虚报 */
       }
 
       /* 记一行 jobs（任务中心看得到） */
       await db.prepare(
-        `INSERT INTO jobs (name, note, status, created_at) VALUES ('prospect-mine', ?, 'ok', datetime('now'))`,
+        `INSERT INTO jobs (name, note, status, heartbeat_at, started_at) VALUES ('prospect-mine', ?, 'ok', datetime('now'), datetime('now'))`,
       ).bind(`url=${seed.url.slice(0, 200)} market=${seed.market} mined=${brands.length} new=${newCount}`).run().catch(() => {});
     } catch { skipped++; }
   }

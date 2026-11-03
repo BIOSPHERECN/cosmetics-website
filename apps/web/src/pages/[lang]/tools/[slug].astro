@@ -1,0 +1,215 @@
+---
+/**
+ * 工具落地页（2026-10-29）—— 一个工具吃一个买家查询。
+ *
+ * 结构照同类工具的 /tools/*，但那些站是单页应用空壳，AI 爬虫读不到正文；
+ * 我们服务端渲染：h1 是问句、首段就是可整段引用的结论、能力边界如实写。
+ * 内容在 packages/core/src/content/tools.ts，本文件只管呈现。
+ */
+import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { TOOL_BY_SLUG, TOOLS } from '@cosmetic/core/content/tools.ts';
+import '@cosmetic/core/styles/tool.css';
+
+export const prerender = false;
+
+const lang = String(Astro.params.lang ?? 'zh-cn');
+const zh = lang.startsWith('zh');
+const slug = String(Astro.params.slug ?? '').toLowerCase();
+const tool = TOOL_BY_SLUG.get(slug);
+if (!tool) return Astro.redirect(`/${lang}/tools/`, 302);
+
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang as any, Astro.cookies);
+const path = `/${lang}/tools/${slug}/`;
+const base = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+/* 目前只有中英正文；其余语种回落英文（与全站策略一致） */
+const c = zh ? tool.zh : tool.en;
+const T = zh
+  ? { related: '相关页面', faq: '常见问题', cta: '去试用工具', free: '免费试用，无需登录', all: '全部工具' }
+  : { related: 'Related pages', faq: 'Frequently asked questions', cta: 'Open the tool', free: 'Free to try, no sign-in', all: 'All tools' };
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org', '@type': 'WebPage',
+    '@id': `${base}${path}`, name: c.h1, description: c.answer,
+    url: `${base}${path}`,
+    isPartOf: { '@type': 'WebSite', '@id': `${base}/#website` },
+    about: { '@id': `${base}/#organization` },
+    inLanguage: zh ? 'zh-CN' : 'en',
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: zh ? '首页' : 'Home', item: `${base}/${lang}/` },
+      { '@type': 'ListItem', position: 2, name: T.all, item: `${base}/${lang}/tools/` },
+      { '@type': 'ListItem', position: 3, name: c.h1, item: `${base}${path}` },
+    ],
+  },
+  {
+    '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: tool.faqs.map((f) => ({
+      '@type': 'Question',
+      name: (zh ? f.zh : f.en).q,
+      acceptedAnswer: { '@type': 'Answer', text: (zh ? f.zh : f.en).a },
+    })),
+  },
+];
+---
+
+<BaseLayout
+  locale={lang as any}
+  school={shell.variant?.school ?? 'atelier'}
+  variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={`${c.h1} | ${shell.site?.name ?? 'BIOSPHERE'}`}
+  description={c.answer}
+  siteName={shell.site?.name ?? '帛卉'}
+  siteUrl={base}
+  path={path}
+  indexable={shell.site?.is_live === 1}
+  brandColor={shell.site?.brand_color}
+  theme={(shell.site as any)?.theme ?? 'noir'}
+  jsonLd={jsonLd as any}
+>
+  <a class="ck-skip-link" href="#main">{uiT(lang as any)('a11y.skip')}</a>
+  <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+
+  <main id="main" class="tw tl dtc-wrap-wide">
+    <nav class="tl-crumb">
+      <a href={`/${lang}/`}>{zh ? '首页' : 'Home'}</a>
+      <span aria-hidden="true">›</span>
+      <a href={`/${lang}/tools/`}>{T.all}</a>
+    </nav>
+
+    <header class="tl-head">
+      <p class="dtc-eyebrow">{c.eyebrow}</p>
+      <h1>{c.h1}</h1>
+      {/* 首屏结论：AI 截取的就是这一段 */}
+      <p class="tl-answer">{c.answer}</p>
+      <div class="tl-acts">
+        <a class="dtc-btn primary" href={`/${lang}${tool.ctaHref}`}>{T.cta} →</a>
+        <span class="tl-free">{T.free}</span>
+      </div>
+    </header>
+
+    <p class="tl-intro">{c.intro}</p>
+
+    <div class="tl-cols">
+      <section class="tl-block">
+        <h2>{c.outputsTitle}</h2>
+        <ul>{c.outputs.map((x) => <li>{x}</li>)}</ul>
+      </section>
+      <section class="tl-block tl-limits">
+        <h2>{c.limitsTitle}</h2>
+        <ul>{c.limits.map((x) => <li>{x}</li>)}</ul>
+      </section>
+    </div>
+
+    <section class="tl-samples">
+      <h2>{c.samplesTitle}</h2>
+      <ul class="tl-grid">
+        {tool.samples.map((s) => (
+          <li>
+            <img src={`/media/${s.media}`} alt={zh ? s.zh : s.en} loading="lazy" width="640" height="480" />
+            <span>{zh ? s.zh : s.en}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="tl-faq">
+      <h2>{T.faq}</h2>
+      {tool.faqs.map((f) => {
+        const qa = zh ? f.zh : f.en;
+        return (
+          <div class="qa">
+            <h3>{qa.q}</h3>
+            <p>{qa.a}</p>
+          </div>
+        );
+      })}
+    </section>
+
+    <section class="tl-related">
+      <h2>{T.related}</h2>
+      <ul>{tool.related.map((r) => <li><a href={`/${lang}${r.href}`}>{zh ? r.zh : r.en}</a></li>)}</ul>
+    </section>
+
+    <section class="tl-more">
+      <h2>{T.all}</h2>
+      <ul class="tl-grid tl-grid-links">
+        {TOOLS.filter((t) => t.slug !== tool.slug).map((t) => (
+          <li><a href={`/${lang}/tools/${t.slug}/`}>{(zh ? t.zh : t.en).h1}</a></li>
+        ))}
+      </ul>
+    </section>
+  </main>
+
+  <SiteFooter locale={lang as any} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  /* 工具内容页 —— Ant 规格组件（2026-10-30）
+     内容页保留白底（阅读友好），但卡片/按钮/图片按 Ant 的 6-8px 圆角与浅边框统一。 */
+  .tl { padding-block: clamp(1.5rem, 4vw, 3rem) clamp(2.5rem, 5vw, 4rem); background: var(--tw-bg, #fff); }
+
+  .tl-crumb { display: flex; gap: .375rem; align-items: center; font-size: 13px; color: var(--tw-text-3, rgba(0,0,0,.45)); margin-bottom: .75rem; }
+  .tl-crumb a { color: inherit; text-decoration: none; }
+  .tl-crumb a:hover { color: var(--tw-primary, #7c4da8); }
+
+  .tl-head { max-width: 68ch; }
+  .tl-head h1 { margin: .375rem 0 0; color: var(--tw-text, rgba(0,0,0,.88));
+    font-size: clamp(1.5rem, 1rem + 1.8vw, 2.125rem); font-weight: 600; line-height: 1.28; letter-spacing: -.015em; text-wrap: balance; }
+  .tl-answer { margin: .75rem 0 0; font-size: 16px; line-height: 1.75; color: var(--tw-text, rgba(0,0,0,.88)); }
+  .tl-acts { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: 1.25rem; }
+  .tl-acts .dtc-btn.primary { border: 1px solid transparent; border-radius: 6px; background: var(--tw-primary, #7c4da8);
+    color: #fff; font-weight: 500; min-height: 2.5rem; box-shadow: 0 2px 0 rgb(124 77 168 / .08);
+    transition: background .2s cubic-bezier(.645,.045,.355,1); }
+  .tl-acts .dtc-btn.primary:hover { background: var(--tw-primary-hover, #9164bb); color: #fff; }
+  .tl-free { font-size: 12px; color: var(--tw-text-3, rgba(0,0,0,.45)); }
+
+  .tl-intro { max-width: 72ch; margin: 1.5rem 0 0; font-size: 15px; line-height: 1.8; color: var(--tw-text-2, rgba(0,0,0,.65)); }
+
+  .tl-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: .75rem; margin-top: 2rem; }
+  .tl-block { background: var(--tw-bg, #fff); border: 1px solid var(--tw-border-2, #f0f0f0); border-radius: 8px;
+    box-shadow: var(--tw-shadow-sm, 0 1px 2px rgb(0 0 0 / .03)); padding: 1rem 1.125rem; }
+  .tl-block h2 { margin: 0 0 .625rem; font-size: 15px; font-weight: 600; color: var(--tw-text); }
+  .tl-block ul { margin: 0; padding-left: 1.125rem; display: grid; gap: .375rem; }
+  .tl-block li { font-size: 14px; line-height: 1.7; color: var(--tw-text-2); }
+  .tl-limits { border-style: dashed; box-shadow: none; }
+
+  .tl-samples, .tl-faq, .tl-related, .tl-more { margin-top: 2.5rem; }
+  .tl-samples h2, .tl-faq h2, .tl-related h2, .tl-more h2 { font-size: 15px; font-weight: 600; margin: 0 0 .875rem; color: var(--tw-text); }
+
+  .tl-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: .75rem; }
+  .tl-grid li { margin: 0; }
+  .tl-grid img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; display: block;
+    border-radius: 8px; border: 1px solid var(--tw-border-2, #f0f0f0); background: var(--tw-fill, #f5f5f5); }
+  .tl-grid span { display: block; margin-top: .375rem; font-size: 12px; color: var(--tw-text-3); }
+
+  .tl-grid-links li a { display: block; padding: .75rem .875rem; border: 1px solid var(--tw-border-2, #f0f0f0);
+    border-radius: 6px; font-size: 14px; text-decoration: none; color: var(--tw-text-2);
+    transition: border-color .2s cubic-bezier(.645,.045,.355,1), color .2s; }
+  .tl-grid-links li a:hover { border-color: var(--tw-primary, #7c4da8); color: var(--tw-primary, #7c4da8); }
+
+  .tl-faq .qa { padding: .875rem 0; border-top: 1px solid var(--tw-border-2, #f0f0f0); max-width: 72ch; }
+  .tl-faq .qa h3 { margin: 0 0 .375rem; font-size: 15px; font-weight: 600; color: var(--tw-text); }
+  .tl-faq .qa p { margin: 0; font-size: 14px; line-height: 1.75; color: var(--tw-text-2); }
+
+  .tl-related ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .tl-related a { display: inline-flex; align-items: center; min-height: 2rem; padding: 0 .75rem;
+    border: 1px solid var(--tw-border, #d9d9d9); border-radius: 6px; font-size: 13px;
+    text-decoration: none; color: var(--tw-text-2); background: var(--tw-bg, #fff);
+    transition: border-color .2s, color .2s; }
+  .tl-related a:hover { border-color: var(--tw-primary, #7c4da8); color: var(--tw-primary, #7c4da8); }
+</style>

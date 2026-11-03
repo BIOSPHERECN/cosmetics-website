@@ -1,0 +1,63 @@
+[材料已截断:共 181 行,给了约 60 行]
+Site worker: bohui-web. Tier: L3. Note: 【零读】beauty2oem 首页视觉重排:首屏满屏大图、12 张作品墙(标注为效果图/方向参考,非交付产品)、方法区图放大、中间版块浅底(补浅底绿红阴影令牌)、删空占位框;CACHE_V v85(CSS 哈希变,避免旧缓存页丢样式);含 middleware 冒烟探针头(secret 未设前不生效)
+diff --stat:
+ apps/web/public/b2o/img/vi/hero-full.webp | Bin 0 -> 159108 bytes
+ apps/web/public/b2o/img/vi/m1.webp        | Bin 0 -> 33396 bytes
+ apps/web/public/b2o/img/vi/m2.webp        | Bin 0 -> 89472 bytes
+ apps/web/public/b2o/img/vi/m3.webp        | Bin 0 -> 110682 bytes
+ apps/web/public/b2o/img/vi/m4.webp        | Bin 0 -> 139138 bytes
+ apps/web/public/b2o/img/vi/wall-01.webp   | Bin 0 -> 116996 bytes
+ apps/web/public/b2o/img/vi/wall-02.webp   | Bin 0 -> 79246 bytes
+ apps/web/public/b2o/img/vi/wall-03.webp   | Bin 0 -> 76350 bytes
+ apps/web/public/b2o/img/vi/wall-04.webp   | Bin 0 -> 102420 bytes
+ apps/web/public/b2o/img/vi/wall-05.webp   | Bin 0 -> 81580 bytes
+ apps/web/public/b2o/img/vi/wall-06.webp   | Bin 0 -> 82640 bytes
+ apps/web/public/b2o/img/vi/wall-07.webp   | Bin 0 -> 127118 bytes
+ apps/web/public/b2o/img/vi/wall-08.webp   | Bin 0 -> 90646 bytes
+ apps/web/public/b2o/img/vi/wall-09.webp   | Bin 0 -> 139884 bytes
+ apps/web/public/b2o/img/vi/wall-10.webp   | Bin 0 -> 91716 bytes
+ apps/web/public/b2o/img/vi/wall-11.webp   | Bin 0 -> 157178 bytes
+ apps/web/public/b2o/img/vi/wall-12.webp   | Bin 0 -> 115776 bytes
+ apps/web/src/components/B2oBlock.astro    |  84 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------
+ apps/web/src/middleware.ts                |  13 ++++++++++---
+ apps/web/src/styles/b2o.css               |  60 ++++++++++++++++++++++++++++++++++++++++++++----------------
+ 20 files changed, 110 insertions(+), 47 deletions(-)
+Gate-1 hits: 
+Risks: RK1 CACHE_V 改成 const CACHE_V = 'v85';   // 09-25 beauty2oem 视觉重排; RK2 middleware.ts 变了:所有请求都经过它; RK7 对外文案/页面变了 apps/web/src/components/B2oBlock.astro; RK7 对外文案/页面变了 apps/web/src/middleware.ts
+Changed lines:
+
+diff --git a/apps/web/src/middleware.ts b/apps/web/src/middleware.ts
+--- a/apps/web/src/middleware.ts
++++ b/apps/web/src/middleware.ts
+@@ -468,3 +468,10 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+-  if ((req.method === 'GET' || req.method === 'HEAD') && !staff && !dev && isPagePath(url0.pathname)) {
++  /* Post-deploy smoke probe: a request carrying the shared secret header skips canonical redirects and the edge cache.
++     Without the configured secret nobody matches. */
++  const probeSecret = String((cfEnv as any)?.PROBE_SECRET ?? '');
++  const probeHdr = req.headers.get('x-bohui-probe') ?? '';
++  let probeDiff = probeSecret.length === 0 || probeHdr.length !== probeSecret.length ? 1 : 0;
++  for (let i = 0; i < probeHdr.length && i < probeSecret.length; i++) probeDiff |= probeHdr.charCodeAt(i) ^ probeSecret.charCodeAt(i);
++  const probe = probeDiff === 0;
++  if ((req.method === 'GET' || req.method === 'HEAD') && !staff && !dev && !probe && isPagePath(url0.pathname)) {
+@@ -507,3 +514,3 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+-    !noCache && !staff && !member;
++    !noCache && !staff && !member && !probe;
+@@ -516,3 +523,3 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+-  const CACHE_V = 'v84';   // 09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 [电话] 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
++  const CACHE_V = 'v85';   // 09-25 beauty2oem 视觉重排改了 b2o.css(资源哈希变),旧缓存 HTML 会引用已下线的旧样式,必须 +1;09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 [电话] 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
+diff --git a/apps/web/public/b2o/img/vi/hero-full.webp b/apps/web/public/b2o/img/vi/hero-full.webp
+diff --git a/apps/web/public/b2o/img/vi/m1.webp b/apps/web/public/b2o/img/vi/m1.webp
+diff --git a/apps/web/public/b2o/img/vi/m2.webp b/apps/web/public/b2o/img/vi/m2.webp
+diff --git a/apps/web/public/b2o/img/vi/m3.webp b/apps/web/public/b2o/img/vi/m3.webp
+diff --git a/apps/web/public/b2o/img/vi/m4.webp b/apps/web/public/b2o/img/vi/m4.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-01.webp b/apps/web/public/b2o/img/vi/wall-01.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-02.webp b/apps/web/public/b2o/img/vi/wall-02.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-03.webp b/apps/web/public/b2o/img/vi/wall-03.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-04.webp b/apps/web/public/b2o/img/vi/wall-04.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-05.webp b/apps/web/public/b2o/img/vi/wall-05.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-06.webp b/apps/web/public/b2o/img/vi/wall-06.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-07.webp b/apps/web/public/b2o/img/vi/wall-07.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-08.webp b/apps/web/public/b2o/img/vi/wall-08.webp
+diff --git a/apps/web/public/b2o/img/vi/wall-09.webp b/apps/web/public/b2o/img/vi/wall-09.webp
+diff --git a/apps/web/pu
+[没给到内容的文件 5 个] apps/web/public/b2o/img/vi/wall-10.webp、apps/web/public/b2o/img/vi/wall-11.webp、apps/web/public/b2o/img/vi/wall-12.webp、apps/web/src/components/B2oBlock.astro、apps/web/src/styles/b2o.css

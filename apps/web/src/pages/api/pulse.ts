@@ -21,7 +21,11 @@ export const POST: APIRoute = async ({ request }) => {
     const path = String(new URL(request.url).searchParams.get('p') || '/').slice(0, 96);
     if (!path.startsWith('/') || path.startsWith('/bohui') || path.startsWith('/api')) return new Response(null, { status: 204 });
     const { lang, section } = SECTION(path);
-    ae?.writeDataPoint({ blobs: ['human:js', lang, section, path, (request as any).cf?.country ?? '-'], doubles: [1], indexes: ['human:js'] });
+    /* 2026-10-28:&wa=1 是 WhatsApp 按钮点击(真人动作)。与 human:js 同表不同 blob1,
+       以后「每天多少人点 WhatsApp、从哪个页面」直接查 blob1='wa:click' 即可 */
+    const wa = new URL(request.url).searchParams.get('wa') === '1';
+    const k = wa ? 'wa:click' : 'human:js';
+    ae?.writeDataPoint({ blobs: [k, lang, section, path, (request as any).cf?.country ?? '-'], doubles: [1], indexes: [k] });
   } catch { /* 打点失败不影响页面 */ }
   return new Response(null, { status: 204, headers: { 'cache-control': 'no-store' } });
 };

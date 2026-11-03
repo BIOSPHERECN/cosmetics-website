@@ -90,7 +90,7 @@ export const EMAIL: Record<string, string> = {
  * 这对 B 端采购反而更顺手:他们本来就习惯用邮件,且邮件天然留痕、可转发给同事。
  * 后台落地后若需表单入库,再加一条服务端路由即可,本页版式不动。
  */
-export const CONTACT: Record<Locale, {
+export const CONTACT: Partial<Record<Locale, {
   title: string;
   intro: string;
   checklistTitle: string;
@@ -104,7 +104,7 @@ export const CONTACT: Record<Locale, {
   langLabel: string;
   langValue: string;
   note: string;
-}> = {
+}>> = {
   'zh-cn': {
     title: '发起询盘',
     intro: '把需求写清楚,我们的回复才有价值。下面这几项信息填得越具体,我们第一封回信就能给到可执行的方案,而不是一句「请提供更多信息」。',

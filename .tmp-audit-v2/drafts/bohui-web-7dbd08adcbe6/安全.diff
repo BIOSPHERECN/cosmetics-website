@@ -1,0 +1,89 @@
+diff --git a/apps/web/public/b2o/img/fd/c-botanical-set.webp b/apps/web/public/b2o/img/fd/c-botanical-set.webp
+new file mode 100644
+index 0000000..83110fb
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/c-botanical-set.webp differ
+diff --git a/apps/web/public/b2o/img/fd/c-color-tubes.webp b/apps/web/public/b2o/img/fd/c-color-tubes.webp
+new file mode 100644
+index 0000000..02e6fb1
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/c-color-tubes.webp differ
+diff --git a/apps/web/public/b2o/img/fd/c-fruit-cans.webp b/apps/web/public/b2o/img/fd/c-fruit-cans.webp
+new file mode 100644
+index 0000000..b1c1086
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/c-fruit-cans.webp differ
+diff --git a/apps/web/public/b2o/img/fd/c-pink-serum.webp b/apps/web/public/b2o/img/fd/c-pink-serum.webp
+new file mode 100644
+index 0000000..6c123fe
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/c-pink-serum.webp differ
+diff --git a/apps/web/public/b2o/img/fd/c-starry-premium.webp b/apps/web/public/b2o/img/fd/c-starry-premium.webp
+new file mode 100644
+index 0000000..7892092
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/c-starry-premium.webp differ
+diff --git a/apps/web/public/b2o/img/fd/d-cucumber-set.webp b/apps/web/public/b2o/img/fd/d-cucumber-set.webp
+new file mode 100644
+index 0000000..cd00a2d
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/d-cucumber-set.webp differ
+diff --git a/apps/web/public/b2o/img/fd/d-gold-set.webp b/apps/web/public/b2o/img/fd/d-gold-set.webp
+new file mode 100644
+index 0000000..89684b8
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/d-gold-set.webp differ
+diff --git a/apps/web/public/b2o/img/fd/d-papaya-set.webp b/apps/web/public/b2o/img/fd/d-papaya-set.webp
+new file mode 100644
+index 0000000..1d6535d
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/d-papaya-set.webp differ
+diff --git a/apps/web/public/b2o/img/fd/hero-beach-lineup.webp b/apps/web/public/b2o/img/fd/hero-beach-lineup.webp
+new file mode 100644
+index 0000000..115ed1c
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/hero-beach-lineup.webp differ
+diff --git a/apps/web/public/b2o/img/fd/insight-pool.webp b/apps/web/public/b2o/img/fd/insight-pool.webp
+new file mode 100644
+index 0000000..9da73ea
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/insight-pool.webp differ
+diff --git a/apps/web/public/b2o/img/fd/m1-trend-pastel.webp b/apps/web/public/b2o/img/fd/m1-trend-pastel.webp
+new file mode 100644
+index 0000000..49a8469
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/m1-trend-pastel.webp differ
+diff --git a/apps/web/public/b2o/img/fd/m2-judge-gold.webp b/apps/web/public/b2o/img/fd/m2-judge-gold.webp
+new file mode 100644
+index 0000000..68ab9dc
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/m2-judge-gold.webp differ
+diff --git a/apps/web/public/b2o/img/fd/m3-verify-market.webp b/apps/web/public/b2o/img/fd/m3-verify-market.webp
+new file mode 100644
+index 0000000..365909a
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/m3-verify-market.webp differ
+diff --git a/apps/web/public/b2o/img/fd/m4-launch-tropical-box.webp b/apps/web/public/b2o/img/fd/m4-launch-tropical-box.webp
+new file mode 100644
+index 0000000..80c3724
+Binary files /dev/null and b/apps/web/public/b2o/img/fd/m4-launch-tropical-box.webp differ
+diff --git a/apps/web/src/middleware.ts b/apps/web/src/middleware.ts
+index 1444b68..98128d0 100644
+--- a/apps/web/src/middleware.ts
++++ b/apps/web/src/middleware.ts
+@@ -514,7 +514,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+   /* v3(2026-09-07 上午):D1 额度耗尽期间,边缘把一批 404 与 503 缓存住了 ——
+      修好之后访客拿到的仍是坏副本。推版本号是清掉它们唯一干净的办法。 */
+   /* v4(2026-09-07 晚):sitemap 拆分、繁中上线、跨站兜底重写 —— 清掉全部旧副本 */
+-  const CACHE_V = 'v84';   // 09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
++  const CACHE_V = 'v84';   // 09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
+   const keyFor = (r: Request) => {
+     const u = new URL(r.url);
+     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。
+diff --git a/tools/ship.sh b/tools/ship.sh
+index 3e19941..8e7e5ae 100644
+--- a/tools/ship.sh
++++ b/tools/ship.sh
+@@ -1,6 +1,7 @@
+ #!/usr/bin/env bash
+ # 公司站(bohui-web)唯一上线入口:四道闸(Semgrep/费用/Laya/审核)全过才部署,结果记 F:/0cosmetic/助手交付/上线闸门日志.md
+-# 用法:bash tools/ship.sh [--dry-run] [--reviewed=<审核报告>] [--note="说明,降读改动带【降读】"] [--base=<提交>]
++# 用法(v2.1,审核部 ENABLED 后):bash tools/ship.sh --note "说明" | --dry-run | --status | --urgent … | --breakglass "理由" | --rollback[=<版本>] --reason "…"(详见 tools-review/audit_v2/ship_lib.sh 开头)
++# v1 用法(ENABLED 不在时):bash tools/ship.sh [--dry-run] [--reviewed=<审核报告>] [--note="说明,降读改动带【降读】"] [--base=<提交>]
+ # 部署步骤照 QUEUE.md:构建 → dist/server 里 source 公司 .env → wrangler deploy -c wrangler.json
+ REPO=F:/0cosmetic/cosmetic-sites; SITE=公司站; WORKER=bohui-web; BASELINE=5b98667
+ SCOPE=(apps packages)
+@@ -12,4 +13,5 @@ deploy() (
+   set -a; . "$REPO/.env"; set +a
+   npx wrangler deploy -c wrangler.json
+ )
+-source F:/0cosmetic/tools-review/gate.sh "$@"
++AV2=F:/0cosmetic/tools-review/audit_v2   # 审核部 v2.1:ENABLED 在 → v2(审核单 + 三家共判,从已批准副本执行);不在 → v1 四道闸(gate.sh 留档)
++if [ -f "$AV2/ENABLED" ]; then source "$AV2/cache/gate_approved/audit_v2/ship_lib.sh" "$@"; else source F:/0cosmetic/tools-review/gate.sh "$@"; fi

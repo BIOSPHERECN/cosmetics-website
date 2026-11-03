@@ -18,6 +18,7 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import ItemDetail from '@cosmetic/core/components/ItemDetail.astro';
+import InquiryFormLite from '@cosmetic/core/components/InquiryFormLite.astro';
 import { pageShell } from '../../../lib/shell';
 import { PACK_TYPE_LABEL, FMT_LABEL, label, packName, dualCapacity, packDesignHref } from '../../../lib/catalog';
 import { PACK_SHELF } from '@cosmetic/core/generated/pack-shelf.ts';
@@ -172,6 +173,8 @@ const ld = [
     })),
   },
 ];
+/* 询盘表单的 WhatsApp 号与联系页同源(middleware 注入) */
+const contactWa: string | null = ((Astro.locals as any)?.contact ?? {}).whatsapp ?? null;
 ---
 
 <BaseLayout
@@ -215,6 +218,7 @@ const ld = [
       note={T.note}
       labels={{ shotPending: T.shotPending, specs: T.specs, parts: T.parts,
                 related: T.related, faq: T.faqH, partCode: T.partCode }} />
+      <InquiryFormLite lang={lang} email={shell.email} whatsapp={contactWa} source="packaging-detail" product={`${p.code} ${name}`} />
   </main>
   <SiteFooter locale={lang} path={path}
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}

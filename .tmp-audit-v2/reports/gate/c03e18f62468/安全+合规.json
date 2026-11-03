@@ -1,0 +1,69 @@
+{
+  "angle": "安全+合规",
+  "tree": "c03e18f62468817d772ef6ec17c12dce0ded255d",
+  "worker": "gate",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-c03e18f62468.json",
+  "run_label": "review-ticket c03e18f62468 安全+合规",
+  "reviewer": "claude",
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/gate/c03e18f62468/安全+合规.json",
+  "skills_loaded": [
+    "claude-guard:guard-rules",
+    "bohui-data-security-formula-confidentiality",
+    "bohui-legal-advertising-claims",
+    "bohui-label-claims-review"
+  ],
+  "verdict": "过",
+  "checked": [
+    "安全-①", "安全-②", "安全-③", "安全-④", "安全-⑤", "安全-⑥", "安全-⑦",
+    "合规-①", "合规-②", "合规-③", "合规-④", "合规-⑤", "合规-⑥", "合规-⑦"
+  ],
+  "findings": [
+    {
+      "id": "S0",
+      "level": "低",
+      "file": "(审核流程)",
+      "claim": "security-review 技能没加载上:工作区 F:/0cosmetic 不是 git 仓,技能拒绝运行。本角度改为人工逐行读 diff 替代,其余 4 个技能已加载。",
+      "failure_scenario": "少了 security-review 的自动扫描。本次 diff 只删一个 132 行的 shell 备份文件,没有新增代码,人工通读可以覆盖。",
+      "evidence": "Skill(security-review) 返回:需在 git 仓内运行,当前 F:\\0cosmetic 不是 git 仓。",
+      "fix": "以后调这个技能时,把 cwd 设成 F:/0cosmetic/tools-review(git 仓)再派审核员。"
+    },
+    {
+      "id": "C1",
+      "level": "低",
+      "file": "audit_v2/rules-v2-strict.yml",
+      "claim": "不在本角度 diff 内,属于跨片观察:红线正则从「自有(厂房|工厂)|非租赁|own(ed) factory/facility」收成「自有厂房|非租赁」,英文 own(ed) facility 那段也一起删了。facility 的意思接近厂房/场地,删掉后英文页写「owned facility」(暗示厂房是自有产权)就不会被拦,中英文拦截口径不对等(合规-⑥)。",
+      "failure_scenario": "英文站文案出现 'our owned facility'(意思接近「自有厂房」),规则不再拦,只能靠人工审出来。",
+      "evidence": "all.diff 第 34-35 行:旧 pattern-regex 含 (?i)\\bown(ed)?\\s+(factory|facility)\\b,新的只剩 '自有厂房|非租赁'。口径摘要第 29 行:「自有厂房/非租赁」禁用。",
+      "fix": "交「成本+正确性」片或主线决定:要不要保留英文 owned facility / own premises 的拦截,和中文「自有厂房」对齐。own factory 按创始人更正可以放行。"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "JEV",
+      "result": "不成立",
+      "why": "Jev 判 block(conf 0.64),但 reason 为空,没指出具体行。本角度 diff 只有一处改动:删除 gate.sh.bak-0924-zero。已通读这 132 行被删内容:没有密钥或凭据(只有本机路径 F:/0cosmetic/...,没有 token);没有 SQL 或 HTML 输出;没有对外抓取;没有新依赖;也不涉及 wrangler 绑定。Grep 全 tools-review 仓,找不到任何文件引用 bak-0924-zero,删掉不影响任何 source 或调用链。原内容在基准提交 b40d5554 里还能找回。"
+    },
+    {
+      "ref": "LAYA",
+      "result": "不成立",
+      "why": "Laya 判 allow,但 conf 只有 0.04,标为存疑,也没给理由。结合上一条的人工核对,本片是删除一个没人引用的备份脚本,安全和合规上都没有新增暴露面。"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "合规",
+      "level": "低",
+      "item": "红线规则收窄后,英文 owned facility 不再被机审拦截(见 C1,不在本片 diff 内)。",
+      "mitigation": "第二关人工审英文文案时,把「owned facility / own premises」当作「自有厂房」处理;或者在规则里补回这段英文。"
+    },
+    {
+      "cat": "回归",
+      "level": "低",
+      "item": "删除的备份是 gate.sh 零读改动之前的版本。如果新 gate.sh 出问题需要对照,本地没有现成副本了。",
+      "mitigation": "从基准提交 b40d5554 用 git show 取回即可,不需要保留 .bak 文件。"
+    }
+  ],
+  "smoke_extra": [
+    "Grep F:/0cosmetic/tools-review 查 'bak-0924-zero':0 处引用"
+  ]
+}

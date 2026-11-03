@@ -62,6 +62,27 @@ const KEY_PAGES = [
     q: 'how to reach us — enquiry form, email, WhatsApp and WeChat (via the enquiry form)' },
 ];
 
+/* 2026-11-03 GEO(P0):市场入口层 —— 印尼(第一优先市场)与阿拉伯语(沙特)买家
+   用本地语言提问,而 Key pages 之前只有英文入口,跨语种引用匹配度天然低一截。
+   ⚠ 自查项:凡站点新增语系,本节必须同步出现该语系入口,否则等于对新市场关闭 AI 通道。
+   锚文本取自线上真实页面标题/问答(2026-11-03 逐页核过 200);只描链接,不新增数字。 */
+const MARKET_ENTRY: Record<string, { title: string; items: [string, string][] }> = {
+  id: { title: 'Bahasa Indonesia (Indonesia)', items: [
+    ['Produsen OEM kosmetik herbal BIOSPHERE', ''],
+    ['Produsen OEM kosmetik bersertifikat HALAL', 'oem/cert/halal/'],
+    ['Apa yang kami lakukan — kemampuan dan sertifikasi pabrik', 'capabilities/'],
+    ['Bagaimana MOQ dan lead time ditetapkan untuk skincare OEM?', 'answers/moq-lead-skincare/'],
+    ['Hubungi kami — form permintaan penawaran', 'contact/'],
+  ]},
+  ar: { title: 'العربية (Middle East)', items: [
+    ['مصنع BIOSPHERE لمستحضرات التجميل العشبية', ''],
+    ['مصنع مستحضرات تجميل حاصل على شهادة HALAL', 'oem/cert/halal/'],
+    ['ما الذي نقدمه — قدرات وشهادات المصنع', 'capabilities/'],
+    ['كيف تُحدَّد حدّ الأدنى لعدد القطع وزمن التسليم؟', 'answers/moq-lead-skincare/'],
+    ['اتصل بنا', 'contact/'],
+  ]},
+};
+
 export const GET: APIRoute = async ({ url }) => {
   const db = (env as any).DB as D1Database | undefined;
   const override = url.searchParams.get('site');
@@ -138,6 +159,14 @@ ${citable}
 
 ${KEY_PAGES.map((k) => `- [${k.t}](${base}/en/${k.p}) — ${fillN(k.q)}`).join('\n')}
 ${nav.filter((n) => n.slug && !KEY_PAGES.some((k) => k.p.startsWith(n.slug))).slice(0, 5).map((n) => `- [${n.label}](${base}/en/${n.slug}/)`).join('\n')}
+
+## Market entry points
+
+First-priority markets get entry pages in the buyer's own language:
+
+${Object.entries(MARKET_ENTRY).map(([lang, { title, items }]) =>
+  `### ${title}\n\n${items.map(([t, p]) => `- [${t}](${base}/${lang}/${p})`).join('\n')}`
+).join('\n\n')}
 
 ## Languages
 

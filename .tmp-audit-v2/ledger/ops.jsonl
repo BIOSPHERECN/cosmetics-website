@@ -1,0 +1,3 @@
+{"action":"tasks_baseline","count":41,"enabled":6,"ts":"2026-09-24T21:14:16+08:00","prev":"genesis"}
+{"action":"task_baseline_one","task":"Bohui-AuditWatch","reason":"审核部巡查任务首次注册(register_watch_task.ps1)","files":["F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs","F:/0cosmetic/tools-review/audit_v2/watch.cmd"],"ts":"2026-09-24T22:15:19+08:00","prev":"b1960e4ebbeee9022b62b064b605436acd1ebf9b5de3e06b552f10fd10e2447e"}
+{"action":"prod","worker":"bohui-web","command":"node F:/0cosmetic/cosmetic-sites/tools/set-probe-secret.mjs","exit":0,"ticket":"RT-20260925-0502-prod-bohui-web-a1f07de2","ts":"2026-09-25T05:03:05+08:00","prev":"1a485c915f5043f02ce8e3c3d8797c8e268158160b9b98be37ff744d654d2896"}

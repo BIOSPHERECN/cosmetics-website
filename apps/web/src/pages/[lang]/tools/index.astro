@@ -1,0 +1,101 @@
+---
+/**
+ * 工具索引（2026-10-29）—— 6 个工具落地页的入口。
+ * 服务端渲染，每张卡都带真实样例图；不做空链接。
+ */
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { TOOLS } from '@cosmetic/core/content/tools.ts';
+import '@cosmetic/core/styles/tool.css';
+
+export const prerender = false;
+
+const lang = String(Astro.params.lang ?? 'zh-cn');
+const zh = lang.startsWith('zh');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang as any, Astro.cookies);
+const path = `/${lang}/tools/`;
+const base = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+
+const T = zh
+  ? { eyebrow: '设计工具', h1: '化妆品设计与视觉工具', lead: '先解决问题，再谈工具。每一页写清适用场景与能力边界——包括做不到的部分。', cta: '打开设计中心' }
+  : { eyebrow: 'Design tools', h1: 'Cosmetic design and visual tools', lead: 'Answer the question first, then the tool. Every page states its scope — including what it cannot do.', cta: 'Open the design centre' };
+---
+
+<BaseLayout
+  locale={lang as any}
+  school={shell.variant?.school ?? 'atelier'}
+  variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={`${T.h1} | ${shell.site?.name ?? 'BIOSPHERE'}`}
+  description={T.lead}
+  siteName={shell.site?.name ?? '帛卉'}
+  siteUrl={base}
+  path={path}
+  indexable={shell.site?.is_live === 1}
+  brandColor={shell.site?.brand_color}
+  theme={(shell.site as any)?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{uiT(lang as any)('a11y.skip')}</a>
+  <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+
+  <main id="main" class="tw ti dtc-wrap-wide">
+    <header class="ti-head">
+      <p class="dtc-eyebrow">{T.eyebrow}</p>
+      <h1>{T.h1}</h1>
+      <p class="ti-lead">{T.lead}</p>
+      <a class="dtc-btn primary" href={`/${lang}/design/`}>{T.cta} →</a>
+    </header>
+
+    <ul class="ti-grid">
+      {TOOLS.map((t) => {
+        const c = zh ? t.zh : t.en;
+        return (
+          <li>
+            <a class="ti-card" href={`/${lang}/tools/${t.slug}/`}>
+              <span class="ti-thumb"><img src={`/media/${t.samples[0].media}`} alt="" loading="lazy" width="640" height="480" /></span>
+              <span class="ti-body">
+                <span class="ti-t">{c.h1}</span>
+                <span class="ti-d">{c.answer}</span>
+              </span>
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+  </main>
+
+  <SiteFooter locale={lang as any} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  .ti { padding-block: var(--dtc-py, 48px) calc(var(--dtc-py, 48px) * 1.4); }
+  .ti-head { max-width: 62ch; }
+  .ti-head h1 { margin: .5rem 0 0; font-size: clamp(1.5rem, 1rem + 2vw, 2.25rem); line-height: 1.18; letter-spacing: -.02em; }
+  .ti-lead { margin: .75rem 0 1.25rem; color: var(--ck-ink-soft); line-height: 1.7; }
+
+  .ti-grid { list-style: none; margin: 2rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 1rem; }
+  .ti-card { display: flex; flex-direction: column; height: 100%; text-decoration: none; color: inherit;
+    border: 1px solid var(--ck-line); border-radius: 14px; overflow: hidden;
+    transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+  .ti-card:hover { transform: translateY(-2px); border-color: var(--ck-accent); box-shadow: 0 12px 28px -18px rgb(0 0 0 / .45); }
+  .ti-card:focus-visible { outline: 2px solid var(--ck-accent); outline-offset: 2px; }
+  .ti-thumb { display: block; aspect-ratio: 4 / 3; overflow: hidden; background: color-mix(in srgb, var(--ck-line) 40%, transparent); }
+  .ti-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ti-body { display: grid; gap: .375rem; padding: .875rem 1rem 1.0625rem; }
+  .ti-t { font-size: .9688rem; font-weight: 600; line-height: 1.4; }
+  .ti-d { font-size: .8438rem; line-height: 1.6; color: var(--ck-ink-soft); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ti-card { transition: none; }
+    .ti-card:hover { transform: none; }
+  }
+</style>

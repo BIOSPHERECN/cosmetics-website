@@ -1,0 +1,20 @@
+--- a/tools-review/audit_v2/cache/tmp/prod-8dcb20b48343/command.txt
++++ b/tools-review/audit_v2/cache/tmp/prod-8dcb20b48343/command.txt
+@@ -0,0 +1,3 @@
++worker: bohui-web
++cwd: apps/web
++command: node F:/0cosmetic/cosmetic-sites/tools/set-probe-secret.mjs
+--- a/cosmetic-sites/tools/set-probe-secret.mjs
++++ b/cosmetic-sites/tools/set-probe-secret.mjs
+@@ -0,0 +1,11 @@
++// 09-25 把本机 .env 的 PROBE_SECRET 设成 bohui-web 的 Worker secret(冒烟探针,middleware 认 x-bohui-probe)。
++// 只由 ship_ops.sh prod 在审核通过后执行;值只经 stdin 传给 wrangler,不进命令行、不打印。
++import { readFileSync } from 'node:fs';
++import { spawnSync } from 'node:child_process';
++
++const env = readFileSync('F:/0cosmetic/cosmetic-sites/.env', 'utf8');
++const m = env.match(/^\s*PROBE_SECRET\s*=\s*"?([^"\r\n]+)"?/m);
++if (!m) { console.error('本机 .env 没有 PROBE_SECRET'); process.exit(2); }
++const args = ['wrangler', 'secret', 'put', 'PROBE_SECRET'];
++const r = spawnSync('npx', args, { input: m[1].trim(), stdio: ['pipe', 'inherit', 'inherit'], shell: true });
++process.exit(r.status ?? 1);

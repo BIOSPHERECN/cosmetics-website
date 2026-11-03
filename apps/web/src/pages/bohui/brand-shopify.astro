@@ -1,0 +1,134 @@
+---
+/**
+ * 后台 · Shopify 品牌情报（2026-11-02）
+ *
+ * 数据来源：品牌官网的 /products.json（商家主动开放的公开端点，合规可读）。
+ * 价值：不靠海关提单也能判断"谁在密集开发新品"——近 90 天新品数是最直接的采购信号。
+ *
+ * 只放后台，不上前端。
+ */
+import { env } from 'cloudflare:workers';
+import AdminShell from '../../layouts/AdminShell.astro';
+import { readSession, readCookie, COOKIE } from '../../lib/auth';
+
+export const prerender = false;
+const db = (env as any).DB as D1Database | undefined;
+const secret = (env as any).AUTH_SECRET as string | undefined;
+const sess = await readSession(readCookie(Astro.request.headers.get('cookie'), COOKIE), secret ?? '');
+if (!sess) return Astro.redirect('/bohui/login/');
+
+const url = new URL(Astro.request.url);
+const min = Number(url.searchParams.get('min') ?? 60) || 0;
+const cat = (url.searchParams.get('cat') ?? '').trim();
+const fresh = url.searchParams.get('fresh') === '1';
+const page = Math.max(1, Number(url.searchParams.get('p')) || 1);
+const PER = 40;
+
+const where: string[] = ['score >= ?'], bind: unknown[] = [min];
+if (cat) { where.push('(categories LIKE ? OR sample_titles LIKE ?)'); bind.push(`%${cat}%`, `%${cat}%`); }
+if (fresh) where.push('new_90d > 0');
+const W = `WHERE ${where.join(' AND ')}`;
+
+type Row = {
+  domain: string; brand: string; product_count: number; categories: string | null;
+  new_90d: number; latest_publish: string | null; price_min: number | null; price_max: number | null;
+  sample_titles: string | null; score: number; score_reason: string | null; checked_at: string | null;
+};
+let rows: Row[] = [];
+let total = 0;
+if (db) {
+  total = ((await db.prepare(`SELECT COUNT(*) n FROM shopify_brands ${W}`).bind(...bind).first<{ n: number }>())
+    .catch(() => ({ n: 0 })))?.n ?? 0;
+  const r = await db.prepare(
+    `SELECT domain,brand,product_count,categories,new_90d,latest_publish,price_min,price_max,
+            sample_titles,score,score_reason,checked_at
+       FROM shopify_brands ${W}
+      ORDER BY score DESC, new_90d DESC, product_count DESC LIMIT ? OFFSET ?`,
+  ).bind(...bind, PER, (page - 1) * PER).all<Row>().catch(() => ({ results: [] as Row[] }));
+  rows = r.results ?? [];
+}
+const pages = Math.max(1, Math.ceil(total / PER));
+const link = (o: Record<string, string | number>) => {
+  const u = new URLSearchParams();
+  const cur: Record<string, string> = { min: String(min), cat, fresh: fresh ? '1' : '' };
+  for (const [k, v] of Object.entries(cur)) if (v) u.set(k, v);
+  for (const [k, v] of Object.entries(o)) v ? u.set(k, String(v)) : u.delete(k);
+  return `?${u}`;
+};
+const stat = db ? ((await db.prepare(
+  `SELECT COUNT(*) n, SUM(CASE WHEN new_90d>=10 THEN 1 ELSE 0 END) hot,
+          SUM(CASE WHEN new_90d>0 THEN 1 ELSE 0 END) active FROM shopify_brands`,
+).first<{ n: number; hot: number; active: number }>().catch(() => null)) ?? { n: 0, hot: 0, active: 0 }) : { n: 0, hot: 0, active: 0 };
+---
+
+<AdminShell title="Shopify 品牌情报" active="models" email={sess.email}>
+  <h1>Shopify 品牌情报</h1>
+  <p class="lead">
+    从品牌官网的 <code>/products.json</code>（商家主动开放的公开端点）读取商品数据。
+    判断依据：<b>近 90 天新品数</b> —— 上新越密集，越可能在找新代工厂。
+    共 <b>{stat.n}</b> 个品牌，其中 <b>{stat.active}</b> 个近 90 天有上新、<b>{stat.hot}</b> 个上新 ≥10 款。
+  </p>
+
+  <form class="bar" method="get" style="display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0">
+    <label style="font-size:.8125rem;display:flex;align-items:center;gap:.375rem">
+      最低分
+      <select name="min">
+        <option value="0" selected={min === 0}>全部</option>
+        <option value="40" selected={min === 40}>40+</option>
+        <option value="60" selected={min === 60}>60+</option>
+        <option value="80" selected={min === 80}>80+</option>
+      </select>
+    </label>
+    <input name="cat" value={cat} placeholder="品类关键词（serum/lip/mask…）" style="max-width:16rem" />
+    <label style="font-size:.8125rem;display:flex;align-items:center;gap:.375rem">
+      <input type="checkbox" name="fresh" value="1" checked={fresh} /> 只看近90天有上新
+    </label>
+    <button class="btn pri" type="submit">筛选</button>
+    {(cat || fresh || min !== 60) && <a class="btn" href="/bohui/brand-shopify/">清空</a>}
+  </form>
+
+  {rows.length === 0 ? (
+    <div class="empty">没有符合条件的品牌。先跑 <code>tools/prospect/shopify-brands.py --apply</code> 采集。</div>
+  ) : (
+    <>
+      <div class="tblwrap">
+        <table>
+          <thead><tr>
+            <th style="width:4rem">分数</th><th style="width:13rem">品牌</th><th style="width:15rem">官网</th>
+            <th style="width:4.5rem">SKU</th><th style="width:5.5rem">近90天新品</th>
+            <th style="width:6.5rem">最近上新</th><th style="width:7rem">价格带</th>
+            <th>评分理由</th>
+          </tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr>
+                <td><b style={r.score >= 80 ? 'color:#52c41a' : r.score >= 60 ? 'color:#7c4da8' : ''}>{r.score}</b></td>
+                <td>
+                  <b>{r.brand || '—'}</b>
+                  <div style="font-size:.6875rem;color:#8a8499">{r.categories ? JSON.parse(r.categories).slice(0, 3).join(' · ') : ''}</div>
+                </td>
+                <td><a href={`https://${r.domain}`} target="_blank" rel="noreferrer" style="font-size:.75rem">{r.domain}</a></td>
+                <td style="text-align:right">{r.product_count}</td>
+                <td style="text-align:right">
+                  {r.new_90d >= 10
+                    ? <span class="tag" style="background:#e6f4ea;color:#389e0d">{r.new_90d}</span>
+                    : r.new_90d > 0 ? <span class="tag">{r.new_90d}</span> : <span style="color:#bbb">0</span>}
+                </td>
+                <td style="font-size:.75rem">{r.latest_publish || '—'}</td>
+                <td style="font-size:.75rem">{r.price_min != null ? `$${r.price_min}~${r.price_max}` : '—'}</td>
+                <td style="font-size:.6875rem;color:#6b6478">{r.score_reason || ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {pages > 1 && (
+        <nav style="display:flex;gap:.5rem;margin-top:1rem;align-items:center">
+          {page > 1 && <a class="btn" href={link({ p: page - 1 })}>上一页</a>}
+          <span style="font-size:.8125rem">第 {page} / {pages} 页 · 共 {total} 条</span>
+          {page < pages && <a class="btn" href={link({ p: page + 1 })}>下一页</a>}
+        </nav>
+      )}
+    </>
+  )}
+</AdminShell>

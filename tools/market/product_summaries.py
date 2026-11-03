@@ -13,16 +13,20 @@ SYS = """你是帛卉(BIOSPHERE,广州化妆品代工厂)的配方总工助理,�
 铁律:只依据给你的全成分顺序、类目与成分解读写;绝不复述、改写或翻译任何品牌方或第三方网站的描述与宣称;不写功效承诺(不出现 治疗/治愈/根治/医学级 等),不写价格,不点评品牌好坏。
 每条输出:{"id":数字,"summary_zh":"80–120 字中文:配方骨架(基质/活性/防腐体系)、主打成分与用意、适合的肤质或使用场景、一个工厂视角的观察","summary_en":"40–70 words English, same content"}。
 只输出 JSON 数组,不加解释。"""
-rows = []
-for off in range(0, 10 ** 6, 300):
-    page = d1(f"SELECT id, brand, title, cat_zh, cat, country, substr(inci,1,900) inci FROM market_products WHERE inci IS NOT NULL AND length(inci)>30 AND (summary_zh IS NULL OR summary_zh='') ORDER BY rowid LIMIT 300 OFFSET {off}")
+# 09-24 R2:原来 OFFSET 翻完全部待写行再截 --limit,一次运行 400 页 × 平均 6.4 万行读(8 小时 1,056 次 = 6,700 万行)。
+# 改成按 rowid 接着翻、够 --limit 就停。
+rows, last = [], 0
+while len(rows) < LIMIT:
+    page = d1(f"SELECT rowid rid, id, brand, title, cat_zh, cat, country, substr(inci,1,900) inci FROM market_products WHERE rowid > {last} AND inci IS NOT NULL AND length(inci)>30 AND (summary_zh IS NULL OR summary_zh='') ORDER BY rowid LIMIT 300")
     if not page: break
-    rows += page
+    last = page[-1]["rid"]
+    rows += [{k: v for k, v in r.items() if k != "rid"} for r in page]
 rows = rows[:LIMIT]; print(f"待写 {len(rows)} 条", flush=True)
-facts = {}
-for off in range(0, 10 ** 6, 400):
-    page = d1(f"SELECT inci_key, what_zh FROM ingredient_facts WHERE what_zh IS NOT NULL ORDER BY rowid LIMIT 400 OFFSET {off}")
+facts, flast = {}, 0
+while rows:   # 09-24 D2:OFFSET 翻页一轮读 5.4 万行(每 30 分钟一轮)→ 按 rowid 接着翻,约 6 千行;没有待写就不载
+    page = d1(f"SELECT rowid rid, inci_key, what_zh FROM ingredient_facts WHERE rowid > {flast} AND what_zh IS NOT NULL ORDER BY rowid LIMIT 400")
     if not page: break
+    flast = page[-1]["rid"]
     facts.update({r["inci_key"]: r["what_zh"] for r in page})
 key = lambda s: re.sub(r"\s+", " ", re.sub(r"[（(][^）)]*[）)]", " ", s.upper())).strip(" .")
 # 09-22 P 线实测:位号逗号后带空格时(`Aqua, 1, 2-Hexanediol`)上面的 lookahead 失效,切出 `1`/`3-DIOL`

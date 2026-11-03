@@ -49,6 +49,22 @@ export const ORG = {
     { name: '成熟配方技术储备', nameEn: 'Formulations on file', value: '13000', unit: 'C62' },
     { name: '战略合作供应商', nameEn: 'Strategic suppliers', value: '300', unit: 'C62' },
   ],
+  /* 2026-10-26 从阿里国际站店铺提取的信任素材(与 9-24 老板会议口径不冲突的部分):
+     原料来自世界500强、首批HALAL、100%纯素零残忍 —— 欧美采购商最看重的三大背书,
+     官网此前一个都没有。数字冲突项(面积2万vs1.5万、产线15vs12、产能50万vs100万)一律以
+     官网老板口径为准,不并入。 */
+  rawMaterialBrands: {
+    zh: '核心原料来自巴斯夫(BASF)、德之馨(Symrise)、拜尔斯道夫(Beiersdorf)、奇华顿(Givaudan)等世界500强企业',
+    en: 'Core raw materials from Fortune 500 suppliers — BASF, Symrise, Beiersdorf, Givaudan',
+  },
+  halalFirst: {
+    zh: 'HALAL 清真认证首批获证工厂',
+    en: 'Among the first factories to earn HALAL certification',
+  },
+  vegan: {
+    zh: '全线产品 100% 纯素、零残忍、环境友好',
+    en: '100% vegan, cruelty-free and eco-friendly products',
+  },
   services: ['OEM', 'ODM', 'OBM', '配方研发', '包材开发', '出海合规'],
 };
 

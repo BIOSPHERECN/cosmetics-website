@@ -53,7 +53,7 @@ export default {
       return { status: r.status, res: r, retryAfter: r.headers.get('retry-after') ?? r.headers.get('x-ratelimit-reset-requests'), text: (max) => r.text().then((t) => t.slice(0, max)) };
     };
     const onFail = (f) => record({ ...f, ok: false, usage: null });
-    const hdrs = (hit) => ({ 'x-bohui-provider': hit.ch.id, 'x-bohui-key': String(hit.idx), 'x-bohui-strategy': hit.strategy || 'ordered', 'x-bohui-chars': `${hit.charsRaw}/${hit.chars}` });
+    const hdrs = (hit) => ({ 'x-bohui-provider': hit.ch.id, 'x-bohui-model': String(hit.model || hit.ch.model || ''), 'x-bohui-key': String(hit.idx), 'x-bohui-strategy': hit.strategy || 'ordered', 'x-bohui-chars': `${hit.charsRaw}/${hit.chars}` });
 
     if (isChat && aliasKind === 'image') {   // 客户端选「出图片」直接说话:最后一条 user → 提示词 → 回一条带图片链接的 assistant 消息
       const { text, images } = lastUserPrompt(body), stream = body.stream === true;

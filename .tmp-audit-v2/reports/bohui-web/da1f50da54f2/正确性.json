@@ -1,0 +1,95 @@
+{
+  "angle": "正确性",
+  "tree": "da1f50da54f22579923cefafe1258f1f54c232f2",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-da1f50da54f2.json",
+  "run_label": "review-ticket da1f50da54f2 正确性",
+  "reviewer": "claude",
+  "skills_loaded": ["code-reviewer", "karpathy-coder"],
+  "verdict": "过",
+  "checked": ["正确性-①", "正确性-②", "正确性-③", "正确性-④", "正确性-⑤", "正确性-⑥", "正确性-⑦"],
+  "findings": [
+    {
+      "id": "C1",
+      "level": "低",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 316,
+      "claim": "fx_six 交付区标题与导语改成组件内写死的 deliveryTitle/deliveryIntro,不再读版块数据 d.title / d.intro;后台对 beauty2oem 该版块的标题、导语编辑从此不生效。",
+      "failure_scenario": "运营在 /bohui/pages 后台改 beauty2oem 首页或 /zh-cn/delivery/ 的 fx_six 版块标题,保存后页面仍显示「判断之后，帛卉把它做出来」,容易误以为缓存没清。",
+      "evidence": "读 正确性.diff 第 273-274 行(删 d.title/d.intro)与 306-307 行;工作区 B2oBlock.astro 第 82-83、316-317 行。页面本身渲染正常,不影响上线。",
+      "fix": "改成 {tidy(d.title) || deliveryTitle} / {tidy(d.intro) || deliveryIntro},或在后台该版块标注「标题由代码固定」。"
+    },
+    {
+      "id": "C2",
+      "level": "低",
+      "file": "apps/web/astro.config.mjs",
+      "line": 42,
+      "claim": "astro:build:done 注入 build.command 依赖 config.build.server 指向含 wrangler.json 的目录;若 Astro 7 / @astrojs/cloudflare 14 的 build.server 不是 dist/server,注入静默跳过(不报错),第二层闸门失效但构建与站点不受影响。",
+      "failure_scenario": "构建完成后 dist/server/wrangler.json 没有 build 字段,有人进 dist/server 直接 wrangler deploy 时不会触发审核单校验。",
+      "evidence": "工作区现有 dist/server/wrangler.json 存在,但其 build 字段为 None(该产物未必是 ENABLED 后构建的,无法据此判断注入是否生效);本轮只读,未跑 astro build 验证。",
+      "fix": "下次 ship 构建后查 dist/server/wrangler.json 是否带 build.command;注入找不到文件时 console.warn 一行而不是静默 return。"
+    },
+    {
+      "id": "C3",
+      "level": "低",
+      "file": "apps/web/src/styles/b2o.css",
+      "line": 223,
+      "claim": "方法四行删掉了 .b2o-viz / .b2o-dots 标记,但 b2o.css 仍保留 .b2o-viz、.debate、.b2o-dots 等样式并在本次改了其 aspect-ratio;组件与全仓 src 已无引用,属死样式。",
+      "failure_scenario": "无运行时故障;只是后续维护者改死样式浪费时间。",
+      "evidence": "grep apps/web/src 下 .astro/.ts 无 b2o-viz/b2o-dots 引用;b2o.css 第 223-225 行仍在。",
+      "fix": "下次顺手删掉 .b2o-viz/.b2o-dots/.b2o-legend 相关规则。"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "G1",
+      "result": "不成立",
+      "why": "tools/ship.sh 第 16 行是 AV2 路径赋值加一段中文注释,说明 ENABLED 存在走 v2、不在走 v1 gate.sh,没有任何让审核员放行/忽略规则的措辞,S9 是关键词误报。逻辑本身:ENABLED 已存在,gate_approved/audit_v2/ship_lib.sh 与 verify_or_bg.cmd 均在,source 路径可达。"
+    },
+    {
+      "ref": "JEV",
+      "result": "成立但可接受",
+      "why": "Jev 判 block(conf 0.72)但 reason 为 null、partial=true,未给出任何可复核的文件/行号。本角度逐条核对 diff:删除的变量(bars/pct/LOGMAX/TICKS/regs 局部变量、IMG 的 pack/qc 键)在组件内已无引用;新增图片 14 张全部存在且实测宽高与代码写死的一致(1024/1600);ORG.founded 删除后全仓无引用,ORG.foundingDate、ORG.formulas.value 均存在;未发现能让页面抛错的点。",
+      "mitigation": "Jev 的 block 无理由,按 C1-C3 低级问题处理;上线后按 smoke_extra 冒烟 beauty2oem 五页与新图。"
+    },
+    {
+      "ref": "LAYA",
+      "result": "成立但可接受",
+      "why": "Laya 判 allow 但 conf 0.04、reason 为 null、partial=true,置信度过低不能作为放行依据;本角度已独立逐条复核,结论见 findings。",
+      "mitigation": "以人工复核结论为准,冒烟覆盖 smoke_extra。"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "回归",
+      "level": "中",
+      "item": "astro.config.mjs 新增 build:start 钩子:ENABLED 在时 gate1 非 0 即 throw 中止构建;python venv 不存在时 spawnSync status 为 null 同样中止(无破窗时)。创始人副本(skin2oem.hosonzuo)共用同一次 astro build,也会被第一关卡住。",
+      "mitigation": "设计即如此;副本构建若被挡,走 --breakglass 或确认 gate1 对副本仓的口径。副本部署用 -c wrangler.copy.json,不会触发注入的 build.command。"
+    },
+    {
+      "cat": "回归",
+      "level": "中",
+      "item": "middleware.ts 仅改 CACHE_V v84→v85,全站缓存失效;改公开页必 +1 的规矩已遵守。",
+      "mitigation": "冒烟全表;读量尖峰见成本角度。"
+    },
+    {
+      "cat": "正确性",
+      "level": "低",
+      "item": "blocks.ts 改的是新增版块时写库的默认内容,不影响已存在的线上版块;org.ts 的 JSON-LD foundingDate 值不变(仍 2012-06-01)。",
+      "mitigation": "无需处理。"
+    }
+  ],
+  "smoke_extra": [
+    "https://beauty2oem.com/zh-cn/",
+    "https://beauty2oem.com/zh-cn/delivery/",
+    "https://beauty2oem.com/zh-cn/opportunities/",
+    "https://beauty2oem.com/zh-cn/predictions/",
+    "https://beauty2oem.com/zh-cn/insights/",
+    "https://beauty2oem.com/b2o/img/fd/hero-beach-lineup.webp",
+    "https://beauty2oem.com/b2o/img/fd/d-gold-set.webp",
+    "https://beauty2oem.com/b2o/img/fd/insight-pool.webp",
+    "https://biosphere-ai.com/zh-cn/"
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/da1f50da54f2/正确性.json",
+  "evidence_read": "正确性.diff 全文 640 行;工作区 apps/web/src/components/B2oBlock.astro(grep 删除变量/IMG 键/行号)、packages/core/src/content/org.ts 第 19-40、78-90 行、apps/web/src/middleware.ts 第 199-234 行(B2O_PAGES)、apps/web/src/components/FactoryBlock.astro、packages/core/src/blocks.ts 用途(仅后台新增版块默认值)、apps/web/public/b2o/img/fd/ 14 张 webp 实测宽高、audit_v2/cache/gate_approved/audit_v2/verify_or_bg.cmd、apps/web/dist/server/wrangler.json(只读)。注:任务给的复核原报告路径为 undefined.json,是派单参数缺失,本次为首审未读。检查项②:本次无新路由,组件内无会抛错的取值(IMG[k] 所有调用键均存在);③:beauty2oem 只有 zh-cn,新增文字硬编码中文,无译文缺失问题;④:未改路由与重定向;⑤:只读 getCounts 已有键(products/pack_shelf/inci),无新表字段;⑥:astro.config 新增集成见 C2 与风险。"
+}

@@ -30,7 +30,7 @@ CAT_MAP = [  # 模型自由描述 → 我们的品类键;特异词在前(香水/
     (r"perfume|fragrance|eau de|香水", "perfume"), (r"lipstick|口红|唇釉|lip gloss|lip balm", "lipstick"), (r"sheet mask|面膜|clay mask", "mask"),
     (r"cushion|compact|powder|气垫|粉饼", "compact"), (r"sachet|pouch|小袋", "sachet"), (r"spray|mist|喷雾", "spray-bottle"),
     (r"dropper|serum|滴管|精华", "dropper-bottle"), (r"pump|按压|乳液瓶|洗发|沐浴|body wash|shampoo", "pump-bottle"),
-    (r"tube|软管|洁面|防晒|squeeze", "tube"), (r"jar|cream jar|面霜|膏霜|罐", "jar"), (r"stick|棒", "stick"),
+    (r"\btube\b|软管|洁面|防晒|squeeze", "tube"), (r"\bjar\b|cream jar|面霜|膏霜|罐", "jar"), (r"\bstick\b|棒", "stick"),
 ]
 def cat_of(j):
     text = " ".join(str(j.get(k, "")) for k in ("subject", "prompt_en", "prompt_zh", "scene")).lower()

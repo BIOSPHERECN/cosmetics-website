@@ -53,9 +53,11 @@ for f in sorted(glob.glob(os.path.join(D, "*.json")) + glob.glob(os.path.join(D,
 print(f"源目录 {D}:去重后 {len(rows)} 条有全成分")
 have, names = set(), set()
 norm = lambda b, t: re.sub(r"[^a-z0-9]+", "", ((b or "") + (t or "")).lower())[:60]
-for off in range(0, 400000, 5000):   # 09-20 22:0x:400/页要 250 次查询,12.6 万导入干跑 10 分钟没过体检;5000/页 14 次
-    page = d1(f"SELECT pid, brand, title FROM market_products ORDER BY rowid LIMIT 5000 OFFSET {off}")
+last = 0
+while True:   # 09-20 22:0x:400/页要 250 次查询,12.6 万导入干跑 10 分钟没过体检;5000/页 14 次。09-24 D2:OFFSET → rowid 游标(OFFSET 一轮累计读约 480 万行)
+    page = d1(f"SELECT rowid rid, pid, brand, title FROM market_products WHERE rowid > {last} ORDER BY rowid LIMIT 5000")
     if not page: break
+    last = page[-1]["rid"]
     have.update(r["pid"] for r in page); names.update(norm(r["brand"], r["title"]) for r in page)
 # 同一产品早上 CSV 可能已按商品链接进库,这里再按 品牌+品名 归一去重
 new = [x for x in rows if x["ingUrl"] not in have and norm(x.get("brand"), x.get("name")) not in names]
@@ -92,9 +94,11 @@ def flush_raw():
     with io.open(p, "w", encoding="utf-8") as w:
         w.write(chr(10).join(stmts) + chr(10))
     nr += d1_exec(p) or 0; stmts = []; print(f"  原文归档累计 {nr}", flush=True)
-for off in range(0, 400000, 5000):   # 09-20 22:1x:原文表已有 13 万行,先拉 pid 跳过,不然 150MB 白传一遍
-    page = d1(f"SELECT pid FROM market_product_raw ORDER BY rowid LIMIT 5000 OFFSET {off}")
+last = 0
+while True:   # 09-20 22:1x:原文表已有 13 万行,先拉 pid 跳过,不然 150MB 白传一遍。09-24 D2:rowid 游标
+    page = d1(f"SELECT rowid rid, pid FROM market_product_raw WHERE rowid > {last} ORDER BY rowid LIMIT 5000")
     if not page: break
+    last = page[-1]["rid"]
     seen_raw.update(r["pid"] for r in page)
 print(f"原文表已有 {len(seen_raw)} 条,只归档没有的", flush=True)
 for x in raw_all:

@@ -89,13 +89,13 @@ ${rules.body.slice(0, 4000)}` : PROMPT;
       const dealName = `${row.category || '询盘需求'}${row.volume ? ' · ' + row.volume : ''}`.slice(0, 200);
       const host = (s: string) => s.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
       /* 去重:按公司名(不区分大小写) */
-      let co = await db.prepare(`SELECT id FROM companies WHERE lower(name) = lower(`).bind(coName).first<{ id: number }>().catch(() => null);
+      let co = await db.prepare(`SELECT id FROM companies WHERE lower(name) = lower(?)`).bind(coName).first<{ id: number }>().catch(() => null);
       let companyId: number;
       if (co) {
         companyId = co.id;
       } else {
         const ins = await db.prepare(
-          `INSERT INTO companies (name, country, channel, type, note, source, source_id) VALUES (?,?,?,?,?,?,?,?) RETURNING id`,
+          `INSERT INTO companies (name, country, channel, type, note, source, source_id) VALUES (?,?,?,?,?,?,?) RETURNING id`,
         ).bind(coName, row.country || null, '官网表单', '品牌方',
           `询盘 #${id}(${row.lang})${summary ? ' · ' + summary : ''}`.slice(0, 500),
           'inquiry', id).first<{ id: number }>();
@@ -117,10 +117,9 @@ ${rules.body.slice(0, 4000)}` : PROMPT;
         if (dealIns) {
           /* 第一条活动:系统记录询盘来源 */
           await db.prepare(
-            `INSERT INTO activities (company_id, deal_id, kind, text, trig) VALUES (?,?,?,?,?)`,
+            `INSERT INTO activities (company_id, deal_id, kind, text) VALUES (?,?,?,?)`,
           ).bind(companyId, dealIns.id, 'system',
-            `询盘 #${id} 自动入库 · AI 分级:${grade}${summary ? ' · ' + summary : ''}`.slice(0, 4000),
-            'ai-auto').run();
+            `询盘 #${id} 自动入库 · AI 分级:${grade}${summary ? ' · ' + summary : ''}`.slice(0, 4000)).run();
         }
       }
       /* 标记询盘已自动转 CRM */

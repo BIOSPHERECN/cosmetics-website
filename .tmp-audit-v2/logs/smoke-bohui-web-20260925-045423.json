@@ -1,0 +1,145 @@
+{
+ "at": "2026-09-25T04:54:23+08:00",
+ "worker": "bohui-web",
+ "mode": "deploy",
+ "results": [
+  {
+   "url": "https://biosphere-ai.com/",
+   "status": 302,
+   "errs": [],
+   "crit": true
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/",
+   "status": 200,
+   "errs": [],
+   "crit": true
+  },
+  {
+   "url": "https://biosphere-ai.com/en/",
+   "status": 200,
+   "errs": [],
+   "crit": true
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/packaging/",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/faq/",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/en/services/",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/formulas/",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/ingredients/",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/regulations/",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/zh-cn/search/?q=serum",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/robots.txt",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/sitemap.xml",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/llms.txt",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://biosphere-ai.com/bohui/",
+   "status": 302,
+   "errs": [],
+   "crit": true
+  },
+  {
+   "url": "https://beauty2oem.com/",
+   "status": 302,
+   "errs": [],
+   "crit": true
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/",
+   "status": 200,
+   "errs": [],
+   "crit": true
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/brief/",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/opportunities/",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/predictions/",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/insights/",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/contact/",
+   "status": 302,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/delivery/",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  },
+  {
+   "url": "https://beauty2oem.com/zh-cn/privacy/",
+   "status": 200,
+   "errs": [],
+   "crit": false
+  }
+ ]
+}

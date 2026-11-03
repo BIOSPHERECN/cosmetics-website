@@ -2,15 +2,16 @@
 """品牌线索第三方多维补充 —— data/brands/enrich/done-*.json(子代理逐家查 Similarweb 流量、生产模式、渠道、
 第三方视角分析与合作角度)→ brand_leads 新列。创始人 2026-09-11 17:0x:「要有官网月访问量等多维数据;
 是否本土生产或 OEM/ODM 要深入调研;先用第三方角度专业分析,别和帛卉结合」。
-    python tools/brand-enrich-load.py --apply"""
-import glob, io, json, os, re, sys
+    python tools/brand-enrich-load.py --apply
+2026-09-24 拍板默认 #20 / WP-01:Similarweb 停用 —— 流量、排名、跳出率等 Similarweb 字段不再入库(存量不计分),
+只写生产模式、渠道、价位、分析这些。旧版存档:助手交付/AI获客/停用代码-20260924/brand-enrich-load.py.txt"""
+import glob, io, json, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 from _bohui import d1, d1_exec  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__)); DIR = os.path.join(os.path.dirname(HERE), "data", "brands", "enrich")
 q = lambda v: "NULL" if v in (None, "") else "'" + str(v).replace("'", "''").replace(chr(10), " ") + "'"  # noqa: E731
-F = ["visits_month", "visits_period", "rank_global", "rank_country", "rank_category", "bounce", "pages_visit", "duration", "top_geo", "top_source",
-     "mfg_model", "mfg_country", "mfg_evidence", "channels", "price_tier", "funding", "analysis", "coop_angles"]
+F = ["mfg_model", "mfg_country", "mfg_evidence", "channels", "price_tier", "funding", "analysis", "coop_angles"]
 MODEL = {"in-house": "in-house", "inhouse": "in-house", "own": "in-house", "contract": "contract", "oem": "contract", "odm": "contract", "hybrid": "hybrid", "mixed": "hybrid"}
 TIER = {"mass": "mass", "masstige": "masstige", "prestige": "prestige", "luxury": "luxury"}
 
@@ -29,7 +30,6 @@ def main():
         v = {k: str(x.get(k) or "").strip()[:600] for k in F}
         v["mfg_model"] = MODEL.get(v["mfg_model"].lower().split()[0] if v["mfg_model"] else "", "unknown" if not v["mfg_model"] else v["mfg_model"][:20])
         v["price_tier"] = TIER.get(v["price_tier"].lower(), "")
-        for k in ("rank_global", "rank_country", "rank_category"): v[k] = re.sub(r"(?<=\d),(?=\d{3})", "", v[k])
         srcs = json.dumps(x.get("sources") or [], ensure_ascii=False)[:2000]
         sets = ", ".join(f"{k} = {q(val)}" for k, val in v.items())
         lines.append(f"UPDATE brand_leads SET {sets}, enrich_sources = {q(srcs)}, enriched_at = datetime('now') WHERE id = {i};")

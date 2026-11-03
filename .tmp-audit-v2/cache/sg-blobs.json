@@ -1,0 +1,7128 @@
+{
+ "c990edbc92a714f8:apps/web/src/components/B2oBlock.astro:4d9b33e68e2babae2dc12c1757f19070a0611886": [
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 34,
+   "text": ".replace(/(\\d)\\s*[–—]\\s*(\\d)/g, '$1 至 $2')",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 36,
+   "text": ".replace(/([一-鿿」》）\\)])\\s*,\\s*/g, '$1，')",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 37,
+   "text": ".replace(/,\\s*([一-鿿「《])/g, '，$1')",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 38,
+   "text": ".replace(/([一-鿿」》）\\)])\\s*:\\s*/g, '$1：')",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 39,
+   "text": ".replace(/([一-鿿」》）\\)])\\s*;\\s*/g, '$1；');",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R2",
+   "id": "R2-owned-factory",
+   "line": 322,
+   "text": "<p>{ORG.certs.join('、')} 认证，广州自有工厂，欢迎验厂。</p>",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 76,
+   "text": "{ l: '真实产品库', v: N('products'), u: '款', n: `全成分产品,另有 ${fmt(N('summaries'))} 条配方视角解读`, h: 'https://biosphere-ai.com/zh-cn/decoder/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 77,
+   "text": "{ l: '原料目录', v: N('inci'), u: '条', n: '各国原料目录,配方阶段先核限用和禁用成分', h: 'https://biosphere-ai.com/zh-cn/regulations/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 78,
+   "text": "{ l: '包材现货', v: N('packaging'), u: '款', n: '瓶、罐、管、泵头、彩盒,先按剂型选结构', h: 'https://biosphere-ai.com/zh-cn/packaging/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 79,
+   "text": "{ l: '在库配方基底', v: N('formulas'), u: '条', n: '按品类、剂型、功效匹配,不从零研发', h: 'https://biosphere-ai.com/zh-cn/formulas/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 91,
+   "text": "['能做到哪', '帛卉支持到哪一步'],",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 123,
+   "text": "<li>帛卉能做到哪<i style=\"--w:52%\"></i></li>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 273,
+   "text": "{/* 判断之后 / 帛卉交付:同一套数据,画成图 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 301,
+   "text": "<div class=\"chart-h\"><h3>帛卉可调用的在库条目</h3><span>对数刻度，每格乘以 10</span></div>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 332,
+   "text": "<p class=\"b2o-src\">数字读自帛卉数据库的计数快照，点每一条可以去工厂站逐条核对。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 339,
+   "text": "{/* 帛卉交付页:七个碎步骤改成一条横向链路 + 仓库图 + 待补实拍 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "c990edbc92a714f8:apps/web/src/data/site-counts.json:ee2e2d5a720084c8e825f2d9b79ddd9acc31b0d2": [],
+ "c990edbc92a714f8:apps/web/src/pages/[...path].astro:e850b61aae41598fb73695916b74bc5af25779c6": [
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 310,
+   "text": "顶部导航每页都在,品类清单改为全页可用(一条 GROUP BY,开销可忽略) */",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 313,
+   "text": "`SELECT category, COUNT(*) n FROM products",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 314,
+   "text": "WHERE site_id = ? AND status = 'published' GROUP BY category ORDER BY n DESC`,",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 380,
+   "text": "放进 Product schema 才是一条可引用的数据。价格刻意不写:代工按单报价。 */",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 47,
+   "text": "// BrandEcosystem 已下线:「先删除集团,只是帛卉」(2026-08-31)",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 182,
+   "text": "// 集团生态查询已下线(「先删除集团,只是帛卉」2026-08-31)—— 顺带少一次 D1 往返",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 209,
+   "text": "* 仍是占位:CC0 池里的美妆摄影质量参差,真正该上的是帛卉自己的产品实拍。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 215,
+   "text": "{ id: 'serum', name: '精华液', summary: '水感或油感基质,活性物浓度可定制', image: '/media/16', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "16"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 217,
+   "text": "{ id: 'cream', name: '面霜', summary: '真空乳化,常温与冷制工艺可选', image: '/media/10', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "10"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 219,
+   "text": "{ id: 'mask', name: '面膜', summary: '水洗式与贴片式,精华液配比可调', image: '/media/17', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "17"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 221,
+   "text": "{ id: 'cleanser', name: '洁面', summary: '氨基酸与皂基两条路线', image: '/media/11', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "11"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 223,
+   "text": "{ id: 'toothpaste', name: '牙膏', summary: '低研磨配方,益生菌可添加', image: '/media/12', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "12"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 225,
+   "text": "{ id: 'powder', name: '粉体彩妆', summary: '压粉与散粉,色号按 Pantone 打样', image: '/media/13', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "13"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 227,
+   "text": "{ id: 'oil', name: '精华油', summary: '植物基油相,冷压原料可溯源', image: '/media/14', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "14"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 229,
+   "text": "{ id: 'balm', name: '膏体唇部', summary: '润唇与有色唇膏,蜡体配比可调', image: '/media/15', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "15"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 239,
+   "text": "/* 「集团品牌生态」段与 ECO_TEXT 已删(创始人 2026-08-31:「先删除集团,只是帛卉」)——",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 240,
+   "text": "站点叙事回归帛卉一家;四个姊妹域名本就未接入,生态段对访客是四条死链。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 269,
+   "text": "* 英文访客打开产品页,看到的是「精华液 / 水感或油感基质 / MOQ 3,000 支起」——",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "000",
+    "3"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 374,
+   "text": "orgJsonLd(base0, site?.name ?? 'BIOSPHERE', lang, bundle?.page.seo_desc ?? site?.tagline ?? ''),",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 375,
+   "text": "siteJsonLd(base0, site?.name ?? 'BIOSPHERE'),",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 595,
+   "text": "// 生产基地 —— 从种植端到成品端,是帛卉区别于普通代工厂的地方",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "c990edbc92a714f8:apps/web/src/pages/[lang]/insights.astro:c1b8fe35c6154fc2ebaa179cce88dc38661fa11d": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 5,
+   "text": "* 只改两处:品牌行「帛卉(BIOSPHERE)」→「帛卉化妆品」、询盘入口 → /zh-cn/brief/)。表格与脚注靠 Astro 自带 GFM,零新依赖。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 26,
+   "text": "const desc = '写给国内跨境美妆卖家:出口与平台数据、选品与选厂逻辑、17 个市场的准入要点,以及帛卉基于美国亚马逊榜单快照和各国法规原文的六条独家洞察。每个数字都有出处脚注。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 43,
+   "text": "<p class=\"meta\">洞察 · 帛卉化妆品公开研究 v1 · 数据截至 2026-09-23</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 45,
+   "text": "<p class=\"b2o-lede\">出口与平台数据、选品和选厂逻辑、17 个市场的准入要点，以及六条帛卉独家洞察。每个数字都有出处脚注。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "c990edbc92a714f8:apps/web/src/styles/b2o.css:0921fa4b821e5e86d8576515016f0193422a148b": [],
+ "c990edbc92a714f8:packages/core/src/components/SiteFooter.astro:ce4a2918b992ac48cda63f605fe9e8e312d775e7": [
+  {
+   "rule": "R1",
+   "id": "R1-group-branding-doubt",
+   "line": 101,
+   "text": "<h2 class=\"ch\">集团品牌生态 / Brand Ecosystem</h2>",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 4,
+   "text": "* 依据创始人品牌视觉图的《品牌生态架构》:以 BIOSPHERE-AI 为科技大脑,",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 58,
+   "text": "{/* 品牌口径(创始人 2026-08-31 定稿):中文「帛卉化妆品」,英文只用 BIOSPHERE,",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 60,
+   "text": "<p class=\"group\">{cnOnly ? '帛卉化妆品 · 广州工厂' : <>{locale.startsWith('zh') ? '帛卉化妆品 BIOSPHERE' : 'BIOSPHERE'} · {tr('footer.groupLine')}</>}</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 125,
+   "text": "{cnOnly && <p class=\"b2o-aigen\">页面中的场景照片为 AI 生成的示意图，不代表具体产品，也不是帛卉车间实拍。</p>}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "c990edbc92a714f8:packages/core/src/components/SiteHeader.astro:a262c84148963b917219dddc2970a61fc6f3261b": [],
+ "c990edbc92a714f8:apps/web/src/pages/[...path].astro:6cd08b6143709249560d9c9791b1d27e4e079cc4": [
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 308,
+   "text": "顶部导航每页都在,品类清单改为全页可用(一条 GROUP BY,开销可忽略) */",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 311,
+   "text": "`SELECT category, COUNT(*) n FROM products",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 312,
+   "text": "WHERE site_id = ? AND status = 'published' GROUP BY category ORDER BY n DESC`,",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 378,
+   "text": "放进 Product schema 才是一条可引用的数据。价格刻意不写:代工按单报价。 */",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 47,
+   "text": "// BrandEcosystem 已下线:「先删除集团,只是帛卉」(2026-08-31)",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 180,
+   "text": "// 集团生态查询已下线(「先删除集团,只是帛卉」2026-08-31)—— 顺带少一次 D1 往返",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 207,
+   "text": "* 仍是占位:CC0 池里的美妆摄影质量参差,真正该上的是帛卉自己的产品实拍。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 213,
+   "text": "{ id: 'serum', name: '精华液', summary: '水感或油感基质,活性物浓度可定制', image: '/media/16', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "16"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 215,
+   "text": "{ id: 'cream', name: '面霜', summary: '真空乳化,常温与冷制工艺可选', image: '/media/10', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "10"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 217,
+   "text": "{ id: 'mask', name: '面膜', summary: '水洗式与贴片式,精华液配比可调', image: '/media/17', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "17"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 219,
+   "text": "{ id: 'cleanser', name: '洁面', summary: '氨基酸与皂基两条路线', image: '/media/11', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "11"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 221,
+   "text": "{ id: 'toothpaste', name: '牙膏', summary: '低研磨配方,益生菌可添加', image: '/media/12', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "12"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 223,
+   "text": "{ id: 'powder', name: '粉体彩妆', summary: '压粉与散粉,色号按 Pantone 打样', image: '/media/13', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "13"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 225,
+   "text": "{ id: 'oil', name: '精华油', summary: '植物基油相,冷压原料可溯源', image: '/media/14', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "14"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 227,
+   "text": "{ id: 'balm', name: '膏体唇部', summary: '润唇与有色唇膏,蜡体配比可调', image: '/media/15', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "15"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 237,
+   "text": "/* 「集团品牌生态」段与 ECO_TEXT 已删(创始人 2026-08-31:「先删除集团,只是帛卉」)——",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 238,
+   "text": "站点叙事回归帛卉一家;四个姊妹域名本就未接入,生态段对访客是四条死链。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 267,
+   "text": "* 英文访客打开产品页,看到的是「精华液 / 水感或油感基质 / MOQ 3,000 支起」——",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "000",
+    "3"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 372,
+   "text": "orgJsonLd(base0, site?.name ?? 'BIOSPHERE', lang, bundle?.page.seo_desc ?? site?.tagline ?? ''),",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 373,
+   "text": "siteJsonLd(base0, site?.name ?? 'BIOSPHERE'),",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 591,
+   "text": "// 生产基地 —— 从种植端到成品端,是帛卉区别于普通代工厂的地方",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "c990edbc92a714f8:apps/web/src/pages/[lang]/insights.astro:dd46822dc0aed70b15c946e665371f9ef2fec2dc": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 5,
+   "text": "* 只改两处:品牌行「帛卉(BIOSPHERE)」→「帛卉化妆品」、询盘入口 → /zh-cn/brief/)。表格与脚注靠 Astro 自带 GFM,零新依赖。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 24,
+   "text": "const desc = '写给国内跨境美妆卖家:出口与平台数据、选品与选厂逻辑、17 个市场的准入要点,以及帛卉基于美国亚马逊榜单快照和各国法规原文的六条独家洞察。每个数字都有出处脚注。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 37,
+   "text": "<p class=\"eyebrow\">洞察 · 帛卉化妆品公开研究 v1 · 数据截至 2026-09-23</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "c990edbc92a714f8:packages/core/src/components/SiteFooter.astro:b3c2fd6b7c41f1bf466ddf2ddba68bae9a6cf5a1": [
+  {
+   "rule": "R1",
+   "id": "R1-group-branding-doubt",
+   "line": 97,
+   "text": "<h2 class=\"ch\">集团品牌生态 / Brand Ecosystem</h2>",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 4,
+   "text": "* 依据创始人品牌视觉图的《品牌生态架构》:以 BIOSPHERE-AI 为科技大脑,",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 57,
+   "text": "{/* 品牌口径(创始人 2026-08-31 定稿):中文「帛卉化妆品」,英文只用 BIOSPHERE,",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 59,
+   "text": "<p class=\"group\">{cnOnly ? '帛卉化妆品 · 广州工厂' : <>{locale.startsWith('zh') ? '帛卉化妆品 BIOSPHERE' : 'BIOSPHERE'} · {tr('footer.groupLine')}</>}</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "c990edbc92a714f8:packages/core/src/components/SiteHeader.astro:71beb1d37abb9ceb18ade46df76928cd187dd79b": [],
+ "7c6acdc8e55811bd:apps/web/src/components/B2oBlock.astro:fca86280f337b19f8e7db79fa6554328c9dc20a5": [
+  {
+   "rule": "R2",
+   "id": "R2-owned-factory",
+   "line": 322,
+   "text": "<p>{ORG.certs.join('、')} 认证，广州自有工厂，欢迎验厂。</p>",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 76,
+   "text": "{ l: '真实产品库', v: N('products'), u: '款', n: `全成分产品,另有 ${fmt(N('summaries'))} 条配方视角解读`, h: 'https://biosphere-ai.com/zh-cn/decoder/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 77,
+   "text": "{ l: '原料目录', v: N('inci'), u: '条', n: '各国原料目录,配方阶段先核限用和禁用成分', h: 'https://biosphere-ai.com/zh-cn/regulations/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 78,
+   "text": "{ l: '包材现货', v: N('packaging'), u: '款', n: '瓶、罐、管、泵头、彩盒,先按剂型选结构', h: 'https://biosphere-ai.com/zh-cn/packaging/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 79,
+   "text": "{ l: '在库配方基底', v: N('formulas'), u: '条', n: '按品类、剂型、功效匹配,不从零研发', h: 'https://biosphere-ai.com/zh-cn/formulas/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 91,
+   "text": "['能做到哪', '帛卉支持到哪一步'],",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 123,
+   "text": "<li>帛卉能做到哪<i style=\"--w:52%\"></i></li>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 273,
+   "text": "{/* 判断之后 / 帛卉交付:同一套数据,画成图 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 301,
+   "text": "<div class=\"chart-h\"><h3>帛卉可调用的在库条目</h3><span>对数刻度，每格乘以 10</span></div>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 332,
+   "text": "<p class=\"b2o-src\">数字读自帛卉数据库的计数快照，点每一条可以去工厂站逐条核对。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 339,
+   "text": "{/* 帛卉交付页:七个碎步骤改成一条横向链路 + 仓库图 + 待补实拍 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7c6acdc8e55811bd:apps/web/src/data/site-counts.json:ee2e2d5a720084c8e825f2d9b79ddd9acc31b0d2": [],
+ "7c6acdc8e55811bd:apps/web/src/pages/[...path].astro:e850b61aae41598fb73695916b74bc5af25779c6": [
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 310,
+   "text": "顶部导航每页都在,品类清单改为全页可用(一条 GROUP BY,开销可忽略) */",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 313,
+   "text": "`SELECT category, COUNT(*) n FROM products",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 314,
+   "text": "WHERE site_id = ? AND status = 'published' GROUP BY category ORDER BY n DESC`,",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 380,
+   "text": "放进 Product schema 才是一条可引用的数据。价格刻意不写:代工按单报价。 */",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 47,
+   "text": "// BrandEcosystem 已下线:「先删除集团,只是帛卉」(2026-08-31)",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 182,
+   "text": "// 集团生态查询已下线(「先删除集团,只是帛卉」2026-08-31)—— 顺带少一次 D1 往返",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 209,
+   "text": "* 仍是占位:CC0 池里的美妆摄影质量参差,真正该上的是帛卉自己的产品实拍。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 215,
+   "text": "{ id: 'serum', name: '精华液', summary: '水感或油感基质,活性物浓度可定制', image: '/media/16', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "16"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 217,
+   "text": "{ id: 'cream', name: '面霜', summary: '真空乳化,常温与冷制工艺可选', image: '/media/10', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "10"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 219,
+   "text": "{ id: 'mask', name: '面膜', summary: '水洗式与贴片式,精华液配比可调', image: '/media/17', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "17"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 221,
+   "text": "{ id: 'cleanser', name: '洁面', summary: '氨基酸与皂基两条路线', image: '/media/11', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "11"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 223,
+   "text": "{ id: 'toothpaste', name: '牙膏', summary: '低研磨配方,益生菌可添加', image: '/media/12', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "12"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 225,
+   "text": "{ id: 'powder', name: '粉体彩妆', summary: '压粉与散粉,色号按 Pantone 打样', image: '/media/13', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "13"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 227,
+   "text": "{ id: 'oil', name: '精华油', summary: '植物基油相,冷压原料可溯源', image: '/media/14', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "14"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 229,
+   "text": "{ id: 'balm', name: '膏体唇部', summary: '润唇与有色唇膏,蜡体配比可调', image: '/media/15', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "15"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 239,
+   "text": "/* 「集团品牌生态」段与 ECO_TEXT 已删(创始人 2026-08-31:「先删除集团,只是帛卉」)——",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 240,
+   "text": "站点叙事回归帛卉一家;四个姊妹域名本就未接入,生态段对访客是四条死链。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 269,
+   "text": "* 英文访客打开产品页,看到的是「精华液 / 水感或油感基质 / MOQ 3,000 支起」——",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "000",
+    "3"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 374,
+   "text": "orgJsonLd(base0, site?.name ?? 'BIOSPHERE', lang, bundle?.page.seo_desc ?? site?.tagline ?? ''),",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 375,
+   "text": "siteJsonLd(base0, site?.name ?? 'BIOSPHERE'),",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 595,
+   "text": "// 生产基地 —— 从种植端到成品端,是帛卉区别于普通代工厂的地方",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7c6acdc8e55811bd:apps/web/src/pages/[lang]/insights.astro:c1b8fe35c6154fc2ebaa179cce88dc38661fa11d": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 5,
+   "text": "* 只改两处:品牌行「帛卉(BIOSPHERE)」→「帛卉化妆品」、询盘入口 → /zh-cn/brief/)。表格与脚注靠 Astro 自带 GFM,零新依赖。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 26,
+   "text": "const desc = '写给国内跨境美妆卖家:出口与平台数据、选品与选厂逻辑、17 个市场的准入要点,以及帛卉基于美国亚马逊榜单快照和各国法规原文的六条独家洞察。每个数字都有出处脚注。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 43,
+   "text": "<p class=\"meta\">洞察 · 帛卉化妆品公开研究 v1 · 数据截至 2026-09-23</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 45,
+   "text": "<p class=\"b2o-lede\">出口与平台数据、选品和选厂逻辑、17 个市场的准入要点，以及六条帛卉独家洞察。每个数字都有出处脚注。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7c6acdc8e55811bd:apps/web/src/styles/b2o.css:4f96c6f2e138cbb1744e093cdf2ab82d0c347d2d": [],
+ "7c6acdc8e55811bd:packages/core/src/components/SiteFooter.astro:ce4a2918b992ac48cda63f605fe9e8e312d775e7": [
+  {
+   "rule": "R1",
+   "id": "R1-group-branding-doubt",
+   "line": 101,
+   "text": "<h2 class=\"ch\">集团品牌生态 / Brand Ecosystem</h2>",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 4,
+   "text": "* 依据创始人品牌视觉图的《品牌生态架构》:以 BIOSPHERE-AI 为科技大脑,",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 58,
+   "text": "{/* 品牌口径(创始人 2026-08-31 定稿):中文「帛卉化妆品」,英文只用 BIOSPHERE,",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 60,
+   "text": "<p class=\"group\">{cnOnly ? '帛卉化妆品 · 广州工厂' : <>{locale.startsWith('zh') ? '帛卉化妆品 BIOSPHERE' : 'BIOSPHERE'} · {tr('footer.groupLine')}</>}</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 125,
+   "text": "{cnOnly && <p class=\"b2o-aigen\">页面中的场景照片为 AI 生成的示意图，不代表具体产品，也不是帛卉车间实拍。</p>}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7c6acdc8e55811bd:packages/core/src/components/SiteHeader.astro:a262c84148963b917219dddc2970a61fc6f3261b": [],
+ "7c6acdc8e55811bd:apps/web/src/pages/[...path].astro:6cd08b6143709249560d9c9791b1d27e4e079cc4": [
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 308,
+   "text": "顶部导航每页都在,品类清单改为全页可用(一条 GROUP BY,开销可忽略) */",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 311,
+   "text": "`SELECT category, COUNT(*) n FROM products",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 312,
+   "text": "WHERE site_id = ? AND status = 'published' GROUP BY category ORDER BY n DESC`,",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 378,
+   "text": "放进 Product schema 才是一条可引用的数据。价格刻意不写:代工按单报价。 */",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 47,
+   "text": "// BrandEcosystem 已下线:「先删除集团,只是帛卉」(2026-08-31)",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 180,
+   "text": "// 集团生态查询已下线(「先删除集团,只是帛卉」2026-08-31)—— 顺带少一次 D1 往返",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 207,
+   "text": "* 仍是占位:CC0 池里的美妆摄影质量参差,真正该上的是帛卉自己的产品实拍。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 213,
+   "text": "{ id: 'serum', name: '精华液', summary: '水感或油感基质,活性物浓度可定制', image: '/media/16', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "16"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 215,
+   "text": "{ id: 'cream', name: '面霜', summary: '真空乳化,常温与冷制工艺可选', image: '/media/10', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "10"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 217,
+   "text": "{ id: 'mask', name: '面膜', summary: '水洗式与贴片式,精华液配比可调', image: '/media/17', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "17"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 219,
+   "text": "{ id: 'cleanser', name: '洁面', summary: '氨基酸与皂基两条路线', image: '/media/11', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "11"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 221,
+   "text": "{ id: 'toothpaste', name: '牙膏', summary: '低研磨配方,益生菌可添加', image: '/media/12', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "12"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 223,
+   "text": "{ id: 'powder', name: '粉体彩妆', summary: '压粉与散粉,色号按 Pantone 打样', image: '/media/13', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "13"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 225,
+   "text": "{ id: 'oil', name: '精华油', summary: '植物基油相,冷压原料可溯源', image: '/media/14', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "14"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 227,
+   "text": "{ id: 'balm', name: '膏体唇部', summary: '润唇与有色唇膏,蜡体配比可调', image: '/media/15', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "15"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 237,
+   "text": "/* 「集团品牌生态」段与 ECO_TEXT 已删(创始人 2026-08-31:「先删除集团,只是帛卉」)——",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 238,
+   "text": "站点叙事回归帛卉一家;四个姊妹域名本就未接入,生态段对访客是四条死链。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 267,
+   "text": "* 英文访客打开产品页,看到的是「精华液 / 水感或油感基质 / MOQ 3,000 支起」——",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "000",
+    "3"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 372,
+   "text": "orgJsonLd(base0, site?.name ?? 'BIOSPHERE', lang, bundle?.page.seo_desc ?? site?.tagline ?? ''),",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 373,
+   "text": "siteJsonLd(base0, site?.name ?? 'BIOSPHERE'),",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 591,
+   "text": "// 生产基地 —— 从种植端到成品端,是帛卉区别于普通代工厂的地方",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7c6acdc8e55811bd:apps/web/src/pages/[lang]/insights.astro:dd46822dc0aed70b15c946e665371f9ef2fec2dc": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 5,
+   "text": "* 只改两处:品牌行「帛卉(BIOSPHERE)」→「帛卉化妆品」、询盘入口 → /zh-cn/brief/)。表格与脚注靠 Astro 自带 GFM,零新依赖。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 24,
+   "text": "const desc = '写给国内跨境美妆卖家:出口与平台数据、选品与选厂逻辑、17 个市场的准入要点,以及帛卉基于美国亚马逊榜单快照和各国法规原文的六条独家洞察。每个数字都有出处脚注。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 37,
+   "text": "<p class=\"eyebrow\">洞察 · 帛卉化妆品公开研究 v1 · 数据截至 2026-09-23</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7c6acdc8e55811bd:packages/core/src/components/SiteFooter.astro:b3c2fd6b7c41f1bf466ddf2ddba68bae9a6cf5a1": [
+  {
+   "rule": "R1",
+   "id": "R1-group-branding-doubt",
+   "line": 97,
+   "text": "<h2 class=\"ch\">集团品牌生态 / Brand Ecosystem</h2>",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 4,
+   "text": "* 依据创始人品牌视觉图的《品牌生态架构》:以 BIOSPHERE-AI 为科技大脑,",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 57,
+   "text": "{/* 品牌口径(创始人 2026-08-31 定稿):中文「帛卉化妆品」,英文只用 BIOSPHERE,",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 59,
+   "text": "<p class=\"group\">{cnOnly ? '帛卉化妆品 · 广州工厂' : <>{locale.startsWith('zh') ? '帛卉化妆品 BIOSPHERE' : 'BIOSPHERE'} · {tr('footer.groupLine')}</>}</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7c6acdc8e55811bd:packages/core/src/components/SiteHeader.astro:71beb1d37abb9ceb18ade46df76928cd187dd79b": [],
+ "7c6acdc8e55811bd:apps/web/src/components/B2oBlock.astro:59e1e766c3331a028aae58f0c9dd03c60661a840": [
+  {
+   "rule": "R2",
+   "id": "R2-owned-factory",
+   "line": 322,
+   "text": "<p>{ORG.certs.join('、')} 认证，广州自有工厂，欢迎验厂。</p>",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 76,
+   "text": "{ l: '真实产品库', v: N('products'), u: '款', n: `全成分产品,另有 ${fmt(N('summaries'))} 条配方视角解读`, h: 'https://biosphere-ai.com/zh-cn/decoder/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 77,
+   "text": "{ l: '原料目录', v: N('inci'), u: '条', n: '各国原料目录,配方阶段先核限用和禁用成分', h: 'https://biosphere-ai.com/zh-cn/regulations/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 78,
+   "text": "{ l: '包材现货', v: N('packaging'), u: '款', n: '瓶、罐、管、泵头、彩盒,先按剂型选结构', h: 'https://biosphere-ai.com/zh-cn/packaging/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 79,
+   "text": "{ l: '在库配方基底', v: N('formulas'), u: '条', n: '按品类、剂型、功效匹配,不从零研发', h: 'https://biosphere-ai.com/zh-cn/formulas/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 91,
+   "text": "['能做到哪', '帛卉支持到哪一步'],",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 123,
+   "text": "<li>帛卉能做到哪<i style=\"--w:52%\"></i></li>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 273,
+   "text": "{/* 判断之后 / 帛卉交付:同一套数据,画成图 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 301,
+   "text": "<div class=\"chart-h\"><h3>帛卉可调用的在库条目</h3><span>对数刻度，每格乘以 10</span></div>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 332,
+   "text": "<p class=\"b2o-src\">数字读自帛卉数据库的计数快照，点每一条可以去工厂站逐条核对。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 339,
+   "text": "{/* 帛卉交付页:七个碎步骤改成一条横向链路 + 仓库图 + 待补实拍 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7c6acdc8e55811bd:apps/web/src/styles/b2o.css:3232196e7eb7f3ed93dd536ea71988d6db163fd3": [],
+ "1fb1ffe2605cc477:apps/web/astro.config.mjs:fe1684704b990e2558064ed917a75305b31953cc": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 61,
+   "text": "trailingSlash: 'ignore',",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "1fb1ffe2605cc477:apps/web/src/components/B2oBlock.astro:0a86a0e77ec15b29304d8183e08cfb578930383c": [
+  {
+   "rule": "R2",
+   "id": "R2-owned-factory",
+   "line": 322,
+   "text": "<p>{ORG.certs.join('、')} 认证，广州自有工厂，欢迎验厂。</p>",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 76,
+   "text": "{ l: '真实产品库', v: N('products'), u: '款', n: `全成分产品,另有 ${fmt(N('summaries'))} 条配方视角解读`, h: 'https://biosphere-ai.com/zh-cn/decoder/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 77,
+   "text": "{ l: '原料目录', v: N('inci'), u: '条', n: '各国原料目录,配方阶段先核限用和禁用成分', h: 'https://biosphere-ai.com/zh-cn/regulations/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 78,
+   "text": "{ l: '包材现货', v: N('pack_shelf'), u: '款', n: '瓶、罐、管、泵头、彩盒,先按剂型选结构', h: 'https://biosphere-ai.com/zh-cn/packaging/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 79,
+   "text": "{ l: '在库配方基底', v: N('formulas'), u: '条', n: '按品类、剂型、功效匹配,不从零研发', h: 'https://biosphere-ai.com/zh-cn/formulas/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 91,
+   "text": "['能做到哪', '帛卉支持到哪一步'],",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 123,
+   "text": "<li>帛卉能做到哪<i style=\"--w:52%\"></i></li>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 273,
+   "text": "{/* 判断之后 / 帛卉交付:同一套数据,画成图 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 301,
+   "text": "<div class=\"chart-h\"><h3>帛卉可调用的在库条目</h3><span>对数刻度，每格乘以 10</span></div>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 332,
+   "text": "<p class=\"b2o-src\">数字读自帛卉数据库的计数快照，点每一条可以去工厂站逐条核对。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 339,
+   "text": "{/* 帛卉交付页:七个碎步骤改成一条横向链路 + 仓库图 + 待补实拍 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "1fb1ffe2605cc477:apps/web/src/data/site-counts.json:16275c7ec7ee146ab24749937b98a0f9e8ac9a6a": [],
+ "1fb1ffe2605cc477:apps/web/src/pages/[...path].astro:e850b61aae41598fb73695916b74bc5af25779c6": [
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 310,
+   "text": "顶部导航每页都在,品类清单改为全页可用(一条 GROUP BY,开销可忽略) */",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 313,
+   "text": "`SELECT category, COUNT(*) n FROM products",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 314,
+   "text": "WHERE site_id = ? AND status = 'published' GROUP BY category ORDER BY n DESC`,",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 380,
+   "text": "放进 Product schema 才是一条可引用的数据。价格刻意不写:代工按单报价。 */",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 47,
+   "text": "// BrandEcosystem 已下线:「先删除集团,只是帛卉」(2026-08-31)",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 182,
+   "text": "// 集团生态查询已下线(「先删除集团,只是帛卉」2026-08-31)—— 顺带少一次 D1 往返",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 209,
+   "text": "* 仍是占位:CC0 池里的美妆摄影质量参差,真正该上的是帛卉自己的产品实拍。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 215,
+   "text": "{ id: 'serum', name: '精华液', summary: '水感或油感基质,活性物浓度可定制', image: '/media/16', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "16"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 217,
+   "text": "{ id: 'cream', name: '面霜', summary: '真空乳化,常温与冷制工艺可选', image: '/media/10', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "10"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 219,
+   "text": "{ id: 'mask', name: '面膜', summary: '水洗式与贴片式,精华液配比可调', image: '/media/17', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "17"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 221,
+   "text": "{ id: 'cleanser', name: '洁面', summary: '氨基酸与皂基两条路线', image: '/media/11', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "11"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 223,
+   "text": "{ id: 'toothpaste', name: '牙膏', summary: '低研磨配方,益生菌可添加', image: '/media/12', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "12"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 225,
+   "text": "{ id: 'powder', name: '粉体彩妆', summary: '压粉与散粉,色号按 Pantone 打样', image: '/media/13', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "13"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 227,
+   "text": "{ id: 'oil', name: '精华油', summary: '植物基油相,冷压原料可溯源', image: '/media/14', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "14"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 229,
+   "text": "{ id: 'balm', name: '膏体唇部', summary: '润唇与有色唇膏,蜡体配比可调', image: '/media/15', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "15"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 239,
+   "text": "/* 「集团品牌生态」段与 ECO_TEXT 已删(创始人 2026-08-31:「先删除集团,只是帛卉」)——",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 240,
+   "text": "站点叙事回归帛卉一家;四个姊妹域名本就未接入,生态段对访客是四条死链。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 269,
+   "text": "* 英文访客打开产品页,看到的是「精华液 / 水感或油感基质 / MOQ 3,000 支起」——",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "000",
+    "3"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 374,
+   "text": "orgJsonLd(base0, site?.name ?? 'BIOSPHERE', lang, bundle?.page.seo_desc ?? site?.tagline ?? ''),",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 375,
+   "text": "siteJsonLd(base0, site?.name ?? 'BIOSPHERE'),",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 595,
+   "text": "// 生产基地 —— 从种植端到成品端,是帛卉区别于普通代工厂的地方",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "1fb1ffe2605cc477:apps/web/src/pages/[lang]/insights.astro:acaf72432378fdd11a9457ab4e0864bac6887fd0": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 5,
+   "text": "* 只改两处:品牌行「帛卉(BIOSPHERE)」→「帛卉化妆品」、询盘入口 → /zh-cn/brief/)。表格与脚注靠 Astro 自带 GFM,零新依赖。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 26,
+   "text": "const desc = '写给国内跨境美妆卖家:出口与平台数据、选品与选厂逻辑、17 个市场的准入要点,以及帛卉基于美国亚马逊榜单快照和各国法规原文的六条独家洞察。每个数字都有出处脚注。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 43,
+   "text": "<p class=\"meta\">洞察 · 帛卉化妆品公开研究 v1 · 数据截至 2026-09-23</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 45,
+   "text": "<p class=\"b2o-lede\">出口与平台数据、选品和选厂逻辑、17 个市场的准入要点，以及六条帛卉独家洞察。每个数字都有出处脚注。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "1fb1ffe2605cc477:apps/web/src/styles/b2o.css:f800736926856e502b2e27265b3265f0ef31d063": [],
+ "1fb1ffe2605cc477:packages/core/src/components/ChatWidget.astro:bb93ea934349aa77abc523f187f6a82b54601191": [
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 22,
+   "text": "hello: '您好!我是 BIOSPHERE-AI 的 AI 客服,可以即时回答品类、起订、打样流程等问题。涉及报价会为您转人工专员。',",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 19,
+   "text": "const waHref = _wa && !b2o ? `https://wa.me/${_wa}?text=${encodeURIComponent(zh ? '你好,我在看 BIOSPHERE 的网站,想了解代工。' : 'Hi, I am looking at the BIOSPHERE site and would like to discuss OEM/ODM.')}` : '';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 22,
+   "text": "hello: '您好!我是 BIOSPHERE-AI 的 AI 客服,可以即时回答品类、起订、打样流程等问题。涉及报价会为您转人工专员。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "1fb1ffe2605cc477:packages/core/src/components/SiteFooter.astro:ce4a2918b992ac48cda63f605fe9e8e312d775e7": [
+  {
+   "rule": "R1",
+   "id": "R1-group-branding-doubt",
+   "line": 101,
+   "text": "<h2 class=\"ch\">集团品牌生态 / Brand Ecosystem</h2>",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 4,
+   "text": "* 依据创始人品牌视觉图的《品牌生态架构》:以 BIOSPHERE-AI 为科技大脑,",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 58,
+   "text": "{/* 品牌口径(创始人 2026-08-31 定稿):中文「帛卉化妆品」,英文只用 BIOSPHERE,",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 60,
+   "text": "<p class=\"group\">{cnOnly ? '帛卉化妆品 · 广州工厂' : <>{locale.startsWith('zh') ? '帛卉化妆品 BIOSPHERE' : 'BIOSPHERE'} · {tr('footer.groupLine')}</>}</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 125,
+   "text": "{cnOnly && <p class=\"b2o-aigen\">页面中的场景照片为 AI 生成的示意图，不代表具体产品，也不是帛卉车间实拍。</p>}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "1fb1ffe2605cc477:packages/core/src/components/SiteHeader.astro:a262c84148963b917219dddc2970a61fc6f3261b": [],
+ "1fb1ffe2605cc477:tools/ship.sh:8e7e5aea2dbd0288f3e79596369db3902624bb83": [
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 14,
+   "text": "npx wrangler deploy -c wrangler.json",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 16,
+   "text": "AV2=F:/0cosmetic/tools-review/audit_v2   # 审核部 v2.1:ENABLED 在 → v2(审核单 + 三家共判,从已批准副本执行);不在 → v1 四道闸(gate.sh 留档)",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "1fb1ffe2605cc477:apps/web/astro.config.mjs:17d7bc681fbee7366cd7cd2c3e1fd671ec68e956": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 13,
+   "text": "trailingSlash: 'ignore',",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "1fb1ffe2605cc477:apps/web/src/pages/[...path].astro:6cd08b6143709249560d9c9791b1d27e4e079cc4": [
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 308,
+   "text": "顶部导航每页都在,品类清单改为全页可用(一条 GROUP BY,开销可忽略) */",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 311,
+   "text": "`SELECT category, COUNT(*) n FROM products",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C1",
+   "id": "visitor-live-aggregate",
+   "line": 312,
+   "text": "WHERE site_id = ? AND status = 'published' GROUP BY category ORDER BY n DESC`,",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 378,
+   "text": "放进 Product schema 才是一条可引用的数据。价格刻意不写:代工按单报价。 */",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 47,
+   "text": "// BrandEcosystem 已下线:「先删除集团,只是帛卉」(2026-08-31)",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 180,
+   "text": "// 集团生态查询已下线(「先删除集团,只是帛卉」2026-08-31)—— 顺带少一次 D1 往返",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 207,
+   "text": "* 仍是占位:CC0 池里的美妆摄影质量参差,真正该上的是帛卉自己的产品实拍。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 213,
+   "text": "{ id: 'serum', name: '精华液', summary: '水感或油感基质,活性物浓度可定制', image: '/media/16', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "16"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 215,
+   "text": "{ id: 'cream', name: '面霜', summary: '真空乳化,常温与冷制工艺可选', image: '/media/10', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "10"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 217,
+   "text": "{ id: 'mask', name: '面膜', summary: '水洗式与贴片式,精华液配比可调', image: '/media/17', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "17"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 219,
+   "text": "{ id: 'cleanser', name: '洁面', summary: '氨基酸与皂基两条路线', image: '/media/11', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "11"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 221,
+   "text": "{ id: 'toothpaste', name: '牙膏', summary: '低研磨配方,益生菌可添加', image: '/media/12', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "12"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 223,
+   "text": "{ id: 'powder', name: '粉体彩妆', summary: '压粉与散粉,色号按 Pantone 打样', image: '/media/13', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "13"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 225,
+   "text": "{ id: 'oil', name: '精华油', summary: '植物基油相,冷压原料可溯源', image: '/media/14', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "14"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 227,
+   "text": "{ id: 'balm', name: '膏体唇部', summary: '润唇与有色唇膏,蜡体配比可调', image: '/media/15', moq: '',",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "15"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 237,
+   "text": "/* 「集团品牌生态」段与 ECO_TEXT 已删(创始人 2026-08-31:「先删除集团,只是帛卉」)——",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 238,
+   "text": "站点叙事回归帛卉一家;四个姊妹域名本就未接入,生态段对访客是四条死链。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 267,
+   "text": "* 英文访客打开产品页,看到的是「精华液 / 水感或油感基质 / MOQ 3,000 支起」——",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "000",
+    "3"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 372,
+   "text": "orgJsonLd(base0, site?.name ?? 'BIOSPHERE', lang, bundle?.page.seo_desc ?? site?.tagline ?? ''),",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 373,
+   "text": "siteJsonLd(base0, site?.name ?? 'BIOSPHERE'),",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 591,
+   "text": "// 生产基地 —— 从种植端到成品端,是帛卉区别于普通代工厂的地方",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "1fb1ffe2605cc477:apps/web/src/pages/[lang]/insights.astro:dd46822dc0aed70b15c946e665371f9ef2fec2dc": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 5,
+   "text": "* 只改两处:品牌行「帛卉(BIOSPHERE)」→「帛卉化妆品」、询盘入口 → /zh-cn/brief/)。表格与脚注靠 Astro 自带 GFM,零新依赖。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 24,
+   "text": "const desc = '写给国内跨境美妆卖家:出口与平台数据、选品与选厂逻辑、17 个市场的准入要点,以及帛卉基于美国亚马逊榜单快照和各国法规原文的六条独家洞察。每个数字都有出处脚注。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 37,
+   "text": "<p class=\"eyebrow\">洞察 · 帛卉化妆品公开研究 v1 · 数据截至 2026-09-23</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "1fb1ffe2605cc477:packages/core/src/components/ChatWidget.astro:13449656e095fa18c522a83e4b1b6742d699cb6f": [
+  {
+   "rule": "R8",
+   "id": "R8-price-words",
+   "line": 20,
+   "text": "hello: '您好!我是 BIOSPHERE-AI 的 AI 客服,可以即时回答品类、起订、打样流程等问题。涉及报价会为您转人工专员。',",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 17,
+   "text": "const waHref = _wa ? `https://wa.me/${_wa}?text=${encodeURIComponent(zh ? '你好,我在看 BIOSPHERE 的网站,想了解代工。' : 'Hi, I am looking at the BIOSPHERE site and would like to discuss OEM/ODM.')}` : '';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 20,
+   "text": "hello: '您好!我是 BIOSPHERE-AI 的 AI 客服,可以即时回答品类、起订、打样流程等问题。涉及报价会为您转人工专员。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "1fb1ffe2605cc477:packages/core/src/components/SiteFooter.astro:b3c2fd6b7c41f1bf466ddf2ddba68bae9a6cf5a1": [
+  {
+   "rule": "R1",
+   "id": "R1-group-branding-doubt",
+   "line": 97,
+   "text": "<h2 class=\"ch\">集团品牌生态 / Brand Ecosystem</h2>",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 4,
+   "text": "* 依据创始人品牌视觉图的《品牌生态架构》:以 BIOSPHERE-AI 为科技大脑,",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 57,
+   "text": "{/* 品牌口径(创始人 2026-08-31 定稿):中文「帛卉化妆品」,英文只用 BIOSPHERE,",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 59,
+   "text": "<p class=\"group\">{cnOnly ? '帛卉化妆品 · 广州工厂' : <>{locale.startsWith('zh') ? '帛卉化妆品 BIOSPHERE' : 'BIOSPHERE'} · {tr('footer.groupLine')}</>}</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "1fb1ffe2605cc477:packages/core/src/components/SiteHeader.astro:71beb1d37abb9ceb18ade46df76928cd187dd79b": [],
+ "1fb1ffe2605cc477:tools/ship.sh:3e19941a5d6fb11313bd1c4f74ea7ed46328ad8b": [
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 13,
+   "text": "npx wrangler deploy -c wrangler.json",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  }
+ ],
+ "7a832521a5185baa:.gitattributes:c5aa514705b811308ac103797fa602fbfc44e622": [],
+ "7a832521a5185baa:.gitignore:49aa5a674c810b6be888b5b1818189c9c2b85a8b": [],
+ "7a832521a5185baa:audit_dept/audit_local.cmd:749e6b55db749943b7d6e583be7f42ef15ef4963": [],
+ "7a832521a5185baa:audit_dept/expected_tasks.json:f32661c0e58902d83cb49d8f2555077df099cb30": [],
+ "7a832521a5185baa:audit_dept/local_audit.py:1ac184f543fabdd8313f53acf854b5b8b07b434a": [],
+ "7a832521a5185baa:audit_dept/开源选型.md:91c369214f53c314ac13fa1913239c09be25b828": [],
+ "7a832521a5185baa:audit_dept/设计-v1.md:0c11d50e812867947eb0d58fa191f8ce69b76842": [],
+ "7a832521a5185baa:audit_v2/allow_domains.txt:7d1d5f1361ef362ce8183bd6927e57d9f81d06f7": [],
+ "7a832521a5185baa:audit_v2/bg_log.py:e6802b71a066bd7641c409776bca13c10ee775aa": [],
+ "7a832521a5185baa:audit_v2/gate1.py:21e6a447caead77dc4461c1e56ae32310d809593": [
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 25,
+   "text": "INTERNAL_ZH = r'创始人|老板|大哥|股东|成本|底价|毛利|利润|返点|回扣|采购价|进价|客户名单|内部|拍板|铁令|对外不提|不要提|机密|密码|hosonzuo|w8848|印尼工厂|SueAI'",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 22,
+   "text": "NS_OK = re.compile(r'nosemgrep:\\s*([\\w.-]+(?:\\s*,\\s*[\\w.-]+)*)\\s+\\S')",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 23,
+   "text": "GO_OK = re.compile(r'gate-ok:\\s*([\\w.-]+(?:\\s*,\\s*[\\w.-]+)*)\\s+\\S')",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 26,
+   "text": "INJECT_RX = re.compile(r'(审核员|审核|reviewer|auditor|AI|模型|LLM|Claude|Jev|Laya)[^\\n]{0,20}(忽略|ignore|已批准|已审核|approved|放行|allow)|ignore\\s+(all\\s+|the\\s+)?(previous|above)|忽略(以上|上面|之前)', re.I)",
+   "level": "doubt",
+   "cat": "安全"
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 77,
+   "text": "if re.search(r'nosemgrep', l, re.I) and not NS_OK.search(l):",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 78,
+   "text": "add('K6', 'K6-bare-nosemgrep', i, l, 'block', '正确性', strict=True)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 79,
+   "text": "if re.search(r'gate-ok', l, re.I) and not GO_OK.search(l):",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 80,
+   "text": "add('K6', 'K6-bare-gate-ok', i, l, 'block', '正确性', strict=True)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "S5",
+   "id": "S5-cross-account",
+   "line": 83,
+   "text": "if re.search(r'ea5b0da4|\"bohui-web\"', l) and (CFG_RX.search(path) or SCRIPT_RX.search(path)):",
+   "level": "block",
+   "cat": "安全",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "S5",
+   "id": "S5-cross-account",
+   "line": 85,
+   "text": "if re.search(r'f5010e65', l) and (CFG_RX.search(path) or SCRIPT_RX.search(path)):",
+   "level": "block",
+   "cat": "安全",
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 227,
+   "text": "allow = _domains('allow_domains.txt')",
+   "level": "doubt",
+   "cat": "安全"
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 271,
+   "text": "if (comment or nonsite) and not re.search(r'gate-ok:\\s*R11\\s+\\S', t):",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 328,
+   "text": "\"\"\"行内豁免:命中行或上一行有 nosemgrep:<id> 理由 / gate-ok:<id> 理由,且 id 对得上本规则(规则 id 或 C4 这类编号)。\"\"\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 328,
+   "text": "\"\"\"行内豁免:命中行或上一行有 nosemgrep:<id> 理由 / gate-ok:<id> 理由,且 id 对得上本规则(规则 id 或 C4 这类编号)。\"\"\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 452,
+   "text": "if mode == 'gate':          # 闸门自己的代码里本来就写着部署词、红线词、nosemgrep 这些规则字面量;它不对外发布。密钥(S1)照查",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  }
+ ],
+ "7a832521a5185baa:audit_v2/hook_guard.py:4dda69d2a31b0f3e9384206b6e8c0c44ecfa2442": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 33,
+   "text": "PROTECT_TXT = re.compile(r'\\.claude[\\\\/]+settings|gate_approved|audit_v2[\\\\/]+(cache|tickets|ledger|state|drafts|reports|enabled)\\b|tools-review[\\\\/]+\\.git'",
+   "level": "doubt",
+   "cat": "安全"
+  },
+  {
+   "rule": "C10",
+   "id": "C10-d1-no-config",
+   "line": 186,
+   "text": "return 'wrangler d1 execute --remote 写操作,走 ship_ops.sh prod'",
+   "level": "block",
+   "cat": "费用",
+   "strict": true
+  }
+ ],
+ "7a832521a5185baa:audit_v2/judges.json:32cbfe802c04c986c9033f144a6975c95a743e0f": [
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 6,
+   "text": "\"compliance\": {\"type\": \"noul\", \"instructions\": \"Does this change add public-facing text that claims a corporate group, mentions a factory in Indonesia, mentions SueAI, claims owning rather than renting the factory, shows factory information",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 8,
+   "text": "\"decision\": {\"type\": \"choice\", \"instructions\": \"Should a careful reviewer allow or block deploying this change?\", \"criteria\": {\"allow\": \"safe to deploy as is\", \"block\": \"likely adds cost, leaks secrets, breaks brand rules or breaks producti",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "7a832521a5185baa:audit_v2/judges.py:3ffe92ab27bc09444bed9b5bd5e2cf1d63241966": [
+  {
+   "rule": "S1",
+   "id": "S1-split-secret",
+   "line": 230,
+   "text": "m, part = material('站点 x', [('apps/web/src/a.ts', '+const k = \"sk-' + 'A' * 30 + '\"\\n+mail a@b.com https://x.y/z\\n'), ('data/cost.json', '+1\\n')])",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "7a832521a5185baa:audit_v2/lib.py:af35587445e006b147569125241ed7ddf56c7a7c": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 365,
+   "text": "for n in ('rules-v2.yml', 'rules-v2-strict.yml', 'paid_domains.txt', 'allow_domains.txt', 'terms_whitelist.json', 'gate1.py'):",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "7a832521a5185baa:audit_v2/ops.py:1c0db5c9b448801934d3113c6a3c7dcc4a645d89": [],
+ "7a832521a5185baa:audit_v2/paid_domains.txt:e278d7846cab1cde9b5e0ae3a1a562a8aaface47": [
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 3,
+   "text": "api.openai.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.openai.com"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 4,
+   "text": "openai.azure.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "openai.azure.com"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 5,
+   "text": "api.anthropic.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.anthropic.com"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 7,
+   "text": "api.deepseek.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.deepseek.com"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 8,
+   "text": "api.moonshot.cn",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.moonshot.cn"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 9,
+   "text": "api.moonshot.ai",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.moonshot.ai"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 10,
+   "text": "volces.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "volces.com"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 11,
+   "text": "api.x.ai",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.x.ai"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 12,
+   "text": "dashscope.aliyuncs.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "dashscope.aliyuncs.com"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 13,
+   "text": "dashscope-intl.aliyuncs.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "dashscope-intl.aliyuncs.com"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 14,
+   "text": "open.bigmodel.cn",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "open.bigmodel.cn"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 15,
+   "text": "hunyuan.tencentcloudapi.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "hunyuan.tencentcloudapi.com"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 16,
+   "text": "hunyuan.cloud.tencent.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "hunyuan.cloud.tencent.com"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 17,
+   "text": "api.hunyuan.cloud.tencent.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.hunyuan.cloud.tencent.com"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 18,
+   "text": "api.siliconflow.cn",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.siliconflow.cn"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 19,
+   "text": "api.siliconflow.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "api.siliconflow.com"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 20,
+   "text": "aip.baidubce.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "aip.baidubce.com"
+  },
+  {
+   "rule": "C7",
+   "id": "C7-paid-api",
+   "line": 21,
+   "text": "qianfan.baidubce.com",
+   "level": "doubt",
+   "cat": "费用",
+   "domain": "qianfan.baidubce.com"
+  }
+ ],
+ "7a832521a5185baa:audit_v2/register_watch_task.ps1:cadaa4dac44aaad01dc5b51b191315f7ed8db53d": [],
+ "7a832521a5185baa:audit_v2/rules-v2-strict.yml:d21d218c1295ea0092640a1b9b4115f6442bbc18": [
+  {
+   "rule": "C5",
+   "id": "C5-r2-copy-move",
+   "line": 13,
+   "text": "- pattern-regex: '(?i)\\bcopy_?object\\s*\\(|x-amz-copy-source|\\bCopySource\\b|r2-migrate|\\bmove_?object\\s*\\('",
+   "level": "block",
+   "cat": "费用",
+   "strict": true
+  },
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 106,
+   "text": "- id: R4-sueai",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 109,
+   "text": "message: 帛卉里不出现 SueAI(只允许在 F:/0cosmetic/crm/)。",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 1,
+   "text": "# 审核部 v2.1 · 第一关 strict 规则(C5、C12、S1、R1–R4)。行内 nosemgrep / gate-ok 对这份一律无效(绕-12)。",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 1,
+   "text": "# 审核部 v2.1 · 第一关 strict 规则(C5、C12、S1、R1–R4)。行内 nosemgrep / gate-ok 对这份一律无效(绕-12)。",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  }
+ ],
+ "7a832521a5185baa:audit_v2/rules-v2.yml:a38862cdd76c05ec767b84a8c44ff6998b0da27c": [
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 1,
+   "text": "# 审核部 v2.1 · 第一关新增 semgrep 规则(可行内豁免:// nosemgrep: <规则id> 理由,缺 id 或理由 → K6 拦)。",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 9,
+   "text": "message: R2 列目录(Class A 计费,大桶一扫就烧钱)。用 D1 清单构造 key,零 LIST;确实要列请写 nosemgrep 理由。",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  }
+ ],
+ "7a832521a5185baa:audit_v2/ship_lib.sh:ae92e076e71a4580ec2f2c3135deb8061d374a4a": [],
+ "7a832521a5185baa:audit_v2/ship_ops.sh:080cdb45bf93cf89f46a27552bf0d2c111e41137": [],
+ "7a832521a5185baa:audit_v2/sites.json:1119f2bc151f82f5d67973af2bd3adb00f8d3060": [
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 16,
+   "text": "{\"url\": \"https://biosphere-ai.com/en/\", \"expect\": 200, \"must\": [\"<h1\", \"BIOSPHERE\"], \"forbid\": [\"Bohui Group\", \"Indonesia factory\", \"SueAI\"], \"crit\": true, \"hourly\": true},",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 75,
+   "text": "\"scope\": [\"apps/mail-worker\"], \"deploy_cmd\": \"cd apps/mail-worker && npx wrangler deploy\", \"wrangler_cwd\": \"apps/mail-worker\", \"smoke\": []",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 83,
+   "text": "\"scope\": [\"tools/news-cron-worker\"], \"deploy_cmd\": \"cd tools/news-cron-worker && npx wrangler deploy\", \"wrangler_cwd\": \"tools/news-cron-worker\", \"smoke\": []",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 101,
+   "text": "\"company\": [\"帛卉集团\", \"BOHUI GROUP\", \"集团旗下\", \"印尼工厂\", \"Tangerang\", \"双基地\", \"SueAI\", \"莱诺鸟\", \"自有厂房\", \"自有工厂\"],",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  }
+ ],
+ "7a832521a5185baa:audit_v2/smoke.py:cf3b36b808ee1d98813a9ad02d6ddd75ec364af5": [],
+ "7a832521a5185baa:audit_v2/terms_whitelist.json:a3f30f87aaa6d2b00eaa03686dce5d169e9c6f94": [],
+ "7a832521a5185baa:audit_v2/ticket.py:099c1642015af15b306e50a8266f8c1fa2fff6b8": [],
+ "7a832521a5185baa:audit_v2/v1现状-0924-1038版.md:ca8f9b14622532116e5716d876fcd8f218fb5d99": [],
+ "7a832521a5185baa:audit_v2/v1现状.md:9f7ef063a1eae82f398c0598ea362212b5712384": [],
+ "7a832521a5185baa:audit_v2/verify_or_bg.cmd:e4c436d093926581dd07600c2cdbb616b475098d": [],
+ "7a832521a5185baa:audit_v2/watch.cmd:7ae805631f57e61baeae881ff0e6001a4e491eaf": [],
+ "7a832521a5185baa:audit_v2/watch.py:b0c694870cb8a3b2d6119453389f0e1b60ed6191": [
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 239,
+   "text": "p = subprocess.run([lib.SYS_PY, '-I', '-S', hg, '--explain'], input=json.dumps({'tool_name': 'Bash', 'tool_input': {'command': 'npx wrangler deploy'},",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 242,
+   "text": "add('hook-selftest', 'hook_guard', 'red', 'hook 自检:npx wrangler deploy 没被拒', p.stdout.decode('utf-8', 'replace')[-300:])",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  }
+ ],
+ "7a832521a5185baa:audit_v2/口径摘要.md:5c79b3efec9862c8858a81fdc8190fc1388ee8c2": [],
+ "7a832521a5185baa:audit_v2/设计-v2.1.md:2c0c0459ce1aab3d2c7827eda3be480e3e2dc2bd": [],
+ "7a832521a5185baa:audit_v2/设计-v2.md:625d15a770b4a41c5a5e11fe0398a79c48764e74": [],
+ "7a832521a5185baa:deploy_audit.py:c17a280fb6edf43da105b3b4da986fca618f2d2c": [],
+ "7a832521a5185baa:gate.sh:0419ef01ff15ec0b17ab897ae9ccca19c5224868": [
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 75,
+   "text": "# 09-24 行内豁免必须写成「// nosemgrep: <规则id>[, <规则id>] 理由」(命中行行尾或上一行)。",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 76,
+   "text": "# 光秃秃的 nosemgrep 会放过该行全部规则,缺理由的事后没人看得懂 → 本次新增行里出现就拦",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 78,
+   "text": "| grep -vE 'nosemgrep:[[:space:]]*[A-Za-z0-9_.-]+([[:space:]]*,[[:space:]]*[A-Za-z0-9_.-]+)*[[:space:]]+[^[:space:]]' | head -3)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 80,
+   "text": "R1=\"$R1;行内 nosemgrep 缺规则 id 或理由 → 拦截\"; echo \"   行内 nosemgrep 必须写成「nosemgrep: <规则id> 理由」:\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  }
+ ],
+ "7a832521a5185baa:laya_judge.py:37354f0556732cdce125207b773aaf0ee6983c02": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 13,
+   "text": "'decision': {'type': 'choice', 'instructions': 'Should a careful reviewer allow or block deploying the change in `change`?',",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "21ea2f39ec91180b:.gitattributes:c5aa514705b811308ac103797fa602fbfc44e622": [],
+ "21ea2f39ec91180b:.gitignore:49aa5a674c810b6be888b5b1818189c9c2b85a8b": [],
+ "21ea2f39ec91180b:audit_dept/audit_local.cmd:749e6b55db749943b7d6e583be7f42ef15ef4963": [],
+ "21ea2f39ec91180b:audit_dept/expected_tasks.json:f32661c0e58902d83cb49d8f2555077df099cb30": [],
+ "21ea2f39ec91180b:audit_dept/local_audit.py:1ac184f543fabdd8313f53acf854b5b8b07b434a": [],
+ "21ea2f39ec91180b:audit_v2/bg_log.py:e6802b71a066bd7641c409776bca13c10ee775aa": [],
+ "21ea2f39ec91180b:audit_v2/gate1.py:aea778cbe950b773125819a3d414a5bb2d0d1d68": [
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 25,
+   "text": "INTERNAL_ZH = r'创始人|老板|大哥|股东|成本|底价|毛利|利润|返点|回扣|采购价|进价|客户名单|内部|拍板|铁令|对外不提|不要提|机密|密码|hosonzuo|w8848|印尼工厂|SueAI'",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 22,
+   "text": "NS_OK = re.compile(r'nosemgrep:\\s*([\\w.-]+(?:\\s*,\\s*[\\w.-]+)*)\\s+\\S')",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 23,
+   "text": "GO_OK = re.compile(r'gate-ok:\\s*([\\w.-]+(?:\\s*,\\s*[\\w.-]+)*)\\s+\\S')",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 26,
+   "text": "INJECT_RX = re.compile(r'(审核员|审核|reviewer|auditor|AI|模型|LLM|Claude|Jev|Laya)[^\\n]{0,20}(忽略|ignore|已批准|已审核|approved|放行|allow)|ignore\\s+(all\\s+|the\\s+)?(previous|above)|忽略(以上|上面|之前)', re.I)",
+   "level": "doubt",
+   "cat": "安全"
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 77,
+   "text": "if re.search(r'nosemgrep', l, re.I) and not NS_OK.search(l):",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 78,
+   "text": "add('K6', 'K6-bare-nosemgrep', i, l, 'block', '正确性', strict=True)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 79,
+   "text": "if re.search(r'gate-ok', l, re.I) and not GO_OK.search(l):",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 80,
+   "text": "add('K6', 'K6-bare-gate-ok', i, l, 'block', '正确性', strict=True)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "S5",
+   "id": "S5-cross-account",
+   "line": 83,
+   "text": "if re.search(r'ea5b0da4|\"bohui-web\"', l) and (CFG_RX.search(path) or SCRIPT_RX.search(path)):",
+   "level": "block",
+   "cat": "安全",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "S5",
+   "id": "S5-cross-account",
+   "line": 85,
+   "text": "if re.search(r'f5010e65', l) and (CFG_RX.search(path) or SCRIPT_RX.search(path)):",
+   "level": "block",
+   "cat": "安全",
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 227,
+   "text": "allow = _domains('allow_domains.txt')",
+   "level": "doubt",
+   "cat": "安全"
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 271,
+   "text": "if (comment or nonsite) and not re.search(r'gate-ok:\\s*R11\\s+\\S', t):",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 328,
+   "text": "\"\"\"行内豁免:命中行或上一行有 nosemgrep:<id> 理由 / gate-ok:<id> 理由,且 id 对得上本规则(规则 id 或 C4 这类编号)。\"\"\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 328,
+   "text": "\"\"\"行内豁免:命中行或上一行有 nosemgrep:<id> 理由 / gate-ok:<id> 理由,且 id 对得上本规则(规则 id 或 C4 这类编号)。\"\"\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 452,
+   "text": "if mode == 'gate':          # 闸门自己的代码里本来就写着部署词、红线词、nosemgrep 这些规则字面量;它不对外发布。密钥(S1)照查",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/hook_guard.py:4dda69d2a31b0f3e9384206b6e8c0c44ecfa2442": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 33,
+   "text": "PROTECT_TXT = re.compile(r'\\.claude[\\\\/]+settings|gate_approved|audit_v2[\\\\/]+(cache|tickets|ledger|state|drafts|reports|enabled)\\b|tools-review[\\\\/]+\\.git'",
+   "level": "doubt",
+   "cat": "安全"
+  },
+  {
+   "rule": "C10",
+   "id": "C10-d1-no-config",
+   "line": 186,
+   "text": "return 'wrangler d1 execute --remote 写操作,走 ship_ops.sh prod'",
+   "level": "block",
+   "cat": "费用",
+   "strict": true
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/judges.json:32cbfe802c04c986c9033f144a6975c95a743e0f": [
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 6,
+   "text": "\"compliance\": {\"type\": \"noul\", \"instructions\": \"Does this change add public-facing text that claims a corporate group, mentions a factory in Indonesia, mentions SueAI, claims owning rather than renting the factory, shows factory information",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 8,
+   "text": "\"decision\": {\"type\": \"choice\", \"instructions\": \"Should a careful reviewer allow or block deploying this change?\", \"criteria\": {\"allow\": \"safe to deploy as is\", \"block\": \"likely adds cost, leaks secrets, breaks brand rules or breaks producti",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/judges.py:3ffe92ab27bc09444bed9b5bd5e2cf1d63241966": [
+  {
+   "rule": "S1",
+   "id": "S1-split-secret",
+   "line": 230,
+   "text": "m, part = material('站点 x', [('apps/web/src/a.ts', '+const k = \"sk-' + 'A' * 30 + '\"\\n+mail a@b.com https://x.y/z\\n'), ('data/cost.json', '+1\\n')])",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/lib.py:af35587445e006b147569125241ed7ddf56c7a7c": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 365,
+   "text": "for n in ('rules-v2.yml', 'rules-v2-strict.yml', 'paid_domains.txt', 'allow_domains.txt', 'terms_whitelist.json', 'gate1.py'):",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/ops.py:1c0db5c9b448801934d3113c6a3c7dcc4a645d89": [],
+ "21ea2f39ec91180b:audit_v2/register_watch_task.ps1:cadaa4dac44aaad01dc5b51b191315f7ed8db53d": [],
+ "21ea2f39ec91180b:audit_v2/ship_lib.sh:ae92e076e71a4580ec2f2c3135deb8061d374a4a": [],
+ "21ea2f39ec91180b:audit_v2/ship_ops.sh:080cdb45bf93cf89f46a27552bf0d2c111e41137": [],
+ "21ea2f39ec91180b:audit_v2/sites.json:1119f2bc151f82f5d67973af2bd3adb00f8d3060": [
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 16,
+   "text": "{\"url\": \"https://biosphere-ai.com/en/\", \"expect\": 200, \"must\": [\"<h1\", \"BIOSPHERE\"], \"forbid\": [\"Bohui Group\", \"Indonesia factory\", \"SueAI\"], \"crit\": true, \"hourly\": true},",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 75,
+   "text": "\"scope\": [\"apps/mail-worker\"], \"deploy_cmd\": \"cd apps/mail-worker && npx wrangler deploy\", \"wrangler_cwd\": \"apps/mail-worker\", \"smoke\": []",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 83,
+   "text": "\"scope\": [\"tools/news-cron-worker\"], \"deploy_cmd\": \"cd tools/news-cron-worker && npx wrangler deploy\", \"wrangler_cwd\": \"tools/news-cron-worker\", \"smoke\": []",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 101,
+   "text": "\"company\": [\"帛卉集团\", \"BOHUI GROUP\", \"集团旗下\", \"印尼工厂\", \"Tangerang\", \"双基地\", \"SueAI\", \"莱诺鸟\", \"自有厂房\", \"自有工厂\"],",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/smoke.py:cf3b36b808ee1d98813a9ad02d6ddd75ec364af5": [],
+ "21ea2f39ec91180b:audit_v2/terms_whitelist.json:a3f30f87aaa6d2b00eaa03686dce5d169e9c6f94": [],
+ "21ea2f39ec91180b:audit_v2/ticket.py:099c1642015af15b306e50a8266f8c1fa2fff6b8": [],
+ "21ea2f39ec91180b:audit_v2/verify_or_bg.cmd:e4c436d093926581dd07600c2cdbb616b475098d": [],
+ "21ea2f39ec91180b:audit_v2/watch.cmd:7ae805631f57e61baeae881ff0e6001a4e491eaf": [],
+ "21ea2f39ec91180b:audit_v2/watch.py:b0c694870cb8a3b2d6119453389f0e1b60ed6191": [
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 239,
+   "text": "p = subprocess.run([lib.SYS_PY, '-I', '-S', hg, '--explain'], input=json.dumps({'tool_name': 'Bash', 'tool_input': {'command': 'npx wrangler deploy'},",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 242,
+   "text": "add('hook-selftest', 'hook_guard', 'red', 'hook 自检:npx wrangler deploy 没被拒', p.stdout.decode('utf-8', 'replace')[-300:])",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  }
+ ],
+ "21ea2f39ec91180b:deploy_audit.py:c17a280fb6edf43da105b3b4da986fca618f2d2c": [],
+ "21ea2f39ec91180b:gate.sh:0419ef01ff15ec0b17ab897ae9ccca19c5224868": [
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 75,
+   "text": "# 09-24 行内豁免必须写成「// nosemgrep: <规则id>[, <规则id>] 理由」(命中行行尾或上一行)。",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 76,
+   "text": "# 光秃秃的 nosemgrep 会放过该行全部规则,缺理由的事后没人看得懂 → 本次新增行里出现就拦",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 78,
+   "text": "| grep -vE 'nosemgrep:[[:space:]]*[A-Za-z0-9_.-]+([[:space:]]*,[[:space:]]*[A-Za-z0-9_.-]+)*[[:space:]]+[^[:space:]]' | head -3)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 80,
+   "text": "R1=\"$R1;行内 nosemgrep 缺规则 id 或理由 → 拦截\"; echo \"   行内 nosemgrep 必须写成「nosemgrep: <规则id> 理由」:\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  }
+ ],
+ "21ea2f39ec91180b:laya_judge.py:37354f0556732cdce125207b773aaf0ee6983c02": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 13,
+   "text": "'decision': {'type': 'choice', 'instructions': 'Should a careful reviewer allow or block deploying the change in `change`?',",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "21ea2f39ec91180b:gate.sh:cd1eea7fd962ac8800fc0a11e0a37d8693a200d4": [
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 75,
+   "text": "# 09-24 行内豁免必须写成「// nosemgrep: <规则id>[, <规则id>] 理由」(命中行行尾或上一行)。",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 76,
+   "text": "# 光秃秃的 nosemgrep 会放过该行全部规则,缺理由的事后没人看得懂 → 本次新增行里出现就拦",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 78,
+   "text": "| grep -vE 'nosemgrep:[[:space:]]*[A-Za-z0-9_.-]+([[:space:]]*,[[:space:]]*[A-Za-z0-9_.-]+)*[[:space:]]+[^[:space:]]' | head -3)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 80,
+   "text": "R1=\"$R1;行内 nosemgrep 缺规则 id 或理由 → 拦截\"; echo \"   行内 nosemgrep 必须写成「nosemgrep: <规则id> 理由」:\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/hook_guard.py:c4cec49e5b7d25c75b8e0f096281011130dcc321": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 33,
+   "text": "PROTECT_TXT = re.compile(r'\\.claude[\\\\/]+settings|gate_approved|audit_v2[\\\\/]+(cache|tickets|ledger|state|drafts|reports|enabled)\\b|tools-review[\\\\/]+\\.git'",
+   "level": "doubt",
+   "cat": "安全"
+  },
+  {
+   "rule": "C10",
+   "id": "C10-d1-no-config",
+   "line": 186,
+   "text": "return 'wrangler d1 execute --remote 写操作,走 ship_ops.sh prod'",
+   "level": "block",
+   "cat": "费用",
+   "strict": true
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/ops.py:1432e96d59920b4e36f88cbd0d012a1b329cef9f": [],
+ "21ea2f39ec91180b:audit_v2/sites.json:02d05a08233e37692aac8770ce1b74fe11fb2b5d": [
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 85,
+   "text": "\"SueAI\"",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 383,
+   "text": "\"deploy_cmd\": \"cd apps/mail-worker && npx wrangler deploy\",",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 405,
+   "text": "\"deploy_cmd\": \"cd tools/news-cron-worker && npx wrangler deploy\",",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 466,
+   "text": "\"SueAI\",",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/smoke.py:fd7185617dbaa12a220a3e131bca716b841fc9f8": [],
+ "21ea2f39ec91180b:audit_v2/ticket.py:403411a09ba658209aeabe74394fb348695416f2": [],
+ "21ea2f39ec91180b:audit_v2/watch.py:3c8e67f7db96bc5946ae7fc5deb1c0fa9a74dcb0": [
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 247,
+   "text": "p = subprocess.run([lib.SYS_PY, '-I', '-S', hg, '--explain'], input=json.dumps({'tool_name': 'Bash', 'tool_input': {'command': 'npx wrangler deploy'},",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 250,
+   "text": "add('hook-selftest', 'hook_guard', 'red', 'hook 自检:npx wrangler deploy 没被拒', p.stdout.decode('utf-8', 'replace')[-300:])",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/hook_guard.py:6477f6573481bdd1681ac5f2ff9b2742abe4fe78": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 34,
+   "text": "PROTECT_TXT = re.compile(r'\\.claude[\\\\/]+settings|gate_approved|audit_v2[\\\\/]+(cache|tickets|ledger|state|drafts|reports|enabled)\\b|tools-review[\\\\/]+\\.git'",
+   "level": "doubt",
+   "cat": "安全"
+  },
+  {
+   "rule": "C10",
+   "id": "C10-d1-no-config",
+   "line": 187,
+   "text": "return 'wrangler d1 execute --remote 写操作,走 ship_ops.sh prod'",
+   "level": "block",
+   "cat": "费用",
+   "strict": true
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/lib.py:6947a5ec89463416514a52b27d11306947c3c403": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 413,
+   "text": "for n in ('rules-v2.yml', 'rules-v2-strict.yml', 'paid_domains.txt', 'allow_domains.txt', 'terms_whitelist.json', 'gate1.py'):",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/watch.py:dcfbc988ddca7b18eab3233d9f244bc1ca336d53": [
+  {
+   "rule": "C4",
+   "id": "C4-r2-list",
+   "line": 212,
+   "text": "R2_A = {'PutObject', 'CopyObject', 'CompleteMultipartUpload', 'CreateMultipartUpload', 'UploadPart', 'UploadPartCopy', 'ListObjects', 'ListObjectsV2',",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 290,
+   "text": "p = subprocess.run([lib.SYS_PY, '-I', '-S', hg, '--explain'], input=json.dumps({'tool_name': 'Bash', 'tool_input': {'command': 'npx wrangler deploy'},",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 293,
+   "text": "add('hook-selftest', 'hook_guard', 'red', 'hook 自检:npx wrangler deploy 没被拒', p.stdout.decode('utf-8', 'replace')[-300:])",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/watch.py:82c6c48dd49723493f4037505c3ae197d4a4f9ac": [
+  {
+   "rule": "C4",
+   "id": "C4-r2-list",
+   "line": 213,
+   "text": "R2_A = {'PutObject', 'CopyObject', 'CompleteMultipartUpload', 'CreateMultipartUpload', 'UploadPart', 'UploadPartCopy', 'ListObjects', 'ListObjectsV2',",
+   "level": "block",
+   "cat": "费用",
+   "strict": false
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 291,
+   "text": "p = subprocess.run([lib.SYS_PY, '-I', '-S', hg, '--explain'], input=json.dumps({'tool_name': 'Bash', 'tool_input': {'command': 'npx wrangler deploy'},",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 294,
+   "text": "add('hook-selftest', 'hook_guard', 'red', 'hook 自检:npx wrangler deploy 没被拒', p.stdout.decode('utf-8', 'replace')[-300:])",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  }
+ ],
+ "21ea2f39ec91180b:audit_v2/register_watch_task.ps1:efbd715ec1b429cc91dc79a96c93a3edc15ad3d9": [],
+ "21ea2f39ec91180b:audit_v2/sites.json:ee20e6dbd5745b5ef719c8c30de10192290b2d4d": [
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 85,
+   "text": "\"SueAI\"",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 383,
+   "text": "\"deploy_cmd\": \"cd apps/mail-worker && npx wrangler deploy\",",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 405,
+   "text": "\"deploy_cmd\": \"cd tools/news-cron-worker && npx wrangler deploy\",",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 466,
+   "text": "\"SueAI\",",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  }
+ ],
+ "8ad32e1ca060f822:audit_v2/register_watch_task.ps1:efbd715ec1b429cc91dc79a96c93a3edc15ad3d9": [],
+ "8ad32e1ca060f822:audit_v2/sites.json:ee20e6dbd5745b5ef719c8c30de10192290b2d4d": [
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 85,
+   "text": "\"SueAI\"",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 383,
+   "text": "\"deploy_cmd\": \"cd apps/mail-worker && npx wrangler deploy\",",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 405,
+   "text": "\"deploy_cmd\": \"cd tools/news-cron-worker && npx wrangler deploy\",",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 466,
+   "text": "\"SueAI\",",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  }
+ ],
+ "8ad32e1ca060f822:gate.sh:e8c793064169b5a727dcb24c9d60609d638628cf": [
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 75,
+   "text": "# 09-24 行内豁免必须写成「// nosemgrep: <规则id>[, <规则id>] 理由」(命中行行尾或上一行)。",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 76,
+   "text": "# 光秃秃的 nosemgrep 会放过该行全部规则,缺理由的事后没人看得懂 → 本次新增行里出现就拦",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 78,
+   "text": "| grep -vE 'nosemgrep:[[:space:]]*[A-Za-z0-9_.-]+([[:space:]]*,[[:space:]]*[A-Za-z0-9_.-]+)*[[:space:]]+[^[:space:]]' | head -3)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 80,
+   "text": "R1=\"$R1;行内 nosemgrep 缺规则 id 或理由 → 拦截\"; echo \"   行内 nosemgrep 必须写成「nosemgrep: <规则id> 理由」:\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  }
+ ],
+ "8ad32e1ca060f822:audit_v2/register_watch_task.ps1:cadaa4dac44aaad01dc5b51b191315f7ed8db53d": [],
+ "8ad32e1ca060f822:audit_v2/sites.json:02d05a08233e37692aac8770ce1b74fe11fb2b5d": [
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 85,
+   "text": "\"SueAI\"",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 383,
+   "text": "\"deploy_cmd\": \"cd apps/mail-worker && npx wrangler deploy\",",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 405,
+   "text": "\"deploy_cmd\": \"cd tools/news-cron-worker && npx wrangler deploy\",",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 466,
+   "text": "\"SueAI\",",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  }
+ ],
+ "8ad32e1ca060f822:gate.sh:cd1eea7fd962ac8800fc0a11e0a37d8693a200d4": [
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 75,
+   "text": "# 09-24 行内豁免必须写成「// nosemgrep: <规则id>[, <规则id>] 理由」(命中行行尾或上一行)。",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 76,
+   "text": "# 光秃秃的 nosemgrep 会放过该行全部规则,缺理由的事后没人看得懂 → 本次新增行里出现就拦",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 78,
+   "text": "| grep -vE 'nosemgrep:[[:space:]]*[A-Za-z0-9_.-]+([[:space:]]*,[[:space:]]*[A-Za-z0-9_.-]+)*[[:space:]]+[^[:space:]]' | head -3)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 80,
+   "text": "R1=\"$R1;行内 nosemgrep 缺规则 id 或理由 → 拦截\"; echo \"   行内 nosemgrep 必须写成「nosemgrep: <规则id> 理由」:\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  }
+ ],
+ "21ea2f39ec91180b:apps/web/astro.config.mjs:fe1684704b990e2558064ed917a75305b31953cc": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 61,
+   "text": "trailingSlash: 'ignore',",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "21ea2f39ec91180b:apps/web/src/components/B2oBlock.astro:24337e347a537cde32fee770033451a4d7a9e418": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 82,
+   "text": "const deliveryTitle = '判断之后，帛卉把它做出来';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 83,
+   "text": "const deliveryIntro = '预判落到生产：帛卉自有产线和成熟配方，加上公开市场与法规数据。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 88,
+   "text": "{ value: fmt(N('products')), label: '款市场爆款情报', note: '从公开渠道收集，用于判断趋势。', href: 'https://biosphere-ai.com/zh-cn/decoder/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 89,
+   "text": "{ value: fmt(N('inci')), label: '条各国法规原料目录', note: '公开法规数据。', href: 'https://biosphere-ai.com/zh-cn/regulations/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 92,
+   "text": "{ value: String(foundingYear), label: '年成立', note: '帛卉化妆品，专注化妆品研发与生产。' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 103,
+   "text": "['能做到哪', '帛卉支持到哪一步'],",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 116,
+   "text": "<p class=\"b2o-position\">帛卉化妆品 · {foundingYear} 年成立 · 多年海外市场经验 · 主要服务出海化妆品品牌</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 136,
+   "text": "<li>帛卉能做到哪<i style=\"--w:52%\"></i></li>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 164,
+   "text": "<p class=\"b2o-lede\">帛卉化妆品把生产硬实力和出海资料准备放在同一条交付链路里。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 291,
+   "text": "{/* 判断之后 / 帛卉交付:性质不同的事实分卡陈述 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 336,
+   "text": "{/* 帛卉交付页:七个碎步骤改成一条横向链路 + 仓库图 + 待补实拍 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "21ea2f39ec91180b:apps/web/src/components/_HomeFactory.astro.retired-0921:927ce058724987384862752749c5213a75048edf": [
+  {
+   "rule": "R10",
+   "id": "R10-low-moq-slogan",
+   "line": 92,
+   "text": "steps: [['需求', '品类 / 目标市场 / 首批数量 / 参考产品或全成分表'], ['匹配基底', '从在库基底里选 2–3 条,定活性物与肤感方向'], ['寄样', '通常 5–14 天;评估后修改再寄'], ['合规资料', '目标市场备案 / 通报路径与责任方,标签与宣称核对'], ['包装', '现货包材选型或定制,包装稿逐字核对'], ['试产', '小批量走一遍产线,确认稳定性与灌装'], ['大货与放行', '按 QC 项目检测,放行报告随货']",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R10",
+   "id": "R10-low-moq-slogan",
+   "line": 119,
+   "text": "steps: [['Brief', 'Category / target market / first-run quantity / reference product or INCI list'], ['Match a base', 'Pick 2–3 in-house bases, set the actives and skin-feel direction'], ['Sample', 'Usually 5–14 days; revise and resend afte",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 3,
+   "text": "* 工厂版首页(2026-09-21 19:3x)—— 创始人:「要参考 beauty2AI.com 的版式进行 biosphere-ai.com 的大幅度调整」",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 4,
+   "text": "* 「把 beauty2AI 上那些配方也同步到 biosphere-ai.com,用 biosphere-ai.com 这个发邮件」。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 76,
+   "text": "s0: '不是口号:六项能力,每项都有证据', s0lead: '预判落到生产:帛卉自有产线和成熟配方,加上公开市场与法规数据。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 79,
+   "text": "['在库配方基底', `${fmt(N('formulas', 0))} 条可直接打样的配方基底 · ${fmt(N('classics', 0))} 条古方文献数字化`, '不是从零研发:按品类、剂型、功效、目标市场匹配基底,改活性物与肤感,寄样评估。', `${B}/formulas/`],",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "0"
+   ]
+  }
+ ],
+ "21ea2f39ec91180b:apps/web/src/middleware.ts:fcc616f270ff0a2e2aada103ad8b41d0358a9ab3": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 37,
+   "text": "'biosphere-ai.com': 'biosphere-ai',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 196,
+   "text": "帛卉面向国内跨境卖家的「产品机会预判与共创」站:只出简体中文 5 页 + 共用登录页。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 197,
+   "text": "其余页面 301 到工厂站同路径 —— 配方 / 包材 / 法规 / 解读只在 biosphere-ai.com 留一份,不做两份重复内容;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 208,
+   "text": "const t = `# BEAUTY2OEM — 帛卉化妆品 · 跨境卖家的产品机会预判与共创",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 211,
+   "text": "> 面向国内跨境电商卖家(Shopee、TikTok Shop、Amazon、美客多、Temu、Lazada):卖家负责流量、内容与运营,帛卉负责市场机会、选品、产品定义、配方、包材、打样与生产。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 219,
+   "text": "- [帛卉交付能力](${b}delivery/)",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 223,
+   "text": "- 帛卉工厂站与已核实的工厂数字:https://biosphere-ai.com/llms.txt",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 238,
+   "text": "const to = ours ? `/zh-cn/${tail}${search}` : `https://biosphere-ai.com${pathname}${search}`;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 249,
+   "text": "* biosphere-ai.com 此前由另一个 Worker(m-biosphere-ai-v2)服务的是一套",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 517,
+   "text": "const CACHE_V = 'v85';   // 09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /in",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 625,
+   "text": "2026-09-07:加了一个语种,biosphere-ai.com/zh-tw/ 的标题就变成了",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "21ea2f39ec91180b:apps/web/src/pages/[lang]/insights.astro:9021363671b4b98b7907611a0575b6b54c6797e2": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 5,
+   "text": "* 只改两处:品牌行「帛卉(BIOSPHERE)」→「帛卉化妆品」、询盘入口 → /zh-cn/brief/)。表格与脚注靠 Astro 自带 GFM,零新依赖。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 26,
+   "text": "const desc = '写给国内跨境美妆卖家:出口与平台数据、选品与选厂逻辑、17 个市场的准入要点,以及帛卉基于美国亚马逊榜单快照和各国法规原文的六条独家洞察。每个数字都有出处脚注。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 43,
+   "text": "<p class=\"meta\">洞察 · 帛卉化妆品公开研究 v1 · 数据截至 2026-09-23</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 45,
+   "text": "<p class=\"b2o-lede\">出口与平台数据、选品和选厂逻辑、17 个市场的准入要点，以及六条帛卉独家洞察。每个数字都有出处脚注。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "21ea2f39ec91180b:apps/web/src/styles/b2o.css:3e0a13f95cbd8c6a8d163b761f05c20fcbabed85": [],
+ "21ea2f39ec91180b:packages/core/src/blocks.ts:7fa207e708ac10a1ed970a678f82d65b99bb10fe": [
+  {
+   "rule": "R10",
+   "id": "R10-low-moq-slogan",
+   "line": 365,
+   "text": "{ label: '包装', note: '现货包材选型或定制,包装稿逐字核对' }, { label: '试产', note: '小批量走一遍产线,确认稳定性与灌装' }, { label: '大货与放行', note: '按 QC 项目检测,放行报告随货' },",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 303,
+   "text": "intro: '预判落到生产:帛卉自有产线和成熟配方,加上公开市场与法规数据。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "21ea2f39ec91180b:packages/core/src/content/org.ts:ee685fada72f3eb31f62fafc027ac7c812c0bbcc": [
+  {
+   "rule": "R9",
+   "id": "R9-alibaba-doubt",
+   "line": 69,
+   "text": "多个来源的同一主体,官网↔阿里国际站店铺互指能提升被引用的置信度。",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R9",
+   "id": "R9-alibaba-doubt",
+   "line": 71,
+   "text": "sameAs: ['https://biospherecosmetics.en.alibaba.com/'],",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R9",
+   "id": "R9-alibaba-doubt",
+   "line": 87,
+   "text": "此前这里写过 2003 —— 抄自我们自己的阿里国际站店铺页(「since 2003」),",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 12,
+   "text": "/** 公司主体 —— 来自《帛卉公司介绍_2026》 */",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 14,
+   "text": "legalZh: '广州市帛卉化妆品有限公司',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 15,
+   "text": "legalEn: 'Guangzhou Bohui Cosmetics Co., Ltd.',   // 09-22 体检:营业执照是 广州市帛卉化妆品有限公司,英文法人名此前写成 Biosphere → 与执照对不上,主动邀验厂反成信任漏洞",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 16,
+   "text": "brandLineEn: 'BIOSPHERE is the export brand of Guangzhou Bohui Cosmetics Co., Ltd.',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 17,
+   "text": "brandLineZh: 'BIOSPHERE 是广州市帛卉化妆品有限公司的出口品牌。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 18,
+   "text": "brand: 'BIOSPHERE',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 30,
+   "text": "/* 帛卉硬事实 · 来源:2026-09-24 老板会议。对客户只给这些现成的成熟配方,不给 AI 现编配方(没做过稳定性测试)。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 35,
+   "text": "noticeZh: '帛卉有 13,000+ 个经过稳定性测试的成熟配方,我们从中为你匹配现成配方。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 36,
+   "text": "noticeEn: 'BIOSPHERE holds 13,000+ mature formulas, all stability-tested. We match a proven one to your brief.',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "21ea2f39ec91180b:tools/ship.sh:8e7e5aea2dbd0288f3e79596369db3902624bb83": [
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 14,
+   "text": "npx wrangler deploy -c wrangler.json",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 16,
+   "text": "AV2=F:/0cosmetic/tools-review/audit_v2   # 审核部 v2.1:ENABLED 在 → v2(审核单 + 三家共判,从已批准副本执行);不在 → v1 四道闸(gate.sh 留档)",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "21ea2f39ec91180b:apps/web/astro.config.mjs:17d7bc681fbee7366cd7cd2c3e1fd671ec68e956": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 13,
+   "text": "trailingSlash: 'ignore',",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "21ea2f39ec91180b:apps/web/src/components/B2oBlock.astro:5445e5508b30898af5f166a73fd45ef2e92b0469": [
+  {
+   "rule": "R2",
+   "id": "R2-owned-factory",
+   "line": 318,
+   "text": "<p>{ORG.certs.join('、')} 认证，广州自有工厂，欢迎验厂。</p>",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 71,
+   "text": "{ l: '真实产品库', v: N('products'), u: '款', n: `全成分产品,另有 ${fmt(N('summaries'))} 条配方视角解读`, h: 'https://biosphere-ai.com/zh-cn/decoder/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 72,
+   "text": "{ l: '原料目录', v: N('inci'), u: '条', n: '各国原料目录,配方阶段先核限用和禁用成分', h: 'https://biosphere-ai.com/zh-cn/regulations/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 73,
+   "text": "{ l: '包材现货', v: N('pack_shelf'), u: '款', n: '瓶、罐、管、泵头、彩盒,先按剂型选结构', h: 'https://biosphere-ai.com/zh-cn/packaging/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 75,
+   "text": "{ l: '成熟配方', v: ORG.formulas.n, s: '+', u: '个', n: '均经稳定性测试,从中匹配现成配方,不给 AI 现编配方', h: 'https://biosphere-ai.com/zh-cn/formulas/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 87,
+   "text": "['能做到哪', '帛卉支持到哪一步'],",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 119,
+   "text": "<li>帛卉能做到哪<i style=\"--w:52%\"></i></li>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 269,
+   "text": "{/* 判断之后 / 帛卉交付:同一套数据,画成图 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 297,
+   "text": "<div class=\"chart-h\"><h3>帛卉可调用的在库条目</h3><span>对数刻度，每格乘以 10</span></div>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 328,
+   "text": "<p class=\"b2o-src\">数字读自帛卉数据库的计数快照，点每一条可以去工厂站逐条核对。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 335,
+   "text": "{/* 帛卉交付页:七个碎步骤改成一条横向链路 + 仓库图 + 待补实拍 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "21ea2f39ec91180b:apps/web/src/components/_HomeFactory.astro.retired-0921:390931ce4a146a7199293013dc6bb026f4fee489": [
+  {
+   "rule": "R10",
+   "id": "R10-low-moq-slogan",
+   "line": 92,
+   "text": "steps: [['需求', '品类 / 目标市场 / 首批数量 / 参考产品或全成分表'], ['匹配基底', '从在库基底里选 2–3 条,定活性物与肤感方向'], ['寄样', '通常 5–14 天;评估后修改再寄'], ['合规资料', '目标市场备案 / 通报路径与责任方,标签与宣称核对'], ['包装', '现货包材选型或定制,包装稿逐字核对'], ['试产', '小批量走一遍产线,确认稳定性与灌装'], ['大货与放行', '按 QC 项目检测,放行报告随货']",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R10",
+   "id": "R10-low-moq-slogan",
+   "line": 119,
+   "text": "steps: [['Brief', 'Category / target market / first-run quantity / reference product or INCI list'], ['Match a base', 'Pick 2–3 in-house bases, set the actives and skin-feel direction'], ['Sample', 'Usually 5–14 days; revise and resend afte",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 3,
+   "text": "* 工厂版首页(2026-09-21 19:3x)—— 创始人:「要参考 beauty2AI.com 的版式进行 biosphere-ai.com 的大幅度调整」",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 4,
+   "text": "* 「把 beauty2AI 上那些配方也同步到 biosphere-ai.com,用 biosphere-ai.com 这个发邮件」。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 79,
+   "text": "['在库配方基底', `${fmt(N('formulas', 0))} 条可直接打样的配方基底 · ${fmt(N('classics', 0))} 条古方文献数字化`, '不是从零研发:按品类、剂型、功效、目标市场匹配基底,改活性物与肤感,寄样评估。', `${B}/formulas/`],",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "0"
+   ]
+  }
+ ],
+ "21ea2f39ec91180b:apps/web/src/middleware.ts:1444b685431ddd872ced748ad71071cc2b105328": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 37,
+   "text": "'biosphere-ai.com': 'biosphere-ai',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 196,
+   "text": "帛卉面向国内跨境卖家的「产品机会预判与共创」站:只出简体中文 5 页 + 共用登录页。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 197,
+   "text": "其余页面 301 到工厂站同路径 —— 配方 / 包材 / 法规 / 解读只在 biosphere-ai.com 留一份,不做两份重复内容;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 208,
+   "text": "const t = `# BEAUTY2OEM — 帛卉化妆品 · 跨境卖家的产品机会预判与共创",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 211,
+   "text": "> 面向国内跨境电商卖家(Shopee、TikTok Shop、Amazon、美客多、Temu、Lazada):卖家负责流量、内容与运营,帛卉负责市场机会、选品、产品定义、配方、包材、打样与生产。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 219,
+   "text": "- [帛卉交付能力](${b}delivery/)",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 223,
+   "text": "- 帛卉工厂站与已核实的工厂数字:https://biosphere-ai.com/llms.txt",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 238,
+   "text": "const to = ours ? `/zh-cn/${tail}${search}` : `https://biosphere-ai.com${pathname}${search}`;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 249,
+   "text": "* biosphere-ai.com 此前由另一个 Worker(m-biosphere-ai-v2)服务的是一套",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 517,
+   "text": "const CACHE_V = 'v84';   // 09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 +",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 625,
+   "text": "2026-09-07:加了一个语种,biosphere-ai.com/zh-tw/ 的标题就变成了",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "21ea2f39ec91180b:apps/web/src/pages/[lang]/insights.astro:acaf72432378fdd11a9457ab4e0864bac6887fd0": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 5,
+   "text": "* 只改两处:品牌行「帛卉(BIOSPHERE)」→「帛卉化妆品」、询盘入口 → /zh-cn/brief/)。表格与脚注靠 Astro 自带 GFM,零新依赖。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 26,
+   "text": "const desc = '写给国内跨境美妆卖家:出口与平台数据、选品与选厂逻辑、17 个市场的准入要点,以及帛卉基于美国亚马逊榜单快照和各国法规原文的六条独家洞察。每个数字都有出处脚注。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 43,
+   "text": "<p class=\"meta\">洞察 · 帛卉化妆品公开研究 v1 · 数据截至 2026-09-23</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 45,
+   "text": "<p class=\"b2o-lede\">出口与平台数据、选品和选厂逻辑、17 个市场的准入要点，以及六条帛卉独家洞察。每个数字都有出处脚注。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "21ea2f39ec91180b:apps/web/src/styles/b2o.css:f800736926856e502b2e27265b3265f0ef31d063": [],
+ "21ea2f39ec91180b:packages/core/src/blocks.ts:1fc1625f971d8f2cfd0885d4b855a4cdae5c3d06": [
+  {
+   "rule": "R10",
+   "id": "R10-low-moq-slogan",
+   "line": 365,
+   "text": "{ label: '包装', note: '现货包材选型或定制,包装稿逐字核对' }, { label: '试产', note: '小批量走一遍产线,确认稳定性与灌装' }, { label: '大货与放行', note: '按 QC 项目检测,放行报告随货' },",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  }
+ ],
+ "21ea2f39ec91180b:packages/core/src/content/org.ts:4d3b30415db7791ba901287575bcacf628d14912": [
+  {
+   "rule": "R9",
+   "id": "R9-alibaba-doubt",
+   "line": 69,
+   "text": "多个来源的同一主体,官网↔阿里国际站店铺互指能提升被引用的置信度。",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R9",
+   "id": "R9-alibaba-doubt",
+   "line": 71,
+   "text": "sameAs: ['https://biospherecosmetics.en.alibaba.com/'],",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R9",
+   "id": "R9-alibaba-doubt",
+   "line": 87,
+   "text": "此前这里写过 2003 —— 抄自我们自己的阿里国际站店铺页(「since 2003」),",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 12,
+   "text": "/** 公司主体 —— 来自《帛卉公司介绍_2026》 */",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 14,
+   "text": "legalZh: '广州市帛卉化妆品有限公司',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 15,
+   "text": "legalEn: 'Guangzhou Bohui Cosmetics Co., Ltd.',   // 09-22 体检:营业执照是 广州市帛卉化妆品有限公司,英文法人名此前写成 Biosphere → 与执照对不上,主动邀验厂反成信任漏洞",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 16,
+   "text": "brandLineEn: 'BIOSPHERE is the export brand of Guangzhou Bohui Cosmetics Co., Ltd.',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 17,
+   "text": "brandLineZh: 'BIOSPHERE 是广州市帛卉化妆品有限公司的出口品牌。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 18,
+   "text": "brand: 'BIOSPHERE',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 30,
+   "text": "/* 帛卉硬事实 · 来源:2026-09-24 老板会议。对客户只给这些现成的成熟配方,不给 AI 现编配方(没做过稳定性测试)。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 35,
+   "text": "noticeZh: '帛卉有 13,000+ 个经过稳定性测试的成熟配方,我们从中为你匹配现成配方。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 36,
+   "text": "noticeEn: 'BIOSPHERE holds 13,000+ mature formulas, all stability-tested. We match a proven one to your brief.',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "21ea2f39ec91180b:tools/ship.sh:3e19941a5d6fb11313bd1c4f74ea7ed46328ad8b": [
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 13,
+   "text": "npx wrangler deploy -c wrangler.json",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  }
+ ],
+ "7aa081a24470d292:audit_v2/gate1.py:bccbb768f04181991570fc64dc3723f9f2831f35": [
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 25,
+   "text": "INTERNAL_ZH = r'创始人|老板|大哥|股东|成本|底价|毛利|利润|返点|回扣|采购价|进价|客户名单|内部|拍板|铁令|对外不提|不要提|机密|密码|hosonzuo|w8848|印尼工厂|SueAI'",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 22,
+   "text": "NS_OK = re.compile(r'nosemgrep:\\s*([\\w.-]+(?:\\s*,\\s*[\\w.-]+)*)\\s+\\S')",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 23,
+   "text": "GO_OK = re.compile(r'gate-ok:\\s*([\\w.-]+(?:\\s*,\\s*[\\w.-]+)*)\\s+\\S')",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 26,
+   "text": "INJECT_RX = re.compile(r'(审核员|审核|reviewer|auditor|AI|模型|LLM|Claude|Jev|Laya)[^\\n]{0,20}(忽略|ignore|已批准|已审核|approved|放行|allow)|ignore\\s+(all\\s+|the\\s+)?(previous|above)|忽略(以上|上面|之前)', re.I)",
+   "level": "doubt",
+   "cat": "安全"
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 77,
+   "text": "if re.search(r'nosemgrep', l, re.I) and not NS_OK.search(l):",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 78,
+   "text": "add('K6', 'K6-bare-nosemgrep', i, l, 'block', '正确性', strict=True)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 79,
+   "text": "if re.search(r'gate-ok', l, re.I) and not GO_OK.search(l):",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 80,
+   "text": "add('K6', 'K6-bare-gate-ok', i, l, 'block', '正确性', strict=True)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "S5",
+   "id": "S5-cross-account",
+   "line": 83,
+   "text": "if re.search(r'ea5b0da4|\"bohui-web\"', l) and (CFG_RX.search(path) or SCRIPT_RX.search(path)):",
+   "level": "block",
+   "cat": "安全",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "S5",
+   "id": "S5-cross-account",
+   "line": 85,
+   "text": "if re.search(r'f5010e65', l) and (CFG_RX.search(path) or SCRIPT_RX.search(path)):",
+   "level": "block",
+   "cat": "安全",
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 227,
+   "text": "allow = _domains('allow_domains.txt')",
+   "level": "doubt",
+   "cat": "安全"
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 271,
+   "text": "if (comment or nonsite) and not re.search(r'gate-ok:\\s*R11\\s+\\S', t):",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 328,
+   "text": "\"\"\"行内豁免:命中行或上一行有 nosemgrep:<id> 理由 / gate-ok:<id> 理由,且 id 对得上本规则(规则 id 或 C4 这类编号)。\"\"\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 328,
+   "text": "\"\"\"行内豁免:命中行或上一行有 nosemgrep:<id> 理由 / gate-ok:<id> 理由,且 id 对得上本规则(规则 id 或 C4 这类编号)。\"\"\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 452,
+   "text": "if mode == 'gate':          # 闸门自己的代码里本来就写着部署词、红线词、nosemgrep 这些规则字面量;它不对外发布。密钥(S1)照查",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  }
+ ],
+ "7aa081a24470d292:audit_v2/ticket.py:eb1fc69fcc300a24e94f3ec6222b0d4961ce2d11": [],
+ "7aa081a24470d292:audit_v2/gate1.py:aea778cbe950b773125819a3d414a5bb2d0d1d68": [
+  {
+   "rule": "R4",
+   "id": "R4-sueai",
+   "line": 25,
+   "text": "INTERNAL_ZH = r'创始人|老板|大哥|股东|成本|底价|毛利|利润|返点|回扣|采购价|进价|客户名单|内部|拍板|铁令|对外不提|不要提|机密|密码|hosonzuo|w8848|印尼工厂|SueAI'",
+   "level": "block",
+   "cat": "合规",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 22,
+   "text": "NS_OK = re.compile(r'nosemgrep:\\s*([\\w.-]+(?:\\s*,\\s*[\\w.-]+)*)\\s+\\S')",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 23,
+   "text": "GO_OK = re.compile(r'gate-ok:\\s*([\\w.-]+(?:\\s*,\\s*[\\w.-]+)*)\\s+\\S')",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 26,
+   "text": "INJECT_RX = re.compile(r'(审核员|审核|reviewer|auditor|AI|模型|LLM|Claude|Jev|Laya)[^\\n]{0,20}(忽略|ignore|已批准|已审核|approved|放行|allow)|ignore\\s+(all\\s+|the\\s+)?(previous|above)|忽略(以上|上面|之前)', re.I)",
+   "level": "doubt",
+   "cat": "安全"
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 77,
+   "text": "if re.search(r'nosemgrep', l, re.I) and not NS_OK.search(l):",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 78,
+   "text": "add('K6', 'K6-bare-nosemgrep', i, l, 'block', '正确性', strict=True)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 79,
+   "text": "if re.search(r'gate-ok', l, re.I) and not GO_OK.search(l):",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 80,
+   "text": "add('K6', 'K6-bare-gate-ok', i, l, 'block', '正确性', strict=True)",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "S5",
+   "id": "S5-cross-account",
+   "line": 83,
+   "text": "if re.search(r'ea5b0da4|\"bohui-web\"', l) and (CFG_RX.search(path) or SCRIPT_RX.search(path)):",
+   "level": "block",
+   "cat": "安全",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "S5",
+   "id": "S5-cross-account",
+   "line": 85,
+   "text": "if re.search(r'f5010e65', l) and (CFG_RX.search(path) or SCRIPT_RX.search(path)):",
+   "level": "block",
+   "cat": "安全",
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 227,
+   "text": "allow = _domains('allow_domains.txt')",
+   "level": "doubt",
+   "cat": "安全"
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 271,
+   "text": "if (comment or nonsite) and not re.search(r'gate-ok:\\s*R11\\s+\\S', t):",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 328,
+   "text": "\"\"\"行内豁免:命中行或上一行有 nosemgrep:<id> 理由 / gate-ok:<id> 理由,且 id 对得上本规则(规则 id 或 C4 这类编号)。\"\"\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-gate-ok",
+   "line": 328,
+   "text": "\"\"\"行内豁免:命中行或上一行有 nosemgrep:<id> 理由 / gate-ok:<id> 理由,且 id 对得上本规则(规则 id 或 C4 这类编号)。\"\"\"",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  },
+  {
+   "rule": "K6",
+   "id": "K6-bare-nosemgrep",
+   "line": 452,
+   "text": "if mode == 'gate':          # 闸门自己的代码里本来就写着部署词、红线词、nosemgrep 这些规则字面量;它不对外发布。密钥(S1)照查",
+   "level": "block",
+   "cat": "正确性",
+   "strict": true
+  }
+ ],
+ "7aa081a24470d292:audit_v2/ticket.py:403411a09ba658209aeabe74394fb348695416f2": [],
+ "7aa081a24470d292:apps/web/astro.config.mjs:fe1684704b990e2558064ed917a75305b31953cc": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 61,
+   "text": "trailingSlash: 'ignore',",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/components/B2oBlock.astro:24337e347a537cde32fee770033451a4d7a9e418": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 82,
+   "text": "const deliveryTitle = '判断之后，帛卉把它做出来';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 83,
+   "text": "const deliveryIntro = '预判落到生产：帛卉自有产线和成熟配方，加上公开市场与法规数据。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 88,
+   "text": "{ value: fmt(N('products')), label: '款市场爆款情报', note: '从公开渠道收集，用于判断趋势。', href: 'https://biosphere-ai.com/zh-cn/decoder/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 89,
+   "text": "{ value: fmt(N('inci')), label: '条各国法规原料目录', note: '公开法规数据。', href: 'https://biosphere-ai.com/zh-cn/regulations/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 92,
+   "text": "{ value: String(foundingYear), label: '年成立', note: '帛卉化妆品，专注化妆品研发与生产。' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 103,
+   "text": "['能做到哪', '帛卉支持到哪一步'],",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 116,
+   "text": "<p class=\"b2o-position\">帛卉化妆品 · {foundingYear} 年成立 · 多年海外市场经验 · 主要服务出海化妆品品牌</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 136,
+   "text": "<li>帛卉能做到哪<i style=\"--w:52%\"></i></li>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 164,
+   "text": "<p class=\"b2o-lede\">帛卉化妆品把生产硬实力和出海资料准备放在同一条交付链路里。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 291,
+   "text": "{/* 判断之后 / 帛卉交付:性质不同的事实分卡陈述 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 336,
+   "text": "{/* 帛卉交付页:七个碎步骤改成一条横向链路 + 仓库图 + 待补实拍 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/components/_HomeFactory.astro.retired-0921:927ce058724987384862752749c5213a75048edf": [
+  {
+   "rule": "R10",
+   "id": "R10-low-moq-slogan",
+   "line": 92,
+   "text": "steps: [['需求', '品类 / 目标市场 / 首批数量 / 参考产品或全成分表'], ['匹配基底', '从在库基底里选 2–3 条,定活性物与肤感方向'], ['寄样', '通常 5–14 天;评估后修改再寄'], ['合规资料', '目标市场备案 / 通报路径与责任方,标签与宣称核对'], ['包装', '现货包材选型或定制,包装稿逐字核对'], ['试产', '小批量走一遍产线,确认稳定性与灌装'], ['大货与放行', '按 QC 项目检测,放行报告随货']",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R10",
+   "id": "R10-low-moq-slogan",
+   "line": 119,
+   "text": "steps: [['Brief', 'Category / target market / first-run quantity / reference product or INCI list'], ['Match a base', 'Pick 2–3 in-house bases, set the actives and skin-feel direction'], ['Sample', 'Usually 5–14 days; revise and resend afte",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 3,
+   "text": "* 工厂版首页(2026-09-21 19:3x)—— 创始人:「要参考 beauty2AI.com 的版式进行 biosphere-ai.com 的大幅度调整」",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 4,
+   "text": "* 「把 beauty2AI 上那些配方也同步到 biosphere-ai.com,用 biosphere-ai.com 这个发邮件」。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 76,
+   "text": "s0: '不是口号:六项能力,每项都有证据', s0lead: '预判落到生产:帛卉自有产线和成熟配方,加上公开市场与法规数据。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 79,
+   "text": "['在库配方基底', `${fmt(N('formulas', 0))} 条可直接打样的配方基底 · ${fmt(N('classics', 0))} 条古方文献数字化`, '不是从零研发:按品类、剂型、功效、目标市场匹配基底,改活性物与肤感,寄样评估。', `${B}/formulas/`],",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "0"
+   ]
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/middleware.ts:fcc616f270ff0a2e2aada103ad8b41d0358a9ab3": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 37,
+   "text": "'biosphere-ai.com': 'biosphere-ai',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 196,
+   "text": "帛卉面向国内跨境卖家的「产品机会预判与共创」站:只出简体中文 5 页 + 共用登录页。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 197,
+   "text": "其余页面 301 到工厂站同路径 —— 配方 / 包材 / 法规 / 解读只在 biosphere-ai.com 留一份,不做两份重复内容;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 208,
+   "text": "const t = `# BEAUTY2OEM — 帛卉化妆品 · 跨境卖家的产品机会预判与共创",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 211,
+   "text": "> 面向国内跨境电商卖家(Shopee、TikTok Shop、Amazon、美客多、Temu、Lazada):卖家负责流量、内容与运营,帛卉负责市场机会、选品、产品定义、配方、包材、打样与生产。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 219,
+   "text": "- [帛卉交付能力](${b}delivery/)",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 223,
+   "text": "- 帛卉工厂站与已核实的工厂数字:https://biosphere-ai.com/llms.txt",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 238,
+   "text": "const to = ours ? `/zh-cn/${tail}${search}` : `https://biosphere-ai.com${pathname}${search}`;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 249,
+   "text": "* biosphere-ai.com 此前由另一个 Worker(m-biosphere-ai-v2)服务的是一套",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 517,
+   "text": "const CACHE_V = 'v85';   // 09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /in",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 625,
+   "text": "2026-09-07:加了一个语种,biosphere-ai.com/zh-tw/ 的标题就变成了",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/pages/[lang]/insights.astro:9021363671b4b98b7907611a0575b6b54c6797e2": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 5,
+   "text": "* 只改两处:品牌行「帛卉(BIOSPHERE)」→「帛卉化妆品」、询盘入口 → /zh-cn/brief/)。表格与脚注靠 Astro 自带 GFM,零新依赖。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 26,
+   "text": "const desc = '写给国内跨境美妆卖家:出口与平台数据、选品与选厂逻辑、17 个市场的准入要点,以及帛卉基于美国亚马逊榜单快照和各国法规原文的六条独家洞察。每个数字都有出处脚注。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 43,
+   "text": "<p class=\"meta\">洞察 · 帛卉化妆品公开研究 v1 · 数据截至 2026-09-23</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 45,
+   "text": "<p class=\"b2o-lede\">出口与平台数据、选品和选厂逻辑、17 个市场的准入要点，以及六条帛卉独家洞察。每个数字都有出处脚注。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/styles/b2o.css:3e0a13f95cbd8c6a8d163b761f05c20fcbabed85": [],
+ "7aa081a24470d292:packages/core/src/blocks.ts:7fa207e708ac10a1ed970a678f82d65b99bb10fe": [
+  {
+   "rule": "R10",
+   "id": "R10-low-moq-slogan",
+   "line": 365,
+   "text": "{ label: '包装', note: '现货包材选型或定制,包装稿逐字核对' }, { label: '试产', note: '小批量走一遍产线,确认稳定性与灌装' }, { label: '大货与放行', note: '按 QC 项目检测,放行报告随货' },",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 303,
+   "text": "intro: '预判落到生产:帛卉自有产线和成熟配方,加上公开市场与法规数据。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:packages/core/src/content/org.ts:ee685fada72f3eb31f62fafc027ac7c812c0bbcc": [
+  {
+   "rule": "R9",
+   "id": "R9-alibaba-doubt",
+   "line": 69,
+   "text": "多个来源的同一主体,官网↔阿里国际站店铺互指能提升被引用的置信度。",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R9",
+   "id": "R9-alibaba-doubt",
+   "line": 71,
+   "text": "sameAs: ['https://biospherecosmetics.en.alibaba.com/'],",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R9",
+   "id": "R9-alibaba-doubt",
+   "line": 87,
+   "text": "此前这里写过 2003 —— 抄自我们自己的阿里国际站店铺页(「since 2003」),",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 12,
+   "text": "/** 公司主体 —— 来自《帛卉公司介绍_2026》 */",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 14,
+   "text": "legalZh: '广州市帛卉化妆品有限公司',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 15,
+   "text": "legalEn: 'Guangzhou Bohui Cosmetics Co., Ltd.',   // 09-22 体检:营业执照是 广州市帛卉化妆品有限公司,英文法人名此前写成 Biosphere → 与执照对不上,主动邀验厂反成信任漏洞",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 16,
+   "text": "brandLineEn: 'BIOSPHERE is the export brand of Guangzhou Bohui Cosmetics Co., Ltd.',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 17,
+   "text": "brandLineZh: 'BIOSPHERE 是广州市帛卉化妆品有限公司的出口品牌。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 18,
+   "text": "brand: 'BIOSPHERE',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 30,
+   "text": "/* 帛卉硬事实 · 来源:2026-09-24 老板会议。对客户只给这些现成的成熟配方,不给 AI 现编配方(没做过稳定性测试)。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 35,
+   "text": "noticeZh: '帛卉有 13,000+ 个经过稳定性测试的成熟配方,我们从中为你匹配现成配方。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 36,
+   "text": "noticeEn: 'BIOSPHERE holds 13,000+ mature formulas, all stability-tested. We match a proven one to your brief.',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:tools/ship.sh:8e7e5aea2dbd0288f3e79596369db3902624bb83": [
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 14,
+   "text": "npx wrangler deploy -c wrangler.json",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  },
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 16,
+   "text": "AV2=F:/0cosmetic/tools-review/audit_v2   # 审核部 v2.1:ENABLED 在 → v2(审核单 + 三家共判,从已批准副本执行);不在 → v1 四道闸(gate.sh 留档)",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "7aa081a24470d292:apps/web/astro.config.mjs:17d7bc681fbee7366cd7cd2c3e1fd671ec68e956": [
+  {
+   "rule": "S9",
+   "id": "S9-reviewer-injection",
+   "line": 13,
+   "text": "trailingSlash: 'ignore',",
+   "level": "doubt",
+   "cat": "安全"
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/components/B2oBlock.astro:5445e5508b30898af5f166a73fd45ef2e92b0469": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 71,
+   "text": "{ l: '真实产品库', v: N('products'), u: '款', n: `全成分产品,另有 ${fmt(N('summaries'))} 条配方视角解读`, h: 'https://biosphere-ai.com/zh-cn/decoder/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 72,
+   "text": "{ l: '原料目录', v: N('inci'), u: '条', n: '各国原料目录,配方阶段先核限用和禁用成分', h: 'https://biosphere-ai.com/zh-cn/regulations/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 73,
+   "text": "{ l: '包材现货', v: N('pack_shelf'), u: '款', n: '瓶、罐、管、泵头、彩盒,先按剂型选结构', h: 'https://biosphere-ai.com/zh-cn/packaging/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 75,
+   "text": "{ l: '成熟配方', v: ORG.formulas.n, s: '+', u: '个', n: '均经稳定性测试,从中匹配现成配方,不给 AI 现编配方', h: 'https://biosphere-ai.com/zh-cn/formulas/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 87,
+   "text": "['能做到哪', '帛卉支持到哪一步'],",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 119,
+   "text": "<li>帛卉能做到哪<i style=\"--w:52%\"></i></li>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 269,
+   "text": "{/* 判断之后 / 帛卉交付:同一套数据,画成图 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 297,
+   "text": "<div class=\"chart-h\"><h3>帛卉可调用的在库条目</h3><span>对数刻度，每格乘以 10</span></div>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 328,
+   "text": "<p class=\"b2o-src\">数字读自帛卉数据库的计数快照，点每一条可以去工厂站逐条核对。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 335,
+   "text": "{/* 帛卉交付页:七个碎步骤改成一条横向链路 + 仓库图 + 待补实拍 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/components/_HomeFactory.astro.retired-0921:390931ce4a146a7199293013dc6bb026f4fee489": [
+  {
+   "rule": "R10",
+   "id": "R10-low-moq-slogan",
+   "line": 92,
+   "text": "steps: [['需求', '品类 / 目标市场 / 首批数量 / 参考产品或全成分表'], ['匹配基底', '从在库基底里选 2–3 条,定活性物与肤感方向'], ['寄样', '通常 5–14 天;评估后修改再寄'], ['合规资料', '目标市场备案 / 通报路径与责任方,标签与宣称核对'], ['包装', '现货包材选型或定制,包装稿逐字核对'], ['试产', '小批量走一遍产线,确认稳定性与灌装'], ['大货与放行', '按 QC 项目检测,放行报告随货']",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R10",
+   "id": "R10-low-moq-slogan",
+   "line": 119,
+   "text": "steps: [['Brief', 'Category / target market / first-run quantity / reference product or INCI list'], ['Match a base', 'Pick 2–3 in-house bases, set the actives and skin-feel direction'], ['Sample', 'Usually 5–14 days; revise and resend afte",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 3,
+   "text": "* 工厂版首页(2026-09-21 19:3x)—— 创始人:「要参考 beauty2AI.com 的版式进行 biosphere-ai.com 的大幅度调整」",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 4,
+   "text": "* 「把 beauty2AI 上那些配方也同步到 biosphere-ai.com,用 biosphere-ai.com 这个发邮件」。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R7",
+   "id": "R7-invented-terms",
+   "line": 79,
+   "text": "['在库配方基底', `${fmt(N('formulas', 0))} 条可直接打样的配方基底 · ${fmt(N('classics', 0))} 条古方文献数字化`, '不是从零研发:按品类、剂型、功效、目标市场匹配基底,改活性物与肤感,寄样评估。', `${B}/formulas/`],",
+   "level": "doubt",
+   "cat": "合规",
+   "numbers": [
+    "0"
+   ]
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/middleware.ts:1444b685431ddd872ced748ad71071cc2b105328": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 37,
+   "text": "'biosphere-ai.com': 'biosphere-ai',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 196,
+   "text": "帛卉面向国内跨境卖家的「产品机会预判与共创」站:只出简体中文 5 页 + 共用登录页。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 197,
+   "text": "其余页面 301 到工厂站同路径 —— 配方 / 包材 / 法规 / 解读只在 biosphere-ai.com 留一份,不做两份重复内容;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 208,
+   "text": "const t = `# BEAUTY2OEM — 帛卉化妆品 · 跨境卖家的产品机会预判与共创",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 211,
+   "text": "> 面向国内跨境电商卖家(Shopee、TikTok Shop、Amazon、美客多、Temu、Lazada):卖家负责流量、内容与运营,帛卉负责市场机会、选品、产品定义、配方、包材、打样与生产。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 219,
+   "text": "- [帛卉交付能力](${b}delivery/)",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 223,
+   "text": "- 帛卉工厂站与已核实的工厂数字:https://biosphere-ai.com/llms.txt",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 238,
+   "text": "const to = ours ? `/zh-cn/${tail}${search}` : `https://biosphere-ai.com${pathname}${search}`;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 249,
+   "text": "* biosphere-ai.com 此前由另一个 Worker(m-biosphere-ai-v2)服务的是一套",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 517,
+   "text": "const CACHE_V = 'v84';   // 09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 +",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 625,
+   "text": "2026-09-07:加了一个语种,biosphere-ai.com/zh-tw/ 的标题就变成了",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/pages/[lang]/insights.astro:acaf72432378fdd11a9457ab4e0864bac6887fd0": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 5,
+   "text": "* 只改两处:品牌行「帛卉(BIOSPHERE)」→「帛卉化妆品」、询盘入口 → /zh-cn/brief/)。表格与脚注靠 Astro 自带 GFM,零新依赖。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 26,
+   "text": "const desc = '写给国内跨境美妆卖家:出口与平台数据、选品与选厂逻辑、17 个市场的准入要点,以及帛卉基于美国亚马逊榜单快照和各国法规原文的六条独家洞察。每个数字都有出处脚注。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 43,
+   "text": "<p class=\"meta\">洞察 · 帛卉化妆品公开研究 v1 · 数据截至 2026-09-23</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 45,
+   "text": "<p class=\"b2o-lede\">出口与平台数据、选品和选厂逻辑、17 个市场的准入要点，以及六条帛卉独家洞察。每个数字都有出处脚注。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/styles/b2o.css:f800736926856e502b2e27265b3265f0ef31d063": [],
+ "7aa081a24470d292:packages/core/src/blocks.ts:1fc1625f971d8f2cfd0885d4b855a4cdae5c3d06": [
+  {
+   "rule": "R10",
+   "id": "R10-low-moq-slogan",
+   "line": 365,
+   "text": "{ label: '包装', note: '现货包材选型或定制,包装稿逐字核对' }, { label: '试产', note: '小批量走一遍产线,确认稳定性与灌装' }, { label: '大货与放行', note: '按 QC 项目检测,放行报告随货' },",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false,
+   "repos": [
+    "cosmetic-sites"
+   ]
+  }
+ ],
+ "7aa081a24470d292:packages/core/src/content/org.ts:4d3b30415db7791ba901287575bcacf628d14912": [
+  {
+   "rule": "R9",
+   "id": "R9-alibaba-doubt",
+   "line": 69,
+   "text": "多个来源的同一主体,官网↔阿里国际站店铺互指能提升被引用的置信度。",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R9",
+   "id": "R9-alibaba-doubt",
+   "line": 71,
+   "text": "sameAs: ['https://biospherecosmetics.en.alibaba.com/'],",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R9",
+   "id": "R9-alibaba-doubt",
+   "line": 87,
+   "text": "此前这里写过 2003 —— 抄自我们自己的阿里国际站店铺页(「since 2003」),",
+   "level": "doubt",
+   "cat": "合规",
+   "strict": false
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 12,
+   "text": "/** 公司主体 —— 来自《帛卉公司介绍_2026》 */",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 14,
+   "text": "legalZh: '广州市帛卉化妆品有限公司',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 15,
+   "text": "legalEn: 'Guangzhou Bohui Cosmetics Co., Ltd.',   // 09-22 体检:营业执照是 广州市帛卉化妆品有限公司,英文法人名此前写成 Biosphere → 与执照对不上,主动邀验厂反成信任漏洞",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 16,
+   "text": "brandLineEn: 'BIOSPHERE is the export brand of Guangzhou Bohui Cosmetics Co., Ltd.',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 17,
+   "text": "brandLineZh: 'BIOSPHERE 是广州市帛卉化妆品有限公司的出口品牌。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 18,
+   "text": "brand: 'BIOSPHERE',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 30,
+   "text": "/* 帛卉硬事实 · 来源:2026-09-24 老板会议。对客户只给这些现成的成熟配方,不给 AI 现编配方(没做过稳定性测试)。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 35,
+   "text": "noticeZh: '帛卉有 13,000+ 个经过稳定性测试的成熟配方,我们从中为你匹配现成配方。',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 36,
+   "text": "noticeEn: 'BIOSPHERE holds 13,000+ mature formulas, all stability-tested. We match a proven one to your brief.',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:tools/ship.sh:3e19941a5d6fb11313bd1c4f74ea7ed46328ad8b": [
+  {
+   "rule": "C12",
+   "id": "C12-deploy-outside-ship",
+   "line": 13,
+   "text": "npx wrangler deploy -c wrangler.json",
+   "level": "block",
+   "cat": "安全",
+   "strict": true
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/components/B2oBlock.astro:2a4b59feffb6482e6a02bd55374ad474ac0ff70b": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 82,
+   "text": "const deliveryTitle = '判断之后，帛卉把它做出来';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 83,
+   "text": "const deliveryIntro = '预判落到生产：帛卉自有产线和成熟配方，加上公开市场与法规数据。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 88,
+   "text": "{ value: fmt(N('products')), label: '款市场爆款情报', note: '从公开渠道收集，用于判断趋势。', href: 'https://biosphere-ai.com/zh-cn/decoder/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 89,
+   "text": "{ value: fmt(N('inci')), label: '条各国法规原料目录', note: '公开法规数据。', href: 'https://biosphere-ai.com/zh-cn/regulations/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 92,
+   "text": "{ value: String(foundingYear), label: '年成立', note: '帛卉化妆品，专注化妆品研发与生产。' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 103,
+   "text": "['能做到哪', '帛卉支持到哪一步'],",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 116,
+   "text": "<p class=\"b2o-position\">帛卉化妆品 · {foundingYear} 年成立 · 多年海外市场经验 · 主要服务出海化妆品品牌</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 136,
+   "text": "<li>帛卉能做到哪<i style=\"--w:52%\"></i></li>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 164,
+   "text": "<p class=\"b2o-lede\">帛卉化妆品把生产硬实力和出海资料准备放在同一条交付链路里。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 291,
+   "text": "{/* 判断之后 / 帛卉交付:性质不同的事实分卡陈述 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 336,
+   "text": "{/* 帛卉交付页:七个碎步骤改成一条横向链路 + 仓库图 + 待补实拍 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/middleware.ts:98128d0aa76314296f4886e6dc9b50decdcea82f": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 37,
+   "text": "'biosphere-ai.com': 'biosphere-ai',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 196,
+   "text": "帛卉面向国内跨境卖家的「产品机会预判与共创」站:只出简体中文 5 页 + 共用登录页。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 197,
+   "text": "其余页面 301 到工厂站同路径 —— 配方 / 包材 / 法规 / 解读只在 biosphere-ai.com 留一份,不做两份重复内容;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 208,
+   "text": "const t = `# BEAUTY2OEM — 帛卉化妆品 · 跨境卖家的产品机会预判与共创",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 211,
+   "text": "> 面向国内跨境电商卖家(Shopee、TikTok Shop、Amazon、美客多、Temu、Lazada):卖家负责流量、内容与运营,帛卉负责市场机会、选品、产品定义、配方、包材、打样与生产。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 219,
+   "text": "- [帛卉交付能力](${b}delivery/)",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 223,
+   "text": "- 帛卉工厂站与已核实的工厂数字:https://biosphere-ai.com/llms.txt",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 238,
+   "text": "const to = ours ? `/zh-cn/${tail}${search}` : `https://biosphere-ai.com${pathname}${search}`;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 249,
+   "text": "* biosphere-ai.com 此前由另一个 Worker(m-biosphere-ai-v2)服务的是一套",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 517,
+   "text": "const CACHE_V = 'v84';   // 09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /in",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 625,
+   "text": "2026-09-07:加了一个语种,biosphere-ai.com/zh-tw/ 的标题就变成了",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:audit_v2/ops.py:aabe3ff631ba04baab61e3e32d378e4c31b912f1": [],
+ "7aa081a24470d292:audit_v2/smoke.py:315bf034115eba4f58ec3c2bf95bfba464381b92": [],
+ "7aa081a24470d292:audit_v2/ops.py:1432e96d59920b4e36f88cbd0d012a1b329cef9f": [],
+ "7aa081a24470d292:audit_v2/smoke.py:fd7185617dbaa12a220a3e131bca716b841fc9f8": [],
+ "7aa081a24470d292:apps/web/src/components/B2oBlock.astro:322f2008ddbaba08243b3938b1ccab81f90850f6": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 100,
+   "text": "const deliveryTitle = '判断之后，帛卉把它做出来';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 101,
+   "text": "const deliveryIntro = '预判落到生产：帛卉自有产线和成熟配方，加上公开市场与法规数据。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 106,
+   "text": "{ value: fmt(N('products')), label: '款市场爆款情报', note: '从公开渠道收集，用于判断趋势。', href: 'https://biosphere-ai.com/zh-cn/decoder/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 107,
+   "text": "{ value: fmt(N('inci')), label: '条各国法规原料目录', note: '公开法规数据。', href: 'https://biosphere-ai.com/zh-cn/regulations/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 110,
+   "text": "{ value: String(foundingYear), label: '年成立', note: '帛卉化妆品，专注化妆品研发与生产。' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 121,
+   "text": "['能做到哪', '帛卉支持到哪一步'],",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 135,
+   "text": "<p class=\"b2o-position\">帛卉化妆品 · {foundingYear} 年成立 · 多年海外市场经验 · 主要服务出海化妆品品牌</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 153,
+   "text": "<li>帛卉能做到哪<i style=\"--w:52%\"></i></li>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 197,
+   "text": "<p class=\"b2o-lede\">帛卉化妆品把生产硬实力和出海资料准备放在同一条交付链路里。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 324,
+   "text": "{/* 判断之后 / 帛卉交付:性质不同的事实分卡陈述 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 364,
+   "text": "{/* 帛卉交付页:七个碎步骤改成一条横向链路 + 仓库图 + 待补实拍 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/middleware.ts:ac1ede97e91d9dbb932b6c2c784b35010d5ef06e": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 37,
+   "text": "'biosphere-ai.com': 'biosphere-ai',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 196,
+   "text": "帛卉面向国内跨境卖家的「产品机会预判与共创」站:只出简体中文 5 页 + 共用登录页。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 197,
+   "text": "其余页面 301 到工厂站同路径 —— 配方 / 包材 / 法规 / 解读只在 biosphere-ai.com 留一份,不做两份重复内容;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 208,
+   "text": "const t = `# BEAUTY2OEM — 帛卉化妆品 · 跨境卖家的产品机会预判与共创",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 211,
+   "text": "> 面向国内跨境电商卖家(Shopee、TikTok Shop、Amazon、美客多、Temu、Lazada):卖家负责流量、内容与运营,帛卉负责市场机会、选品、产品定义、配方、包材、打样与生产。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 219,
+   "text": "- [帛卉交付能力](${b}delivery/)",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 223,
+   "text": "- 帛卉工厂站与已核实的工厂数字:https://biosphere-ai.com/llms.txt",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 238,
+   "text": "const to = ours ? `/zh-cn/${tail}${search}` : `https://biosphere-ai.com${pathname}${search}`;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 249,
+   "text": "* biosphere-ai.com 此前由另一个 Worker(m-biosphere-ai-v2)服务的是一套",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 525,
+   "text": "const CACHE_V = 'v84';   // 09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /in",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 633,
+   "text": "2026-09-07:加了一个语种,biosphere-ai.com/zh-tw/ 的标题就变成了",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/styles/b2o.css:2341619e87a6b92b5b3ab100ca7d0adbb4817eaa": [],
+ "7aa081a24470d292:apps/web/src/components/B2oBlock.astro:dacd5b57d5e913a43001e66b93219d8be06c9607": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 100,
+   "text": "const deliveryTitle = '判断之后，帛卉把它做出来';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 101,
+   "text": "const deliveryIntro = '预判落到生产：帛卉自有产线和成熟配方，加上公开市场与法规数据。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 106,
+   "text": "{ value: fmt(N('products')), label: '款市场爆款情报', note: '从公开渠道收集，用于判断趋势。', href: 'https://biosphere-ai.com/zh-cn/decoder/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 107,
+   "text": "{ value: fmt(N('inci')), label: '条各国法规原料目录', note: '公开法规数据。', href: 'https://biosphere-ai.com/zh-cn/regulations/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 110,
+   "text": "{ value: String(foundingYear), label: '年成立', note: '帛卉化妆品，专注化妆品研发与生产。' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 121,
+   "text": "['能做到哪', '帛卉支持到哪一步'],",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 135,
+   "text": "<p class=\"b2o-position\">帛卉化妆品 · {foundingYear} 年成立 · 多年海外市场经验 · 主要服务出海化妆品品牌</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 153,
+   "text": "<li>帛卉能做到哪<i style=\"--w:52%\"></i></li>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 197,
+   "text": "<p class=\"b2o-lede\">帛卉化妆品把生产硬实力和出海资料准备放在同一条交付链路里。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 324,
+   "text": "{/* 判断之后 / 帛卉交付:性质不同的事实分卡陈述 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 364,
+   "text": "{/* 帛卉交付页:七个碎步骤改成一条横向链路 + 仓库图 + 待补实拍 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/middleware.ts:54e3c015d6a26435eb2558f33f85c54d928e3ec0": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 37,
+   "text": "'biosphere-ai.com': 'biosphere-ai',",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 196,
+   "text": "帛卉面向国内跨境卖家的「产品机会预判与共创」站:只出简体中文 5 页 + 共用登录页。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 197,
+   "text": "其余页面 301 到工厂站同路径 —— 配方 / 包材 / 法规 / 解读只在 biosphere-ai.com 留一份,不做两份重复内容;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 208,
+   "text": "const t = `# BEAUTY2OEM — 帛卉化妆品 · 跨境卖家的产品机会预判与共创",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 211,
+   "text": "> 面向国内跨境电商卖家(Shopee、TikTok Shop、Amazon、美客多、Temu、Lazada):卖家负责流量、内容与运营,帛卉负责市场机会、选品、产品定义、配方、包材、打样与生产。",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 219,
+   "text": "- [帛卉交付能力](${b}delivery/)",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 223,
+   "text": "- 帛卉工厂站与已核实的工厂数字:https://biosphere-ai.com/llms.txt",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 238,
+   "text": "const to = ours ? `/zh-cn/${tail}${search}` : `https://biosphere-ai.com${pathname}${search}`;",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 249,
+   "text": "* biosphere-ai.com 此前由另一个 Worker(m-biosphere-ai-v2)服务的是一套",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 524,
+   "text": "const CACHE_V = 'v85';   // 09-25 beauty2oem 视觉重排改了 b2o.css(资源哈希变),旧缓存 HTML 会引用已下线的旧样式,必须 +1;09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 sea",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 632,
+   "text": "2026-09-07:加了一个语种,biosphere-ai.com/zh-tw/ 的标题就变成了",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:apps/web/src/styles/b2o.css:95d53a97f16db34e92eb9ac032ec83948bdbb72c": [],
+ "7aa081a24470d292:tools-review/audit_v2/cache/tmp/prod-8dcb20b48343/command.txt:861b8672e220be3b42a9084fb62533259d36b3c0": [],
+ "7aa081a24470d292:cosmetic-sites/tools/set-probe-secret.mjs:f3300b7b09be640a0cc7b43bfee90c70b8c3ba90": [],
+ "7aa081a24470d292:apps/web/src/components/B2oBlock.astro:dbd9ded811885739f685e75d805b2fa8f6a8db7e": [
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 100,
+   "text": "const deliveryTitle = '判断之后，帛卉把它做出来';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 101,
+   "text": "const deliveryIntro = '预判落到生产：帛卉自有产线和成熟配方，加上公开市场与法规数据。';",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 106,
+   "text": "{ value: fmt(N('products')), label: '款市场爆款情报', note: '从公开渠道收集，用于判断趋势。', href: 'https://biosphere-ai.com/zh-cn/decoder/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 107,
+   "text": "{ value: fmt(N('inci')), label: '条各国法规原料目录', note: '公开法规数据。', href: 'https://biosphere-ai.com/zh-cn/regulations/' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 110,
+   "text": "{ value: String(foundingYear), label: '年成立', note: '帛卉化妆品，专注化妆品研发与生产。' },",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 121,
+   "text": "['能做到哪', '帛卉支持到哪一步'],",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 135,
+   "text": "<p class=\"b2o-position\">帛卉化妆品 · {foundingYear} 年成立 · 多年海外市场经验 · 主要服务出海化妆品品牌</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 153,
+   "text": "<li>帛卉能做到哪<i style=\"--w:52%\"></i></li>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 197,
+   "text": "<p class=\"b2o-lede\">帛卉化妆品把生产硬实力和出海资料准备放在同一条交付链路里。</p>",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 324,
+   "text": "{/* 判断之后 / 帛卉交付:性质不同的事实分卡陈述 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  },
+  {
+   "rule": "R6",
+   "id": "R6-platform-factory",
+   "line": 364,
+   "text": "{/* 帛卉交付页:七个碎步骤改成一条横向链路 + 仓库图 + 待补实拍 */}",
+   "level": "doubt",
+   "cat": "合规",
+   "repos": [
+    "skin2oem"
+   ]
+  }
+ ],
+ "7aa081a24470d292:cosmetic-sites/tools/set-probe-secret.mjs:419cac5adf524be77a89417fe736808a4a6811c3": [],
+ "7aa081a24470d292:audit_v2/ticket.py:b99a591edab1a8a97a5b2787b6b3df970172469d": []
+}

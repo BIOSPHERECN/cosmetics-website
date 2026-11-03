@@ -21,16 +21,24 @@ if "inci_zh" not in cols:
     else:
         for c in ("inci_zh", "title_zh", "cat_zh"):
             if c not in cols: d1(f"ALTER TABLE market_products ADD COLUMN {c} TEXT")
-rows = d1(f"SELECT id, title, cat, inci FROM market_products WHERE inci IS NOT NULL AND length(inci) > 30 AND (inci_zh IS NULL OR inci_zh = '') LIMIT {LIMIT}") if "inci_zh" in cols else d1(f"SELECT id, title, cat, inci FROM market_products WHERE inci IS NOT NULL AND length(inci) > 30 LIMIT {LIMIT}")
+where = "inci IS NOT NULL AND length(inci) > 30" + (" AND (inci_zh IS NULL OR inci_zh = '')" if "inci_zh" in cols else "")
+rows, last = [], 0
+while len(rows) < LIMIT:
+    page_size = min(500, LIMIT - len(rows))
+    page = d1(f"SELECT id, title, cat, inci FROM market_products WHERE {where} AND id > {last} ORDER BY id LIMIT {page_size}")
+    if not page: break
+    rows += page
+    last = page[-1]["id"]
+    if len(page) < page_size: break
 print("待中文化", len(rows), "条")
 # ① 目录对照:一次把 cn-nmpa-2021 的 inci_key → name_zh 拉进内存(8,965 行)
 cat = {}
-off = 0
-while True:   # d1() 一次吐 8,965 行会超出命令行/输出上限而静默返回空,分页 1500 行一趟
-    page = d1(f"SELECT inci_key, name_zh FROM inci_catalog WHERE registry='cn-nmpa-2021' ORDER BY rowid LIMIT 1500 OFFSET {off}")
+last = 0
+while rows:   # d1() 一次吐 8,965 行会超出命令行/输出上限而静默返回空,分页 1500 行一趟;09-24 D2:OFFSET → rowid 游标,没有待中文化就不载
+    page = d1(f"SELECT rowid rid, inci_key, name_zh FROM inci_catalog WHERE registry='cn-nmpa-2021' AND rowid > {last} ORDER BY rowid LIMIT 1500")
     if not page: break
     for r in page: cat.setdefault(r["inci_key"], r["name_zh"])
-    off += 1500
+    last = page[-1]["rid"]
     if len(page) < 1500: break
 print("目录载入", len(cat), "条")
 def zh_inci(s):

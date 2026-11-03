@@ -1,0 +1,109 @@
+{
+  "angle": "正确性",
+  "tree": "eed4b9c719c81591854eb5ffed24c0544430dc2f",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-eed4b9c719c8.json",
+  "run_label": "review-ticket eed4b9c719c8 正确性",
+  "reviewer": "claude",
+  "skills_loaded": ["code-reviewer", "karpathy-coder"],
+  "verdict": "过",
+  "checked": ["正确性-①", "正确性-②", "正确性-③", "正确性-④", "正确性-⑤", "正确性-⑥", "正确性-⑦"],
+  "findings": [
+    {
+      "id": "C1",
+      "level": "中",
+      "file": "apps/web/src/styles/b2o.css",
+      "line": 80,
+      "claim": "新加的浅底令牌规则 `.b2o-sec:not(.b2o-hero):not(.b2o-close)` 里写了 `background: var(--b2o-bg)`,特异性(1 id + 4 类)高于第 79 行 `.b2o-sec.alt { background: var(--b2o-bg-alt) }`(1 id + 3 类),所有 .alt 版块的灰底被盖成白底。",
+      "failure_scenario": "首页 b2o-wall / b2o-read / b2o-method、账本页 b2o-ledger 都带 alt,上线后这些版块背景是 #ffffff 而不是 #f5f5f7,与相邻白底版块连成一片,note 里说的「中间版块浅底交替」不成立;作品墙 figure 的 #fff 底在白版块上看不出边界。纯视觉回归,不影响渲染或路由。",
+      "evidence": "读了 b2o.css 第 79-91 行与 B2oBlock.astro 第 165/177/227/506 行(section class 含 alt)。按 CSS 特异性计算,后一条规则更具体且在后,.alt 的 background 被覆盖。",
+      "fix": "新规则里去掉 `background: var(--b2o-bg)`(令牌已经改了,第 78 行 .b2o-sec 自己会读 --b2o-bg),或补一条 `.b2o-sec.alt:not(.b2o-hero):not(.b2o-close) { background: var(--b2o-bg-alt); }`。"
+    },
+    {
+      "id": "C2",
+      "level": "低",
+      "file": "apps/web/src/styles/b2o.css",
+      "line": 80,
+      "claim": "浅底令牌规则不限首页,作用于 beauty2oem 所有页面的 .b2o-sec(简报表单 b2o-bform、账本、内页头等),暗色模式下这些版块也被强制成浅色。",
+      "failure_scenario": "系统暗色模式访问 /zh-cn/brief/:页头/页脚仍是暗色令牌,表单版块变白底;令牌成套覆盖(绿/红/阴影都补了浅色值),可读性没问题,但属于首页改动顺带改了内页观感,未在 note 中说明。",
+      "evidence": "b2o.css 第 41 行 prefers-color-scheme: dark 定义暗色令牌;新规则选择器无首页限定;B2oBlock.astro 第 408/417/497/506 行的内页 section 都命中。",
+      "fix": "若只想改首页,选择器前加首页作用域;若就是全站浅底,在 note 里写明并让冒烟覆盖 /zh-cn/brief/。"
+    },
+    {
+      "id": "C3",
+      "level": "低",
+      "file": "apps/web/src/components/B2oBlock.astro",
+      "line": 168,
+      "claim": "新文案「这些是效果图,用来和你讨论…」用半角逗号,同文件其他中文句都用全角「，」。",
+      "failure_scenario": "页面上标点不一致,纯排版瑕疵。",
+      "evidence": "diff 第 98 行对比同文件第 134 行「提交店铺，24 小时内…」。",
+      "fix": "改成全角逗号。"
+    },
+    {
+      "id": "C4",
+      "level": "低",
+      "file": "apps/web/src/styles/b2o.css",
+      "line": 142,
+      "claim": "首屏不再用 img('hero')、方法区不再用 methodTrend/methodJudge/methodVerify/methodLaunch,对应的 .b2o-img-hero、.b2o-img-methodVerify 定位规则和 IMG 表项变成死代码。",
+      "failure_scenario": "无运行时影响;后续改图时容易误以为还在用。",
+      "evidence": "grep b2o.css 第 142 行 .b2o-img-hero、移动端 .b2o-img-methodVerify;B2oBlock.astro 首屏与方法区已改用 heroFull / m1-m4。",
+      "fix": "下次顺手清理,本次不拦。"
+    },
+    {
+      "id": "C5",
+      "level": "低",
+      "file": "F:/0cosmetic/tools-review/audit_v2/口径摘要.md",
+      "line": 1,
+      "claim": "加载 karpathy-coder 技能时,技能以分叉方式执行并返回了一段指向另一份草稿(F:/0cosmetic/audit-dept/runs/20260925-200223-cosmetic-sites/draft.md)和另一个报告路径的审核指令;这不是本单的 diff/草稿内容,判定为技能输出异常,未照做,仍按本单任务执行。另:任务给的原报告路径 reports/bohui-web/eed4b9c719c8/undefined.json 不存在(路径拼接出了 undefined),本次为首审不影响结论。",
+      "failure_scenario": "若审核员照技能输出行事,会把报告写到别的目录、审别的单,本单缺报告签单作废。",
+      "evidence": "Skill(karpathy-coder) 返回内容;ls reports/bohui-web/eed4b9c719c8/ 为空。",
+      "fix": "检查 karpathy-coder 技能是否被改成 fork 模式并带了硬编码审核指令;修 review-ticket 生成原报告路径时的 undefined。"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "JEV",
+      "result": "成立但可接受",
+      "why": "Jev 判 block conf 0.37、reason 为空,给不出具体问题。逐行核对:middleware 探针为常量时间比较,secret 未设时 probeDiff 恒为 1,probe=false,规范化 301 和边缘缓存行为与改前一致;probe 变量在 476/515 行同一函数作用域内定义后使用;B2oBlock 用到的 heroFull/wall01-12/m1-m4 全部在 IMG 表里,17 个 webp 文件都在 public/b2o/img/vi/ 下,img() 不会因缺键抛错被 catch-all 吞成 404。唯一实锤的是 C1 视觉回归(.alt 灰底被盖),不影响渲染。",
+      "mitigation": "C1 建议下次修;冒烟加首页与 17 张图的 200 检查。"
+    },
+    {
+      "ref": "LAYA",
+      "result": "成立但可接受",
+      "why": "Laya conf 0.02、partial、无 reason,正确性分 1.31 属低置信信号。正确性角度复核结果同 JEV:无运行时异常、无路由/重定向变化(带 ? 的 slug 逻辑未动,canonical 只多了 !probe 条件)、无新表字段、无构建配置改动。",
+      "mitigation": "同 JEV。"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "回归",
+      "level": "中",
+      "item": "b2o.css 浅底令牌规则覆盖 .alt 背景,并作用于全部 beauty2oem 页面(C1/C2)",
+      "mitigation": "上线后人工看首页与 /zh-cn/brief/ 亮/暗两种模式;修法见 C1"
+    },
+    {
+      "cat": "回归",
+      "level": "低",
+      "item": "middleware 所有请求多一次读 PROBE_SECRET 与头部比较;secret 未设时行为不变,设了之后带正确头的请求绕过 301 与边缘缓存(会直读 D1)",
+      "mitigation": "PROBE_SECRET 只给冒烟脚本;冒烟频率受控"
+    },
+    {
+      "cat": "费用",
+      "level": "中",
+      "item": "CACHE_V v84→v85 全站缓存失效(第一关 RK1 已记)",
+      "mitigation": "见成本角度;上线后看 D1 读量"
+    }
+  ],
+  "smoke_extra": [
+    "https://beauty2oem.com/zh-cn/",
+    "https://beauty2oem.com/zh-cn/brief/",
+    "https://beauty2oem.com/b2o/img/vi/hero-full.webp",
+    "https://beauty2oem.com/b2o/img/vi/wall-01.webp",
+    "https://beauty2oem.com/b2o/img/vi/wall-05.webp",
+    "https://beauty2oem.com/b2o/img/vi/wall-06.webp",
+    "https://beauty2oem.com/b2o/img/vi/wall-12.webp",
+    "https://beauty2oem.com/b2o/img/vi/m1.webp",
+    "https://beauty2oem.com/b2o/img/vi/m4.webp"
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/eed4b9c719c8/正确性.json"
+}

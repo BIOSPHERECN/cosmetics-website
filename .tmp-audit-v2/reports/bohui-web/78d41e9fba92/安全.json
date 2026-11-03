@@ -1,0 +1,73 @@
+{
+  "angle": "安全",
+  "tree": "78d41e9fba9268994a34ced8c53cc999b6f73b2d",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-78d41e9fba92.json",
+  "run_label": "review-ticket 78d41e9fba92 安全",
+  "reviewer": "claude",
+  "skills_loaded": ["claude-guard:guard-rules", "bohui-data-security-formula-confidentiality"],
+  "verdict": "过",
+  "checked": ["安全-①", "安全-②", "安全-③", "安全-④", "安全-⑤", "安全-⑥", "安全-⑦"],
+  "findings": [
+    {
+      "id": "S0",
+      "level": "低",
+      "file": "(审核流程)",
+      "claim": "技能 security-review 加载失败:它内置的 git diff origin/HEAD... 在本仓报 no merge base,未能加载;改为按本角度检查项人工逐条审 安全.diff。",
+      "failure_scenario": "不影响本次结论;只是该技能的自动 diff 取不到,审核范围以草稿给的 安全.diff 为准。",
+      "evidence": "Skill(security-review) 返回 fatal: origin/HEAD...HEAD: no merge base;另两个技能已加载。"
+    },
+    {
+      "id": "S1",
+      "level": "低",
+      "file": "apps/web/src/middleware.ts",
+      "line": 471,
+      "claim": "新增冒烟探针:请求头 x-bohui-probe 与 secret PROBE_SECRET 相等时跳过规范化 301(第 476 行)和边缘缓存(第 515 行)。PROBE_SECRET 为空时永不命中;比较为逐字节异或,没有提前退出;只泄露长度是否相等,影响可以忽略。探针不放宽鉴权(staff/member 验签不变)、不改 goodBot 判定和 gateKey 分档,拿不到会员全文或后台。",
+      "failure_scenario": "PROBE_SECRET 一旦泄露(例如写进公开仓 cosmetic-sites 的冒烟脚本或 CI 日志),持有者可以对任意公开页每次强制现渲染、绕过缓存,还能带未登记或越界参数直达页面(不经 canon.ts 的夹值),把 D1 读量放大。这属于费用放大,不是越权。",
+      "evidence": "读 middleware.ts 第 440–570 行和第 618–697 行:cacheable 为 false 时不写新鲜副本和陈旧备份,也不读 5xx 兜底,所以探针响应不会污染缓存。全仓 grep PROBE_SECRET / x-bohui-probe 只在 middleware.ts 出现,没有明文 secret,也没有落在公开仓脚本里。",
+      "fix": "PROBE_SECRET 只用 wrangler secret put(先 source 公司 .env)设置;冒烟脚本和 secret 只放 hosonzuo 私有仓;定期轮换。可选:给探针命中加 PULSE 打点,便于发现滥用。"
+    },
+    {
+      "id": "S2",
+      "level": "低",
+      "file": "apps/web/public/b2o/img/vi/",
+      "claim": "17 张新增 webp 都是简单 VP8 格式,文件头里没有 VP8X 扩展块,因此不带 EXIF、XMP、C2PA 元数据;抽看 4 张(hero-full、m1、m4、wall-07),都是 AI 生成的效果图,图上是乱码伪文字,没有内部数据、配方、价格、后台截图或客户名。",
+      "failure_scenario": "另外 13 张没有逐张目视;万一其中有一张是后台截图或含客户品牌,就会公开发布。",
+      "evidence": "逐个用 od 看文件头,均为 RIFF….WEBPVP8(不是 VP8X);grep -a EXIF/XMP/http/prompt/parameters/C2PA/jumb 17 张均为 0 命中;用 Read 目视 4 张。",
+      "fix": "合规审核员看页面时顺带目视其余 13 张。"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "JEV",
+      "result": "成立但可接受",
+      "why": "Jev 判 block,但 conf 只有 0.01,reason 为空,security 分 0.28;人工审定唯一的安全相关改动是带 secret 的探针旁路。它不放宽鉴权,只在 secret 泄露时有读量放大风险;二进制图片没有元数据,抽样也没有看到内部数据。",
+      "mitigation": "PROBE_SECRET 只进 wrangler secret 和私有仓,定期轮换;其余图片由合规角度目视。"
+    },
+    {
+      "ref": "LAYA",
+      "result": "成立但可接受",
+      "why": "Laya 判 block,conf 0.06,partial,reason 为空,security 1.0 属于二进制加 middleware 触发的保守分;逐行审 middleware diff,没有注入、开放跳转、密钥明文或绑定变更(301 的 Location 仍由 canonical() 生成,本次没有改动)。",
+      "mitigation": "同上;RK2 冒烟跑全表,以验证 middleware 没有回归。"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "安全",
+      "level": "低",
+      "item": "PROBE_SECRET 泄露后可以强制绕过边缘缓存和规范化 301,放大 D1 读量(不越权)",
+      "mitigation": "secret 只走 wrangler secret put(先 source 公司 .env,防落错账号);冒烟脚本只进私有仓;可加探针命中打点"
+    },
+    {
+      "cat": "费用",
+      "level": "中",
+      "item": "CACHE_V v84→v85 使全站缓存失效(第一关 RK1 已列),预算灯为 red",
+      "mitigation": "由成本角度把关;上线后盯 1–2 小时 D1 读量"
+    }
+  ],
+  "smoke_extra": [
+    "不带 x-bohui-probe 请求一个非规范 URL(例如缺尾斜杠),应仍然 301",
+    "带错误的 x-bohui-probe 值请求已缓存页面,应仍然命中缓存(不应现渲染)"
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/78d41e9fba92/安全.json"
+}

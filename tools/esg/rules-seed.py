@@ -123,7 +123,7 @@ R("social", "tag", "animal-derived", "red", "动物来源(纯素不通过)", "�
 R("social", "regex", r"COLLAGEN|KERATIN|ELASTIN|GELATIN|PLACENTA|ROYAL JELLY|CHOLESTEROL|LANOLIN|TALLOW|CARMINE|CI 75470|BEESWAX|CERA ALBA|CERA FLAVA|SERICIN|\bSILK\b|CASEIN|LACTOFERRIN|\bSNAIL\b|\bEGG\b|\bLAC\b|\bPEARL\b|\bMEL\b|SHELLAC|AMBERGRIS|CIVET",
   "red", "动物来源(纯素不通过,键补充)", "同上,补 tag 未覆盖的水解胶原/蜗牛/珍珠/壳聚糖等",
   "The Vegan Society Trademark Standards(非法规)", "https://www.vegansociety.com", note="仅 constraints.vegan 或严格档 red,基础档 yellow;甘油/硬脂酸等「来源需核」不判红")
-R("social", "regex", r"MILK|CHITOSAN", "yellow", "乳/壳聚糖来源需核(动物或植物)", "MILK 可为植物乳(椰子/燕麦)也可为动物乳,CHITOSAN 多为甲壳来源亦有真菌来源;纯素项目需供应商说明来源", "Vegan Society / V-Label 定义(认证标准,非法规)", "https://www.vegansociety.com", note="09-18 抽审新增;非法规,需证书;以最新官方文本为准")
+R("social", "regex", r"\bMILK\b|CHITOSAN", "yellow", "乳/壳聚糖来源需核(动物或植物)", "MILK 可为植物乳(椰子/燕麦)也可为动物乳,CHITOSAN 多为甲壳来源亦有真菌来源;纯素项目需供应商说明来源", "Vegan Society / V-Label 定义(认证标准,非法规)", "https://www.vegansociety.com", note="09-18 抽审新增;非法规,需证书;以最新官方文本为准")
 R("social", "key", "SQUALENE", "yellow", "鲨烯来源需核(鲨鱼/橄榄)", "SQUALENE 可来自鲨鱼肝油或橄榄;非橄榄/甘蔗来源纯素不通过,需供应商来源声明",
   "The Vegan Society Trademark Standards(非法规)", "https://www.vegansociety.com", note="来源声明为橄榄/甘蔗则绿")
 for k in ["MICA", "CI 77019"]:

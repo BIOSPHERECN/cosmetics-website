@@ -16,9 +16,12 @@ import { getSiteByHost, getSiteById, LANGS, hreflangOf, DEFAULT_LANG } from '../
 import { COMPARE_ZH } from '@cosmetic/core/content/compare.ts';
 import { GUIDES_ZH } from '@cosmetic/core/content/guides.ts';
 import { CASES_ZH } from '@cosmetic/core/content/cases.ts';
+import { TOOLS } from '@cosmetic/core/content/tools.ts';
 import { decoderSlug, ingredientSlug } from '../lib/decoder';
 import { SITEMAP_PARTS } from '../lib/canon';
+import { CAT_LABEL } from '../lib/catalog';
 import { getCounts } from '../lib/counts';
+import { memo } from '../lib/memo';
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -90,6 +93,8 @@ export const GET: APIRoute = async ({ url }) => {
     /* 带 ? 的 slug 只是导航里的货架筛选入口(「④ 包装盒」),不是页面,不进 sitemap */
     if (p.slug.includes('?')) continue;
     const tail = p.slug ? `${p.slug}/` : '';
+    /* 每个语种各出一条 <loc>,与 news 详情页同一写法:
+       只写默认语种会让另外 18 个语种版本不被声明,搜索引擎只能靠 hreflang 自己发现 */
     for (const lang of LANGS) {
       const loc = `${base}/${lang}/${tail}`;
       const alts = LANGS.map((l) =>
@@ -147,36 +152,56 @@ export const GET: APIRoute = async ({ url }) => {
     : { results: [] as any[] };
   for (const p of (part === 'pages' ? (prods ?? []) : [])) {
     const tail = `product/${p.slug}/`;   /* 单数 —— 复数那条被根 [...path] 吃掉 */
-    for (const lang of LANGS) {
-      const alts = LANGS.map((l) =>
-        `    <xhtml:link rel="alternate" hreflang="${hreflangOf(l)}" href="${esc(`${base}/${l}/${tail}`)}"/>`).join('\n');
-      parts.push(
-        `  <url>\n    <loc>${esc(`${base}/${lang}/${tail}`)}</loc>\n` +
-        (p.updated_at ? `    <lastmod>${esc(String(p.updated_at).slice(0, 10))}</lastmod>\n` : '') +
-        `    <priority>0.7</priority>\n${alts}\n` +
-        `    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(`${base}/${DEFAULT_LANG}/${tail}`)}"/>\n  </url>`,
-      );
-    }
+    /* 每个产品一条 URL(规范用 en),带全部语种 hreflang 备选。
+       原来对每个产品×18 语种各出一条、每条又带 18 个 alternates → 1166×18×18≈38 万行,
+       撑爆 Worker 内存(part=pages 503)。这是 sitemap 的标准写法,体积降 18 倍。2026-10-28 */
+    const alts = LANGS.map((l) =>
+      `    <xhtml:link rel="alternate" hreflang="${hreflangOf(l)}" href="${esc(`${base}/${l}/${tail}`)}"/>`).join('\n');
+    parts.push(
+      `  <url>\n    <loc>${esc(`${base}/${DEFAULT_LANG}/${tail}`)}</loc>\n` +
+      (p.updated_at ? `    <lastmod>${esc(String(p.updated_at).slice(0, 10))}</lastmod>\n` : '') +
+      `    <priority>0.7</priority>\n${alts}\n` +
+      `    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(`${base}/${DEFAULT_LANG}/${tail}`)}"/>\n  </url>`,
+    );
   }
+
+  /* answers 页由下方 line ~260 的 push('answers/<slug>/') 统一处理(2026-10-28 核实),
+     这里不再重复 emit,避免同一 URL 进 sitemap 两次。 */
 
   /* 解决方案(10 页,内容在常量里)与配方详情页 —— 2026-09-06 补进来。
      这两类才是采购真正会搜的长尾:「跨境卖家 私有品牌」「面膜代工 起订量」「屏障修护乳液 代工」。
      页面上线了却不在 sitemap 里,等于没做 —— 东西在,但没人知道它在。
      目录详情页的写法见下面那段注释 —— 与这里的营销页不同。 */
   const push = (tail: string, priority: string, mod?: string) => {
-    for (const lang of LANGS) {
-      const alts = LANGS.map((l) =>
-        `    <xhtml:link rel="alternate" hreflang="${hreflangOf(l)}" href="${esc(`${base}/${l}/${tail}`)}"/>`).join('\n');
-      parts.push(
-        `  <url>\n    <loc>${esc(`${base}/${lang}/${tail}`)}</loc>\n` +
-        (mod ? `    <lastmod>${esc(String(mod).slice(0, 10))}</lastmod>\n` : '') +
-        `    <priority>${priority}</priority>\n${alts}\n` +
-        `    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(`${base}/${DEFAULT_LANG}/${tail}`)}"/>\n  </url>`,
-      );
-    }
+    /* 一页一条 URL(规范 en)+ 全语种 hreflang 备选。
+       原来 18 语种各自出一条、每条又带 18 个 alternates —— OEM 156 页就乘成 2808 条,
+       整份 part=pages 18MB、Worker 生成超时/503。2026-10-28 修。 */
+    const alts = LANGS.map((l) =>
+      `    <xhtml:link rel="alternate" hreflang="${hreflangOf(l)}" href="${esc(`${base}/${l}/${tail}`)}"/>`).join('\n');
+    parts.push(
+      `  <url>\n    <loc>${esc(`${base}/${DEFAULT_LANG}/${tail}`)}</loc>\n` +
+      (mod ? `    <lastmod>${esc(String(mod).slice(0, 10))}</lastmod>\n` : '') +
+      `    <priority>${priority}</priority>\n${alts}\n` +
+      `    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(`${base}/${DEFAULT_LANG}/${tail}`)}"/>\n  </url>`,
+    );
   };
 
   if (part === 'pages') push('formulas/', '0.8');
+  /* 品类集合页(2026-11-02 GEO):每个有在售成品的品类一条可独立索引的入口,
+     比 /portfolio/?cat= 的查询参数页更能被收录与引用 */
+  if (part === 'pages') {
+    /* C1 纪律:访客路由不写 COUNT/GROUP BY。这里只需要「哪些品类有在售成品」,
+       取品类列在 JS 里去重即可(sitemap 本身有边缘缓存,行数不成问题)。 */
+    const { results: catRows } = await db
+      .prepare(`SELECT category FROM products
+                 WHERE site_id = ? AND status = 'published' AND is_showcase = 1`)
+      .bind(site.id).all<any>().catch(() => ({ results: [] as any[] }));
+    const catSet = new Set<string>();
+    for (const r of (catRows ?? []) as any[]) {
+      if (r.category && (CAT_LABEL as any)[r.category]) catSet.add(r.category);
+    }
+    for (const c of catSet) push(`collections/${c}/`, '0.9');
+  }
   if (part === 'pages') push('packaging/', '0.8');
   if (part === 'pages') push('ingredients/', '0.8');
   /* 2026-09-07:十一个 /solutions/ 页收成一页 /services/(创始人:「不要这样散开」)。
@@ -191,6 +216,12 @@ export const GET: APIRoute = async ({ url }) => {
   if (part === 'pages') push('inci/', '0.8');
   /* 成分解读列表(创始人 2026-09-17 看 INCIDecoder:「这些其实也是可以对外的」);产品页在 part=decoder */
   if (part === 'pages') push('decoder/', '0.8');
+  /* 工具落地页(2026-10-29):一个工具吃一个买家查询,SSR 渲染,AI 可直接引用。
+     与同类工具的 /tools/* 同结构;那些站是单页应用,AI 爬虫读不到正文。 */
+  if (part === 'pages') {
+    push('tools/', '0.9');
+    for (const t of TOOLS) push(`tools/${t.slug}/`, '0.8');
+  }
   /* 2026-09-10 各国目录版块化:每个已入库的目录一页(cn-nmpa-2021 / eu-cosing / ca-hotlist / us-fda …)。
      查 inci_catalog 的 GROUP BY 而不是 inci_registry —— 只收有数据的,没抓到的目录不进 sitemap。 */
   if (part === 'pages') {

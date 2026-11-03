@@ -1,0 +1,60 @@
+{
+ "angle": "成本",
+ "tree": "3a56150af3611f26c2c0bfce1ae04eaeeca61d07",
+ "worker": "bohui-web",
+ "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-3a56150af361.json",
+ "run_label": "review-ticket 3a56150af361 成本",
+ "reviewer": "claude",
+ "skills_loaded": ["zero-r2-move", "karpathy-coder"],
+ "verdict": "过",
+ "checked": ["成本-①", "成本-②", "成本-③", "成本-④", "成本-⑤", "成本-⑥", "成本-⑦"],
+ "findings": [
+  {
+   "id": "C1",
+   "level": "低",
+   "file": "apps/web/src/middleware.ts",
+   "line": 472,
+   "claim": "PROBE_SECRET 一旦外泄,持有者可对任意公开页无限次绕过 Cache API 现渲染,读量不受缓存保护;代码本身没有对探针请求限次",
+   "failure_scenario": "secret 泄露后,脚本带 x-bohui-probe 头循环刷货架/详情页 → 每次都现查 D1,等同于回到 09-24 前「假 cookie 绕缓存」的放大面",
+   "evidence": "读 middleware.ts 466-516:probe 为真时 canonical 301 与 cacheable 都跳过;secret 只从 cfEnv 读,本机存于 cosmetic-sites/.env(.gitignore 第 7 行已忽略,git check-ignore 确认),smoke.py 只读进内存不打印。当前 PROBE_SECRET 未设时 probeDiff 恒为 1,不生效",
+   "fix": "上线后才配 secret,长度≥32 随机;泄露即轮换(wrangler secret put 前先 source 公司 .env)。可选:WAF 对带 x-bohui-probe 头的请求按 IP 限速"
+  },
+  {
+   "id": "C2",
+   "level": "低",
+   "file": "apps/web/src/middleware.ts",
+   "line": 516,
+   "claim": "探针请求 cacheable=false,不回填新鲜副本也不回填 7 天陈旧备份(658/681/688 行都以 cacheable 为前提),冒烟本身不能起到上线后预热缓存的作用",
+   "failure_scenario": "上线后冒烟 23 条全现渲染,但访客/GPTBot 首次访问仍各自冷渲染一次;这与旧 ?kk= 行为(kk 不进缓存键但会回填同键)相比少了预热,读量差在单页一次渲染量级,非放大",
+   "evidence": "middleware.ts 619/642/658/681/688/697 行均判 cacheable;CACHE_V 仍为 v84,本 diff 未改,无全站失效尖峰"
+  }
+ ],
+ "addressed": [
+  {
+   "ref": "LAYA",
+   "result": "不成立",
+   "why": "Laya 判 block 但 conf 仅 0.03、reason 为 null,noul.cost=1.0 无具体指向。成本角度逐项核对:本 diff 只在 middleware 加 12 行常量级字符比较(循环上限为 secret 长度,与请求头长度无关),无新 D1 查询、无 LIKE/JOIN/OFFSET、不改 CACHE_V、不碰 R2、不调模型/Workers AI/KV 写、不改定时;机器人(GPTBot 74%)不持有 secret,走原缓存路径不变"
+  }
+ ],
+ "risks": [
+  {
+   "cat": "费用",
+   "level": "低",
+   "item": "每次上线冒烟 baseline+deploy 约 2×23 条探针请求全部现渲染读 D1(含 deploy_only 搜索页);量级与 C1 之前 ?kk= 相同,非新增放大",
+   "mitigation": "hourly 模式不带 kk、不加探针头,仍走缓存;不要把探针用到定时巡检里"
+  },
+  {
+   "cat": "费用",
+   "level": "低",
+   "item": "PROBE_SECRET 泄露即成为无限绕缓存通道",
+   "mitigation": "secret 只存 .env(已 gitignore)与 Worker secret;疑泄露立即轮换"
+  },
+  {
+   "cat": "费用",
+   "level": "低",
+   "item": "上线后该盯的数:Bohui-D1Budget 日读行(线 5 亿)、Cache API 命中率、PULSE 里带探针时段的现渲染次数;若日读在上线日异常抬升先查是否有非冒烟来源带 x-bohui-probe 头",
+   "mitigation": "看门狗 Bohui-D1Budget 已在;上线当天对比前一日同时段读行"
+  }
+ ],
+ "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/3a56150af361/成本.json"
+}

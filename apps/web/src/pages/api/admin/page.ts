@@ -26,6 +26,7 @@ export const POST: APIRoute = async ({ request }) => {
     if (!page_id) return json({ ok: false, msg: '缺少 page_id' }, 400);
     const page = await c.db.prepare(`SELECT site_id FROM pages WHERE id=?`).bind(page_id).first<{ site_id: string }>();
     if (!page) return json({ ok: false, msg: '页面不存在' }, 404);
+    if (!c.tenant.isGroup && page.site_id !== c.tenant.siteId) return json({ ok: false, msg: '无权操作该站点页面' }, 403);
 
     /* A9 · 09-23:草稿 / 发布 / 撤销(WordPress 那套)。
        存草稿只进 page_versions,线上一个字不动;发布前先存整页快照,「撤销上一次改动」就是还原它。 */
@@ -101,6 +102,7 @@ export const PATCH: APIRoute = async ({ request }) => {
   if (!sets.length) return json({ ok: false, msg: '没有要改的字段' }, 400);
   const page = await c.db.prepare(`SELECT site_id FROM pages WHERE id=?`).bind(id).first<{ site_id: string }>();
   if (!page) return json({ ok: false, msg: '页面不存在' }, 404);
+  if (!c.tenant.isGroup && page.site_id !== c.tenant.siteId) return json({ ok: false, msg: '无权操作该站点页面' }, 403);
   await c.db.prepare(`UPDATE pages SET ${sets.join(',')}, updated_at=datetime('now') WHERE id=?`).bind(...bind, id).run();
   await invalidateNavSnap(c.db, page.site_id);
   return json({ ok: true });

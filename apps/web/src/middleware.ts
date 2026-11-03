@@ -20,6 +20,8 @@ import { env as cfEnv } from 'cloudflare:workers';
 import { readSession, readCookie, COOKIE } from './lib/auth';
 /* lib/quota 只依赖 ai-ip(纯数据),同样可以进中间件 */
 import { answerBot } from './lib/quota';
+/* lib/fuse:费用熔断保险丝(只依赖 D1,与 quota 同一约束,可进中间件) */
+import { fuseCheck, fuseResponse } from './lib/fuse';
 /* lib/member 只依赖 auth 与 quota;lib/canon 没有任何依赖(09-24 C1) */
 import { memberSigned } from './lib/member';
 import { canonical, isPagePath, keyParams, uncacheable } from './lib/canon';
@@ -277,6 +279,16 @@ const route = async (ctx: Parameters<Parameters<typeof defineMiddleware>[0]>[0],
   const legacy = LEGACY[pathname.toLowerCase()];
   if (legacy) return ctx.redirect(legacy + search, 301);
 
+  /* /{lang}/products/{slug}/ → /{lang}/product/{slug}/(2026-11-02)。
+     详情页路由是单数(见 [lang]/product/[pslug].astro 的注释:复数会被根级 [...path] 吃掉),
+     而首页版块的链接是**库里写的**,当时手成了复数 —— 8 条产品链接当场 404。
+     改库要抽样核影响面并备份,而且以后后台再手写复数还会犯;
+     这条 301 在咽喉处一次覆盖存量与增量,顺带把已外发出去的复数链接也接住。
+     只动「单段 slug」形态,列表页 /products/ 仍按原逻辑 301 到 /portfolio/。 */
+  const pluralProduct = /^\/([a-z][\w-]*)\/products\/([\w-]+)\/?$/.exec(pathname);
+  if (pluralProduct && (LOCALES as readonly string[]).includes(pluralProduct[1]))
+    return ctx.redirect(`/${pluralProduct[1]}/product/${pluralProduct[2]}/${search}`, 301);
+
   // 只管页面路径;接口、图片、后台、构建产物一律放过
   /* /bohui 不带斜杠必须显式规整。
      只写 startsWith('/bohui/') 挡不住裸的 '/bohui' ——
@@ -477,6 +489,22 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     const to = canonical(url0.pathname, url0.search);
     if (to) return new Response(null, { status: 301, headers: { Location: to } });
   }
+  /* ④ 成品站总览页退役(创始人 2026-10-23:「/products/ 爆款产品是不是没必要了」):
+     /products/ 职责由 /portfolio/ 产品画廊全部承接,301 永久迁移 ——
+     旧书签、外链、已收录的 URL 全部平滑落地,不再是死链也不抢流量。 */
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    const pm = url0.pathname.match(/^\/([^/]+)\/products\/?$/);
+    if (pm && ((LOCALES as readonly string[]).includes(pm[1]) || (ALIAS as Record<string, string>)[pm[1]])) {
+      const lang = (ALIAS as Record<string, L>)[pm[1]] ?? pm[1];
+      /* 旧货架的 ?cat= 品类筛选链接原样带过去,portfolio 侧已登记同名参数 */
+      const cat = url0.searchParams.get('cat');
+      const qs = cat ? `?cat=${encodeURIComponent(cat)}` : '';
+      return new Response(null, { status: 301, headers: { Location: `/${lang}/portfolio/${qs}` } });
+    }
+    if (url0.pathname === '/products' || url0.pathname === '/products/') {
+      return new Response(null, { status: 301, headers: { Location: '/portfolio/' } });
+    }
+  }
   /* 哪些路径允许**带参数**进缓存,以及这个路径上哪些参数真的影响渲染。
      2026-09-07 实测:边缘缓存命中率只有 0.22%,而全站 24 小时 6.5 万次请求 ——
      原因就是上一版这里写了 !url0.search:**任何带 ? 的 URL 一律不缓存**。
@@ -521,7 +549,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   /* v3(2026-09-07 上午):D1 额度耗尽期间,边缘把一批 404 与 503 缓存住了 ——
      修好之后访客拿到的仍是坏副本。推版本号是清掉它们唯一干净的办法。 */
   /* v4(2026-09-07 晚):sitemap 拆分、繁中上线、跨站兜底重写 —— 清掉全部旧副本 */
-  const CACHE_V = 'v91';   // 09-25 配方页撤下快照兜底(曾外泄 60 条旧配方的成本档/起订/交期),必须立刻生效;09-25 手机认证条改一行 4 个;恢复展示自家旧证书(GMPC/ISO/AHF HALAL,创始人定),别家公司的 HALAL(/media/155)仍不展示;09-25 beauty2oem 手机首屏压缩(图 2:1、标题两行、按钮并排)、页头按钮让给吸底条、首屏时吸底条收起、车间实拍两列、24 小时卡片不溢出(b2o.css 哈希变,+1);09-25 撤下过期/非本公司证书图(GMPC、ISO 22716 有效期到 2026-01-02,HALAL 一张是别家公司、AHF 到 2026-03-19);09-25 beauty2oem 手机端 banner 改图上字下、认证条横滑(b2o.css 哈希变,+1);09-25 beauty2oem banner 下加认证与注册条(GMPC/ISO/HALAL/FDA/CPNP/SCPN/CNF)、加车间实拍+厂牌、banner 换 Codex 出图(hero-lineup)、限宽 1800 圆角卡片、高度按 2.8:1、页头吸顶修复,改页脚说明;biosphere 合规卡改四地注册;09-25 beauty2oem 视觉重排改了 b2o.css(资源哈希变),旧缓存 HTML 会引用已下线的旧样式,必须 +1;09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
+  const CACHE_V = 'v115';   // 2026-10-30:清掉短缓存生效前的旧条目(zh-cn/pack 等);此后工具页 120s 自动更新,不再 bump
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。
@@ -624,6 +652,33 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     }
   }
 
+  /* 费用熔断保险丝(2026-10-22,lib/fuse.ts):只有「缓存 miss → 渲染」才花钱,所以熔断只在这里查 ——
+     命中缓存的请求直接返回,不查 D1、不计数、不受影响。
+     当日渲染量触顶(fuse_daily.fired=1)后,非会员 / 非后台 / 非探针请求一律 429,不再渲染、不再花钱;
+     会员与后台照常(付费主与运营不能误伤)。熔断按北京时间日界,次日零点自动解除。
+     阈值 env.FUSE_RENDER_CAP,默认 30 万渲染/天 ≈ 3000 万行读/天,仅为免费额度(250 亿/月)的 3.6%。 */
+  /* 2026-10-23 豁免廉价静态文件:robots.txt / llms.txt / sitemap*.xml / favicon。
+     robots.txt 是本项目里明说「不查 D1」的纯静态输出,却被 AI 爬虫整天轮询 ——
+     它们既不花钱也不该被 429:爬虫拿不到 robots.txt 会重试得更凶(实测熔断日
+     AI 爬虫把渲染计数器刷到 30 万天花板,其中大量是这几个文件)。
+     豁免之后:熔断日爬虫也能拿到准信,页面流量该拦照拦。 */
+  const cheapStatic =
+    /^\/(?:robots\.txt|llms(?:-full)?\.txt|favicon\.ico)$/.test(url0.pathname)
+    || /^\/[\w-]+\/(?:robots\.txt|llms(?:-full)?\.txt)$/.test(url0.pathname)
+    || /\/sitemap(?:-[^/]*)?\.xml$/.test(url0.pathname);
+  if (cacheable && !staff && !member && !probe && !cheapStatic) {
+    const fuseCap = Number((cfEnv as any)?.FUSE_RENDER_CAP ?? 0);
+    const fuse = await fuseCheck({ db: (cfEnv as any)?.DB as D1Database | undefined, cap: fuseCap || undefined });
+    if (fuse.fired) {
+      /* 熔断事件打点进分析罗盘(who='fuse:on'),方便追溯是哪天哪个尖峰触发的 */
+      try {
+        const ae = (cfEnv as any)?.PULSE as { writeDataPoint: (d: unknown) => void } | undefined;
+        ae?.writeDataPoint({ blobs: ['fuse:on', '-', '-', '-', '-', '-'], doubles: [fuse.renders], indexes: ['fuse:on'] });
+      } catch { /* 打点失败不影响拦截 */ }
+      return fuseResponse();
+    }
+  }
+
   /* 站点联络方式(WhatsApp / 微信)注入 locals:页脚与 Organization schema 从这里读,46 处 SiteFooter 不用各传一遍。
      10 分钟内存缓存;缓存未命中才查 sites 一行。后台改了号码,最迟 10 分钟 + 边缘缓存 10 分钟生效。 */
   (ctx.locals as any).contact = await siteContactFor(url0.hostname);
@@ -655,23 +710,23 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
        页面在降级时会带上 x-bh-degraded,这里据此拒绝缓存。 */
     const degraded = res.headers.get('x-bh-degraded') === '1';
     if (cacheable && cache && res.status === 200 && !degraded && !res.headers.has('Set-Cookie')) {
-      /* 10 分钟新鲜 + 1 小时可陈用:内容更新最迟 10 分钟后生效,
-         而爬虫密集扫站时几乎全部命中缓存,D1 一行都不用读。 */
-      /* 路由自己声明了 Cache-Control 就不覆盖 —— 中间件只给没声明的兜底。
-         上一版用 /immutable|max-age=\d{6,}/ 去"猜"哪些该放过,结果:
-           · /pack/{code} 的 max-age=31536000, immutable 被覆盖成 10 分钟
-             (3,674 张实拍图每天多几万次回源);
-           · sitemap.xml / robots.txt / llms.txt 声明的 max-age=3600 是四位数,
-             正则不匹配,也一起被压成 10 分钟。
-         用正则去猜别人的意图,本来就是错的做法:声明了就是声明了。
-
-         没声明的默认给 1 小时而不是 10 分钟。10 分钟远短于爬虫的复访间隔,
-         等于"已缓存"的那批 URL 实际命中率接近零,缓存对 D1 账单几乎不起保护作用。
-         内容一天改不了几次,1 小时的新鲜度足够;要立刻生效就改 CACHE_V 重新部署。
-         stale-while-revalidate 一并删掉 —— Serve Stale 在我们这一档不生效,
-         注释描述了一个不存在的行为,真正的陈旧兜底是下面那份 __stale 备份。 */
+      /* 6 小时新鲜边缘缓存:内容更新最迟 6 小时后生效(或改 CACHE_V 立即生效)。
+         2026-10-21:从 1 小时提至 6 小时 ——
+         1182 产品页 × 爬虫复访间隔 < 1 小时 = 每天数万次 D1 查询(爬虫猛攻 2 天 $80 事故)。
+         6 小时后爬虫才回源一次,命中缓存 0 D1 查询。
+         路由自己声明了 Cache-Control 就不覆盖(见上方注释)。 */
+      /* 边缘缓存 TTL:21600 = 6 小时 —— D1 省钱第一(10-21 爬虫猛攻 $80 事故的教训)。
+         整改后想让新内容立刻全球可见:部署后在 CF 后台手动「清空缓存」即可,
+         绝不靠降低 TTL —— TTL 缩短 = AI 爬虫回源频率翻几十倍 = D1 烧钱。 */
       if (!res.headers.has('Cache-Control')) {
-        res.headers.set('Cache-Control', 'public, max-age=0, s-maxage=3600');
+        /* 2026-10-30:工具页单独短缓存 —— 它们高频迭代、URL 只有 8 个、爬虫访问量极小，
+           6 小时缓存会让每次改动都要靠 bump CACHE_V 才能看见。
+           全站其余页面继续 21600（D1 省钱第一），只有这三个前缀例外。 */
+        const pth = url0.pathname;   /* 2026-10-30 修正:本作用域无 request,只有 url0/req —— 写错导致全站 500 */
+        const isTool = /^\/[a-z]{2}(-[a-z]{2})?\/(pack|design|tools)(\/|$)/.test(pth);
+        res.headers.set('Cache-Control', isTool
+          ? 'public, max-age=0, s-maxage=120'
+          : 'public, max-age=0, s-maxage=21600');
       }
       res.headers.set('x-bh-cache', 'miss');
       /* 本想用 waitUntil 后台写入,但这个适配器里取不到 runtime.ctx,

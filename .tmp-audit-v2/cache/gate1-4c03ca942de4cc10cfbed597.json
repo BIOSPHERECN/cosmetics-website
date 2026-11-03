@@ -1,0 +1,53 @@
+{
+ "tree": "a2144befa65967a390b671d4f358b148c7724780",
+ "base_tree": "2d24696a5aff260e8ada57153ff225362df36e93",
+ "worker": "gate",
+ "mode": "gate",
+ "repo": "F:/0cosmetic/tools-review",
+ "rules_hash": "sha256:21ea2f39ec91180b6436262b09fba288b35156388a18c3f17b72623a30bacf50",
+ "gate_hash": "sha256:544c5b3ff1990324406f783e22ff7f4aeae61d5363cbb377ff559db9f3f46e67",
+ "files": 4,
+ "lines": 235,
+ "changes": [
+  [
+   "M",
+   "audit_v2/register_watch_task.ps1",
+   null
+  ],
+  [
+   "M",
+   "audit_v2/sites.json",
+   null
+  ],
+  [
+   "A",
+   "audit_v2/交付说明.md",
+   null
+  ],
+  [
+   "D",
+   "gate.sh.bak-0924-zero",
+   null
+  ]
+ ],
+ "stats": {
+  "audit_v2/register_watch_task.ps1": 4,
+  "audit_v2/sites.json": 3,
+  "audit_v2/交付说明.md": 96,
+  "gate.sh.bak-0924-zero": 132
+ },
+ "binaries": [],
+ "block": [],
+ "doubt": [],
+ "exceptions": [],
+ "risks": [],
+ "seconds": {
+  "tree": 0.0,
+  "diff": 0.1,
+  "semgrep": 4.5,
+  "rules": 0.1,
+  "total": 4.7
+ },
+ "result": "过",
+ "hard": false
+}

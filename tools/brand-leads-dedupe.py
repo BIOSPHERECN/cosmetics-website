@@ -13,7 +13,7 @@ import unicodedata
 def nkey(n):
     n = unicodedata.normalize("NFKD", str(n or "")).encode("ascii", "ignore").decode().lower()
     n = re.sub(r"\(.*?\)", "", n)
-    n = re.sub(r"(beauty|cosmetics|cosmetic|cosmetique|skincare|skin care)", "", n)
+    n = re.sub(r"\b(beauty|cosmetics|cosmetic|cosmetique|skincare|skin care)\b", "", n)
     return re.sub(r"[^a-z0-9]", "", n)
 
 

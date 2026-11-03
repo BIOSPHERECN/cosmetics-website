@@ -123,11 +123,7 @@ def main():
     if rows:
         snap["ingredients"] = {"total": (tot[0]["n"] if tot else len(rows)), "items": rows}
 
-    frows = d1("SELECT code, category, format, benefits, moq, lead_days, markets, cost_band, status "
-               "FROM formulas WHERE status IN ('active','sample') ORDER BY category, code LIMIT 60")
-    ftot = d1("SELECT COUNT(*) n FROM formulas WHERE status IN ('active','sample')")
-    if frows:
-        snap["formulas"] = {"total": (ftot[0]["n"] if ftot else len(frows)), "items": frows}
+    # 2026-09-25: formulas are confidential; never export them into the public snapshot (it once leaked cost band / MOQ / lead time).
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     body = json.dumps(snap, ensure_ascii=False)

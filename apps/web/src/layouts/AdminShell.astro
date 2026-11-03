@@ -91,6 +91,8 @@ const NAV: { group: string; items: NavItem[] }[] = [
     { id: 'mail', label: '邮件中心', href: '/bohui/mail/', roles: SALES },
     { id: 'prospects', label: '定向外联', href: '/bohui/prospects/', roles: SALES },
     /* 2026-09-18 创始人「海关数据对获客是好事,抓紧进入情报系统」:公开提单 / 海关统计反推进口商(任务 K),与外联同一批人看 */
+    { id: 'brand-shopify', label: 'Shopify 品牌', href: '/bohui/brand-shopify/', roles: SALES },
+    { id: 'brand-suppliers', label: '代工厂溯源', href: '/bohui/brand-suppliers/', roles: SALES },
     { id: 'customs', label: '海关线索', href: '/bohui/customs/', roles: SALES },
     { id: 'companies', label: 'CRM · 客户', href: '/bohui/companies/', roles: SALES },
     { id: 'deals', label: 'CRM · 机会看板', href: '/bohui/deals/', roles: SALES },
@@ -118,6 +120,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
   ]},
   { group: '系统', items: [
     { id: 'models', label: '模型舰队', href: '/bohui/models/', roles: SYS },
+    { id: 'design-models', label: '设计模型', href: '/bohui/design-models/', roles: SYS },
     { id: 'gateway', label: 'AI 接入网关', href: '/bohui/gateway/', roles: SYS },
     { id: 'vision', label: '视觉模型横评', href: '/bohui/vision/' },
     /* 2026-09-17 创始人:「后台要有个图片转提示词」「提示词方面一定要优化」—— 开发(lab)/ 设计(editor)/ 老板(admin)都要看得见 */

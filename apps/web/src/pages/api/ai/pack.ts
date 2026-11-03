@@ -24,6 +24,7 @@ import { env } from 'cloudflare:workers';
 import { loadFleet, vision, image, chat, paidFirst } from '../../../lib/fleet';
 import { overQuota, recordUse, tooMany, clientId, sweep } from '../../../lib/ratelimit';
 import { aiGate, getMember } from '../../../lib/member';
+import { aiDailyCheck, aiBudgetResponse } from '../../../lib/fuse';
 
 export const prerender = false;
 
@@ -68,6 +69,10 @@ export const POST: APIRoute = async ({ request }) => {
     const brief = (body.brief ?? '').trim().slice(0, 600);
     const fleet = paidFirst(await loadFleet(db, env as any));
     if (!fleet.some((p) => p.vision)) return json({ ok: false, msg: 'AI 读图暂不可用,请稍后再试' }, 503);
+
+    /* 全站日预算:读图 + 出图 = 2 次模型调用。放在入参校验之后,
+       坏请求不该占预算;但放在模型调用之前,重试也算钱。 */
+    if (!(await aiDailyCheck({ db, cap: (env as any).AI_DAILY_CAP, cost: 2 })).ok) return aiBudgetResponse();
 
     /* 失败原因必须带回前端:静默 catch 让"没有结果"和"哪一步坏了"变成同一件事 */
     let visionErr = '', planErr = '';

@@ -1,0 +1,66 @@
+{
+  "angle": "成本",
+  "tree": "da1f50da54f22579923cefafe1258f1f54c232f2",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-da1f50da54f2.json",
+  "run_label": "review-ticket da1f50da54f2 成本",
+  "reviewer": "claude",
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/da1f50da54f2/成本.json",
+  "skills_loaded": ["zero-r2-move", "karpathy-coder"],
+  "verdict": "存疑",
+  "checked": ["成本-①", "成本-②", "成本-③", "成本-④", "成本-⑤", "成本-⑥", "成本-⑦"],
+  "findings": [
+    {
+      "id": "C1",
+      "level": "中",
+      "file": "apps/web/src/middleware.ts",
+      "line": 517,
+      "claim": "费用灯为红(草稿 budget.level=red)时把 CACHE_V 从 v84 推到 v85,整个 bohui-web(四个站)的边缘缓存键全部作废;而这次改动只动 beauty2oem 页面,这些页默认 s-maxage=3600,不推版本号最迟 1 小时也会自然刷新,所以这次推版本号是可以省掉的读量尖峰。",
+      "failure_scenario": "上线后 biosphere-ai 等站的详情页(member.ts:66 声明 s-maxage=86400,分 bot/anon 两份)和所有页面的 7 天陈旧备份(staleKeyFor 同样带 __cv,第 542 行)同时失效;GPTBot(占流量 74%)复访时每个 URL 都要现渲染读 D1。费用灯本来就红,若尖峰把当日读额度/预算线顶穿、数据层返回 5xx,第 687 行起的陈旧兜底也找不到 v85 的备份,访客会直接拿到 503。",
+      "evidence": "读了 middleware.ts 第 500–545 行(keyFor/staleKeyFor 都写 __cv=CACHE_V)与第 650–690 行(默认 s-maxage=3600,备份 s-maxage=604800);lib/member.ts:66(详情页 s-maxage=86400);草稿 budget={level:red, src:d1_budget·零读};audit_v2/ticket.py:92 的【零读】放行只看 new_queries==0,不看 CACHE_V 有没有变;gate1 RK1 已标「全站缓存失效」。没有拿到每次未命中读多少行的实测数(不读 D1),所以尖峰具体行数给不出,只能判存疑。",
+      "fix": "这一单撤掉 CACHE_V 改动(保持 v84),靠 1 小时 TTL 自然刷新 beauty2oem 页面;一定要推的话,等费用灯转绿再推,或者只在缓存键里给 beauty2oem 这个主机单独加版本号。"
+    },
+    {
+      "id": "C2",
+      "level": "低",
+      "file": "tools-review/audit_v2/ticket.py",
+      "line": 92,
+      "claim": "【零读】红灯放行只统计新增查库写法条数,没把 CACHE_V 变化算作读量,本单就是靠这条通道在红灯下带着全站缓存失效进来的(属于闸门口径缺口,不在本 diff 内)。",
+      "failure_scenario": "以后任何「纯文案 + 推 CACHE_V」的单都能在红灯下走【零读】通道,新增查库为 0,但实际引发全站回源。",
+      "evidence": "ticket.py:91-93 zero = level=='red' and '【零读】' in note and g1.new_queries==0;gate1.py:287 已经识别 RK1 但没接进 zero 判断。",
+      "fix": "zero 判断里加一条:gate1 命中 RK1(CACHE_V 变)就不算零读。"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "G1",
+      "result": "不成立",
+      "why": "tools/ship.sh 第 16 行是 AV2 路径变量和中文注释,说的是审核部 v2 与 v1 的切换逻辑,没有「请放行/忽略」之类冲着审核员的话;从成本角度看也没有计量或读量影响。ship.sh 不在成本 diff 内,安全角度另审。"
+    },
+    {
+      "ref": "JEV",
+      "result": "成立但可接受",
+      "why": "Jev 判 block(conf 0.72)但 reason 为空,成本 noul 只有 0.1。我独立看:B2oBlock 新增行查库为 0(getCounts 读构建时打包的 site-counts.json,2,808 字节非空,不碰 D1),唯一的成本点是 CACHE_V 推版本(见 C1)。",
+      "mitigation": "按 C1 撤掉 CACHE_V 改动,或等费用灯转绿再推;上线后盯 D1 读行数。"
+    },
+    {
+      "ref": "LAYA",
+      "result": "不成立",
+      "why": "Laya 判 allow 但 conf 仅 0.04、partial,不能作放行证据;成本结论以 C1 为准。"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "费用",
+      "level": "高",
+      "item": "CACHE_V v84→v85 在费用灯红时全站缓存失效(含 24 小时详情页与 7 天陈旧备份),GPTBot 复访放大回源读 D1。",
+      "mitigation": "上线后 2 小时内盯 Cloudflare D1 rows read(日读线 5 亿)与 Bohui-D1Budget 看门狗;盯 x-bh-cache=miss 占比回落;盯 5xx 与 x-bh-stale 次数。超线立即回滚到不推版本号的构建。"
+    },
+    {
+      "cat": "费用",
+      "level": "低",
+      "item": "新增 14 张 webp(约 1.6MB,最大 1600x1600)放在 public/,走 Workers 静态资源,不走 R2,没有 R2 列目录/复制/搬移,没有模型、Workers AI、Vectorize、KV 写或定时任务变化。",
+      "mitigation": "无需动作。"
+    }
+  ]
+}

@@ -1,0 +1,728 @@
+{
+ "Beauty2aiDaily": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "abf66e25a26dc81bca80f4daf382802473005cd78235163edbd3559a90e48365",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+   "F:/0cosmetic/skin2oem/tools/platform/counts-refresh.py",
+   "F:/0cosmetic/skin2oem/tools/platform/daily.cmd",
+   "F:/0cosmetic/skin2oem/tools/platform/import-factories.py",
+   "F:/0cosmetic/skin2oem/tools/platform/import-markets.py",
+   "F:/0cosmetic/skin2oem/tools/platform/market-stats.py",
+   "F:/0cosmetic/skin2oem/tools/platform/opps-daily.py",
+   "F:/0cosmetic/skin2oem/tools/platform/projects-nudge.py",
+   "F:/0cosmetic/skin2oem/tools/platform/rank-refresh.py",
+   "F:/0cosmetic/skin2oem/tools/platform/sync-summaries.py"
+  ],
+  "files_sha256": "9d4b6746cb687f848fac8ca1244ae1c6ea44128eaf593adfcd9e7b381fd03385",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Beauty2aiPackJob": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "2e5cf890c76e8df0a5dad3757529fb5ed32ae403fd2e95198076feee7fa99239",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+   "F:/0cosmetic/skin2oem/tools/platform/packjob-worker.py",
+   "F:/0cosmetic/skin2oem/tools/platform/packjob.bat"
+  ],
+  "files_sha256": "17a78084c6d89338d9b52a41868c7dda4dedbcb50ce41cf2ff0dbefe14797e3c",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Beauty2aiSummaries": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "1d4605b8bcd9581ee59e97f3c6f52457daccf93c31e33552317adbc663f4e8d6",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+   "F:/0cosmetic/skin2oem/tools/platform/product_summaries.py",
+   "F:/0cosmetic/skin2oem/tools/platform/summaries-loop.cmd",
+   "F:/0cosmetic/skin2oem/tools/platform/sync-summaries.py",
+   "F:/0cosmetic/skin2oem/tools/platform/title-en.py"
+  ],
+  "files_sha256": "002a5f380353f2019b0cf865982647154689ac19df073d5ee8647e7df1536a5f",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-AuditDept": {
+  "enabled_expected": true,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "eb7b61762ed7e92f61c622bcb4aad916720173af5c5754d9c4ae3724716bf95b",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+   "F:/0cosmetic/tools-review/audit_dept/audit_local.cmd",
+   "F:/0cosmetic/tools-review/audit_dept/local_audit.py"
+  ],
+  "files_sha256": "ade0f73ade9b442bc04f8c06b37fcd80f52e21b309c192269ae3bf9197027644",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Ready"
+ },
+ "Bohui-Chain2": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "89ef9b7c94b3a109a353621b2ee3b7c718e4bc8c97a62c0ab267e415b7e4e33b",
+  "entry": "F:/0cosmetic/skin2oem/tools/platform/chain2.cmd",
+  "files": [
+   "F:/0cosmetic/skin2oem/tools/platform/chain2.cmd",
+   "F:/0cosmetic/skin2oem/tools/platform/counts-refresh.py",
+   "F:/0cosmetic/skin2oem/tools/platform/ingredient-freq.py",
+   "F:/0cosmetic/skin2oem/tools/platform/morning_run.py",
+   "F:/0cosmetic/skin2oem/tools/platform/obf-ingredients-load.py"
+  ],
+  "files_sha256": "af70d33183faac37b1165c447888402b4547ca471f1e0c92e49905b284bc59ef",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-D1Budget": {
+  "enabled_expected": true,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "1110245399254ee46ae1257f4b697d724d112e26e51f9dc0c8924659cf8e56e0",
+  "entry": "F:/0cosmetic/bohui-automation/local/d1_budget.cmd",
+  "files": [
+   "F:/0cosmetic/bohui-automation/local/d1_budget.cmd",
+   "F:/0cosmetic/bohui-automation/local/d1_budget.py",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "6be4f163a7b058fd5775b36b635665473e73f8bdfb82154faa5d178e2adb0411",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Ready"
+ },
+ "Bohui-FollowWorkBuddy": {
+  "enabled_expected": true,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "2fcf4fad638057fc9c644c55c301187640c73912f5c26ce40c3bf1cf7cdd0c6a",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/market/follow-workbuddy.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/market/follow-workbuddy.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "9fbd9c4a1e98f5301f540d6478566d9fdc1dd50996a07b2bf8b49278d3b5f769",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Ready"
+ },
+ "Bohui-Gateway": {
+  "enabled_expected": true,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "bc3d0abfaaa46c88a545a2348f9ed656001bb1568cfc263f038b42714aa5cfa5",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/gateway/bohui-gateway.mjs",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/gateway/bohui-gateway.mjs",
+   "F:/0cosmetic/cosmetic-sites/tools/gateway/start-gateway.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "81d94603d01b3e87a7a7fc4c38bb1ff5a78e3c885d826cddea1e4a36e0842498",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Ready"
+ },
+ "Bohui-GhDispatch-health": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "42acd939173ade4e967250bf434192142ba0456016b395e5bbf17d4519fa2605",
+  "entry": "F:/0cosmetic/bohui-automation/local/gh-dispatch.ps1",
+  "files": [
+   "F:/0cosmetic/bohui-automation/local/gh-dispatch.ps1",
+   "F:/0cosmetic/bohui-automation/local/gh-dispatch.vbs"
+  ],
+  "files_sha256": "2af1d7a42442ba5bec84d3f79eeff61a83fc0f8f186e453c3f7471ee530af4cf",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-GhDispatch-news-cn": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "16ad240e886f0e9e67990c4fb6f781f5c4635abfa7fdd41aaf0edb1a49376bf3",
+  "entry": "F:/0cosmetic/bohui-automation/local/gh-dispatch.ps1",
+  "files": [
+   "F:/0cosmetic/bohui-automation/local/gh-dispatch.ps1",
+   "F:/0cosmetic/bohui-automation/local/gh-dispatch.vbs"
+  ],
+  "files_sha256": "2af1d7a42442ba5bec84d3f79eeff61a83fc0f8f186e453c3f7471ee530af4cf",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-GhDispatch-packjob": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "0793fd3693fb7a6dc6e58bdc7e55b644664cf60b23b1898e3d692ba564516872",
+  "entry": "F:/0cosmetic/bohui-automation/local/gh-dispatch.ps1",
+  "files": [
+   "F:/0cosmetic/bohui-automation/local/gh-dispatch.ps1",
+   "F:/0cosmetic/bohui-automation/local/gh-dispatch.vbs"
+  ],
+  "files_sha256": "2af1d7a42442ba5bec84d3f79eeff61a83fc0f8f186e453c3f7471ee530af4cf",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-GhDispatch-trend-media": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "78e3dcac19fe3ee7b9bd5117ae4c2d44838007247c441cbd92235a8188c9b5a9",
+  "entry": "F:/0cosmetic/bohui-automation/local/gh-dispatch.ps1",
+  "files": [
+   "F:/0cosmetic/bohui-automation/local/gh-dispatch.ps1",
+   "F:/0cosmetic/bohui-automation/local/gh-dispatch.vbs"
+  ],
+  "files_sha256": "2af1d7a42442ba5bec84d3f79eeff61a83fc0f8f186e453c3f7471ee530af4cf",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-HeavyLocal": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "1bcb152e422d3ec0519e08992c4a39d04145a939fc3b810b8bb66c933e370028",
+  "entry": "F:/0cosmetic/bohui-automation/local/heavy.cmd",
+  "files": [
+   "F:/0cosmetic/bohui-automation/local/heavy.cmd",
+   "F:/0cosmetic/bohui-automation/local/heavy.py",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "fa241afe43433608f45d4f985cde8f58b9f4b75ea52c4330f9c0bda310c95c6f",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-I18nJudge": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "ff5eef7c4e6a12f134cbd9ea91d16249eb3c5cb9f7a6bfae2f0e872a23ac6251",
+  "entry": "F:/0cosmetic/skin2oem/tools/platform/i18n_judge.py",
+  "files": [
+   "F:/0cosmetic/skin2oem/tools/platform/i18n_judge.py",
+   "F:/0cosmetic/skin2oem/tools/platform/judge_run.cmd"
+  ],
+  "files_sha256": "44218734ea9dce8d98a255f921a9811c96906ba3e3b01a5c8ec99ff42d09c43b",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-I18nLocal": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "3b8db80f447ab145adb597e2d06afc5991d128f786fa0dfe9775153f2d6104f2",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+   "F:/0cosmetic/skin2oem/tools/platform/i18n_local.cmd",
+   "F:/0cosmetic/skin2oem/tools/platform/i18n_local.py"
+  ],
+  "files_sha256": "5d3d22a7d243e486af74d5526b5aea70f9ab8307d26d44887f37fce0341bc74a",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-KickWorkers": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "f9b090bd4749f6c873afd56bddf402e9c83e05670c77db74bc57bac446eaa744",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+   "F:/0cosmetic/skin2oem/tools/platform/hourly.cmd",
+   "F:/0cosmetic/skin2oem/tools/platform/kick-workers.py"
+  ],
+  "files_sha256": "a8eb5bab888f43509896e2ec75545211cf3597e01f2f5e2b287abc6373e37123",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-KnowledgeCollect": {
+  "enabled_expected": true,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "8f9b06d2a0b84d9e77031a959cf9197e08d732af383e8ddaa83e700be4d8f382",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/knowledge/collect.py",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/knowledge/collect.py",
+   "F:/0cosmetic/cosmetic-sites/tools/knowledge/kb-cards-import.py",
+   "F:/0cosmetic/cosmetic-sites/tools/knowledge/ledger-sync.py"
+  ],
+  "files_sha256": "e9fe834f33d4a88986f08a7268278dc01f85b5ae89cd00dce7dd2b0d9175be3c",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Ready"
+ },
+ "Bohui-LedgerSync": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "c181d4ad92da24409556cde0d2aa0db4628d184c7a1a734be64c3b0f22564009",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/knowledge/ledger-sync.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/knowledge/ledger-sync.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/knowledge/ledger-sync.py"
+  ],
+  "files_sha256": "3b0ff9c4b71ebb588ebfa8427fa3cb9c7126e835717668bddd505e13de6199a8",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-MarketIntel": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "518c37b392dfd1aeedc6f9a99a144d938f1b2a30a2bfd63a27461171574add04",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/market/intel-build.py",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/market/intel-build.py",
+   "F:/0cosmetic/cosmetic-sites/tools/market/intel-weekly.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "f18374951fcf4eb9e5e0569e500294de9fa851f2949e10eb5620a5644ae99c6d",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-NightChain": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "52629b5c0b14664b4735bf9d7cb129dfd0fab6e0b1575cd5e7714a32a55532c7",
+  "entry": "F:/0cosmetic/skin2oem/tools/platform/finish_night.py",
+  "files": [
+   "F:/0cosmetic/skin2oem/tools/platform/finish_night.py",
+   "F:/0cosmetic/skin2oem/tools/platform/i18n_eval.py",
+   "F:/0cosmetic/skin2oem/tools/platform/kick-workers.py",
+   "F:/0cosmetic/skin2oem/tools/platform/night_chain.cmd",
+   "F:/0cosmetic/skin2oem/tools/platform/obf-ingredients-load.py"
+  ],
+  "files_sha256": "6911c6f3e85096b3a6a111eeb6cd80771db0bb841705e59e281a94148c5af886",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-RegDigest": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "c2b02b26426f34b7778ecf7b32affd0e229f8e0f04c1ecd84f34a2481397d963",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/reg-digest.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/reg-digest.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/reg-digest.py",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "8d9d0354b2f1b9bae8610d9e8ee12d1d39ec606afc6b92af7fd6c06f6934b438",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-SocialWeekly": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "55b8e84b78e9d6b07fa04299269709ba55621d34e078bef2deba4d7376a73a39",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+   "F:/0cosmetic/cosmetic-sites/tools/social/drafts.py",
+   "F:/0cosmetic/cosmetic-sites/tools/social/weekly.bat"
+  ],
+  "files_sha256": "ccf8b759fd762c68abd8b145af632c94e3f6af133a46b7d54c3cec1a0a6d15b5",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-ToutiaoFavs": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "b32e4d29bdd41d7df699bfbd36fff299365d8ca8abe0e7191e408c9283cf1312",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/assistants/toutiao-favs.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/assistants/toutiao-favs.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/assistants/toutiao-favs.py"
+  ],
+  "files_sha256": "e11105f1ea4bea1f64f8b951d699baa8a75d555919add5c3600e8c8c1aa00820",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiAssistantWatch": {
+  "enabled_expected": true,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "de468a9be1d547a88ecd2a9ac5cfa99a87fd24d52adf47ba043e45694f0e75a6",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/assistants/progress.py",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/assistants/progress.py",
+   "F:/0cosmetic/cosmetic-sites/tools/assistants/watch.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "dbd290fe549c0d1e4c022bbdefb89bcd191b7bae7db04012f81c942339d287fa",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Ready"
+ },
+ "BohuiCollectDaily": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "9aae65ace736e0ef82ae680586c7facedfc523bd7b4881efb4aecf0a78c00347",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/collect/daily.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/collect/daily.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/gateway/logs-to-d1.py",
+   "F:/0cosmetic/cosmetic-sites/tools/gateway/sync-config.py",
+   "F:/0cosmetic/cosmetic-sites/tools/geo/indexnow.py",
+   "F:/0cosmetic/cosmetic-sites/tools/market/inci_harvest.py",
+   "F:/0cosmetic/cosmetic-sites/tools/pack-scrape-1688.py",
+   "F:/0cosmetic/cosmetic-sites/tools/pack-scrape-mic.py",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "d6716ff4646e9373f8d06b56f738e8ea92dc8722ee2fde460e35ea5f900f865c",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiI18nBackfill": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "3e4c3d4afeef5150a6c6af60628125b2e83c95ec0a66b859a358b5719191d54c",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/i18n-backfill.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/i18n-backfill.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/pick-proxy.cmd",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+   "F:/0cosmetic/cosmetic-sites/tools/translate-backfill.mjs"
+  ],
+  "files_sha256": "f71dd07222c68959af2166b2d8a1c974710b130db1c51d7e48e92827117466a5",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiMarketDaily": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "e44370ff74e22adf9e870dde302084a1911e8bea88b1c1282a5fc61aad35e642",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/fx_rates.py",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/fx_rates.py",
+   "F:/0cosmetic/cosmetic-sites/tools/intel/predict.py",
+   "F:/0cosmetic/cosmetic-sites/tools/market/amazon_bestsellers.py",
+   "F:/0cosmetic/cosmetic-sites/tools/market/daily.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/market/load.py",
+   "F:/0cosmetic/cosmetic-sites/tools/market/report.py",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "dcee7e0a5fb00f57b1d2bba9fe2bbf582ffd5399eb1e42e0819bfe16b21d391f",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiNewsAfternoon": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "804c60fca8eb156675feac638f67591c1336ed7eda27581a2ad857d29c4be963",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/collect-news-daily.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/collect-news-daily.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "52402b2c666fab16a1b1b8e1a942eaade3946252144c713aa185ac4f75290902",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiNewsArt": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "058047ab6bf921add8d4b39b5d08fadb61f5ab3dfbc0fd5bbe5a8c6e8e993278",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/news-art.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/news-art.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "a663e5a94d68ae0a64270296b13208b08419036b09163c4a95e2ea9aa75444d6",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiNewsCN-AM": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "4013144d7129f3d7177785f99be8f55a8b7f980bd9ee11b033d47c8b92645260",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/crawl-cn-news.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/crawl-cn-news.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/crawl_cn_news.py",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "3397a7b85a320c1ee63f98d240ceb5de0800ca93c7059ebdc8e377a011e70feb",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiNewsCN-PM": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "5d3189f79be683557200bc63b92c3c7b42e9a1566b05bf65938fb4de6131906f",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/crawl-cn-news.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/crawl-cn-news.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/crawl_cn_news.py",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "3397a7b85a320c1ee63f98d240ceb5de0800ca93c7059ebdc8e377a011e70feb",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiNewsDaily": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "4aa9478c2a54256f5895054cb3336bab4ca0657c1cb52d3334009caf72252b40",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/collect-news-daily.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/collect-news-daily.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "52402b2c666fab16a1b1b8e1a942eaade3946252144c713aa185ac4f75290902",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiNewsHistory": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "776242cdde3eec2e867fb4acd81ab7ccfc3242f37b803d36a468f7edbd3bc2ef",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/news-history.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/news-history.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/news-history.mjs",
+   "F:/0cosmetic/cosmetic-sites/tools/pick-proxy.cmd",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "92651ee71b4c35a621baa538b93c9923b9e2284c28b32f0d821f8ef53ae75436",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiNewsHub-AM": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "577a45c442fb310d1439fa225c08424b286a0ffefdff5a77686073c94e8bde57",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/pick-proxy.cmd",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/pick-proxy.cmd",
+   "F:/0cosmetic/cosmetic-sites/tools/rsshub-feed.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/rsshub-feed.mjs",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "8a3090513751a25d5ebcba7480e5814766a4fc1bb98326bbf5a989eb3dffe93d",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiNewsHub-PM": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "0ac9b6be4670b7701376c04d9d16fcec4534c5b8bf80dd5833508f327b170e9b",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/pick-proxy.cmd",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/pick-proxy.cmd",
+   "F:/0cosmetic/cosmetic-sites/tools/rsshub-feed.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/rsshub-feed.mjs",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "8a3090513751a25d5ebcba7480e5814766a4fc1bb98326bbf5a989eb3dffe93d",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiNewsUpgrade": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "d38a1ad19fc50eb8d11dfbec29ec8a3982bfb82a7c67dfba7556f65489ac72d3",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/news-upgrade.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/news-upgrade.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/news-upgrade.mjs",
+   "F:/0cosmetic/cosmetic-sites/tools/pick-proxy.cmd",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "a61ce384031e578047fa26bdf58a55a27e10dc4aa80bae58b75e383a486ae3ad",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiPackJob": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "1cb54810ba0d75bf0087abf8eb2c0cec50506e9e6a5d39a72572a60143e42925",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/packjob-worker.py",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/packjob-worker.py",
+   "F:/0cosmetic/cosmetic-sites/tools/packjob.bat"
+  ],
+  "files_sha256": "532f6e9513d0d678c0543af7261895d8f74d6621277df5a09080a9bb487e8d98",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiPackNight": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "c91cd73e12ecc8c791607f759f51dd55e2ea02d19e011ba1e08d62809351d1b9",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/collect/pack1688-night.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/collect/pack1688-night.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/pack-scrape-1688.py",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "987c9e191c567a6d945a6ac7980014ea93625a10889474d624d79aaf00ee591f",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiProspectWeekly": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "6a9cb38f344c12b19e86ecd794d76497b4412722fc521e551228203e46ef17a9",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/prospect/run_chain.sh",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/prospect/run_chain.sh",
+   "F:/0cosmetic/cosmetic-sites/tools/prospect/weekly.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "5ee08a85f46ac0273c6701b51a875fc20211011fbf70c2acae07266296f6ac6d",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiPulse": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "2fb5a58694c2c2d2b65ecd7f2e988b5899dd297f9993d87225e3a7cd0da963bf",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/pulse-collect.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/pulse-collect.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "e65e716bcdc46c407487189dee503c6e9799281aa73e5a067c05c819e5996cd6",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "BohuiWeekly3": {
+  "enabled_expected": false,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "6ecc8447c852b904fd02d76a8e442e639662b1177c3e2181a59564df5d6ff0ce",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/crm/weekly3.bat",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/crm/weekly3.bat",
+   "F:/0cosmetic/cosmetic-sites/tools/crm/weekly3.py",
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs"
+  ],
+  "files_sha256": "934476e45706e027b9cc4d66b01efbf411ce62069725bad1fe4c6205513e5cac",
+  "ticket": "基线-20260924",
+  "owner": "主线",
+  "note": "基线登记(存量,历史不追审)",
+  "state_at_baseline": "Disabled"
+ },
+ "Bohui-AuditWatch": {
+  "enabled_expected": true,
+  "enforce": "report",
+  "path": "\\",
+  "xml_sha256": "35597ebaaec2c83e5ef86879ad4825eff94c0fb2b1095e3ccd79be12005ffec0",
+  "entry": "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+  "files": [
+   "F:/0cosmetic/cosmetic-sites/tools/run-hidden.vbs",
+   "F:/0cosmetic/tools-review/audit_v2/watch.cmd"
+  ],
+  "files_sha256": "3d72ae420fd0354633503e61e7f75e36b95d20264745ec9445d57866d2b12009",
+  "ticket": "登记-20260924",
+  "owner": "审核部",
+  "note": "审核部巡查任务首次注册(register_watch_task.ps1)"
+ }
+}

@@ -23,6 +23,7 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import ShelfPage from '@cosmetic/core/components/ShelfPage.astro';
+import InquiryFormLite from '@cosmetic/core/components/InquiryFormLite.astro';
 import { buildChain } from '@cosmetic/core/content/chain.ts';
 import { pageShell } from '../../../lib/shell';
 import { PACK_SHELF } from '@cosmetic/core/generated/pack-shelf.ts';
@@ -338,6 +339,8 @@ const itemListLd = shelfItems.length ? {
 } : null;
 
 const indexable = shell.site?.is_live === 1 && active.length === 0 && cur === 1;
+/* 询盘表单的 WhatsApp 号与联系页同源(middleware 注入);有号码才显示 WhatsApp 直达按钮 */
+const contactWa: string | null = ((Astro.locals as any)?.contact ?? {}).whatsapp ?? null;
 ---
 
 <BaseLayout
@@ -362,6 +365,7 @@ const indexable = shell.site?.is_live === 1 && active.length === 0 && cur === 1;
       active={active} clearHref={path} note={T.note}
       labels={{ filters: T.filters, clearAll: T.clearAll, empty: T.empty,
                 results: T.results, shotPending: T.shotPending }} />
+      {total > 0 && <InquiryFormLite lang={lang} email={shell.email} whatsapp={contactWa} source="packaging" />}
   </main>
   {itemListLd && <script type="application/ld+json" set:html={ldJson(itemListLd)} is:inline />}
   <SiteFooter locale={lang} path={path}

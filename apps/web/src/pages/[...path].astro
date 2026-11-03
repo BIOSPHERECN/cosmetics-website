@@ -262,8 +262,8 @@ const GRID_TEXT: Record<Lang, { title: string; intro: string; add: string; moq: 
  */
 const pick = <T,>(m: Record<string, T>, l: string): T => m[l] ?? m.en ?? m['zh-cn'];
 
-/** 内容改完即时生效,但同一秒内的重复请求走边缘缓存,避免每次都打 D1 */
-Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, stale-while-revalidate=300');
+/* 缓存由中间件统一接管(21600s = 6h):省钱第一。整改后要即时生效就走 CF 后台清缓存,
+   绝不在路由里写短 TTL —— 短 TTL = AI 爬虫高频回源 = D1 烧钱(用户 2026-10-23 明确否决)。 */
 
 /* ── 剂型清单 ──────────────────────────────────────────────
  * 这份清单原来是**硬编码**在本文件里的中文常量,后果很具体:
@@ -286,7 +286,9 @@ Astro.response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=30, sta
 /* 品类筛选:首页品类卡点进来带 ?cat=,这一页就只显示那个品类。
    「要可以点进去,看到更多的产品」—— 点进来还是全量列表的话,
    点击就没有意义了。筛选放在 SQL 里而不是渲染层,列表大了也不用改。 */
-const catFilter = (Astro.url.searchParams.get('cat') ?? '').trim().slice(0, 24);
+const catFilterRaw = (Astro.url.searchParams.get('cat') ?? '').trim().slice(0, 24);
+/* 旧大类 skincare 已拆成 6 个细分(2026-10-23),老链接视同全部 */
+const catFilter = catFilterRaw === 'skincare' ? '' : catFilterRaw;
 const catalog = bundle?.page.template === 'products' && db && site
   ? ((await db.prepare(
       /* 列必须显式写死,**不要改成 p.*** ——
@@ -310,14 +312,46 @@ const catalog = bundle?.page.template === 'products' && db && site
 /* 原来只在产品页查(筛选条用);创始人:「导航栏产品品类也下拉分类!」——
    顶部导航每页都在,品类清单改为全页可用(一条 GROUP BY,开销可忽略) */
 const catCounts = db && site
-  ? await memo(`prod-cats:${site.id}`, 600, async () => ((await db.prepare(   // 09-24 D2:每页都跑,记 10 分钟
-      `SELECT category, COUNT(*) n FROM products
-        WHERE site_id = ? AND status = 'published' GROUP BY category ORDER BY n DESC`,
-    ).bind(site.id).all<{ category: string; n: number }>().catch(() => ({ results: [] }))).results ?? []))
+  ? await memo(`prod-cats5:${site.id}`, 3600, async () => {
+      /* C1 纪律:访客路由不写 COUNT/GROUP BY。取品类列在 JS 里聚合(行数有限,已 memo 1h) */
+      const rows = ((await db.prepare(
+        `SELECT category FROM products WHERE site_id = ? AND status = 'published'`,
+      ).bind(site.id).all<any>().catch(() => ({ results: [] }))).results ?? []) as any[];
+      const m = new Map<string, number>();
+      for (const r of rows) m.set(r.category, (m.get(r.category) ?? 0) + 1);
+      return [...m.entries()].map(([category, n]) => ({ category, n })).sort((a, b) => b.n - a.n);
+    })
   : [];
+/* 首页产品展示:跨品类轮取+去重(同一基础产品只取1款),避免单调;查60个JS端去重后取14+判断 */
+const showcaseData = (!slug && db && site && site.id === 'biosphere-ai')
+  ? await memo(`showcase10:${site.id}:${lang}`, 3600, async () => {
+      const raw = ((await db.prepare(
+        `SELECT id, slug, cover_media, category, name, rn FROM (
+            SELECT p.id, p.slug, p.cover_media, p.category,
+                   ROW_NUMBER() OVER (PARTITION BY p.category ORDER BY p.sort_order) as rn,
+                   (SELECT x.name FROM product_i18n x WHERE x.product_id=p.id
+                    ORDER BY CASE x.lang WHEN ? THEN 0 WHEN 'en' THEN 1 ELSE 2 END LIMIT 1) AS name
+              FROM products p
+             WHERE p.site_id = ? AND p.status = 'published' AND p.is_showcase = 1
+          ) WHERE rn <= 10 ORDER BY rn, category LIMIT 60`
+      ).bind(lang, site.id).all<any>().catch(() => ({ results: [] }))).results ?? []);
+      /* JS 端按基础 slug 去重:循环剥掉所有尾部纯数字段(-2,-3,-7-2 等),
+         100g/25g/4x 等带字母的不动,同款只留1个 */
+      const seen = new Set<string>();
+      const items = raw.filter((p: any) => {
+        let base = String(p.slug);
+        while (/-\d+$/.test(base)) base = base.replace(/-\d+$/, '');
+        if (seen.has(base)) return false;
+        seen.add(base);
+        return true;
+      }).slice(0, 15);
+      return { items, hasMore: items.length > 14 };
+    })
+  : { items: [], hasMore: false };
+
 const CAT_LABEL: Record<string, Record<string, string>> = {
-  'zh-cn': { skincare: '护肤', makeup: '彩妆', oral: '口腔护理', kids: '儿童护肤', body: '身体护理', hair: '洗护', cleansing: '洁护', all: '全部' },
-  en: { skincare: 'Skincare', makeup: 'Makeup', oral: 'Oral care', kids: 'Kids', body: 'Body care', hair: 'Hair', cleansing: 'Cleansing', all: 'All' },
+  'zh-cn': { skincare: '护肤', makeup: '彩妆', oral: '口腔护理', kids: '儿童护肤', body: '身体护理', hair: '洗护', haircare: '洗护', cleansing: '洁护', suncare: '防晒', fragrance: '香氛', cleanser: '洁面', toner: '爽肤水', serum: '精华', cream: '面霜乳液', mask: '面膜', 'special-care': '特护', pet: '宠物护理', all: '全部' },
+  en: { skincare: 'Skincare', makeup: 'Makeup', oral: 'Oral care', kids: 'Kids', body: 'Body care', hair: 'Hair', haircare: 'Hair care', cleansing: 'Cleansing', suncare: 'Suncare', fragrance: 'Fragrance', cleanser: 'Cleansers', toner: 'Toners', serum: 'Serums', cream: 'Creams & Lotions', mask: 'Masks', 'special-care': 'Special care', pet: 'Pet care', all: 'All' },
 };
 const catLabel = (c: string) => (CAT_LABEL[lang] ?? CAT_LABEL.en)[c] ?? c;
 
@@ -538,10 +572,37 @@ const ogImage = (() => {
       <Funnel locale={lang} />
     )}
 
+    {/* 首页产品展示区:漏斗下面紧接着展示成品,2行+更多方块 */}
+    {showcaseData.items.length > 0 && !slug && (
+      <section class="block alt">
+        <div class="ck-wrap">
+          <h2>{lang === 'zh-cn' ? '成品展示' : 'Product showcase'}</h2>
+          <ul class="showcase-grid">
+            {showcaseData.items.slice(0, 14).map((p: any) => (
+              <li><a class="showcase-card" href={`/${lang}/product/${p.slug}/`}>
+                {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} loading="lazy" /> : <div class="showcase-ph"></div>}
+                <h3>{p.name ?? p.slug}</h3>
+              </a></li>
+            ))}
+            {showcaseData.hasMore && (
+              <li><a class="showcase-card showcase-more" href={`/${lang}/portfolio/`}>
+                <div class="showcase-more-body">
+                  <span class="more-arrow">→</span>
+                  <h3>{lang === 'zh-cn' ? '查看全部' : 'See all'}</h3>
+                </div>
+              </a></li>
+            )}
+          </ul>
+        </div>
+      </section>
+    )}
+
     {(collectionMode ? [] : bodyBlocks).map((b) => {
       const d = b.data as any;
       /* 首页已渲染漏斗,跳过 CMS 里的 fx_hero(避免两个 hero 重复) */
       if (b.type === 'fx_hero' && site.id === 'biosphere-ai' && !slug) return null;
+      /* 10-22 创始人:「看到一个产品就交给工厂做」先隐藏 */
+      if (b.type === 'fx_latest' && site.id === 'biosphere-ai' && !slug) return null;
       switch (b.type) {
         case 'hero':
           // demo 阶段:每站取一张占位实拍图证明图片管线通;真图入库后由 d.image 覆盖
@@ -783,7 +844,7 @@ const ogImage = (() => {
     {/* 联系页必须有一张真表单 —— 这一页是「发起询盘」「发送这套方案」的落点,
         以前只有一个 mailto 链接,手机上点了多半什么都不发生,线索就这么丢了。 */}
     {bundle!.page.template === 'contact' && (
-      <InquiryFormLite lang={lang} email={email} />
+      <InquiryFormLite lang={lang} email={email} whatsapp={contactWa} source={bundle!.page.slug ?? 'contact'} />
     )}
   </main>
 
@@ -841,4 +902,16 @@ const ogImage = (() => {
     .prose-flow { max-width: none; display: block; columns: 2; column-gap: 4rem;  /* 09-17 「太多空余」 */ }
     .prose-flow p { break-inside: avoid; margin: 0 0 1.25rem; }
   }
+
+  /* 首页产品展示区 */
+  .showcase-grid { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); }
+  .showcase-card { display: block; text-decoration: none; color: inherit; border-radius: 0.75rem; overflow: hidden; background: var(--ck-surface, #fff); box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: box-shadow 0.2s; }
+  .showcase-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+  .showcase-card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+  .showcase-card h3 { margin: 0; padding: 0.625rem 0.75rem; font-size: 0.9375rem; line-height: 1.4; }
+  .showcase-ph { width: 100%; aspect-ratio: 1; background: var(--ck-bg-alt, #f5f5f5); }
+  .showcase-more { display: flex; align-items: center; justify-content: center; background: var(--ck-bg-alt, #f0f0f0); border-radius: 0.75rem; }
+  .showcase-more .showcase-more-body { text-align: center; }
+  .showcase-more .more-arrow { font-size: 2rem; display: block; }
+  .showcase-more h3 { margin: 0.5rem 0 0; padding: 0; font-size: 0.9375rem; }
 </style>

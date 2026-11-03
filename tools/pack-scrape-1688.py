@@ -93,7 +93,7 @@ def shop_ids(page, url, want):
         page.goto(url.rstrip("/") + "/page/offerlist.htm", wait_until="domcontentloaded", timeout=60000); page.wait_for_timeout(random.randint(8000, 11000))
         if blocked(page) or "_____tmd_____" in page.content(): log("还是被拦,本轮到此为止"); page.remove_listener("response", on_resp); shop_ids.halt = True; return []
     try:
-        head = page.evaluate("() => document.body.innerText.replace(/\s+/g, ' ').slice(0, 600)")
+        head = page.evaluate("() => document.body.innerText.replace(/\\s+/g, ' ').slice(0, 600)")
         shop_ids.stats = {"name": (re.search(r"([一-龥A-Za-z()（）·]{4,40}(?:有限公司|厂|商行|销售部|经营部|工作室|制品))", head) or [None, ""])[1],
                           "years": int((re.search(r"入驻\s*(\d+)\s*年", head) or [None, 0])[1] or 0), "repeat": float((re.search(r"回头率\s*([\d.]+)\s*%", head) or [None, 0])[1] or 0),
                           "score": float((re.search(r"服务分\s*([\d.]+)", head) or [None, 0])[1] or 0), "main": (re.search(r"主营类目[:：]\s*([^\s]{1,12})", head) or [None, ""])[1],

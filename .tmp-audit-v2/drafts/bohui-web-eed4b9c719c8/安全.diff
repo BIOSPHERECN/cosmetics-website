@@ -1,0 +1,106 @@
+diff --git a/apps/web/public/b2o/img/vi/hero-full.webp b/apps/web/public/b2o/img/vi/hero-full.webp
+new file mode 100644
+index 0000000..e446434
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/hero-full.webp differ
+diff --git a/apps/web/public/b2o/img/vi/m1.webp b/apps/web/public/b2o/img/vi/m1.webp
+new file mode 100644
+index 0000000..be843fd
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/m1.webp differ
+diff --git a/apps/web/public/b2o/img/vi/m2.webp b/apps/web/public/b2o/img/vi/m2.webp
+new file mode 100644
+index 0000000..2d9c32d
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/m2.webp differ
+diff --git a/apps/web/public/b2o/img/vi/m3.webp b/apps/web/public/b2o/img/vi/m3.webp
+new file mode 100644
+index 0000000..ef9e961
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/m3.webp differ
+diff --git a/apps/web/public/b2o/img/vi/m4.webp b/apps/web/public/b2o/img/vi/m4.webp
+new file mode 100644
+index 0000000..95d7fe1
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/m4.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-01.webp b/apps/web/public/b2o/img/vi/wall-01.webp
+new file mode 100644
+index 0000000..86aa0ae
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-01.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-02.webp b/apps/web/public/b2o/img/vi/wall-02.webp
+new file mode 100644
+index 0000000..6451596
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-02.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-03.webp b/apps/web/public/b2o/img/vi/wall-03.webp
+new file mode 100644
+index 0000000..b62db41
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-03.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-04.webp b/apps/web/public/b2o/img/vi/wall-04.webp
+new file mode 100644
+index 0000000..c75c088
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-04.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-05.webp b/apps/web/public/b2o/img/vi/wall-05.webp
+new file mode 100644
+index 0000000..5bd8ee8
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-05.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-06.webp b/apps/web/public/b2o/img/vi/wall-06.webp
+new file mode 100644
+index 0000000..d9da8d4
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-06.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-07.webp b/apps/web/public/b2o/img/vi/wall-07.webp
+new file mode 100644
+index 0000000..0a36983
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-07.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-08.webp b/apps/web/public/b2o/img/vi/wall-08.webp
+new file mode 100644
+index 0000000..b0c6b64
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-08.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-09.webp b/apps/web/public/b2o/img/vi/wall-09.webp
+new file mode 100644
+index 0000000..03ac636
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-09.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-10.webp b/apps/web/public/b2o/img/vi/wall-10.webp
+new file mode 100644
+index 0000000..7ea301b
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-10.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-11.webp b/apps/web/public/b2o/img/vi/wall-11.webp
+new file mode 100644
+index 0000000..ec6043b
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-11.webp differ
+diff --git a/apps/web/public/b2o/img/vi/wall-12.webp b/apps/web/public/b2o/img/vi/wall-12.webp
+new file mode 100644
+index 0000000..c81ecce
+Binary files /dev/null and b/apps/web/public/b2o/img/vi/wall-12.webp differ
+diff --git a/apps/web/src/middleware.ts b/apps/web/src/middleware.ts
+index 98128d0..54e3c01 100644
+--- a/apps/web/src/middleware.ts
++++ b/apps/web/src/middleware.ts
+@@ -466,7 +466,14 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+   /* 规范化(09-24 安全架构 C1,参数登记表在 lib/canon.ts):页面路径补尾斜杠、只留登记过的参数、取值夹到范围内,
+      不一致就 301 一次。301 落在 WAF 之后,跳过去的请求会再过一遍边缘规则(S1 / R2 的通配都带尾斜杠)。
+      后台已登录的人不跳(草稿预览等参数只给他们用),本地与副本不跳。 */
+-  if ((req.method === 'GET' || req.method === 'HEAD') && !staff && !dev && isPagePath(url0.pathname)) {
++  /* Post-deploy smoke probe: a request carrying the shared secret header skips canonical redirects and the edge cache.
++     Without the configured secret nobody matches. */
++  const probeSecret = String((cfEnv as any)?.PROBE_SECRET ?? '');
++  const probeHdr = req.headers.get('x-bohui-probe') ?? '';
++  let probeDiff = probeSecret.length === 0 || probeHdr.length !== probeSecret.length ? 1 : 0;
++  for (let i = 0; i < probeHdr.length && i < probeSecret.length; i++) probeDiff |= probeHdr.charCodeAt(i) ^ probeSecret.charCodeAt(i);
++  const probe = probeDiff === 0;
++  if ((req.method === 'GET' || req.method === 'HEAD') && !staff && !dev && !probe && isPagePath(url0.pathname)) {
+     const to = canonical(url0.pathname, url0.search);
+     if (to) return new Response(null, { status: 301, headers: { Location: to } });
+   }
+@@ -505,7 +512,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+     (req.method === 'GET' || req.method === 'HEAD') &&
+     !url0.pathname.startsWith('/api/') &&
+     !url0.pathname.startsWith('/bohui/') &&
+-    !noCache && !staff && !member;
++    !noCache && !staff && !member && !probe;
+   const cache = (caches as any).default as Cache | undefined;
+   /* 缓存键带版本号。2026-09-07:D1 日读额度耗尽期间,「数据源未就绪」那一页是以
+      HTTP 200 渲染的,于是被原样缓存了一小时 —— 我用 ?cb= 验证时绕过了缓存,
+@@ -514,7 +521,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
+   /* v3(2026-09-07 上午):D1 额度耗尽期间,边缘把一批 404 与 503 缓存住了 ——
+      修好之后访客拿到的仍是坏副本。推版本号是清掉它们唯一干净的办法。 */
+   /* v4(2026-09-07 晚):sitemap 拆分、繁中上线、跨站兜底重写 —— 清掉全部旧副本 */
+-  const CACHE_V = 'v84';   // 09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
++  const CACHE_V = 'v85';   // 09-25 beauty2oem 视觉重排改了 b2o.css(资源哈希变),旧缓存 HTML 会引用已下线的旧样式,必须 +1;09-24 beauty2oem 数据区改为分项数字卡并修正市场情报/包材/配方口径;09-24 21:3x 简报 12 题 / 询盘 9 题(公开页表单改了必须 +1,否则旧缓存继续显示 5 题);09-24 安全 C1–C5:缓存键改由 lib/canon.ts 规整 + 搜索页过 searchGate + JSON-LD 转义 + 详情页 24 小时;09-24 3A:beauty2oem 顶栏加「洞察」+ /inci 搜索走 FTS;09-24 W1:撤 Google 字体 + 致痘按出处恢复 + b2o 隐私页/同意勾选;09-23 会员限额上线:详情页分 bot/anon 两份缓存 + 会员不进缓存;09-21 WhatsApp 号 +86 136 0005 0502 进 sites.contact_whatsapp(四个帛卉站),页脚 / JSON-LD / 悬浮按钮全站生效;09-18 原料页改走 market_product_inci + 解读页加「顺序≠含量」句;v69: 09-17 原料页 v2(目录原料 + 结构图 + 成分索引)上线(改公开页必 +1)
+   const keyFor = (r: Request) => {
+     const u = new URL(r.url);
+     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。

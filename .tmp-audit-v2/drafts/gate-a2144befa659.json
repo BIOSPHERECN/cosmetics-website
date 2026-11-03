@@ -1,0 +1,143 @@
+{
+ "schema": "bohui-draft/2",
+ "worker": "gate",
+ "tree": "a2144befa65967a390b671d4f358b148c7724780",
+ "repo": "F:/0cosmetic/tools-review",
+ "base": {
+  "commit": "b40d5554d600206b95b6105697c04fb0c9609d57",
+  "tree": "2d24696a5aff260e8ada57153ff225362df36e93",
+  "first_ship": false
+ },
+ "prev_ticket": null,
+ "note": "红线词表去掉「自有工厂」(09-24 创始人:老板自己的工厂就是自有工厂,贸易公司才不是);主线 21:1x 的【零读】放行(gate.sh 数新增查库 + d1_budget.py --new-queries,自测已过)一并报审",
+ "tier": "L2",
+ "tier_reasons": [
+  "244 行 > 80"
+ ],
+ "angles": [
+  "成本+正确性",
+  "安全+合规"
+ ],
+ "files": {
+  "成本+正确性": {
+   "diff": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-a2144befa659/成本+正确性.diff",
+   "files": [
+    "audit_v2/register_watch_task.ps1",
+    "audit_v2/sites.json",
+    "audit_v2/交付说明.md"
+   ],
+   "lines": 103
+  },
+  "安全+合规": {
+   "diff": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-a2144befa659/安全+合规.diff",
+   "files": [
+    "gate.sh.bak-0924-zero"
+   ],
+   "lines": 132
+  }
+ },
+ "all_diff": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-a2144befa659/all.diff",
+ "gate1": {
+  "result": "过",
+  "block": [],
+  "doubt": [],
+  "exceptions": [],
+  "risks": [],
+  "lines": 235,
+  "files": 4,
+  "seconds": {
+   "tree": 0.0,
+   "diff": 0.1,
+   "semgrep": 4.5,
+   "rules": 0.1,
+   "total": 4.7
+  }
+ },
+ "judges": {
+  "laya": {
+   "decision": "allow",
+   "conf": 0.84,
+   "noul": {
+    "cost": 0.99,
+    "security": 0.99,
+    "compliance": 0.99
+   },
+   "correctness": 1.32,
+   "verdict": "存疑",
+   "status": "判了",
+   "seconds": 38,
+   "partial": true
+  },
+  "jev": {
+   "decision": "block",
+   "conf": 0.59,
+   "noul": {
+    "cost": 0.22,
+    "security": 0.13,
+    "compliance": 0.12
+   },
+   "correctness": 0.7,
+   "verdict": "存疑",
+   "status": "判了",
+   "tokens_in": 4427,
+   "day_used": 16867,
+   "seconds": 1.9,
+   "call_ref": "ledger/jev_calls.jsonl@2026-09-24T23:01:16+08:00",
+   "request_id": null,
+   "partial": true
+  }
+ },
+ "budget": {
+  "level": "n/a",
+  "src": "闸门自身不看 D1 灯",
+  "at": "2026-09-24T23:01:13+08:00",
+  "ok": true
+ },
+ "items": [
+  {
+   "ref": "JEV",
+   "kind": "jev 存疑",
+   "text": "{\"decision\": \"block\", \"conf\": 0.59, \"noul\": {\"cost\": 0.22, \"security\": 0.13, \"compliance\": 0.12}, \"correctness\": 0.7, \"reason\": null}"
+  },
+  {
+   "ref": "LAYA",
+   "kind": "laya 存疑",
+   "text": "{\"decision\": \"allow\", \"conf\": 0.84, \"noul\": {\"cost\": 0.99, \"security\": 0.99, \"compliance\": 0.99}, \"correctness\": 1.32, \"reason\": null}"
+  }
+ ],
+ "refute_needed": [],
+ "reports_expected": [
+  "F:/0cosmetic/tools-review/audit_v2/reports/gate/a2144befa659/成本+正确性.json",
+  "F:/0cosmetic/tools-review/audit_v2/reports/gate/a2144befa659/安全+合规.json"
+ ],
+ "urgent": null,
+ "kind": "worker",
+ "created_at": "2026-09-24T23:01:52+08:00",
+ "skills": {
+  "成本": [
+   "zero-r2-move",
+   "karpathy-coder"
+  ],
+  "安全": [
+   "security-review",
+   "claude-guard:guard-rules",
+   "bohui-data-security-formula-confidentiality"
+  ],
+  "合规": [
+   "bohui-legal-advertising-claims",
+   "bohui-label-claims-review"
+  ],
+  "正确性": [
+   "code-reviewer",
+   "karpathy-coder"
+  ],
+  "综合": [
+   "code-reviewer",
+   "security-review"
+  ],
+  "反驳": [],
+  "复核": [
+   "code-reviewer"
+  ]
+ }
+}

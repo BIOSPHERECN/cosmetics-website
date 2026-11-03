@@ -84,11 +84,23 @@ R2_BUCKET = "bohui-photo"
 # Turnstile 的 site key 是公开值(会渲染进登录页 HTML),放明文没问题;
 # 配了它登录页才出验证组件,secret 端的校验开关是 TURNSTILE_SECRET(wrangler secret)。
 TURNSTILE_SITE_KEY = "0x4AAAAAAEh9PTvpt4eaYV_q"
+# 费用熔断保险丝(2026-10-22,lib/fuse.ts + middleware 缓存 miss 处):
+# 当日「缓存 miss → 渲染」次数超过此值 → 非会员/非后台请求一律 429,不再渲染、不再查 D1、不再花钱。
+# 默认 30 万 ≈ 3000 万行读/天,仅为免费额度(250 亿/月)的 3.6%;正常日渲染 <10 万,远碰不到。
+# 改 0 = 用 lib/fuse.ts 的内置默认;改 -1 = 等价极大约束(实际禁用,但留代码路径在)。
+FUSE_RENDER_CAP = "300000"
+# 付费 AI 全站日预算(2026-11-02,lib/fuse.ts aiDailyCheck):ecom-set/pack/video/chat/design 每次请求
+# 按折算的模型调用次数累计(4 张图记 4、读图+出图记 2、一次对话记 1),超过此值当天一律 503、次日零点恢复。
+# 为什么需要它:ratelimit 的配额全是 per-IP,换 IP 就绕过;而模型池是全站共享的 —— 这条是"总闸"。
+# 2000 次/天 ≈ 日常业务量的几十倍,正常永远碰不到,只在脚本狂刷或前端死循环时才触发。
+# 改 0 = 用内置默认(也是 2000);会被 aiDailyCheck 当作非法值回落默认。
+AI_DAILY_CAP = "2000"
 
 # 说明:R2 走 S3 兼容接口而非绑定 —— 桶在创始人主账号、站点在 BIOSPHERECN 账号,
 # 绑定只能同账号。凭据用 `wrangler secret put` 注入,不写在本文件。
 
 # 09-24 C1:每 10 分钟跑一次 BEAUTY2OEM 第一期自动化(src/lib/b2o-auto.ts:简报兜底 + 第 3/7/14 天再触达 + jobs 心跳)。
 # 10-09 获客:整点跑一次云端客户挖掘(prospect-mine.ts:按 UTC 时区选市场 → fetch 榜单 → AI 抽品牌 → 写 D1)
+# 10-23 爆款监控云端正环:0 4 采集+日报;0 8 * * 1 每周一生成周报(每周必交)
 [triggers]
-crons = ["*/10 * * * *", "0 * * * *", "0 2 * * *", "0 4 * * *", "0 6 * * *"]
+crons = ["*/10 * * * *", "0 * * * *", "0 2 * * *", "0 3 * * *", "0 4 * * *", "5 4 * * *", "0 5 * * *", "0 6 * * *", "0 8 * * 1"]

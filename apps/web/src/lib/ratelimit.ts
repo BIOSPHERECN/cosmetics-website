@@ -42,6 +42,10 @@ export const QUOTA = {
   'ai.pack': { limit: 6, windowMin: 60 },
   /* AI 站内搜索:检索走 D1 不花钱,但每次会调一次模型 —— 给个上限防脚本刷 */
   'ai.search': { limit: 30, windowMin: 60 },
+  /* AI 电商套图(2026-10-28):一次出 4 张文生图 —— 最贵的一档,4 次/小时/IP */
+  'ai.ecom-set': { limit: 4, windowMin: 60 },
+  /* AI 视频(2026-10-29,LibTV 预留):一次可跑 2 分钟轮询且视频模型单价高,2 次/小时/IP */
+  'ai.video': { limit: 2, windowMin: 60 },
   /* AI 客服:对话轮次多于共创,给到 30/小时;刷爆的引导走询盘,不是无限聊天 */
   'ai.chat': { limit: 30, windowMin: 60 },
   /* 匿名访客的 AI 客服免费层:5 轮/小时,超了引导登录(获客铁律:首触零摩擦,但防脚本刷) */

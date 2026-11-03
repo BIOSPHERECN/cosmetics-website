@@ -1,0 +1,81 @@
+[材料已截断:共 407 行,给了约 78 行]
+Site worker: bohui-web. Tier: L3. Note: 【零读】beauty2oem:数据区改正确表述(去掉对数图,13,000+ 配方不写可核对)、首页强调多年海外市场经验与服务出海品牌、全页间距收紧、换成创始人图库 14 张图
+diff --stat:
+ apps/web/astro.config.mjs                               |  48 ++++++++++++++++++++++++++++++
+ apps/web/public/b2o/img/fd/c-botanical-set.webp         | Bin 0 -> 160070 bytes
+ apps/web/public/b2o/img/fd/c-color-tubes.webp           | Bin 0 -> 86026 bytes
+ apps/web/public/b2o/img/fd/c-fruit-cans.webp            | Bin 0 -> 111198 bytes
+ apps/web/public/b2o/img/fd/c-pink-serum.webp            | Bin 0 -> 63838 bytes
+ apps/web/public/b2o/img/fd/c-starry-premium.webp        | Bin 0 -> 82900 bytes
+ apps/web/public/b2o/img/fd/d-cucumber-set.webp          | Bin 0 -> 109238 bytes
+ apps/web/public/b2o/img/fd/d-gold-set.webp              | Bin 0 -> 130776 bytes
+ apps/web/public/b2o/img/fd/d-papaya-set.webp            | Bin 0 -> 139288 bytes
+ apps/web/public/b2o/img/fd/hero-beach-lineup.webp       | Bin 0 -> 127886 bytes
+ apps/web/public/b2o/img/fd/insight-pool.webp            | Bin 0 -> 170482 bytes
+ apps/web/public/b2o/img/fd/m1-trend-pastel.webp         | Bin 0 -> 36576 bytes
+ apps/web/public/b2o/img/fd/m2-judge-gold.webp           | Bin 0 -> 95774 bytes
+ apps/web/public/b2o/img/fd/m3-verify-market.webp        | Bin 0 -> 121276 bytes
+ apps/web/public/b2o/img/fd/m4-launch-tropical-box.webp  | Bin 0 -> 149982 bytes
+ apps/web/src/components/B2oBlock.astro                  | 157 ++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------
+ apps/web/src/components/_HomeFactory.astro.retired-0921 |   6 ++--
+ apps/web/src/middleware.ts                              |   2 +-
+ apps/web/src/pages/[lang]/insights.astro                |   2 +-
+ apps/web/src/styles/b2o.css                             | 115 ++++++++++++++++++++++++++++++++++++----------------------------------
+ packages/core/src/blocks.ts                             |   8 ++---
+ packages/core/src/content/org.ts                        |   4 +--
+ tools/ship.sh                                           |   6 ++--
+ 23 files changed, 202 insertions(+), 146 deletions(-)
+Gate-1 hits: S9 tools/ship.sh:16 AV2=F:/0cosmetic/tools-review/audit_v2   # 审核部 v2.1:ENABLED 
+Risks: RK1 CACHE_V 改成 const CACHE_V = 'v85';   // 09-24 beauty2oem 数据区改; RK2 middleware.ts 变了:所有请求都经过它; RK12 碰到部署或上线脚本 apps/web/astro.config.mjs; RK7 对外文案/页面变了 apps/web/src/components/B2oBlock.astro; RK7 对外文案/页面变了 apps/web/src/components/_HomeFactory.astro.retired; RK7 对外文案/页面变了 apps/web/src/middleware.ts; RK7 对外文案/页面变了 apps/web/src/pages/[lang]/insights.astro; RK7 对外文案/页面变了 packages/core/src/blocks.ts; RK7 对外文案/页面变了 packages/core/src/content/org.ts; RK12 碰到部署或上线脚本 tools/ship.sh; R11 apps/web/src/styles/b2o.css /* 创始人图库的主体焦点：桌面产品保留中下部，人物保留脸部。 
+Changed lines:
+
+diff --git a/tools/ship.sh b/tools/ship.sh
+--- a/tools/ship.sh
++++ b/tools/ship.sh
+@@ -2,3 +2,4 @@
+-# 用法:bash tools/ship.sh [--dry-run] [--reviewed=<审核报告>] [--note="说明,降读改动带【降读】"] [--base=<提交>]
++# 用法(v2.1,审核部 ENABLED 后):bash tools/ship.sh --note "说明" | --dry-run | --status | --urgent … | --breakglass "理由" | --rollback[=<版本>] --reason "…"(详见 tools-review/audit_v2/ship_lib.sh 开头)
++# v1 用法(ENABLED 不在时):bash tools/ship.sh [--dry-run] [--reviewed=<审核报告>] [--note="说明,降读改动带【降读】"] [--base=<提交>]
+@@ -14,2 +15,3 @@ deploy() (
+-source F:/0cosmetic/tools-review/gate.sh "$@"
++AV2=F:/0cosmetic/tools-review/audit_v2   # 审核部 v2.1:ENABLED 在 → v2(审核单 + 三家共判,从已批准副本执行);不在 → v1 四道闸(gate.sh 留档)
++if [ -f "$AV2/ENABLED" ]; then source "$AV2/cache/gate_approved/audit_v2/ship_lib.sh" "$@"; else source F:/0cosmetic/tools-review/gate.sh "$@"; fi
+diff --git a/apps/web/astro.config.mjs b/apps/web/astro.config.mjs
+--- a/apps/web/astro.config.mjs
++++ b/apps/web/astro.config.mjs
+@@ -2,2 +2,49 @@ import { defineConfig } from 'astro/config';
++import { spawnSync } from 'node:child_process';
++import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
++import { resolve } from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++/**
++ * 审核部 v2.1 第一关(tools-review/audit_v2/设计-v2.1.md §1.2):每次 astro build 之前跑 gate1,不过就构建失败。
++ * audit_v2/ENABLED 不在 = 观察模式:照跑、只提示、不拦、不注入。
++ * 构建完给产物 wrangler.json 注入 build.command(§2.8 ③):有人进产物目录直接 wrangler deploy,wrangler 会先跑审核单校验。
++ * 破窗只认 ship.sh --breakglass 导出的 BOHUI_BREAKGLASS(去空白 ≥6 字),gate1 退出码 3(硬规则)破窗也不放。
++ */
++const AV2 = 'F:/0cosmetic/tools-review/audit_v2';
++const GATE = `${AV2}/cache/gate_approved/audit_v2`;
++const WORKER = 'bohui-web';
++let appRoot = null;
++let serverDir = null;
++const bohuiGate1 = {
++  name: 'bohui-gate1',
++  hooks: {
++    'astro:config:done': ({ config }) => {
++      appRoot = fileURLToPath(config.root);
++      serverDir = fileURLToPath(config.build.server);
++    },
++    'astro:build:start': () => {
++      const on = existsSync(`${AV2}/ENABLED`);
++      const repo = resolve(appRoot, '../..');
++      const r = spawnSync('F:/0cosmetic/_venv/review/Scripts/python.exe', [on ? `${GATE}/gate1.py` : `${AV2}/gate1.py`, '--repo', repo, '--mode', 'build'],
++        { stdio: 'inherit', env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' } });
++      if (r.status === 0) return;
++      if (!on) { console.warn(`[第一关] 观察模式(${AV2}/ENABLED 不在):exit ${r.status ?? r.error},不拦`); return; }
++      const bg = process.env.BOHUI_BREAKGLASS || '';
++      if ([...bg.replace(/\s/g, '')].length >= 6 && r.status !== 3) {
++        appendFileSync(`${AV2}/ledger/breakglass.jsonl`, JSON.stringify({ ts: new Date().toISOString(), layer: 'astro', repo, gate1_exit: r.status, reason: bg.slice(0, 300) }) + '\n');
++        console.warn('[第一关] 破窗放行,
+[没给到内容的文件 21 个] apps/web/src/middleware.ts、apps/web/public/b2o/img/fd/c-botanical-set.webp、apps/web/public/b2o/img/fd/c-color-tubes.webp、apps/web/public/b2o/img/fd/c-fruit-cans.webp、apps/web/public/b2o/img/fd/c-pink-serum.webp、apps/web/public/b2o/img/fd/c-starry-premium.webp、apps/web/public/b2o/img/fd/d-cucumber-set.webp、apps/web/public/b2o/img/fd/d-gold-set.webp、apps/web

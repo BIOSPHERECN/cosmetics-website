@@ -15,8 +15,8 @@ const ROUTES = [
   { path: '/cbndata/information', source: 'CBNData', topic: 'industry' },
   { path: '/36kr/hot-list', source: '36氪', topic: 'industry' },
   { path: '/jiemian/lists/61', source: '界面新闻·时尚', topic: 'brand' },
-  { path: '/fashionnetwork/headline/cn', source: 'FashionNetwork', topic: 'brand' },
 ];
+/* 09-24 撤 FashionNetwork(/fashionnetwork/headline/cn):09-22 起条目恒 0、详情页 403 反爬 —— 红灯源不绕,换源另议 */
 /* 行业相关性关键词:标题不含就不收 —— 通用媒体路由里美妆只是子集 */
 const KW = /美妆|化妆品|护肤|彩妆|香水|香氛|个护|美容|洗护|面膜|精华|防晒|口腔|cosmetic|beauty|skincare|fragrance/i;
 

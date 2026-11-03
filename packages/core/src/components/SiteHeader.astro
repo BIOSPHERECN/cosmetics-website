@@ -39,6 +39,9 @@ export interface NavNode {
 const { locale, path, siteName, siteNameZh, showLocaleSwitch = true, inert = false, nav, brand } = Astro.props;
 /* 09-24 图文版:BEAUTY2OEM 字标(2 绿色放大、OEM 红色、BEAUTY 取 --b2o-beauty)+ 主按钮「提交店铺，拿简报」;样式在 apps/web/src/styles/b2o.css */
 const b2o = brand === 'beauty2oem';
+/* 品牌标全局单一指向(创始人 2026-10-23):除 beauty2oem 外,所有站点左上角一律渲染
+   同一个「公司 logo 锁图(logo.png,内含双环+biosphere 字标)+ AI 文字」组合,拼成 biosphere-AI。
+   不再按 brand 分支、也不再显示 siteName/siteNameZh 双行文案 —— 任何页面改此一处即全站生效。 */
 const tr = t(locale);
 
 const L = (p: string) => (inert ? '#' : `/${locale}${p}`);
@@ -80,18 +83,11 @@ const items: NavNode[] = nav?.length
   )}
 
   <div class="ck-wrap bar">
-    <a class="mark" href={L('/')} aria-label={siteName}>
-      {/* 站内绘制的几何标记:同心方 + 斜线,任何流派下都成立;正式 logo 到位后替换 */}
+    <a class:list={['mark', { 'bio-mark': !b2o }]} href={L('/')} aria-label={siteName}>
+      {/* 品牌标:beauty2oem 走专用字标;其余站点一律用公司 logo 锁图 + AI 文字(全局单文件) */}
       {b2o ? <span class="b2o-mark"><b class="m-b">BEAUTY</b><b class="m-2">2</b><b class="m-o">OEM</b></span> : <>
-      <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <rect x="1.5" y="1.5" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.5" />
-        <path d="M6 18 L18 6" stroke="currentColor" stroke-width="1.5" />
-        <circle cx="12" cy="12" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5" />
-      </svg>
-      <span class="words">
-        <strong class="name">{siteName}</strong>
-        <span class="zh">{siteNameZh}</span>
-      </span>
+      <img class="glyph" src="/logo.png" alt="biosphere-AI" />
+      <span class="ai">AI</span>
       </>}
     </a>
 
@@ -169,33 +165,25 @@ const items: NavNode[] = nav?.length
     margin-inline-end: auto;
   }
   .glyph {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 2.25rem;
+    height: 2.25rem;
     flex: none;
-    color: var(--ck-accent);
+    object-fit: contain;
   }
-  .words {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.15;
-    /* 字标是「品牌名 + 中文小字」两行,导航是一行。
-       按整块居中,品牌名会偏上 —— 因为下面那行小字把块心拉低了。
-       眼睛对齐的是**主行**,所以往下补半个小字行高,让品牌名落到导航那条线上。 */
-    transform: translateY(calc(var(--ck-small, 0.875rem) * 0.34));
-  }
-  /* 窄屏隐藏了中文小字,补偿也要跟着撤掉,否则反而歪了 */
-  @media (max-width: 52rem) { .words { transform: none; } }
-  .name {
+
+  /* ── 品牌标全局样式:官方 logo 锁图 + 「AI」文字,整体放大 ──
+     创始人 2026-10-23:「左上角只用公司 logo 图,文字用 biosphere-AI,
+     另外加文字 AI,现在那么小不合适」。logo.png 是透明底双环+biosphere
+     字标锁图,「AI」用品牌紫加粗拼出 biosphere-AI。全部站点共用这一套。 */
+  .bio-mark { gap: 0.4rem; }
+  .bio-mark .glyph { width: auto; height: 3rem; }
+  .bio-mark .ai {
     font-family: var(--ck-font-head);
-    font-size: 0.9375rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-  }
-  .zh {
-    font-size: max(0.6875rem, 14px);
-    color: var(--ck-ink-faint);
-    letter-spacing: 0.04em;
-    margin-top: 0.125rem;
+    font-size: 1.625rem;
+    font-weight: 800;
+    line-height: 1;
+    color: #84569f;
+    letter-spacing: 0.01em;
   }
 
   /* ── 主导航 ─────────────────────────────
@@ -369,12 +357,12 @@ const items: NavNode[] = nav?.length
       min-height: 3.5rem;
       padding-block: 0.5rem;
     }
-    .zh { display: none; }
     .right { gap: 0.375rem; }
     /* QA 舰队量出的英文档:CTA「Start an inquiry」199.6px 把汉堡挤出视口 7px。
        字标、CTA、间距各收一档,375px 下英文全套 ≈343px 放得下 */
     .glyph { width: 1.5rem; height: 1.5rem; }
-    .name { font-size: 0.875rem; white-space: nowrap; }
+    .bio-mark .glyph { width: auto; height: 2rem; }
+    .bio-mark .ai { font-size: 1.25rem; }
     .cta { padding: 0.5rem 0.75rem; font-size: max(0.75rem, 14px); letter-spacing: 0.01em; }
 
     /* 汉堡本体:44px 触控方块(label 原生联动 checkbox) */

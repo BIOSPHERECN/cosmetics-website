@@ -17,6 +17,7 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import ItemDetail from '@cosmetic/core/components/ItemDetail.astro';
+import InquiryFormLite from '@cosmetic/core/components/InquiryFormLite.astro';
 import { pageShell } from '../../../lib/shell';
 import { memo } from '../../../lib/memo';
 import { BEN_LABEL, FMT_LABEL, label } from '../../../lib/catalog';
@@ -229,6 +230,8 @@ const ld = [
 ];
 /* 付费段 = ItemDetail 里除结尾那段以外的全部 .sec(预览版正好一段都不出) */
 const ldOut = [...(full ? ld : ld.slice(0, 1)), paywallLd(origin + path, String(name ?? ''), '.item > .sec:not(.end)')];
+/* 询盘表单的 WhatsApp 号与联系页同源(middleware 注入) */
+const contactWa: string | null = ((Astro.locals as any)?.contact ?? {}).whatsapp ?? null;
 ---
 
 {/* 旧 149 条走 ItemDetail 原样;其余成分走目录原料页(v2) */}
@@ -280,6 +283,7 @@ const ldOut = [...(full ? ld : ld.slice(0, 1)), paywallLd(origin + path, String(
                 related: T.related, faq: T.faqH, partCode: T.partCode }}>
       <MemberGate lang={lang} g={gt} next={path} what={['完整资料', 'the full profile']} />
     </ItemDetail>
+    <InquiryFormLite lang={lang} email={shell.email} whatsapp={contactWa} source="ingredient-detail" product={String(name ?? '')} />
   </main>
   <SiteFooter locale={lang as any} path={path}
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}

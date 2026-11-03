@@ -1,0 +1,83 @@
+---
+/**
+ * 新建页面 —— 补后台「页面与版块」缺的新建入口。
+ *
+ * 只收三项:站点、链接(slug)、标题。模板默认标准页,进来就进版块编辑器,
+ * 让运营接着「在这里加一屏」把内容做出来 —— 页骨架与内容拆开,
+ * 是为了别把这张表单做成长到没人愿意填。
+ */
+import AdminShell from '../../../layouts/AdminShell.astro';
+import { pageGuard } from '../../../lib/guard';
+import { SITES } from '@cosmetic/core/registry';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+---
+
+<AdminShell title="新建页面" active="pages" email={c.sess.email} tenant={c.tenant}>
+  <nav class="crumb"><a href="/bohui/pages/">页面与版块</a> › <b>新建页面</b></nav>
+  <h1>新建页面</h1>
+  <p class="lead">先定页骨架(站点 / 链接 / 标题),提交后直接进入版块编辑器加内容。</p>
+
+  <form id="f" class="card" style="max-width:34rem">
+    <label>
+      站点
+      <select name="site_id" required>
+        {SITES.map((s) => <option value={s.id}>{s.name}</option>)}
+      </select>
+    </label>
+    <label>
+      链接(小写字母、数字、- _ /)
+      <input name="slug" required pattern="[a-z0-9][a-z0-9/_-]*" placeholder="比如: quality/halal" />
+    </label>
+    <label>
+      页面标题
+      <input name="title" required maxlength="120" placeholder="页面标题,18 语种初始用它,可在编辑器里逐语种改" />
+    </label>
+    <label class="chk">
+      <input type="checkbox" name="in_nav" /> 加进顶部导航
+    </label>
+    <div class="acts">
+      <button class="btn pri" type="submit">创建并编辑</button>
+      <a class="btn" href="/bohui/pages/">取消</a>
+    </div>
+    <p class="msg" id="msg"></p>
+  </form>
+
+  <script is:inline>
+    const f = document.getElementById('f');
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('msg');
+      msg.textContent = '创建中…';
+      const fd = new FormData(f);
+      const r = await fetch('/api/admin/page-create', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          site_id: fd.get('site_id'),
+          slug: fd.get('slug'),
+          title: fd.get('title'),
+          template: 'standard',
+          in_nav: !!fd.get('in_nav'),
+        }),
+      });
+      const d = await r.json();
+      if (d.ok) { location.href = '/bohui/pages/' + d.id + '/'; }
+      else { msg.textContent = '创建失败:' + (d.msg || r.status); msg.style.color = '#b91c1c'; }
+    });
+  </script>
+
+  <style>
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:.75rem; padding:1.25rem; display:grid; gap:.875rem; }
+    label { display:grid; gap:.375rem; font-size:.875rem; color:#374151; }
+    input[type=text], input:not([type]), select { border:1px solid #d1d5db; border-radius:.5rem; padding:.5rem .75rem; font-size:.875rem; }
+    .chk { display:flex; align-items:center; gap:.5rem; }
+    .acts { display:flex; gap:.625rem; margin-top:.25rem; }
+    .msg { margin:0; font-size:.8125rem; color:#6b7280; }
+    .crumb { font-size:.8125rem; margin-bottom:.375rem; }
+    .crumb a { color:#6b7280; text-decoration:none; }
+    .lead { color:#6b7280; font-size:.875rem; margin-top:.25rem; }
+  </style>
+</AdminShell>

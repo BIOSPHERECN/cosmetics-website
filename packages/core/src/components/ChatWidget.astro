@@ -2,8 +2,9 @@
 /**
  * AI 客服气泡 ——「先机器人、后人工」的第一道接待(创始人对标 GitHub 支持机器人)。
  *
- * 位置在**右下**(创始人:「聊天机器人应该是浮动在右下方的」,也是行业惯例位)。
- * 右下角浮层从下往上:AI 客服 → 询盘车(上移一档);回到顶部让去左下。
+ * 位置在**右侧垂直居中**(2026-10-23 创始人:「放到页面的中间,这样就不会被回到顶端的按钮挡住了」;
+ * 原右下角与返回顶部按钮重叠)。右下角浮层从下往上:询盘车 → 返回顶部;
+ * WhatsApp 留右下(回到顶部之上),互不遮挡。
  * 面板层级压过吸顶导航(50)与询盘车球(60),低于购物抽屉(80)。
  * 「转人工询盘」常驻面板底部 —— 机器人是接待,不是墙,
  * 人工入口永远一步可达;交接时对话摘要经 sessionStorage 预填进询盘表单。
@@ -111,11 +112,13 @@ if (b2o) Object.assign(T, {
   fab.addEventListener('click', () => {
     const open = panel.hidden;
     panel.hidden = !open;
+    /* 面板与按钮同处右侧垂直居中,打开时按钮让位,关闭再回来 */
+    fab.hidden = open;
     fab.setAttribute('aria-expanded', String(open));
     if (open) { render(); input.focus(); }
   });
   document.getElementById('bh-chat-x').addEventListener('click', () => {
-    panel.hidden = true; fab.setAttribute('aria-expanded', 'false');
+    panel.hidden = true; fab.hidden = false; fab.setAttribute('aria-expanded', 'false');
   });
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -140,7 +143,7 @@ if (b2o) Object.assign(T, {
   #bh-wa-fab:hover { background: #1ebe5b; }
   #bh-chat-panel:not([hidden]) ~ #bh-wa-fab { display: none; }
   #bh-chat-fab {
-    position: fixed; inset-inline-end: 1.25rem; bottom: 1.25rem; z-index: 64;
+    position: fixed; inset-inline-end: 1.25rem; top: 50%; transform: translateY(-50%); z-index: 64;
     display: inline-flex; align-items: center; gap: 0.4375rem;
     padding: 0.6875rem 1.0625rem; border: 0; border-radius: 999px; cursor: pointer;
     background: var(--ck-accent); color: var(--ck-on-accent);
@@ -148,13 +151,16 @@ if (b2o) Object.assign(T, {
     box-shadow: 0 10px 26px -12px rgb(0 0 0 / 0.45);
   }
   #bh-chat-fab:hover { background: var(--ck-accent-deep); }
+  /* 面板打开时按钮自己让位(hidden 必须显式压回 display:none,同面板的坑) */
+  #bh-chat-fab[hidden] { display: none !important; }
   /* [hidden] 必须显式压回 display:none —— 下面的 display:flex 是作者样式,
      优先级高于 UA 对 hidden 属性的处理。询盘车当年同一个坑(见 InquiryCart 注释),
      这次自己又踩了一遍:面板没点就常开压在页脚上。 */
   #bh-chat-panel[hidden] { display: none !important; }
   #bh-chat-panel {
-    position: fixed; inset-inline-end: 1.25rem; bottom: 4.75rem; z-index: 65;
+    position: fixed; inset-inline-end: 1.25rem; top: 50%; transform: translateY(-50%); z-index: 65;
     width: min(23rem, calc(100vw - 2.5rem));
+    max-height: calc(100dvh - 2.5rem);
     display: flex; flex-direction: column;
     background: var(--ck-surface); color: var(--ck-ink);
     border: 1px solid var(--ck-line); border-radius: 14px; overflow: hidden;

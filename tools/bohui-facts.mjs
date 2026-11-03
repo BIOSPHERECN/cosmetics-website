@@ -34,8 +34,8 @@ export const FACTS = {
     { key: 'cleanroom', zh: '洁净生产车间标准', en: 'Cleanroom class', value: '10万级', unit: 'GMP', valueEn: 'Class 100,000', unitEn: 'GMP' },
   ],
 
-  /** 打样周期 —— 我原先写的 25 天是编的,真实是 3–7 天 */
-  sampling: { zh: '3–7 天快速打样', en: '3–7 day sampling' },
+  /** 打样周期 —— 09-26 总指挥按创始人授权定:营销文案一律「通常 3–7 天出样」(带「通常」,不写成承诺);条款页 lib/terms.ts 保留 5–14 天 */
+  sampling: { zh: '通常 3–7 天出样', en: 'samples usually ready in 3–7 days' },
 
   bases: [
     /* 精确地点口径(PDF 第 2 页 KEY FIGURES 脚注):广州白云 + 印尼唐格朗 */
@@ -51,7 +51,7 @@ export const FACTS = {
 
   markets: [
     { zh: '东南亚', en: 'Southeast Asia', note: { zh: '印尼工厂本土化交付', en: 'Local delivery from the Indonesia plant' } },
-    { zh: '中东', en: 'Middle East', note: { zh: 'HALAL 认证畅通准入', en: 'HALAL certified for smooth entry' } },
+    { zh: '中东', en: 'Middle East', note: { zh: '持 HALAL 证书,覆盖范围以证书为准', en: 'HALAL certificate held, scope as stated on the certificate' } },
     { zh: '欧美', en: 'Europe & North America', note: { zh: 'ISO 22716 国际标准背书', en: 'Backed by ISO 22716' } },
     { zh: '巴西 / 南美', en: 'Brazil & South America', note: { zh: '亚马逊植物双源战略', en: 'Amazonian botanical dual-source strategy' } },
   ],
@@ -121,7 +121,7 @@ export const FACTS = {
   certs: [
     { id: 'gmpc', label: 'GMPC', note: { zh: '化妆品良好生产规范(DEKRA 认证)', en: 'Good Manufacturing Practice of Cosmetics (DEKRA)' } },
     { id: 'iso22716', label: 'ISO 22716:2007', note: { zh: '化妆品 GMP 国际标准(DEKRA 认证)', en: 'Cosmetics GMP international standard (DEKRA)' } },
-    { id: 'halal', label: 'HALAL', note: { zh: '清真认证 —— 中东与印尼市场准入', en: 'Halal certification for Middle East and Indonesia' } },
+    { id: 'halal', label: 'HALAL', note: { zh: 'HALAL 认证(覆盖范围以证书为准)', en: 'HALAL certification (scope as stated on the certificate)' } },
     { id: 'fda', label: 'FDA', note: { zh: '美国 FDA 化妆品设施注册', en: 'US FDA cosmetic facility registration' } },
     { id: 'cpnp', label: 'CPNP', note: { zh: '欧盟化妆品通报', en: 'EU cosmetic product notification' } },
     { id: 'sgs', label: 'SGS', note: { zh: '第三方检测报告', en: 'Third-party testing reports' } },

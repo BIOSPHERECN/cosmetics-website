@@ -28,7 +28,7 @@ function guard(request: Request): Response | null {
   return null;
 }
 
-const ADDR = "〔地址:待法务定稿〕";
+const ADDR = "广州市白云区太和镇龙兴东路15号";
 const signOff = (site: string) => `BIOSPHERE · cosmetics OEM/ODM manufacturer · sales@biosphere-ai.com\n${ADDR}\n\nBusiness solicitation. We found this address on ${site || 'your website'}. Privacy: https://biosphere-ai.com/en/privacy/\nNot relevant? Reply "unsubscribe" and we won't write again.`;
 
 const PROMPT = `You are a cosmetics OEM/ODM factory sales assistant writing a cold outreach email. Write ONLY the email body (no subject), in English, ≤95 words.
@@ -46,7 +46,11 @@ export const GET: APIRoute = async ({ request }) => {
   const db = (env as any).DB as D1Database | undefined;
   if (!db) return json({ ok: false, msg: 'no db' }, 500);
 
-  const fleet = paidFirst(await loadFleet(db, env));
+  /* 网关优先:paidFirst 把 agnes 排最前(长期 402/429),chat 试满 4 家就放弃 → generated 永远 0。
+     与 cron-tasks.ts 的 runOutreachAuto 同一条修复(2026-10-28)。 */
+  const fleet0 = paidFirst(await loadFleet(db, env));
+  const fleet = [...(fleet0 as any[]).filter((p) => p.id === 'bohui-gateway' && p.keys?.length),
+    ...(fleet0 as any[]).filter((p) => p.id !== 'bohui-gateway' && p.keys?.length)];
   if (!fleet.length) return json({ ok: false, msg: 'no fleet' }, 500);
 
   // 1. 取候选客户：ICP≥60, status='new', 有邮箱, 不在抑制名单
@@ -56,6 +60,9 @@ export const GET: APIRoute = async ({ request }) => {
      WHERE p.icp_score >= 60 AND p.status = 'new'
        AND p.id NOT IN (SELECT prospect_id FROM outreach_log WHERE status IN ('draft','approved','sent','unknown'))
        AND NOT EXISTS (SELECT 1 FROM prospect_contacts pc WHERE pc.prospect_id = p.id AND pc.email IN (SELECT email FROM outreach_suppress))
+       /* 必须有可发邮箱:contact_channels 里含 @,或在 prospect_contacts 表里有 email。
+          原来按分数取前 5,但前 5 多数无邮箱 → 全 skipped、generated=0(2026-10-28 实测)。 */
+       AND (p.contact_channels LIKE '%@%' OR EXISTS (SELECT 1 FROM prospect_contacts pc WHERE pc.prospect_id = p.id AND pc.email IS NOT NULL AND pc.email != ''))
      ORDER BY p.icp_score DESC LIMIT 5`
   ).all<any>().catch(() => ({ results: [] as any[] }));
 

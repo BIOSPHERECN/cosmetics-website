@@ -1,0 +1,158 @@
+{
+  "angle": "综合",
+  "tree": "a1f07de217a06eef9deb16b01da0f7b46480071d9e57492a8a0b81fdd3ccd77d",
+  "worker": "prod-bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/prod-bohui-web-a1f07de217a0.json",
+  "run_label": "review-ticket a1f07de217a0 综合",
+  "reviewer": "claude",
+  "skills_loaded": ["code-reviewer"],
+  "verdict": "过",
+  "checked": ["成本-①", "成本-②", "成本-③", "安全-①", "安全-②", "安全-③", "合规-①", "合规-②", "合规-③", "正确性-①", "正确性-②", "正确性-③", "专项-密钥外泄面", "专项-目标Worker与账号", "专项-失败半截状态", "专项-上一版综合-1/综合-2复核"],
+  "evidence": [
+    "F:/0cosmetic/.claude/workflows/review-ticket.js:44-86(RULES、REPORT、REFUTE schema)",
+    "F:/0cosmetic/tools-review/audit_v2/口径摘要.md",
+    "草稿 prod-bohui-web-a1f07de217a0.json;综合.diff(command.txt 3 行 + set-probe-secret.mjs 15 行,共 18 行);all.diff 同内容",
+    "F:/0cosmetic/cosmetic-sites/tools/set-probe-secret.mjs 全文 1-15 行(与 diff 一致)",
+    "上一版报告 reports/prod-bohui-web/9993f1d8b8ac/综合.json 的综合-1、综合-2",
+    "F:/0cosmetic/tools-review/audit_v2/ops.py:244-276(prod:shell=True、cwd=repo+wrangler_cwd、env=lib.wr_env、:266 台账只记命令文本、:268 只在命令文本含 secret put 时才把新版本记进 ship.jsonl)",
+    "F:/0cosmetic/tools-review/audit_v2/lib.py:107-111(clean_env 不剥 WRANGLER_*)、:524-537(wr_env 剥 CLOUDFLARE_* 后从公司 .env 装回)、:566-573(live_version 取最新部署的 100% 版本)",
+    "F:/0cosmetic/tools-review/audit_v2/ticket.py:763-769(ship 第 10 步:线上版本不在 ship.jsonl 即拦,要求 adopt-live 并挂 24 小时追审)、:1043-1050(adopt_live)",
+    "F:/0cosmetic/tools-review/audit_v2/watch.py:55-71(secret 触发的部署按 ops.jsonl 900 秒内有记录判已审,否则红报 unaudited-secret)",
+    "F:/0cosmetic/tools-review/audit_v2/smoke.py:16(仍是 \\s* 写法)、:43",
+    "F:/0cosmetic/tools-review/audit_v2/hook_guard.py:24-25、179-182(只认字面 wrangler secret put)",
+    "apps/web/wrangler.toml:8 name=bohui-web,无 account_id;apps/web/.wrangler/deploy/config.json 重定向到 dist/server/wrangler.json,其 name=bohui-web、无 account_id、无 env 段、vars 只有 MEDIA_DRIVER/R2_BUCKET/TURNSTILE_SITE_KEY(无 PROBE_SECRET 同名绑定冲突)",
+    "apps/web/node_modules/.bin/wrangler.CMD 指向本地 pnpm wrangler@4.120.0,npx 不会联网下载",
+    "wrangler 4.120.0 cli.js:375365-375460 secret put(:375397 scriptName=getLegacyScriptName;:375403-375406 非 TTY 读 stdin 并 trimTrailingWhitespace;:375407、:375457 只打印 Worker 名与键名;:375410-375418 单次 PUT /accounts/{id}/workers/scripts/{name}/secrets;:375419-375427 版本未部署时整体报错;:375444-375452 仅 Worker 不存在时建草稿 Worker)",
+    "cli.js:375253-375255 getLegacyScriptName:无 --env 时就是 args.name;cli.js:34967 CLOUDFLARE_ENV 只影响读配置,不进 args.env",
+    "cli.js:125381-125396 getActiveAccountId:临时账号(仅内存,需显式 --temporary)→ 配置 account_id → CLOUDFLARE_ACCOUNT_ID;cli.js:122327-122335 临时账号只在内存",
+    "cli.js:120848-120861 getAuthFromEnv:CLOUDFLARE_API_KEY+CLOUDFLARE_EMAIL 优先于 CLOUDFLARE_API_TOKEN;cli.js:52302-52306 CLOUDFLARE_API_BASE_URL;cli.js:52310-52313 WRANGLER_LOG_SANITIZE 默认 true;cli.js:61092-61101 debugWithSanitization 默认只写 omitted;cli.js:131640-131655 请求 INIT(含 body)只走 debugWithSanitization;cli.js:61156-61160 doLog 写盘也用同一条已脱敏消息",
+    "公司 .env 只做计数与布尔比对,未取值未打印:PROBE_SECRET/CLOUDFLARE_ACCOUNT_ID/CLOUDFLARE_API_TOKEN 各恰 1 行、无 export 前缀、无注释行、无 CR;三值均为 ≥32 位 [A-Za-z0-9_-] 单 token,且脚本新正则与 wr_env 旧正则取值逐一相等;.env 无 CLOUDFLARE_API_KEY/EMAIL/API_BASE_URL/ENV、无 WRANGLER_LOG*;.env 已 gitignore 且未跟踪",
+    "当前进程环境变量名里没有任何 WRANGLER_*/CLOUDFLARE_*/CF_*(只列名不取值)",
+    "合成数据实测脚本第 9 行 pick():PROBE_SECRET= 空值后接下一行 → 返回空串;空格值 → trim 后空串;CRLF 带引号 → 正确去引号;PROBE_SECRET_OLD 前缀键、# 注释行 → 不匹配;重复键取第一行",
+    "实测 Node v25.2.1:spawnSync+shell:true+input 经 cmd.exe 把 14 字节假值送到子进程 stdin,isTTY=false,返回码 0;DEP0190 警告只含固定文案,不含参数值",
+    "apps/web/src/middleware.ts:469-476、515:空 secret 时 probeDiff=1 不生效;等长逐字节异或比较",
+    "git:tools/set-probe-secret.mjs 在公开仓 cosmetic-sites 未跟踪、未被 ignore"
+  ],
+  "findings": [
+    {
+      "id": "综合-1",
+      "level": "中",
+      "file": "tools-review/audit_v2/cache/tmp/prod-8dcb20b48343/command.txt",
+      "line": 3,
+      "claim": "本单命令文本是 node …/set-probe-secret.mjs,不含字面的 secret put。ops.py:268 只在命令文本匹配 \\bsecret\\s+(put|delete|bulk)\\b 时,才取 secret 生成的新线上版本并记进 ship.jsonl。这次匹配不上(secret 后面是 .mjs),新版本不会进台账。",
+      "failure_scenario": "本单执行成功后,wrangler secret put 会给 bohui-web 新建一个版本并部署成 100%,但 ship.jsonl 里没有这个 version_id。下次 ship.sh bohui-web 走到 ticket.py:768 第 10 步时判「当前线上版本不在 ship.jsonl(未审部署)」并拦下。解法是先跑 ticket.py adopt-live,这又会挂一条 24 小时追审;追审逾期后,第 9 步(ticket.py:756-759)还会继续拦后续上线。这个问题是安全方向的,只会拦,不会放行坏东西。watch.py:63-66 通过 ops.jsonl 认账,不会误报 unaudited-secret。",
+      "evidence": "ops.py:264 执行、:266 记 ops.jsonl、:268 的正则只看命令文本;ticket.py:763-769;lib.py:566-573 live_version 取最新部署;ops.py:271-274 本来就是为 secret 新版本登记设计的,说明作者知道 secret put 会产生新版本。上一版报告的 risks 写的是「ops.py 在 ship.jsonl 里记了 version_id」,对本命令不成立。",
+      "fix": "二选一:(a) 执行后立刻跑 ticket.py adopt-live --worker bohui-web --reason \"ship_ops prod a1f07de217a0 设 PROBE_SECRET\",并按时补掉 24 小时追审;(b) 另开闸门小单,把 ops.py:268 的判断改成执行前后比较 live_version,变了就登记,不再依赖命令文本。"
+    },
+    {
+      "id": "综合-2",
+      "level": "低",
+      "file": "cosmetic-sites/tools/set-probe-secret.mjs",
+      "line": 12,
+      "claim": "子进程环境是 {...process.env} 加上覆盖的 ACCOUNT_ID/API_TOKEN。账号和 Worker 名已经锁死,但凭据和 API 出口没有锁:wrangler 优先用 CLOUDFLARE_API_KEY+CLOUDFLARE_EMAIL,而不是 API_TOKEN(cli.js:120848-120861);CLOUDFLARE_API_BASE_URL 会改请求发往的主机(cli.js:52302-52306);WRANGLER_LOG_SANITIZE=false 时,含 secret 的请求 INIT 行会原样写进 ~/.wrangler/logs(cli.js:131647、61156-61160)。",
+      "failure_scenario": "只有调用方环境里事先带了这些变量才会触发。走闸门时,wr_env 已经剥掉 CLOUDFLARE_*(lib.py:525),但没剥 WRANGLER_*(lib.py:108);当前进程环境和 .env 里都没有这些变量。绕开闸门单独跑时:如果带了外部 global key,多半是鉴权失败干净退出(目标账号仍是公司号);如果带了 API_BASE_URL,token 和 secret 会发到那台主机;如果带了 SANITIZE=false,secret 会落进本机日志文件。",
+      "evidence": "cli.js 行号见 claim;对环境变量名和 .env 键名做过计数,本次执行不会触发。",
+      "fix": "第 12 行改成先过滤再覆盖:Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(CLOUDFLARE_|CF_|WRANGLER_LOG)/i.test(k))),然后加上 CLOUDFLARE_ACCOUNT_ID、CLOUDFLARE_API_TOKEN、WRANGLER_LOG_SANITIZE:'true'。"
+    },
+    {
+      "id": "综合-3",
+      "level": "低",
+      "file": "cosmetic-sites/tools/set-probe-secret.mjs",
+      "line": 1,
+      "claim": "脚本放在公开仓 cosmetic-sites,目前未跟踪也没被 ignore。第 1-4 行的中文注释写了内部流程(ship_ops.sh prod、审核员、闸门)和探针头名,属于合规-⑦(R11)。脚本里没有密钥值。",
+      "failure_scenario": "以后随提交推上公开仓,外部能看到内部审核流程名和探针头名。头名本身不构成绕过,因为还需要 ≥32 位 secret。",
+      "evidence": "git status 显示 ?? tools/set-probe-secret.mjs;git check-ignore 没命中;.gitignore:7 只忽略 .env。",
+      "fix": "提交前把注释改成中性英文,或者把脚本挪到私有仓 / tools-review。"
+    },
+    {
+      "id": "综合-4",
+      "level": "低",
+      "file": "cosmetic-sites/tools/set-probe-secret.mjs",
+      "line": 13,
+      "claim": "hook_guard 只认字面的 wrangler secret put(hook_guard.py:24-25、182),node 直接跑本脚本不会被拦,能在没有单子的情况下改生产 secret。",
+      "failure_scenario": "有人或别的 agent 绕开 ship_ops 直接跑这个脚本。现在目标已经锁在公司号的 bohui-web,值取自同一份 .env,结果和审过的状态一样(幂等),不会打到别的账号或别的 Worker。事后 watch.py:63-66 找不到 900 秒内的 ops.jsonl 记录,会红报 unaudited-secret,能被发现。",
+      "evidence": "hook_guard.py:24-25、179-182;watch.py:55-67。",
+      "fix": "可选:hook_guard 的拦截名单里加上 set-probe-secret;或者脚本开头检查只能由 ops.py 调起的标记,但这个标记可以伪造,价值有限。"
+    },
+    {
+      "id": "综合-5",
+      "level": "低",
+      "file": "tools-review/audit_v2/smoke.py",
+      "line": 16,
+      "claim": "上一版综合-2 只修了脚本这一半:smoke.py:16 仍然是 ^\\s*PROBE_SECRET\\s*=\\s*,Python 的 \\s 能跨过换行。本单不涉及 smoke.py。",
+      "failure_scenario": "如果 .env 里 PROBE_SECRET 被清空,本脚本会 exit 2,不会出事。但 smoke.py 会把下一行(比如 CLOUDFLARE_API_TOKEN=…)整行当成探针值,放进 x-bohui-probe 请求头发给 biosphere-ai.com。",
+      "evidence": "smoke.py:16、:43;已计数确认 .env 里 PROBE_SECRET 这一行现在非空,本次不会触发。",
+      "fix": "另开闸门单,把 smoke.py:16 改成 [ \\t]*,并加长度下限 ≥32;lib.py:528 同样改。"
+    },
+    {
+      "id": "综合-6",
+      "level": "低",
+      "file": "F:/0cosmetic/.claude/workflows/review-ticket.js",
+      "line": 29,
+      "claim": "综合角度要求的 security-review 技能加载失败:它的预处理命令 git diff origin/HEAD... 在非 git 目录 tools-review 下报错。code-reviewer 已加载,但它引用的 rules/universal.md、languages/typescript.md 在技能目录里不存在(目录里只有 SKILL.md)。安全项由我手工逐条核过。",
+      "failure_scenario": "技能清单没有全部生效,安全检查靠人工,覆盖面可能少于技能本身。",
+      "evidence": "Skill 调用返回 fatal: ambiguous argument 'origin/HEAD...';Glob 在 code-reviewer 目录下只找到 SKILL.md。",
+      "fix": "把 security-review 的预处理改成对非 git 目录容错;补上 code-reviewer 缺的规则文件。"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "JEV",
+      "result": "不成立",
+      "why": "Jev 判拦(conf 0.92、security 0.64),但 reason 为空,没有指出任何具体问题。我按三个方向逐项核过,都找不到可复现的失败场景。① 密钥不进命令行、日志和输出:set-probe-secret.mjs:13 的 argv 全是常量,:14 用 input 经 stdin 传值;本机实测 shell:true 经 cmd.exe 能送到子进程 stdin,isTTY=false。wrangler cli.js:375403-375406 在非 TTY 下从 stdin 读值;:375407、:375457 只打印 Worker 名和键名;请求体只出现在 debugWithSanitization 的 INIT 行(cli.js:131647),WRANGLER_LOG_SANITIZE 默认 true(cli.js:52310-52313),控制台和日志文件只写 omitted(cli.js:61092-61101、61156-61160),当前环境里也没有 WRANGLER_* 变量。脚本 :11 只打印键名,ops.py:266 台账只记 node 脚本路径。② 不会误改别的 secret 或别的 Worker::13 固定键 PROBE_SECRET 和 --name bohui-web;cli.js:375253-375255 在没有 --env 时直接用 args.name,CLOUDFLARE_ENV 不进 args.env(cli.js:34967);cli.js:375410-375418 只对 /workers/scripts/bohui-web/secrets 做单键 PUT。账号方面,:12 覆盖 CLOUDFLARE_ACCOUNT_ID 和 API_TOKEN,getActiveAccountId(cli.js:125381-125396)排在它前面的只有临时账号(仅内存)和配置里的 account_id,而 wrangler.toml 和 dist/server/wrangler.json 都没有 account_id。.env 里三个键各恰 1 行,脚本新正则和 wr_env 取到的值逐一相等。dist 的 vars 里没有同名 PROBE_SECRET,不会绑定冲突。③ 不会留半截状态:整次操作是单个 PUT;版本未部署时整体报错不改(cli.js:375419-375427);只有 Worker 不存在才建草稿(cli.js:375444-375452),而公司号的 bohui-web 已经存在。缺键时 :11 在调 API 前就 exit 2;:15 的 r.status ?? 1 把信号终止和启动失败也当失败;重跑同值是幂等的。唯一中等问题是综合-1(闸门台账没登记新版本),它只会拦下次上线、不会放行,不构成拦本单的理由。"
+    },
+    {
+      "ref": "LAYA",
+      "result": "不成立",
+      "why": "Laya 判 block,但 conf 只有 0.07,基本等于没把握。noul 成本 0.96、安全 0.96、合规 0.97,正确性 1.47,都偏向没问题,reason 也是空的,自身 verdict 只到「存疑」。我对 18 行 diff 逐行审过(证据同 JEV 条),没找到能拦的失败场景。残余问题记在综合-1 到综合-6,等级为中/低。"
+    },
+    {
+      "ref": "9993f1d8b8ac/综合-1",
+      "result": "已修",
+      "why": "set-probe-secret.mjs 的三处改动都已到位。:13 固定 --name bohui-web。:10-12 从同一份 .env 取 CLOUDFLARE_ACCOUNT_ID 和 CLOUDFLARE_API_TOKEN,覆盖进子进程环境,不再依赖调用方的 CLOUDFLARE_* 或 OAuth 登录;wrangler 用 env token 时不走 OAuth(cli.js:120848-120861 getAPIToken 先查 env)。:14 把 cwd 固定为 apps/web。:11 三键缺一就 exit 2。原先的失败场景(落到 OAuth 主账号建草稿 Worker)已经消除。残余的凭据/出口变量没锁死,见综合-2(低);绕开闸门无单执行见综合-4(低)。"
+    },
+    {
+      "ref": "9993f1d8b8ac/综合-2",
+      "result": "已修",
+      "why": "脚本 :9 的正则已改为 [ \\t],用合成数据实测:空值后接下一行返回空串,脚本随后 exit 2,不会跨行吞下一把密钥;CRLF、引号、前缀键、注释行的行为也都正确。smoke.py:16 和 lib.py:528 仍是旧写法,不在本单范围,另记综合-5。",
+      "mitigation": "smoke.py 与 lib.wr_env 的同类正则另开闸门单修。"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "回归",
+      "level": "中",
+      "item": "本单执行后,bohui-web 的线上版本不在 ship.jsonl,下次 ship.sh bohui-web 会在第 10 步被拦(见综合-1)。",
+      "mitigation": "执行成功后立刻跑 ticket.py adopt-live --worker bohui-web --reason \"ship_ops prod a1f07de217a0 设 PROBE_SECRET\",并在 24 小时内补追审;或者先另开闸门单修 ops.py:268。"
+    },
+    {
+      "cat": "正确性",
+      "level": "低",
+      "item": "回显不等于结论:Success! 只说明 PUT 成功,不能证明线上已生效。如果最新上传的版本还没部署,会整体报错不改,需要先部署再重跑。",
+      "mitigation": "执行后查最终状态:wrangler secret list --name bohui-web 能看到 PROBE_SECRET 这个名字(只看名);冒烟的 ?kk= URL 返回 200、不再 301。"
+    },
+    {
+      "cat": "安全",
+      "level": "低",
+      "item": "子进程继承调用方环境里的 CLOUDFLARE_API_KEY/EMAIL、CLOUDFLARE_API_BASE_URL、WRANGLER_LOG_SANITIZE(综合-2);绕开闸门可以无单执行(综合-4)。",
+      "mitigation": "只通过 ship_ops.sh prod 执行;后续按综合-2 在脚本里过滤环境变量;watch.py 的 unaudited-secret 兜底发现。"
+    },
+    {
+      "cat": "费用",
+      "level": "低",
+      "item": "带对 secret 的请求会绕过边缘缓存直接读 D1(middleware.ts:476、515),值一旦泄露可以被用来放大读量。",
+      "mitigation": "盯 Bohui-D1Budget 日读线;怀疑泄露就改 .env 里的值,再过一次 ship_ops prod,smoke.py 会自动跟上。"
+    },
+    {
+      "cat": "回归",
+      "level": "低",
+      "item": "smoke.py:43 也会给 beauty2oem.com 的 ?kk= URL 加探针头,但本单只给 bohui-web 设了 secret。",
+      "mitigation": "确认 beauty2oem.com 由哪个 Worker 服务;如果不是 bohui-web,另开 prod 单设同一个值。"
+    }
+  ],
+  "smoke_extra": [
+    "https://biosphere-ai.com/zh-cn/?kk=1(smoke.py 自动带 x-bohui-probe,期望 200,不应 301)",
+    "https://biosphere-ai.com/en/?kk=1(同上,期望 200)"
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/prod-bohui-web/a1f07de217a0/综合.json"
+}

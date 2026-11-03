@@ -1,0 +1,1 @@
+第三次引导批准(21:38,提交 29b890b)是演练:之后修了 git add 在 tools/ 下 Worker 得空树的问题(改成自己遍历 + update-index)、加了零付费看门狗(GraphQL);各 Worker 的 refs/ship 基线随之重登。原样留档。

@@ -42,6 +42,7 @@ WorkBuddy / OpenCode / DSH 怎么加一条「自定义 OpenAI 兼容模型」由
 | `bohui-fast`(隐藏) | | round-robin | dsflash → agnes-30flash-cn → sensenova-68 |
 | `bohui-reason`(隐藏) | | ordered | sensenova-ds/deepseek-v4-pro → sensenova/glm-5.2 |
 | `bohui-vision`(隐藏) | | ordered | sensenova-kimi/kimi-k3 → sensenova-68 → agnes-30flash-cn |
+| `bohui-free`(隐藏) | | round-robin | free-groq-oss120 → free-kilo-step37 → free-kilo-m25 → free-groq-oss20 → free-or-lfm(轮着走,见下节) |
 
 ## 出图 / 出视频是怎么走的(本机版)
 
@@ -112,6 +113,33 @@ python tools\gateway\worker\deploy.py      # 云版重新部署(改了 core.mjs 
 | Groq / Cerebras / OpenRouter | 各自 `/v1` | 每日重置 1–6M tokens/月 | 需代理 | caution |
 
 `tos: caution` = 目录标注「免费层条款对商用/自动化有限制」,接之前要看条款;白名单扩不扩由创始人拍板。
+
+## 免费额度池(第一期,09-26:只接对话)
+
+上一节里第一批已经拍板接入的是这三家(**只接对话类**,出图 / 出视频一条不接):
+
+| 渠道 id | 平台 | 接口地址 | 模型 | 免费口径 |
+|---|---|---|---|---|
+| `free-groq-oss120` | Groq | `https://api.groq.com/openai/v1` | `openai/gpt-oss-120b` | 每日重置,超额硬停不扣费 |
+| `free-groq-oss20` | Groq | 同上 | `openai/gpt-oss-20b` | 同上 |
+| `free-or-lfm` | OpenRouter | `https://openrouter.ai/api/v1` | `liquid/lfm-2.5-2.6b:free` | 每日重置 |
+| `free-kilo-step37` | Kilo | `https://api.kilo.ai/api/gateway` | `stepfun/step-3.7-flash:free` | 每日重置 |
+| `free-kilo-m25` | Kilo | 同上 | `minimax/minimax-m2.5:free` | 每日重置 |
+
+怎么接的(只加,不改原有链路):
+
+- 渠道行在 `db/migrations/0128_gw_free_chat.sql`,`is_free=1`、三个 `can_*` 里只开 `can_text`,`tier` 从 41 起(商汤 / Agnes 之后)。
+- **key 不写 `providers.api_keys`**:免费池的 key 在 `gw_keys`(`tools/gw_import_free_keys.py` 09-26 导入,一律 `status='paused'`),
+  `sync-config.py` 只取 `active` 的 —— 所以**导入即存在、没人激活就一行流量都不走**;主站舰队(fleet.ts 会把没 key 的供应商剔掉)也不受影响。
+- 出口:三家都是境外域名,本机配代理(先直连、失败才走 7890);云版 `deploy.py` 不上传 `proxy` 字段,Worker 从 Cloudflare 出去本来就是境外出口,直连。
+- 别名 `bohui-free` 是**隐藏**的(`GET /v1/models?all=1` 才列),`round-robin` 轮着走:三家都是每天重置的小额度,摊开用比排队打光一家合适。
+  点名具体模型(`model: 'openai/gpt-oss-120b'`)也能直接打,按 W10 口径只在挂着同名模型的渠道间轮换。
+
+**激活**(后台「上游 key」):把这三家的 key 从 `paused` 改成 `active` → `python tools/gateway/sync-config.py` → 网关下一个请求自动重载 → `node tools/gateway/smoke.mjs`。
+想撤:`DELETE FROM providers WHERE id LIKE 'free-%';` + 后台把那批 key 停掉。
+
+**没做的三件事**(留给第二期):① 出图 / 出视频;② 并进 `bohui-chat` / `bohui-fast` 主链(条款 `caution`,要并得创始人拍板);
+③ 境内直连那 15 家(智谱 / 硅基流动 / 百炼 / 千帆 / 豆包 / 混元 / 魔搭等)—— 等各家 key 在手再说。
 
 ## 常见问题
 

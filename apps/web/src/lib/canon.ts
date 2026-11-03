@@ -45,6 +45,7 @@ const PARAMS: [RegExp, Reg][] = [
   [/^\/[\w-]+\/classics\/$/, { k: { t: txt(12), p: int(1, 20) }, u: ['q'] }],
   [/^\/[\w-]+\/graph\/$/, { k: { n: int(1, 1e9), t: txt(20) }, u: ['q'] }],
   [/^\/[\w-]+\/inci\/[\w-]+\/$/, { k: { p: pg(20, 10) }, u: ['q'] }],
+  [/^\/[\w-]+\/portfolio\/$/, { k: { cat: txt(24) } }],
   [/^\/[\w-]+\/products\/$/, { k: { cat: txt(24) } }],
   [/^\/[\w-]+\/pack\/$/, { k: { pack: txt(24), type: T60, material: T60, capacity: T60 }, c: ['brief'] }],
   [/^\/[\w-]+\/studio\/$/, { c: ['brief'] }],

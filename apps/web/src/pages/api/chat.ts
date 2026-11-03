@@ -4,6 +4,7 @@ import { loadFleet, paidFirst } from '../../lib/fleet';
 import { chatInLanguage, replyLanguageFor, detectLanguage } from '../../lib/translate.ts';
 import { overQuota, recordUse, tooMany, clientId } from '../../lib/ratelimit';
 import { aiGate, getMember } from '../../lib/member';
+import { aiDailyCheck, aiBudgetResponse } from '../../lib/fuse';
 import { NO_FORMULA_RULE, leaksFormula, FORMULA_NOTICE_ZH, FORMULA_NOTICE_EN } from '../../lib/no-ai-formula';
 
 export const prerender = false;
@@ -124,6 +125,10 @@ export const POST: APIRoute = async ({ request }) => {
     faqs.map((f) => `问:${f.q}\n答:${f.a}`).join('\n') +
     '\n【在产产品(名称·品类·起订口径)】\n' +
     products.map((p: any) => `${p.name} · ${p.category}${p.moq ? ` · ${p.moq}` : ''}`).join('\n');
+
+  /* 全站日预算:每次聊天 1 次模型调用(chat)。放在所有入参校验与知识检索之后、
+     模型调用之前 —— 失败的请求不烧预算,但模型被调用了就是花了钱。 */
+  if (!(await aiDailyCheck({ db, cap: (env as any).AI_DAILY_CAP, cost: 1 })).ok) return aiBudgetResponse();
 
   const fleet = paidFirst(await loadFleet(db, env as any));
   if (!fleet.length) return json({ ok: false, msg: '客服暂不在线,请直接发起询盘' }, 503);

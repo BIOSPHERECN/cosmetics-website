@@ -52,11 +52,19 @@ console.log('core.mjs');
     ok('额度尽锁整渠道到次日 0 点;无此模型永久跳过', core.channelDown(cfg.byId.get('b'), s3, now) && s3.chDown.b.until > now && !core.hasFreeKey(cfg.byId.get('b'), s3, now) && core.orderCandidates(cfg, 'od', 'chat', s3, {}, now).cands.map((x) => x.ch.id).join() === 'b'); }   // a 因「无此模型」被剔除;b 留在候选但 runChain 会跳过
   ok('空 2xx 判定(length 截断不算)', core.emptyCompletion(JSON.stringify({ choices: [{ message: { content: '' }, finish_reason: 'stop' }] })) && !core.emptyCompletion(JSON.stringify({ choices: [{ message: { content: '' }, finish_reason: 'length' }] })) && !core.emptyCompletion(JSON.stringify({ choices: [{ message: { content: null, tool_calls: [{}] } }] })));
   { const s4 = core.newState(); for (const x of [1, 1, 0.5, 0]) core.updateQuality(s4, cfg.byId.get('a'), x); ok('质量 EWMA α=0.2 + 收缩', Math.abs(s4.q.a.e - 0.72) < 1e-6 && core.quality(s4, cfg.byId.get('a')) === 0.518); }
+  { const c2 = core.normalizeConfig({ channels: [   // 用默认别名链里的真渠道 id:旧兜底会把 agnes-30flash-cn 追加进 glm-5.2 的候选
+      { id: 'sensenova', base_url: 'https://token.sensenova.cn/v1', model: 'glm-5.2', keys: ['k1'], can_text: 1 },
+      { id: 'agnes-30flash-cn', base_url: 'https://apihub.agnes-ai.cn/v1', model: 'agnes-3.0-flash', keys: ['k2'], can_text: 1 }] });
+    const ids = (n) => core.orderCandidates(c2, n, 'chat', core.newState(), {}, now).cands.map((x) => x.ch.id).join(' ');
+    ok('点名具体模型不换别家(W10)', ids('glm-5.2') === 'sensenova' && ids('bohui-chat') === 'agnes-30flash-cn sensenova', `${ids('glm-5.2')} | ${ids('bohui-chat')}`); }
   ok('别名后缀 -cloud/-local', core.resolveAlias(cfg, 'rr-cloud') === 'rr' && core.resolveAlias(cfg, 'rr-local') === 'rr' && core.resolveAlias(cfg, 'nope') === null);
   ok('对话别名不能拿去出图', core.orderCandidates(cfg, 'rr', 'image', st, {}, now).cands.length === 0);
   const img = { messages: [{ role: 'user', content: [{ type: 'text', text: '这是什么' }, { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }] }] };
   ok('带图自动改走 vision 链', core.orderCandidates(cfg, 'gen', 'chat', st, img, now).alias === 'see' && first('gen') === 'a');
-  ok('/v1/models 默认只列非 hidden 的别名', core.modelsView(core.normalizeConfig({})).data.map((m) => `${m.id}=${m.name}`).join() === 'bohui-chat=通用型 AI,bohui-image=出图片,bohui-video=出视频' && core.modelsView(core.normalizeConfig({}), true).data.length > 3);
+  // 显示名 09-18 15:5x 改过(通用型 AI → 帛卉通用模型),这里跟着改了;断言的本意是「hidden 别名不进客户端菜单」
+  ok('/v1/models 默认只列非 hidden 的别名', core.modelsView(core.normalizeConfig({})).data.map((m) => `${m.id}=${m.name}`).join() === 'bohui-chat=帛卉通用模型,bohui-image=帛卉图片模型,bohui-video=帛卉视频模型' && core.modelsView(core.normalizeConfig({}), true).data.length > 3);
+  { const a = core.normalizeConfig({}).aliases['bohui-free'];   // 09-26 免费池第一期:隐藏、只对话、轮询多家
+    ok('bohui-free 隐藏 / 对话 / round-robin', !!a && a.hidden && a.kind === 'chat' && a.strategy === 'round-robin' && a.chain.length > 1, `${a?.chain?.length ?? 0} 家`); }
   const big = JSON.stringify({ items: Array.from({ length: 50 }, (_, i) => ({ i, name: 'item' + i, extra: 'x'.repeat(60) })), meta: Object.fromEntries(Array.from({ length: 30 }, (_, i) => ['k' + i, i])) });
   const r = core.compressBody({ model: 'm', messages: [{ role: 'system', content: 'a  b   \n\n\n\nc  ' }, { role: 'tool', tool_call_id: '1', content: big }, { role: 'user', content: '最后   一条\n\n\n\n' }] });
   const t = JSON.parse(r.body.messages[1].content);

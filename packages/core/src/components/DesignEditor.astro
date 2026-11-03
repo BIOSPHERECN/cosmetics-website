@@ -16,8 +16,10 @@ export interface Props {
   locale?: string;
   /** 来源标记,可选 */
   source?: string;
+  /** 画布背景色(与 CSS #deCanvas 的 #f7f7f7 一致),fabric 导出用它做底 */
+  bgColor?: string;
 }
-const { locale = 'zh-cn', source = 'design' } = Astro.props as Props;
+const { locale = 'zh-cn', source = 'design', bgColor = '#f7f7f7' } = Astro.props as Props;
 const zh = locale.startsWith('zh');
 
 const T = zh
@@ -53,6 +55,10 @@ const T = zh
       privacy: '提交后由人工跟进,信息不公开。',
       sentOk: '已收到,我们会尽快联系你。',
       sentFail: '提交失败,请稍后重试或直接邮件联系。',
+      /* fabric 块用的三个键(2026-10-28 补:原来未定义,提示会显示 undefined) */
+      inquirySending: '发送中…',
+      inquiryOk: '已收到,我们会尽快联系你。',
+      inquiryErr: '提交失败,请稍后重试或直接邮件联系。',
     }
   : {
       title: 'Canvas Editor',
@@ -86,6 +92,9 @@ const T = zh
       privacy: 'A human will follow up. Your information stays private.',
       sentOk: 'Received. We will contact you shortly.',
       sentFail: 'Submission failed. Please retry or email us directly.',
+      inquirySending: 'Sending…',
+      inquiryOk: 'Received. We will contact you shortly.',
+      inquiryErr: 'Submission failed. Please retry or email us directly.',
     };
 ---
 
@@ -342,6 +351,12 @@ const T = zh
 (() => {
   const root = document.getElementById('design-editor');
   if (!root) return;
+
+  /* 2026-10-28 修双脚本冲突(审核 M5):下面还有一套 fabric.js 实现。
+     两套都绑同一个 #deCanvas,会双触发、互相覆盖。
+     规则:fabric 在 → 本套直接退出,只当降级兜底(fabric 加载失败时才接管)。
+     不删代码:CDN 被墙/超时时编辑器仍可用。 */
+  if (typeof window !== 'undefined' && (window as any).fabric) return;
 
   const canvas = document.getElementById('deCanvas');
   const ctx = canvas.getContext('2d');

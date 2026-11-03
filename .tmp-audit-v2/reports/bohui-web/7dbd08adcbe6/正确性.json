@@ -1,0 +1,92 @@
+{
+ "angle": "正确性",
+ "tree": "7dbd08adcbe6ff64c412b22bd6d39a3b55fd2453",
+ "worker": "bohui-web",
+ "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-7dbd08adcbe6.json",
+ "run_label": "review-ticket 7dbd08adcbe6 正确性",
+ "reviewer": "claude",
+ "skills_loaded": ["code-reviewer", "karpathy-coder"],
+ "verdict": "过",
+ "checked": ["正确性-①", "正确性-②", "正确性-③", "正确性-④", "正确性-⑤", "正确性-⑥", "正确性-⑦"],
+ "findings": [
+  {
+   "id": "C1",
+   "level": "中",
+   "file": "apps/web/astro.config.mjs",
+   "line": 45,
+   "claim": "astro:build:done 往 dist/server/wrangler.json 注入 build.command 时 WORKER 写死为 bohui-web;tools/deploy-copy.py write_config() 以该文件为底生成 wrangler.copy.json,只改 name/D1/KV/vars,不删 build 键,所以创始人副本部署也会跑 verify_or_bg.cmd bohui-web。",
+   "failure_scenario": "ENABLED 在的情况下构建后跑 tools/deploy-copy.py 部署副本:wrangler deploy -c wrangler.copy.json 先执行 ticket.py verify --worker bohui-web --stage wrangler。bohui-web 没有有效审核单时副本部署被拦;有的话副本拿公司站的审核单直接放行,两种都不是按副本自己的审核单判。不影响本次 bohui-web 上线。",
+   "evidence": "读了树内 astro.config.mjs 第 45 行 c.build = { command: `${GATE}/verify_or_bg.cmd ${WORKER}` };读了 tools/deploy-copy.py 第 110-126 行 write_config(只 pop routes/workers_dev);读了 gate_approved/audit_v2/verify_or_bg.cmd(%1 作为 --worker 传入)。没有实际跑副本部署,所以没见到真实的拦截输出。",
+   "fix": "在 deploy-copy.py 的 write_config 里 cfg.pop('build', None) 后换成副本自己的审核命令,或者让注入的命令按 name 字段取 worker。"
+  },
+  {
+   "id": "C2",
+   "level": "低",
+   "file": "apps/web/src/middleware.ts",
+   "line": 517,
+   "claim": "CACHE_V 的值还是 v84(base fe65160 也是 v84),这次只改了注释;注释开头写的是『09-24 beauty2oem 数据区改为分项数字卡』,读起来像已经 +1。按 note 看,不推版本号是有意为之(零读)。",
+   "failure_scenario": "部署后最多 1 小时内(fresh 副本 s-maxage=3600,Cache API 按机房分别存),已缓存的 beauty2oem 首页/delivery/insights 仍然是旧版:对数图、旧图。验证的人如果用 ?cb= 访问,会误以为已经上线(JUNK 参数不进缓存键)。另外注释和实际值对不上,以后排查缓存时会被误导。",
+   "evidence": "对比了树内 middleware.ts 第 517 行和 base 提交里的 CACHE_V,都是 'v84';middleware 第 667 行 s-maxage=3600,第 679 行备份副本 604800 只在 5xx 时使用。",
+   "fix": "注释里写明『本条未 +1,旧副本 1 小时内自然过期』;冒烟用 ?kk=1 或等 1 小时后再验。"
+  },
+  {
+   "id": "C3",
+   "level": "低",
+   "file": "apps/web/src/styles/b2o.css",
+   "line": 487,
+   "claim": "手机端原来有一条规则把方法第 2-4 行的图收起(.b2o-row:not(.r1) .v{display:none}),这次删了,改成四行都显示图(.v display:block),同时首页又多了『为什么找我们出海』四卡区。第 460 行的注释写着『手机首页压到 6000px 内』,这两处改动会让页面变长。",
+   "failure_scenario": "375px 宽下首页多出 3 张 16:7 的图和一个 2×2 卡区,页面高度可能超过 6000px 的目标;这是版式回归,不会报错。",
+   "evidence": "对比了正确性.diff 中 b2o.css 手机媒体查询里删掉和新增的规则,以及树内 b2o.css 第 460 行和第 487 行。没有实测页面高度,缺手机端截图或 scrollHeight 数据。",
+   "fix": "冒烟时量一下手机首页的 scrollHeight;超出的话恢复只留 r1 图。"
+  },
+  {
+   "id": "C4",
+   "level": "低",
+   "file": "apps/web/src/components/B2oBlock.astro",
+   "line": 316,
+   "claim": "fx_six 在 beauty2oem 上改用写死的 deliveryTitle/deliveryIntro,不再读 d.title/d.intro;blocks.ts 里 fx_six 默认 intro 的改动只对工厂站 FactoryBlock 有效,后台对 b2o 这个区块改标题或导语不会生效。",
+   "failure_scenario": "运营在后台修改 beauty2oem 的 fx_six 标题或导语,页面上没有变化,也没有任何提示。",
+   "evidence": "读了树内 B2oBlock.astro 第 292 行和第 316 行,以及 blocks.ts 第 298-310 行(fx_six 的 renderer 是 FactoryBlock/fx_six)。",
+   "fix": "写成 {tidy(d.title) || deliveryTitle},或者在 blocks.ts 的 note 里注明 b2o 不读后台文案。"
+  }
+ ],
+ "addressed": [
+  {
+   "ref": "G1",
+   "result": "不成立",
+   "why": "tools/ship.sh 第 16 行是给维护者看的注释,说明 ENABLED 在走 v2、不在走 v1,没有对审核员提放行、忽略之类的要求,不算提示注入。第 17 行的 if [ -f ENABLED ] 分支本身逻辑正确:source 的是 gate_approved 副本里的 ship_lib.sh,这个文件已确认存在。"
+  },
+  {
+   "ref": "JEV",
+   "result": "成立但可接受",
+   "why": "Jev 判 block,但 reason 为 null,给不出可核对的具体点。正确性这边逐项查过:IMG 所有被引用的键(hero/desk/ware/lab/dark/vials/method*/delivery*/card*)在树内都有定义,IMG[k] 不会是 undefined,不会触发渲染异常被 catch-all 吞成 404;14 张 fd/*.webp 都在 public/b2o/img/fd/ 里;ORG.founded 删除后树内没有其他引用;ORG.foundingDate 已先于使用定义;bars/TICKS/pct/regs 删除后也没有残留引用。剩下的问题见 C1-C4,都不阻断。",
+   "mitigation": "按 C2 用 ?kk=1 冒烟;C1 在下次副本部署前修掉。"
+  },
+  {
+   "ref": "LAYA",
+   "result": "成立但可接受",
+   "why": "Laya 置信度只有 0.06、partial,reason 为 null,三项 noul 都是 1.0,更像是模型没判出结果,不是指出了具体缺陷。正确性这边的人工核查结论同 JEV 这一条。",
+   "mitigation": "同 JEV。"
+  }
+ ],
+ "risks": [
+  {"cat": "回归", "level": "中", "item": "middleware.ts 只改了 CACHE_V 的注释,运行逻辑没变;不推版本号,所以旧页最多保留 1 小时", "mitigation": "冒烟用 ?kk=1,1 小时后复看无参数的 URL"},
+  {"cat": "正确性", "level": "中", "item": "astro.config.mjs 构建钩子依赖本机写死的路径 F:/0cosmetic/_venv 和 audit_v2;ENABLED 在但 python 不可用时构建会中止(status=null 不等于 3,只有设了 BOHUI_BREAKGLASS 才能放行)", "mitigation": "这是有意的闸门行为;换机器构建前先确认 venv 在"},
+  {"cat": "正确性", "level": "中", "item": "C1:副本部署继承了 bohui-web 的 build.command", "mitigation": "改 deploy-copy.py 去掉 build 键"},
+  {"cat": "回归", "level": "低", "item": "手机首页变长(C3)", "mitigation": "冒烟量 scrollHeight"}
+ ],
+ "smoke_extra": [
+  "https://beauty2oem.com/zh-cn/?kk=1",
+  "https://beauty2oem.com/zh-cn/delivery/?kk=1",
+  "https://beauty2oem.com/zh-cn/insights/?kk=1",
+  "https://beauty2oem.com/zh-cn/opportunities/?kk=1",
+  "https://beauty2oem.com/zh-cn/predictions/?kk=1",
+  "https://beauty2oem.com/b2o/img/fd/hero-beach-lineup.webp",
+  "https://beauty2oem.com/b2o/img/fd/insight-pool.webp",
+  "https://beauty2oem.com/b2o/img/fd/c-pink-serum.webp",
+  "https://beauty2oem.com/b2o/img/fd/d-gold-set.webp",
+  "https://beauty2oem.com/b2o/img/fd/m4-launch-tropical-box.webp",
+  "https://biosphere-ai.com/zh-cn/?kk=1 (JSON-LD foundingDate 仍为 2012-06-01)"
+ ],
+ "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/7dbd08adcbe6/正确性.json"
+}

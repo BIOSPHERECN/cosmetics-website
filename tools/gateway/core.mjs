@@ -24,11 +24,19 @@ export const DEFAULT_ALIASES = {
   'bohui-fast':   { hidden: true, strategy: 'ordered', vision: 'bohui-vision', chain: [['agnes-30flash-cn', 'agnes-3.0-flash'], ['sensenova-dsflash', 'deepseek-v4-flash'], ['sensenova-68', 'sensenova-6.8-flash-lite']] },
   'bohui-reason': { hidden: true, strategy: 'ordered', vision: 'bohui-vision', chain: [['sensenova-ds', 'deepseek-v4-pro'], ['sensenova', 'glm-5.2']] },
   'bohui-vision': { hidden: true, strategy: 'ordered', chain: [['sensenova-kimi', 'kimi-k3'], ['sensenova-68', 'sensenova-6.8-flash-lite'], ['agnes-30flash-cn', 'agnes-3.0-flash']] },
+  /* 09-26 免费额度池第一期(Groq / OpenRouter / Kilo,只接对话):渠道见 db/migrations/0128_gw_free_chat.sql,
+     key 在 gw_keys(默认 paused,后台激活后 sync-config.py 才带出来 —— 没激活时这些渠道根本不在 config 里,链自动空)。
+     用 round-robin:三家都是每日重置的小额度,摊开着用比排队打光一家合适。
+     刻意不进 bohui-chat / bohui-fast:免费层条款对商用 / 自动化标 caution,并进主链由创始人拍板(舰队白名单铁令)。 */
+  'bohui-free':   { hidden: true, strategy: 'round-robin', chain: [['free-groq-oss120', 'openai/gpt-oss-120b'], ['free-kilo-step37', 'stepfun/step-3.7-flash:free'], ['free-kilo-m25', 'minimax/minimax-m2.5:free'], ['free-groq-oss20', 'openai/gpt-oss-20b'], ['free-or-lfm', 'liquid/lfm-2.5-2.6b:free']] },
 };
-/* 上下文上限(tokens)。D1 providers 没这一列,先按各家文档口径估;config.json 渠道里写 ctx 可覆盖。 */
+/* 上下文上限(tokens)。D1 providers 没这一列,先按各家文档口径估;config.json 渠道里写 ctx 可覆盖。
+   免费池那几个是 09-26 刚接的,没实测过之前一律按偏小写(只影响 longest-context 策略与状态页展示)。 */
 export const CTX_BY_MODEL = {
   'agnes-3.0-flash': 512_000, 'agnes-2.5-pro': 128_000, 'agnes-2.5-flash': 128_000, 'agnes-2.0-flash': 128_000,
   'glm-5.2': 128_000, 'deepseek-v4-pro': 128_000, 'deepseek-v4-flash': 128_000, 'kimi-k3': 256_000, 'sensenova-6.8-flash-lite': 32_000,
+  'openai/gpt-oss-120b': 128_000, 'openai/gpt-oss-20b': 128_000,
+  'stepfun/step-3.7-flash:free': 128_000, 'minimax/minimax-m2.5:free': 128_000, 'liquid/lfm-2.5-2.6b:free': 32_000,
 };
 export const STRATEGIES = ['ordered', 'least-latency', 'longest-context', 'round-robin'];
 export const COOL_BASE = 60_000, COOL_MAX = 15 * 60_000, LAT_WINDOW = 20, HIST_MAX = 600;
@@ -138,9 +146,8 @@ export function orderCandidates(cfg, name, kind, state, body, now) {
   } else {
     cands = cfg.channels.filter((c) => c.models.includes(name) && (kind === 'image' ? c.can_image : (c.can_text || c.can_vision)))
       .sort((a, b) => (a.tier ?? 99) - (b.tier ?? 99)).map((ch) => ({ ch, model: name }));
-    // 09-18:具体模型名也要有兜底——找第一个链里含该模型的别名,把它整条链追加到候选后面(去重),商汤限流时落到 Agnes
-    const fam = Object.values(cfg.aliases).find((a) => a.kind === kind && a.chain.some(([id, m]) => (m || cfg.byId.get(id)?.model) === name));
-    if (fam) for (const [id, m] of fam.chain) { const ch = cfg.byId.get(id); if (ch && !cands.some((c) => c.ch.id === id)) cands.push({ ch, model: m || ch.model }); }
+    // 09-24 W10:调用方点名具体模型 = 只要这个模型。只在「挂着同名模型」的渠道/key 间轮换,撞限速就把错误原样还给调用方,
+    // 不再追加别名链偷偷换别家(09-18 那条「商汤限流落到 Agnes」的兜底已撤)。要兜底请用 bohui-* 别名。
   }
   cands = cands.filter((c) => !modelDown(c.ch, c.model, state));   // 该渠道已确认没有这个模型 → 直接不算候选
   if (strategy === 'least-latency') {

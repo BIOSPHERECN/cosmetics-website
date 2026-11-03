@@ -202,11 +202,11 @@ const baseEn = {
 /* ── 117. 认证墙(PDF 第 12、13 页)──────────────────────────── */
 const certZh = {
   title: '认证与市场准入',
-  note: '认证不是墙上的装饰 —— 每一张对应一个市场的入场券:GMPC 与 ISO 22716(DEKRA)是欧美订单的验厂底线,HALAL 打开中东与印尼,FDA 注册与 CPNP 通报支撑美欧上架。',
+  note: '认证不是墙上的装饰:GMPC 与 ISO 22716(DEKRA)是欧美订单的验厂底线,FDA 注册与 CPNP 通报支撑美欧上架;HALAL 覆盖范围以证书为准。',
   items: [
     { id: 'gmpc', label: 'GMPC', note: '化妆品良好生产规范(DEKRA 认证)' },
     { id: 'iso22716', label: 'ISO 22716:2007', note: '化妆品 GMP 国际标准(DEKRA 认证)' },
-    { id: 'halal', label: 'HALAL', note: '清真认证 —— 中东与印尼市场准入' },
+    { id: 'halal', label: 'HALAL', note: 'HALAL 认证(覆盖范围以证书为准)' },
     { id: 'fda', label: 'FDA', note: '美国 FDA 化妆品设施注册' },
     { id: 'cpnp', label: 'CPNP', note: '欧盟化妆品通报' },
     { id: 'sgs', label: 'SGS', note: '第三方检测报告' },
@@ -216,11 +216,11 @@ const certZh = {
 };
 const certEn = {
   title: 'Certification & market access',
-  note: 'Certificates are entry tickets, not wall decoration: GMPC and ISO 22716 (DEKRA) clear factory audits for Western orders, HALAL opens the Middle East and Indonesia, FDA registration and CPNP notification support US and EU listings.',
+  note: 'Certificates are not wall decoration: GMPC and ISO 22716 (DEKRA) clear factory audits for Western orders, FDA registration and CPNP notification support US and EU listings; HALAL scope is as stated on the certificate.',
   items: [
     { id: 'gmpc', label: 'GMPC', note: 'Good Manufacturing Practice of Cosmetics (DEKRA)' },
     { id: 'iso22716', label: 'ISO 22716:2007', note: 'Cosmetics GMP international standard (DEKRA)' },
-    { id: 'halal', label: 'HALAL', note: 'Halal certification for Middle East and Indonesia' },
+    { id: 'halal', label: 'HALAL', note: 'HALAL certification (scope as stated on the certificate)' },
     { id: 'fda', label: 'FDA', note: 'US FDA cosmetic facility registration' },
     { id: 'cpnp', label: 'CPNP', note: 'EU cosmetic product notification' },
     { id: 'sgs', label: 'SGS', note: 'Third-party testing reports' },

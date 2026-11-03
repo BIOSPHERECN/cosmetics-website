@@ -40,4 +40,11 @@ with io.open(sql, "w", encoding="utf-8") as w:
     for r in rows:
         platform, pid, title, brand, cat, url, inci, claims, size, country, seen_at = r
         w.write(f"INSERT INTO market_products (platform,pid,title,brand,cat,url,img,inci,claims,size,country,first_seen,last_seen) VALUES ({q(platform)},{q(pid)},{q(title)},{q(brand)},{q(cat)},{q(url)},'',{q(inci)},{q(claims)},{q(size)},{q(country)},{q(seen_at)},{q(seen_at)}) ON CONFLICT(platform,pid) DO UPDATE SET title=excluded.title, brand=excluded.brand, cat=excluded.cat, url=excluded.url, inci=excluded.inci, claims=excluded.claims, size=excluded.size, last_seen=excluded.last_seen;\n")
-print("写库:", d1_exec(sql))
+# 09-24 D2:CSV 没变时每 30 分钟把同样 2,752 条再 UPSERT 一遍(每轮写 13,760 行、读也跟着涨)。内容与上次写成功的一致就跳过
+import hashlib as _h
+sig, stamp = _h.sha1(io.open(sql, "rb").read()).hexdigest(), sql + ".sha1"
+try: same = io.open(stamp, encoding="utf-8").read().strip() == sig
+except OSError: same = False
+if same and "--force" not in sys.argv: print("写库: 跳过(CSV 与上次一致)"); sys.exit(0)
+n = d1_exec(sql); print("写库:", n)
+if n: io.open(stamp, "w", encoding="utf-8").write(sig)

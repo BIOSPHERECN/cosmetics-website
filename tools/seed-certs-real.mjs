@@ -83,7 +83,7 @@ if (grid) {
       { image: M['cert-gmpc'], label: 'GMPC', note: 'DEKRA 签发 · 化妆品良好生产规范' },
       { image: M['cert-iso'], label: 'ISO 22716:2007', note: 'DEKRA 签发 · 化妆品 GMP 国际标准' },
       { image: M['cert-patent'], label: '发明专利', note: '核心技术专利证书' },
-      { image: M['cert-halal'], label: 'HALAL 清真认证', note: '中东与印尼市场准入' },
+      { image: M['cert-halal'], label: 'HALAL 清真认证', note: '覆盖范围以证书为准' },
       { image: M['cert-cpnp'], label: '欧盟 CPNP', note: '欧盟化妆品注册' },
       { image: M['cert-fda'], label: '美国 FDA', note: '化妆品设施注册' },
     ],
@@ -99,10 +99,10 @@ const qExist = d1(`SELECT b.id FROM blocks b JOIN block_i18n i ON i.block_id=b.i
 const qData = {
   eyebrow: 'EXPORT CREDENTIALS', tone: 'paper', cols: 2,
   title: '出口认证原件',
-  intro: '货要出到哪,对应的注册就在这。两张 HALAL(国际清真 + 美国 AHF)覆盖中东与东南亚,CPNP 与 FDA 分别对应欧盟与美国。',
+  intro: '出口要用的注册与认证原件都在这里。两张 HALAL(国际清真 + 美国 AHF)的覆盖范围以证书为准,目的地认不认由当地主管机构决定;CPNP 与 FDA 分别对应欧盟与美国。MSDS 安全数据表与 COA 检测报告随批出具。',
   items: [
-    { image: M['cert-halal'], label: 'HALAL 清真认证', note: '中东 / 印尼市场' },
-    { image: M['cert-halal-ahf'], label: 'AHF HALAL(美国清真基金会)', note: '北美清真市场' },
+    { image: M['cert-halal'], label: 'HALAL 清真认证', note: '覆盖范围以证书为准' },
+    { image: M['cert-halal-ahf'], label: 'AHF HALAL(美国清真基金会)', note: '覆盖范围以证书为准' },
     { image: M['cert-cpnp'], label: '欧盟 CPNP 注册', note: '欧盟全境' },
     { image: M['cert-fda'], label: '美国 FDA 注册', note: '化妆品设施注册' },
   ],

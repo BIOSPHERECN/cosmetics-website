@@ -9,8 +9,10 @@
     python tools/gateway/sync-config.py            # 同步(网关正在跑的话下一个请求自动重载)
     python tools/gateway/sync-config.py --show     # 只看会生成什么,不写
 
-取 enabled=1 且 id 以 sensenova / agnes 开头的行:每行一个渠道,api_keys 逗号拆成 key 池。
-base_url 是 .com 的(apihub.agnes-ai.com)配 proxy=127.0.0.1:7890 —— 网关先直连,连不上才走它;
+取 enabled=1 且 id 以 sensenova / agnes / free- 开头的行:每行一个渠道,api_keys 逗号拆成 key 池。
+  · sensenova* / agnes* —— 商汤与 Agnes(网关原有两家);
+  · free-*             —— 09-26 第一期免费额度池(Groq / OpenRouter / Kilo,只接对话),db/migrations/0128。
+base_url 的域名不是 .cn 结尾的(境外)一律配 proxy=127.0.0.1:7890 —— 网关先直连,连不上才走它;
 .cn 的(token.sensenova.cn / apihub.agnes-ai.cn)国内直连,不配代理。
 已有 config.json 里的 port / aliases 保留(手改的别名不被冲掉)。
 """
@@ -30,7 +32,7 @@ CFG = os.path.join(DIR, "config.json")
 TOK = os.path.join(DIR, "TOKEN.txt")
 PROXY = os.environ.get("BOHUI_PROXY", "http://127.0.0.1:7890")
 SQL = ("SELECT id,label,base_url,model,api_keys,tier,can_text,can_image,can_vision,vision_model FROM providers "
-       "WHERE enabled=1 AND (id LIKE 'sensenova%' OR id LIKE 'agnes%') ORDER BY tier, id")
+       "WHERE enabled=1 AND (id LIKE 'sensenova%' OR id LIKE 'agnes%' OR id LIKE 'free-%') ORDER BY tier, id")
 
 
 def port_free(port):
@@ -53,6 +55,8 @@ def main():
     gk = {}
     for k in d1("SELECT account, secret FROM gw_keys WHERE project='bohui' AND status='active' ORDER BY priority, id") or []:
         gk.setdefault(k["account"], []).append(k["secret"])
+    # 免费池三家的 account 就是域名本身:api.groq.com / openrouter.ai / api.kilo.ai
+    # —— 与 tools/gw_import_free_keys.py 写进 gw_keys 的 account 同一口径,别另起一套名字。
     account_of = lambda u: "sensenova" if "sensenova" in u else "agnes" if "agnes" in u else urlparse(u).hostname
     channels = []
     for r in rows:
@@ -66,7 +70,7 @@ def main():
             "id": r["id"], "label": r["label"], "base_url": r["base_url"].rstrip("/"),
             "model": r["model"], "models": models, "keys": keys, "tier": r["tier"],
             "can_text": r["can_text"], "can_image": r["can_image"], "can_vision": r["can_vision"],
-            "proxy": PROXY if host.endswith(".com") else "",
+            "proxy": "" if host.endswith(".cn") else PROXY,   # 境外域名(含 groq / openrouter / kilo)都配代理,本机先直连、失败才走它
         })
     cfg = {"port": old.get("port") or (8787 if port_free(8787) else 8788),
            "synced_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

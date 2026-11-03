@@ -1,0 +1,67 @@
+{
+  "angle": "成本",
+  "tree": "eed4b9c719c81591854eb5ffed24c0544430dc2f",
+  "worker": "bohui-web",
+  "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/bohui-web-eed4b9c719c8.json",
+  "run_label": "review-ticket eed4b9c719c8 成本",
+  "reviewer": "claude",
+  "skills_loaded": ["zero-r2-move", "karpathy-coder"],
+  "verdict": "过",
+  "checked": ["成本-①", "成本-②", "成本-③", "成本-④", "成本-⑤", "成本-⑥", "成本-⑦"],
+  "findings": [
+    {
+      "id": "C1",
+      "level": "中",
+      "file": "apps/web/src/middleware.ts",
+      "line": 524,
+      "claim": "费用灯为红(公司账号本周期已超包含额度约 775 亿行,over_usd 77.51),本次仍推 CACHE_V v84→v85;说明只带【零读】,没带 RK1/设计 C11 要求的【降读】【安全】【急修】之一。ticket.py 第 92 行的【零读】通道只看「新增查库写法为 0」,不看 CACHE_V 是否变化,两条规则口径不一致。",
+      "failure_scenario": "上线后全站(biosphere-ai 与 beauty2oem 共用同一个 CACHE_V)所有边缘缓存键与七天陈旧备份(staleKeyFor 同样带 __cv)同时失效;GPTBot 等占 74% 的爬虫复扫时每条都回源 SSR 读 D1。默认新鲜期本就是 1 小时(第 674 行 s-maxage=3600),所以增量约为多一轮整站回源,外加详情页 24 小时那批提前失效;09-24 00:00Z–01:00Z 两小时读了约 1.45 亿行(平时每小时 100–500 万),若那次也是推 CACHE_V 所致,则本次量级约 1 亿行上下、超额按量约 0.1 美元级。陈旧备份清空期间若 D1 出错,5xx 无兜底页。",
+      "evidence": "读了 成本.diff、apps/web/src/middleware.ts 第 440–700 行(cacheable/keyFor/staleKeyFor/cache.put 与 s-maxage=3600)、audit_v2/cache/gate_approved/audit_v2/ticket.py 第 91–93 行与 gate1.py 第 287 行、设计-v2.1.md C11 行、bohui-automation/local/logs/d1_budget.json 与 d1_budget.jsonl(09-24 逐小时读量;09-24 00–01Z 尖峰原因未核实,属推断)、ledger/ship.jsonl 上一次同站部署说明「不推 CACHE_V」。",
+      "fix": "本单不改代码:CSS 资源哈希变了,不推版本号 b2o 页面会引用已下线的旧样式最长 1 小时(详情页 24 小时),推版本号是正确性所需。建议审核部统一口径:要么把【零读】写进 C11 的放行标记,要么 ticket.py 在 CACHE_V 行变化时不认【零读】;后续把 CACHE_V 拆成按站点的版本号,b2o 样式改动只清 beauty2oem 缓存。"
+    },
+    {
+      "id": "C2",
+      "level": "低",
+      "file": "apps/web/src/middleware.ts",
+      "line": 471,
+      "claim": "新增探针头:带对 PROBE_SECRET 的请求跳过规范化 301 且不进也不读边缘缓存,每次都 SSR 读 D1。secret 泄露即可绕缓存放大读量(与 09-24 已修的伪造 bh_mem 绕缓存同类)。",
+      "failure_scenario": "PROBE_SECRET 被人拿到后,对任意公开页带 x-bohui-probe 头刷请求,每次整页回源读库,只剩 WAF 限速挡。当前 secret 未在 Worker 上配置时 probeDiff 恒为 1,不生效。",
+      "evidence": "diff 第 471–475、515 行;tools-review/audit_v2/smoke.py 第 12–24、42–45 行只从本机 F:/0cosmetic/cosmetic-sites/.env 读、不打印;git check-ignore 确认 .env 被 .gitignore 第 7 行忽略(未读取 secret 原文)。冒烟只在 deploy/baseline 模式用探针,hourly 走缓存,条数受 sites.json 清单限制。",
+      "fix": "secret 只进 wrangler secret,不进 wrangler.toml vars;定期轮换;可选把探针限定为 GET 且仅在冒烟清单路径上生效。"
+    }
+  ],
+  "addressed": [
+    {
+      "ref": "JEV",
+      "result": "成立但可接受",
+      "why": "Jev 成本分 0.1、无 reason。成本面实际只有两处:CACHE_V 全站失效(见 C1)与探针头绕缓存(见 C2,secret 未设前不生效)。本 diff 无新增 SQL、无 R2 操作、无模型/KV/Vectorize 调用、无定时任务。",
+      "mitigation": "上线后盯 d1_budget 公司库 last_hour,两小时内回到每小时 500 万行以下;冒烟只跑一次 deploy 模式。"
+    },
+    {
+      "ref": "LAYA",
+      "result": "不成立",
+      "why": "Laya 置信度 0.02、partial、reason 为空,cost=1.0 没有任何依据可核;逐项核对 diff 后成本面没有新增查询、LIKE、JOIN、OFFSET、R2 LIST/copy、计量 API 或 cron,仅 CACHE_V 推版本一项已在 C1 按事实量化。"
+    }
+  ],
+  "risks": [
+    {
+      "cat": "费用",
+      "level": "中",
+      "item": "CACHE_V v85 让两站全部边缘缓存与七天陈旧备份同时失效,费用灯红时上线,预计 1–2 小时回源尖峰(量级估约 1 亿行,推断)",
+      "mitigation": "上线后看 bohui-automation/local/logs/d1_budget.jsonl 公司库 last_hour:两小时内应回落到每小时 500 万行以下;若第 3 小时仍高于 2,000 万行,查 PULSE 按 who 分类看是不是爬虫在全量复扫"
+    },
+    {
+      "cat": "费用",
+      "level": "低",
+      "item": "探针头绕缓存:PROBE_SECRET 泄露即可无限回源读库",
+      "mitigation": "只用 wrangler secret 配置、不入仓、定期轮换;PULSE 里出现大量 x-bh-cache 缺失的同路径请求时先轮换 secret"
+    },
+    {
+      "cat": "回归",
+      "level": "低",
+      "item": "陈旧备份随 CACHE_V 一起清空,上线后 D1 若 5xx 没有兜底页",
+      "mitigation": "避开 D1 抖动时段上线;冒烟关键页过后再观察 30 分钟 5xx"
+    }
+  ],
+  "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/bohui-web/eed4b9c719c8/成本.json"
+}

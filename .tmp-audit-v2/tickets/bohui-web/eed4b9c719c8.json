@@ -1,0 +1,251 @@
+{
+ "schema": "bohui-ticket/2",
+ "id": "RT-20260925-0440-bohui-web-eed4b9c7",
+ "kind": "worker",
+ "target": {
+  "worker": "bohui-web",
+  "repo": "F:/0cosmetic/cosmetic-sites",
+  "account": "company"
+ },
+ "tree": "eed4b9c719c81591854eb5ffed24c0544430dc2f",
+ "scope_sha256": "9b8560e9f5e937e36354ffc055571cb69b59d03c69de7fcffd6b767770b03b94",
+ "gate_hash": "sha256:2206b0ee5a20f2762b99fca7d12fcb76ecde3e44ce2fe8d447a8e5ed3621d900",
+ "rules_hash": "sha256:7aa081a24470d292129570eb9b44f0dd5d9f906e8d5c47a3be4e94317f1ccbca",
+ "env_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+ "base": {
+  "ref": "refs/ship/bohui-web",
+  "commit": "2da5ffc5d0e065f0b4e6a7fca32c32b1c9a365b4",
+  "tree": "7dbd08adcbe6ff64c412b22bd6d39a3b55fd2453",
+  "first_ship": false
+ },
+ "prev_ticket": null,
+ "diff": {
+  "file": "drafts/bohui-web-eed4b9c719c8/all.diff",
+  "sha256": "84ff4b51ceae5c955bb3bd4a44052fc9527f0fd51420d692dcd41f897533af24",
+  "files": 20,
+  "lines": 157
+ },
+ "note": "【零读】beauty2oem 首页视觉重排:首屏满屏大图、12 张作品墙(标注为效果图/方向参考,非交付产品)、方法区图放大、中间版块浅底(补浅底绿红阴影令牌)、删空占位框;CACHE_V v85;含 middleware 冒烟探针头(secret 未设前不生效);按合规复核把 wall-05/06 换成来源有据的「防晒霜」文件夹图",
+ "tier": "L3",
+ "tier_reasons": [
+  "范围内有二进制或单行超 1,000 字符的压缩文件 → 至少 L2 并加安全角度",
+  "L3 触发:apps/web/src/middleware.ts"
+ ],
+ "gate1": {
+  "result": "过",
+  "block": 0,
+  "doubt": 0,
+  "exceptions": 0,
+  "seconds": 5.0
+ },
+ "budget": {
+  "level": "red",
+  "src": "d1_budget·零读",
+  "at": "2026-09-25T04:34:29+08:00",
+  "ok": true
+ },
+ "judges": {
+  "laya": {
+   "decision": "block",
+   "conf": 0.02,
+   "noul": {
+    "cost": 1.0,
+    "security": 1.0,
+    "compliance": 1.0
+   },
+   "correctness": 1.31,
+   "verdict": "存疑",
+   "status": "判了",
+   "seconds": 37,
+   "partial": true
+  },
+  "jev": {
+   "decision": "block",
+   "conf": 0.37,
+   "noul": {
+    "cost": 0.1,
+    "security": 0.3,
+    "compliance": 0.06
+   },
+   "correctness": 0.83,
+   "verdict": "存疑",
+   "status": "判了",
+   "tokens_in": 3226,
+   "day_used": 8925,
+   "seconds": 21.5,
+   "call_ref": "ledger/jev_calls.jsonl@2026-09-25T04:34:52+08:00",
+   "request_id": null,
+   "partial": true
+  }
+ },
+ "reports": [
+  {
+   "angle": "成本",
+   "file": "reports/bohui-web/eed4b9c719c8/成本.json",
+   "sha256": "4f41e4ac8c570bc26517daae6bf010af13a8a34b0b6d94f471352e5955d3b7b7",
+   "verdict": "过",
+   "findings": 2,
+   "reviewer": "claude"
+  },
+  {
+   "angle": "安全",
+   "file": "reports/bohui-web/eed4b9c719c8/安全.json",
+   "sha256": "40998bc3c5d2edb9a1652def68d364f9ac9b0b62dc8c456ae716b6419dae6d97",
+   "verdict": "过",
+   "findings": 4,
+   "reviewer": "claude"
+  },
+  {
+   "angle": "合规",
+   "file": "reports/bohui-web/eed4b9c719c8/合规.json",
+   "sha256": "f920756da9aadbe91bc9794b79affff2e3ae15a8c8d74f246a731b9c2af9e184",
+   "verdict": "过",
+   "findings": 2,
+   "reviewer": "claude"
+  },
+  {
+   "angle": "正确性",
+   "file": "reports/bohui-web/eed4b9c719c8/正确性.json",
+   "sha256": "ac5683833b910ad35e383f8b5e2594816b0fb298c6206cf68d0405d8fde7033a",
+   "verdict": "过",
+   "findings": 5,
+   "reviewer": "claude"
+  }
+ ],
+ "resolved": [
+  {
+   "ref": "JEV",
+   "by": "成本",
+   "result": "成立但可接受",
+   "why": "Jev 成本分 0.1、无 reason。成本面实际只有两处:CACHE_V 全站失效(见 C1)与探针头绕缓存(见 C2,secret 未设前不生效)。本 diff 无新增 SQL、无 R2 操作、无模型/KV/Vectorize 调用、无定时任务。"
+  },
+  {
+   "ref": "LAYA",
+   "by": "成本",
+   "result": "不成立",
+   "why": "Laya 置信度 0.02、partial、reason 为空,cost=1.0 没有任何依据可核;逐项核对 diff 后成本面没有新增查询、LIKE、JOIN、OFFSET、R2 LIST/copy、计量 API 或 cron,仅 CACHE_V 推版本一项已在 C1 按事实量化。"
+  }
+ ],
+ "overrides": [],
+ "exceptions": [],
+ "risks": {
+  "费用": [
+   {
+    "rule": "RK1",
+    "level": "高",
+    "item": "CACHE_V 改成 const CACHE_V = 'v85';   // 09-25 beauty2oem 视觉重排改了 b2o.css(:全站缓存失效",
+    "mitigation": "上线后 1–2 小时 D1 读量尖峰;D1 灯不绿时说明须带【降读】【安全】【急修】"
+   },
+   {
+    "level": "中",
+    "item": "CACHE_V v85 让两站全部边缘缓存与七天陈旧备份同时失效,费用灯红时上线,预计 1–2 小时回源尖峰(量级估约 1 亿行,推断)",
+    "mitigation": "上线后看 bohui-automation/local/logs/d1_budget.jsonl 公司库 last_hour:两小时内应回落到每小时 500 万行以下;若第 3 小时仍高于 2,000 万行,查 PULSE 按 who 分类看是不是爬虫在全量复扫"
+   },
+   {
+    "level": "低",
+    "item": "探针头绕缓存:PROBE_SECRET 泄露即可无限回源读库",
+    "mitigation": "只用 wrangler secret 配置、不入仓、定期轮换;PULSE 里出现大量 x-bh-cache 缺失的同路径请求时先轮换 secret"
+   },
+   {
+    "level": "低",
+    "item": "密钥泄露时,探针请求每次都会真渲染读 D1",
+    "mitigation": "D1 看门狗 Bohui-D1Budget 兜底;发现泄露立即轮换密钥"
+   },
+   {
+    "level": "中",
+    "item": "CACHE_V v84→v85 全站缓存失效(第一关 RK1 已记)",
+    "mitigation": "见成本角度;上线后看 D1 读量"
+   }
+  ],
+  "安全": [
+   {
+    "level": "低",
+    "item": "PROBE_SECRET 上线之后成为可以绕开缓存和规范化跳转的共享密钥",
+    "mitigation": "用 wrangler secret put 设值,只存在私有仓;冒烟脚本不在日志里打印它"
+   }
+  ],
+  "合规": [
+   {
+    "rule": "RK7",
+    "level": "中",
+    "item": "对外文案/页面变了 apps/web/src/components/B2oBlock.astro",
+    "mitigation": "合规审核员看语种与页面"
+   },
+   {
+    "rule": "RK7",
+    "level": "中",
+    "item": "对外文案/页面变了 apps/web/src/middleware.ts",
+    "mitigation": "合规审核员看语种与页面"
+   },
+   {
+    "level": "低",
+    "item": "首页 17 张图的出处只凭创始人一句「我以前设计的」(会话里的原话,针对「防晒霜」文件夹),没有出图平台账号或导出记录作旁证;文件名是 AI 提示词缩写外加 (1)(6) 这类重复后缀",
+    "mitigation": "在图库 README 里记下创始人原话与日期;如有出图平台账号,补一条账号记录"
+   },
+   {
+    "level": "低",
+    "item": "/delivery 页的 d-gold-set、d-papaya-set、d-cucumber-set 仍然来自「化妆品」文件夹 urvi787_,出处未证实;这些图不在本次 diff 里,09-24 起已经在线上",
+    "mitigation": "另开单:创始人确认账号归属,或者换成「防晒霜」文件夹里的图"
+   },
+   {
+    "level": "低",
+    "item": "首屏写实 AI 人物图(hero-full)旁边没有 AI 标识,只靠页脚声明;以后如果在首屏叠加 SPF/PA 或防晒功效文字,就会进入特殊化妆品宣称口径",
+    "mitigation": "可选:首屏加一个小号「AI 效果图」角标;以后首屏如果要加防晒数值,先过宣称审核"
+   }
+  ],
+  "正确性": [
+   "已查:K1–K6、RK9,未发现"
+  ],
+  "回归": [
+   {
+    "rule": "RK2",
+    "level": "高",
+    "item": "middleware.ts 变了:所有请求都经过它",
+    "mitigation": "冒烟跑全表"
+   },
+   {
+    "level": "低",
+    "item": "陈旧备份随 CACHE_V 一起清空,上线后 D1 若 5xx 没有兜底页",
+    "mitigation": "避开 D1 抖动时段上线;冒烟关键页过后再观察 30 分钟 5xx"
+   },
+   {
+    "level": "中",
+    "item": "b2o.css 浅底令牌规则覆盖 .alt 背景,并作用于全部 beauty2oem 页面(C1/C2)",
+    "mitigation": "上线后人工看首页与 /zh-cn/brief/ 亮/暗两种模式;修法见 C1"
+   },
+   {
+    "level": "低",
+    "item": "middleware 所有请求多一次读 PROBE_SECRET 与头部比较;secret 未设时行为不变,设了之后带正确头的请求绕过 301 与边缘缓存(会直读 D1)",
+    "mitigation": "PROBE_SECRET 只给冒烟脚本;冒烟频率受控"
+   }
+  ]
+ },
+ "smoke_extra": [
+  "https://beauty2oem.com/b2o/img/vi/hero-full.webp",
+  "https://beauty2oem.com/b2o/img/vi/m1.webp",
+  "https://beauty2oem.com/b2o/img/vi/m4.webp",
+  "https://beauty2oem.com/b2o/img/vi/wall-01.webp",
+  "https://beauty2oem.com/b2o/img/vi/wall-05.webp",
+  "https://beauty2oem.com/b2o/img/vi/wall-06.webp",
+  "https://beauty2oem.com/b2o/img/vi/wall-12.webp",
+  "https://beauty2oem.com/zh-cn/",
+  "https://beauty2oem.com/zh-cn/brief/",
+  "上线后打开 beauty2oem 首页,确认作品墙标题是「包装与视觉方向参考」,副标题含「不是已交付的客户产品」",
+  "用 ?kk=1 取 /b2o/img/vi/wall-05.webp 和 wall-06.webp,确认是橙色软管、民族纹样方瓶这两张新图(?cb= 破不了缓存)",
+  "确认 beauty2oem 首页页脚有「页面中的场景照片为 AI 生成的示意图」",
+  "确认首页不再出现「广州工厂 · 灌装车间 / 待补实拍」占位框"
+ ],
+ "verdict": "过",
+ "why": [
+  "三家合并:第一关过、审核员无未推翻的拦、存疑逐条回应"
+ ],
+ "issued_at": "2026-09-25T04:40:02+08:00",
+ "expires_at": "2026-09-26T04:40:02+08:00",
+ "followup_due": null,
+ "followup": [],
+ "incident": null,
+ "degraded": false,
+ "issuer": "audit_v2/ticket.py v2.1",
+ "basis": "eb03f147406a41e5d5a9f02241105a0b165d3a08edb7b3517b7815d6baacfee7",
+ "content_sha256": "264f74aad29a1a7528c21f761794b27b0dee3f7a87e757ab91484f25bcb93b9c"
+}

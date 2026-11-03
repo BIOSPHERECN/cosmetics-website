@@ -52,7 +52,7 @@ export function productJsonLd(
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    '@id': `${base}/${locale}/products/#${p.slug}`,
+    '@id': `${base}/${locale}/product/${p.slug}/`,
     name: p.name,
     ...(p.summary ? { description: p.summary } : {}),
     ...(p.category ? { category: p.category } : {}),
@@ -66,7 +66,7 @@ export function productJsonLd(
       availability: 'https://schema.org/InStock',
       seller: { '@id': `${base}/#organization` },
       ...(p.moq ? { eligibleQuantity: { '@type': 'QuantitativeValue', description: p.moq } } : {}),
-      url: `${base}/${locale}/products/`,
+      url: `${base}/${locale}/portfolio/`,
     },
   };
 }
@@ -78,7 +78,7 @@ export function itemListJsonLd(base: string, locale: string, items: { slug: stri
     '@type': 'ItemList',
     itemListElement: items.map((p, i) => ({
       '@type': 'ListItem', position: i + 1, name: p.name,
-      url: `${base}/${locale}/products/#${p.slug}`,
+      url: `${base}/${locale}/product/${p.slug}/`,
     })),
   };
 }

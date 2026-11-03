@@ -1,0 +1,38 @@
+---
+/**
+ * BIOSPHERE-AI 服务/方案详情页 —— 渲染 solutions.ts 里的每一条 Solution。
+ *
+ * 数据驱动:内容全部来自 @cosmetic/core 的 solutions.ts。
+ * AI 改数据文件就能更新页面,不需要像 WordPress/Shopify 那样手动管理后台。
+ *
+ * SOP第8节要求:产品范围、可承接条件、被核实资质、客户常问问题、需求提交入口。
+ * 每页底部带询盘表单(SOP表单字段最小化:公司/市场/产品类目/计划数量/品牌包材要求/目标上市时间/联系方法)。
+ * 每页带 FAQ schema 结构化数据,让 Google 和 AI 搜索能直接读取问答。
+ */
+import ServicePage from '@cosmetic/core/layouts/ServicePage.astro';
+import { LOCALES, type Locale } from '@cosmetic/core/i18n';
+import { getSite } from '@cosmetic/core/registry';
+import { SOLUTIONS, findSolution, EMAIL } from '@cosmetic/core/content';
+import '../../../styles/brand.css';
+
+export function getStaticPaths() {
+  const paths: { params: { locale: string; slug: string } }[] = [];
+  for (const locale of LOCALES) {
+    for (const s of SOLUTIONS) {
+      paths.push({ params: { locale, slug: s.slug } });
+    }
+  }
+  return paths;
+}
+
+const locale = Astro.params.locale as Locale;
+const slug = Astro.params.slug as string;
+const site = getSite('biosphere-ai');
+const solution = findSolution(slug);
+
+if (!solution) {
+  return Astro.redirect(`/${locale}/404/`);
+}
+---
+
+<ServicePage site={site} locale={locale} solution={solution} email={EMAIL[site.id]} />

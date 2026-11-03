@@ -41,7 +41,7 @@ export const LOCALES = [
 ] as const;
 export type Locale = (typeof LOCALES)[number];
 
-export const DEFAULT_LOCALE: Locale = 'zh-cn';
+export const DEFAULT_LOCALE: Locale = 'en';
 
 /** 下拉里的大区分组 —— 顺序与 LOCALES 一致 */
 /**

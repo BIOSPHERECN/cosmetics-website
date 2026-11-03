@@ -25,6 +25,7 @@
  */
 
 import { localePath } from '@cosmetic/core/i18n';
+import { ldJson } from '../content/ldjson.ts';
 
 interface Props {
   /** 语言,如 'zh-cn' / 'en'(由 [...path].astro 传入) */
@@ -269,7 +270,7 @@ const PACKAGING: Record<string, string[]> = {
 
 
 {/* 把服务端数据序列化成 JSON 岛,供客户端脚本读取(Astro 的 is:inline 不能访问 frontmatter 变量) */}
-<script type="application/json" id="funnel-data" set:html={JSON.stringify({ BASES, COMPLIANCE, PACKAGING })}></script>
+<script type="application/json" id="funnel-data" set:html={ldJson({ BASES, COMPLIANCE, PACKAGING })}></script>
 
 <script is:inline>
   (function () {

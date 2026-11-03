@@ -38,10 +38,11 @@ function pickOrder(): string[] {
 
 const STRIP = '/api/duck-proxy';
 
-/** 需要透传给上游客端的响应头 */
+/** 需要透传给上游客端的响应头。set-cookie 刻意不在内:
+ *  否则 duck.ai 可在 biosphere-ai.com 域种/覆盖 Cookie(会话固定)。2026-10-28 安全审核 H1 */
 const PASS_THROUGH = new Set([
   'content-type', 'content-length', 'content-encoding', 'cache-control',
-  'etag', 'last-modified', 'set-cookie', 'x-vqd-hash-1', 'x-vqd-4',
+  'etag', 'last-modified', 'x-vqd-hash-1', 'x-vqd-4',
 ]);
 
 export async function duckProxy(request: Request, _env: unknown, _ctx?: ExecutionContext): Promise<Response> {
@@ -55,15 +56,17 @@ export async function duckProxy(request: Request, _env: unknown, _ctx?: Executio
   const rest = url.pathname.startsWith(STRIP) ? url.pathname.slice(STRIP.length) : url.pathname;
   const tail = `${rest || '/'}${url.search}`;
 
-  // 只透传必要请求头，其余由代理自己构造（避免把国内客户端的指纹带过去触发风控）
+  /* 只透传必要请求头,其余由代理自己构造(避免把国内客户端的指纹带过去触发风控)。
+     cookie / authorization 必须剥离:本代理无鉴权且与主站同域,原样转发等于把
+     访客的 bohui_sess 会话 Cookie 送给第三方。2026-10-28 安全审核 H1 */
+  const DROP_REQ = new Set(['host', 'origin', 'referer', 'connection', 'content-length', 'cookie', 'authorization', 'proxy-authorization']);
   const fwd = new Headers({
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
     Referer: 'https://duck.ai/',
     Origin: 'https://duck.ai',
   });
   for (const [k, v] of request.headers) {
-    const lk = k.toLowerCase();
-    if (['host', 'origin', 'referer', 'connection', 'content-length'].includes(lk)) continue;
+    if (DROP_REQ.has(k.toLowerCase())) continue;
     fwd.set(k, v);
   }
 
@@ -117,11 +120,11 @@ export async function duckProxy(request: Request, _env: unknown, _ctx?: Executio
 }
 
 function corsHeaders(): Record<string, string> {
+  /* 不设 Allow-Credentials:* 与 credentials 组合本身不合规,且本代理不该接受带凭据的跨域调用 */
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'content-type, authorization, x-vqd-4, x-vqd-hash-1, x-request-id, x-slashd',
-    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Headers': 'content-type, x-vqd-4, x-vqd-hash-1, x-request-id, x-slashd',
     'Access-Control-Expose-Headers': 'x-vqd-hash-1, x-vqd-4',
     'Access-Control-Max-Age': '86400',
   };

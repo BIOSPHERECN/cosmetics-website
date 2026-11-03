@@ -19,6 +19,7 @@ import { env } from 'cloudflare:workers';
 import { loadFleet, chat, paidFirst } from '../../../lib/fleet';
 import { tooMany, clientId, recordUse, overQuota, sweep } from '../../../lib/ratelimit';
 import { aiGate, getMember } from '../../../lib/member';
+import { aiDailyCheck, aiBudgetResponse } from '../../../lib/fuse';
 
 export const prerender = false;
 
@@ -50,7 +51,6 @@ export const POST: APIRoute = async ({ request }) => {
 
   let body: any;
   try { body = await request.json(); } catch { return json({ ok: false, error: 'bad-json' }, 400); }
-
   const lang = String(body.lang ?? 'zh-cn').slice(0, 8);
   const note = String(body.note ?? '').trim().slice(0, 400);
   const token = String(body.token ?? '').trim().slice(0, 32);
@@ -100,6 +100,10 @@ export const POST: APIRoute = async ({ request }) => {
       .bind(project.formula_code).first<any>().catch(() => null);
     if (f) anchor += `Product is a ${f.format} (${f.benefits}). `;
   }
+
+  /* 全站日预算:本接口一调用就是文本模型改写 + 排队一张图,按 2 计。
+     放在入参校验之后、模型调用之前 —— 坏请求不占预算,但模型被调用就是花了钱。 */
+  if (!(await aiDailyCheck({ db, cap: (env as any).AI_DAILY_CAP, cost: 2 })).ok) return aiBudgetResponse();
 
   const fleet = paidFirst(await loadFleet(db));
   const isFirst = prevN === 0;

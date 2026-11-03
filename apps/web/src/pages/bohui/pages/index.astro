@@ -79,6 +79,7 @@ const TPL: Record<string, string> = {
 <AdminShell title="页面与版块" active="pages" email={c.sess.email} tenant={c.tenant}>
   <h1>页面与版块</h1>
   <p class="lead">5 个站点共 {total} 个页面。点「编辑」进版块编辑器,可逐语种改文案、调顺序、隐藏版块。</p>
+  <p><a class="btn pri" href="/bohui/pages/new/">＋ 新建页面</a></p>
 
   <form class="bar" method="get">
     <input name="q" value={q} placeholder="搜标题或路径…" style="max-width:18rem" />

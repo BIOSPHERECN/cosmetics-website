@@ -1,0 +1,58 @@
+{
+ "angle": "成本+正确性",
+ "tree": "a2144befa65967a390b671d4f358b148c7724780",
+ "worker": "gate",
+ "run_label": "review-ticket a2144befa659 成本+正确性",
+ "draft": "F:/0cosmetic/tools-review/audit_v2/drafts/gate-a2144befa659.json",
+ "reviewer": "claude",
+ "skills_loaded": ["zero-r2-move", "karpathy-coder", "code-reviewer"],
+ "verdict": "存疑",
+ "checked": ["成本-①", "成本-②", "成本-③", "成本-④", "成本-⑤", "成本-⑥", "成本-⑦", "正确性-①", "正确性-②", "正确性-③", "正确性-④", "正确性-⑤", "正确性-⑥", "正确性-⑦"],
+ "findings": [
+  {
+   "id": "F1",
+   "level": "中",
+   "file": "audit_v2/rules-v2-strict.yml",
+   "line": 92,
+   "claim": "「自有工厂」只从 sites.json 巡查红线词表里去掉了,第一关硬规则 R2-owned-factory 的正则仍是 自有(厂房|工厂)|非租赁|own factory,改口径只做了一半;memory 里写的「已同步改规则」不完整。",
+   "failure_scenario": "帛卉站线按创始人 09-24 22:5x 口径在公司站新写「广州自有工厂」或英文 own factory → gate1 的 R2-owned-factory(hard:true, level:block)让 astro build 失败,破窗也不放;而每小时巡查(sites.json)不再报它,两处口径互相矛盾。",
+   "evidence": "读了 audit_v2/rules-v2-strict.yml 第 85-93 行(工作副本与 cache/gate_approved 副本相同,都含「工厂」);sites.json 第 459-469 行;memory project-bohui-facts-authority.md 第 28-32 行(对外可以写自有工厂,只禁自有厂房/非租赁)。",
+   "fix": "同批把第 92 行改成 自有厂房|非租赁,英文 own factory 是否保留由主线按新口径定,同时改第 88 行 message;然后重审。"
+  },
+  {
+   "id": "F2",
+   "level": "低",
+   "file": "audit_v2/交付说明.md",
+   "line": 9,
+   "claim": "新增的交付说明在口径改之前写成,第一关一节写着红线「自有厂房/工厂」,第八节把 B2oBlock.astro:322 的「广州自有工厂」报成红项并说下次上线会被拦,都和本次改动及创始人新口径矛盾。",
+   "failure_scenario": "创始人或其他线照交付说明去整改公司站,把合规的「自有工厂」删掉,正好是创始人说的「不要乱」。",
+   "evidence": "交付说明.md 第 9 行(表格第一关)和第八节第一条;B2oBlock.astro 现在已经搜不到「自有工厂」(只有第 73 行「自有产线」),第八节已过时。",
+   "fix": "第 9 行改成「自有厂房/非租赁」,第八节第一条标成作废(09-24 22:5x 口径更正),保留原文不删。"
+  },
+  {
+   "id": "F3",
+   "level": "低",
+   "file": "audit_v2/register_watch_task.ps1",
+   "line": 12,
+   "claim": "超时从 5 分钟改成 10 分钟实际不起作用:任务动作是 wscript + run-hidden.vbs,启动后立刻返回,ExecutionTimeLimit 和 IgnoreNew 都管不到真正的 watch 进程(交付说明第九节也这样写)。",
+   "failure_scenario": "巡查卡死时,任务计划不会在 10 分钟时杀掉它;下一小时的 :47 会再起一个实例,可能叠跑。改动本身无害,但注释里「超时 10 分钟」会让人误以为有兜底。",
+   "evidence": "register_watch_task.ps1 第 8 行(动作是 wscript run-hidden.vbs)和第 12 行;watch.py 第 256 行子进程 timeout=300 只管单个子步骤。",
+   "fix": "不需要拦。以后在 watch.py 里加总时长自限或进程锁;注释写明任务级超时不起作用。"
+  }
+ ],
+ "addressed": [
+  {"ref": "JEV", "result": "成立但可接受", "why": "Jev 判拦(置信 0.59,没到 0.8 反驳线,reason 为空)。我找到的具体问题是 F1(改口径不完整)和 F2(文档过时),都不会让线上多花钱或把现状搞坏;本 diff 只是删一个词、调一个超时、加一份文档。", "mitigation": "F1 同批补改 rules-v2-strict.yml 第 92 行,F2 改交付说明;改完树哈希会变,要重审。"},
+  {"ref": "LAYA", "result": "成立但可接受", "why": "Laya 放行(置信 0.84),但 correctness 1.32 超出正常区间、partial=true,不能作为依据;人工复核结论见 F1-F3。", "mitigation": "Laya 还没校准,本单以 Claude 审核员结论为准。"}
+ ],
+ "risks": [
+  {"cat": "费用", "level": "低", "item": "已查:访客读量、机器人放大、缓存键/CACHE_V、R2 列目录/复制/搬移、付费 API、KV 写。这三个文件都不在访客请求路径上,都没有涉及,未发现问题。计划任务仍是每小时一次(:47),频率没变,不占 Actions 分钟。", "mitigation": "上线后盯 Bohui-AuditWatch 单次时长(日报巡查心跳),和巡查是否叠跑。"},
+  {"cat": "合规", "level": "中", "item": "巡查红线(sites.json)和第一关硬规则(rules-v2-strict.yml:92)对「自有工厂」口径不一致", "mitigation": "见 F1,同批改。"},
+  {"cat": "正确性", "level": "低", "item": "交付说明里的「自有工厂」内容过时;任务级超时不起作用", "mitigation": "见 F2、F3。"},
+  {"cat": "回归", "level": "低", "item": "删掉「自有工厂」后,巡查轻冒烟不会再对公司站的「自有工厂」报红。这是创始人要的效果;「自有厂房」仍然在拦。", "mitigation": "下一次巡查确认公司站不再出红 1。"}
+ ],
+ "smoke_extra": [
+  "https://beauty2oem.com/zh-cn/?kk=1",
+  "https://biosphere-ai.com/?kk=1"
+ ],
+ "report_file": "F:/0cosmetic/tools-review/audit_v2/reports/gate/a2144befa659/成本+正确性.json"
+}

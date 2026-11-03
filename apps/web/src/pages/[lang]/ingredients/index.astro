@@ -28,6 +28,7 @@ import { ingredientSlug } from '../../../lib/decoder';
 import MemberGate from '../../../components/MemberGate.astro';
 import { searchGate } from '../../../lib/member';
 import { searchMemo, catalogHits, byIds, capText, isShort, CAP } from '../../../lib/search';
+import InquiryFormLite from '@cosmetic/core/components/InquiryFormLite.astro';
 
 export const prerender = false;
 
@@ -269,6 +270,8 @@ const idxHref = (o: Partial<{ l: string; fn: string; r: string; p: number }>) =>
 };
 
 const indexable = shell.site?.is_live === 1 && active.length === 0 && !q0 && !fLetter && !fFnZh && !fRating && page === 1;
+/* 询盘表单的 WhatsApp 号与联系页同源(middleware 注入) */
+const contactWa: string | null = ((Astro.locals as any)?.contact ?? {}).whatsapp ?? null;
 ---
 
 <BaseLayout
@@ -379,6 +382,7 @@ const indexable = shell.site?.is_live === 1 && active.length === 0 && !q0 && !fL
         )}
       </section>
     )}
+    <InquiryFormLite lang={lang} email={shell.email} whatsapp={contactWa} source="ingredients" />
   </main>
   <SiteFooter locale={lang as any} path={path}
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}

@@ -205,9 +205,7 @@ const evLabel = (ev: any) => String(ev ?? '').split(/,\s*/).map((kv) => { const 
     <header class="sh"><h2>{fill(d.title)}</h2>{d.intro && <p>{fill(d.intro)}</p>}</header>
     <ul class="cats">{cats.map((c) => (
       <li>
-        {catPic(c.category) && <img class="cp" src={catPic(c.category)} alt="" loading="lazy" decoding="async" />}
         <p class="ch"><b>{catLabel(c.category)}</b><span>{fill(d.countText || (zh ? '{n} 条基底' : '{n} bases'), { n: String(c.n) })}</span></p>
-        <ul class="fx-list">{c.samples.map((r: any) => <li><a href={`${B}/formula/${encodeURIComponent(r.code)}/`}>{formulaName(r, zh)}</a></li>)}</ul>
         <a class="all" href={`${B}/formulas/?c=${encodeURIComponent(c.category)}`}>{fill(d.moreText) || (zh ? '看全部' : 'See all')} →</a>
       </li>
     ))}</ul>

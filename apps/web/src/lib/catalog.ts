@@ -101,10 +101,13 @@ export const BEN_LABEL: Record<string, Pair> = {
   'daily-care': ['日常护理', 'Daily care'], body: ['身体', 'Body'],
 };
 
-/** 后台「产品与剂型」的品类(products.category)—— 产品列表、一页式编辑、批量导入共用这一张 */
+/** 后台「产品与剂型」的品类(products.category)—— 产品列表、一页式编辑、批量导入共用这一张
+    (2026-10-23:护肤 916 条拆成 cleanser/toner/serum/mask/cream/special-care 六个剂型细分) */
 export const PRODUCT_CAT: Record<string, string> = {
   skincare: '护肤', makeup: '彩妆', cleansing: '清洁', oral: '口腔护理',
   body: '身体护理', hair: '洗护', kids: '儿童护肤', fragrance: '香氛', suncare: '防晒',   // suncare:B2 历史产品导入的品类码
+  cleanser: '洁面', toner: '爽肤水', serum: '精华', mask: '面膜', cream: '面霜乳液', 'special-care': '特护',
+  pet: '宠物护理',   // 2026-10-23:宠物湿巾等独立成类,不再混在身体护理
 };
 
 export const CAT_LABEL: Record<string, Pair> = {
@@ -112,6 +115,9 @@ export const CAT_LABEL: Record<string, Pair> = {
   makeup: ['彩妆', 'Makeup'], oral: ['口腔护理', 'Oral care'], suncare: ['防晒', 'Suncare'],
   haircare: ['洗护', 'Hair care'], hair: ['洗护', 'Hair care'], mask: ['面膜', 'Masks'],
   kids: ['儿童护理', 'Kids care'], fragrance: ['香氛', 'Fragrance'],
+  cleanser: ['洁面', 'Cleansers'], toner: ['爽肤水', 'Toners'], serum: ['精华', 'Serums'],
+  cream: ['面霜乳液', 'Creams & Lotions'], 'special-care': ['特护', 'Special care'],
+  pet: ['宠物护理', 'Pet care'],
 };
 
 

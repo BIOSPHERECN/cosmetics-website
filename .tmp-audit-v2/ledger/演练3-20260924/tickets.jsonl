@@ -1,0 +1,1 @@
+{"id":"RT-20260924-2138-gate-db2d10f5","worker":"gate","tree":"db2d10f52dde95c62fd849d181fe3235e4990080","verdict":"过","kind":"gate","file":"tickets/gate/db2d10f52dde.json","content_sha256":"94e1137bbd3540a84ece43cf67b7debc1350dbe07006dacbfd8a9081ee9a61f5","ts":"2026-09-24T21:38:15+08:00","prev":"genesis"}

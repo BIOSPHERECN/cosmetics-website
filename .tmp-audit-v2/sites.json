@@ -1,0 +1,479 @@
+{
+ "_说明": "审核部 v2.1 每个 Worker 的仓库、审核范围、账号、首次基准、产物核对、冒烟清单。改本文件 = 改闸门(ship_ops.sh gate;只改 smoke 段可用 --data)。",
+ "exclude_default": [
+  "**/node_modules/**",
+  "apps/web/dist/**",
+  "apps/web/dist[0-9_]*/**",
+  "apps/web/.astro/**",
+  "apps/web/.wrangler/**",
+  "**/.env*",
+  "**/*.bak",
+  "**/*.bak[0-9_-]*",
+  "**/nul",
+  "**/__pycache__/**"
+ ],
+ "workers": {
+  "bohui-web": {
+   "repo": "F:/0cosmetic/cosmetic-sites",
+   "account": "company",
+   "primary": true,
+   "kind": "astro",
+   "entry": "F:/0cosmetic/cosmetic-sites/tools/ship.sh",
+   "first_base": "e05bbbf",
+   "scope": [
+    "apps/web",
+    "packages",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "tools/ship.sh",
+    "db/migrations",
+    "tsconfig.json",
+    "tsconfig.base.json",
+    ".npmrc",
+    "patches"
+   ],
+   "build": "npm run build",
+   "dist": "apps/web/dist/server",
+   "config": "wrangler.json",
+   "wrangler_cwd": "apps/web",
+   "dist_check": {
+    "name": "bohui-web",
+    "must": [
+     "ea5b0da4"
+    ],
+    "forbid": [
+     "f5010e65"
+    ]
+   },
+   "post_checks": [
+    "node tools/ship-gate.mjs"
+   ],
+   "smoke": [
+    {
+     "url": "https://biosphere-ai.com/",
+     "expect": 302,
+     "crit": true,
+     "hourly": true,
+     "location_any": [
+      "/en/",
+      "/zh-cn/"
+     ],
+     "_说明": "按访客地区跳转(国内 IP 到 /zh-cn/)"
+    },
+    {
+     "url": "https://biosphere-ai.com/zh-cn/",
+     "expect": 200,
+     "must": [
+      "<h1",
+      "Organization"
+     ],
+     "forbid": "@company",
+     "crit": true,
+     "hourly": true
+    },
+    {
+     "url": "https://biosphere-ai.com/en/",
+     "expect": 200,
+     "must": [
+      "<h1",
+      "BIOSPHERE"
+     ],
+     "forbid": [
+      "Bohui Group",
+      "Indonesia factory",
+      "SueAI"
+     ],
+     "crit": true,
+     "hourly": true
+    },
+    {
+     "url": "https://biosphere-ai.com/zh-cn/packaging/",
+     "expect": 200,
+     "must": [
+      "Product",
+      "ItemList"
+     ],
+     "forbid": [
+      "18,815"
+     ]
+    },
+    {
+     "url": "https://biosphere-ai.com/zh-cn/faq/",
+     "expect": 200,
+     "must": [
+      "FAQPage"
+     ]
+    },
+    {
+     "url": "https://biosphere-ai.com/en/services/",
+     "expect": 200,
+     "must": [
+      "Service"
+     ]
+    },
+    {
+     "url": "https://biosphere-ai.com/zh-cn/formulas/",
+     "expect": 200,
+     "must": [
+      "<h1"
+     ]
+    },
+    {
+     "url": "https://biosphere-ai.com/zh-cn/ingredients/",
+     "expect": 200,
+     "must": [
+      "<h1"
+     ]
+    },
+    {
+     "url": "https://biosphere-ai.com/zh-cn/regulations/",
+     "expect": 200,
+     "must": [
+      "<h1"
+     ]
+    },
+    {
+     "url": "https://biosphere-ai.com/zh-cn/search/?q=serum",
+     "expect": 200,
+     "deploy_only": true
+    },
+    {
+     "url": "https://biosphere-ai.com/robots.txt",
+     "expect": 200,
+     "must": [
+      "User-agent",
+      "GPTBot"
+     ],
+     "hourly": true
+    },
+    {
+     "url": "https://biosphere-ai.com/sitemap.xml",
+     "expect": 200,
+     "must_any": [
+      "<urlset",
+      "<sitemapindex"
+     ]
+    },
+    {
+     "url": "https://biosphere-ai.com/llms.txt",
+     "expect": 200
+    },
+    {
+     "url": "https://biosphere-ai.com/bohui/",
+     "expect": 302,
+     "location": "/bohui/login/",
+     "crit": true,
+     "hourly": true
+    },
+    {
+     "url": "https://beauty2oem.com/",
+     "expect": 302,
+     "location": "/zh-cn/",
+     "crit": true,
+     "hourly": true
+    },
+    {
+     "url": "https://beauty2oem.com/zh-cn/",
+     "expect": 200,
+     "h1": 1,
+     "forbid": "@company",
+     "crit": true,
+     "hourly": true
+    },
+    {
+     "url": "https://beauty2oem.com/zh-cn/brief/",
+     "expect": 200
+    },
+    {
+     "url": "https://beauty2oem.com/zh-cn/opportunities/",
+     "expect": 200
+    },
+    {
+     "url": "https://beauty2oem.com/zh-cn/predictions/",
+     "expect": 200
+    },
+    {
+     "url": "https://beauty2oem.com/zh-cn/insights/",
+     "expect": 200
+    },
+    {
+     "url": "https://beauty2oem.com/zh-cn/contact/",
+     "expect": 302,
+     "hourly": true,
+     "location": "/zh-cn/brief/",
+     "_说明": "09-24 图文版起 contact 并进 brief(实测)"
+    },
+    {
+     "url": "https://beauty2oem.com/zh-cn/delivery/",
+     "expect": 200
+    },
+    {
+     "url": "https://beauty2oem.com/zh-cn/privacy/",
+     "expect": 200
+    }
+   ],
+   "_first_base说明": "09-24 20:53 v1 上线 b2eb79c6 后的 release 提交(与 refs/ship/last 的 apps/packages 一致,另含强制加进来的 src/data)"
+  },
+  "beauty2ai": {
+   "repo": "F:/beauty2AI/代码",
+   "account": "platform",
+   "primary": true,
+   "kind": "script",
+   "entry": "F:/beauty2AI/代码/tools/platform/ship.sh",
+   "first_base": "852ac8d",
+   "scope": [
+    "apps/web",
+    "packages",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "tools/platform/ship.sh",
+    "tools/platform/deploy.sh",
+    "tools/platform/mkconfig.py",
+    "db/migrations",
+    "tsconfig.json",
+    "tsconfig.base.json",
+    ".npmrc",
+    "patches"
+   ],
+   "deploy_script": "tools/platform/deploy.sh",
+   "wrangler_cwd": "apps/web",
+   "cache_v_bump": true,
+   "dist_check": {
+    "name": "beauty2ai",
+    "config": "wrangler.copy.json",
+    "must": [
+     "f5010e65"
+    ],
+    "forbid": [
+     "ea5b0da4",
+     "\"bohui-web\""
+    ]
+   },
+   "post_checks": [
+    "bash tools/platform/smoke.sh"
+   ],
+   "smoke": [
+    {
+     "url": "https://beauty2ai.com/zh-cn/",
+     "expect": 200,
+     "must": [
+      "<h1"
+     ],
+     "forbid": "@platform",
+     "crit": true,
+     "hourly": true,
+     "fresh": "更新 "
+    },
+    {
+     "url": "https://beauty2ai.com/en/",
+     "expect": 200,
+     "must": [
+      "<h1"
+     ],
+     "forbid": "@platform",
+     "crit": true,
+     "hourly": true
+    },
+    {
+     "url": "https://beauty2ai.com/zh-cn/make/",
+     "expect": 200,
+     "forbid": "@platform"
+    },
+    {
+     "url": "https://beauty2ai.com/zh-cn/pricing/",
+     "expect": 200,
+     "forbid": "@platform"
+    },
+    {
+     "url": "https://beauty2ai.com/zh-cn/markets/",
+     "expect": 200,
+     "forbid": "@platform"
+    },
+    {
+     "url": "https://beauty2ai.com/zh-cn/inci/",
+     "expect": 200,
+     "forbid": "@platform"
+    },
+    {
+     "url": "https://beauty2ai.com/zh-cn/regulations/",
+     "expect": 200,
+     "forbid": "@platform",
+     "hourly": true
+    },
+    {
+     "url": "https://beauty2ai.com/zh-cn/about/",
+     "expect": 200,
+     "forbid": "@platform",
+     "hourly": true
+    },
+    {
+     "url": "https://beauty2ai.com/zh-cn/privacy/",
+     "expect": 200,
+     "forbid": "@platform"
+    },
+    {
+     "url": "https://beauty2ai.com/zh-cn/decoder/",
+     "expect": 403,
+     "ua": "tool"
+    },
+    {
+     "url": "https://beauty2ai.com/zh-cn/factories/biosphere-gz/",
+     "expect_any": [
+      403,
+      404
+     ]
+    },
+    {
+     "url": "https://beauty2ai.com/hosonzuo/projects/",
+     "expect": 302,
+     "location": "/hosonzuo/login/",
+     "crit": true,
+     "hourly": true
+    }
+   ]
+  },
+  "beauty2oem-web": {
+   "_说明": "beauty2oem 拆站线的独立 Worker(09-24 施工中,占位 id 未填前 mkconfig 自己会拒绝生成)。上线入口 tools/ship-b2o.sh。",
+   "repo": "F:/0cosmetic/cosmetic-sites",
+   "account": "company",
+   "kind": "astro",
+   "entry": "F:/0cosmetic/cosmetic-sites/tools/ship-b2o.sh",
+   "first_base": "e05bbbf",
+   "scope": [
+    "apps/web",
+    "packages",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "tools/ship-b2o.sh",
+    "tools/b2o-split",
+    "db/migrations",
+    "tsconfig.json",
+    "tsconfig.base.json",
+    ".npmrc",
+    "patches"
+   ],
+   "build": "npm run build && python tools/b2o-split/mkconfig.py",
+   "build_live": "npm run build && python tools/b2o-split/mkconfig.py --live",
+   "dist": "apps/web/dist/server",
+   "config": "wrangler.b2o.json",
+   "wrangler_cwd": "apps/web",
+   "dist_check": {
+    "name": "beauty2oem-web",
+    "config": "wrangler.b2o.json",
+    "must": [],
+    "forbid": [
+     "ea5b0da4",
+     "f5010e65",
+     "\"bohui-web\"",
+     "a461419944d4422cb81e374a391632ce"
+    ]
+   },
+   "smoke": []
+  },
+  "bohui-mail": {
+   "repo": "F:/0cosmetic/cosmetic-sites",
+   "account": "company",
+   "kind": "cmd",
+   "scope": [
+    "apps/mail-worker"
+   ],
+   "deploy_cmd": "cd apps/mail-worker && npx wrangler deploy",
+   "wrangler_cwd": "apps/mail-worker",
+   "smoke": []
+  },
+  "bohui-gateway": {
+   "repo": "F:/0cosmetic/cosmetic-sites",
+   "account": "company",
+   "kind": "cmd",
+   "scope": [
+    "tools/gateway/worker"
+   ],
+   "deploy_cmd": "python tools/gateway/worker/deploy.py",
+   "wrangler_cwd": "tools/gateway/worker",
+   "smoke": []
+  },
+  "bohui-news-cron": {
+   "repo": "F:/0cosmetic/cosmetic-sites",
+   "account": "company",
+   "kind": "cmd",
+   "scope": [
+    "tools/news-cron-worker"
+   ],
+   "deploy_cmd": "cd tools/news-cron-worker && npx wrangler deploy",
+   "wrangler_cwd": "tools/news-cron-worker",
+   "smoke": []
+  },
+  "skin2oem": {
+   "_说明": "创始人账号副本 skin2oem.hosonzuo.workers.dev(tools/deploy-copy.py,Worker 名 skin2oem,走 OAuth)。--skip-db 只更新代码;导库另走 ship_ops prod。",
+   "repo": "F:/0cosmetic/cosmetic-sites",
+   "account": "platform",
+   "kind": "cmd",
+   "scope": [
+    "apps/web",
+    "packages",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "tools/deploy-copy.py"
+   ],
+   "deploy_cmd": "python tools/deploy-copy.py --skip-db",
+   "wrangler_cwd": "apps/web",
+   "smoke": []
+  }
+ },
+ "gates": {
+  "gate": {
+   "_说明": "审核部闸门自身(tools-review 本地 git,无远端)。refs/ship/gate = 最后一版已批准提交;cache/gate_approved/ 是它的 worktree,所有执行点跑这份。",
+   "repo": "F:/0cosmetic/tools-review",
+   "account": "none",
+   "kind": "gate",
+   "scope": [
+    "audit_v2",
+    "rules.yml",
+    "laya_judge.py",
+    "deploy_audit.py",
+    "gate.sh",
+    "audit_dept",
+    ".gitignore",
+    ".gitattributes"
+   ],
+   "exclude": [
+    "audit_v2/cache/**",
+    "audit_v2/tickets/**",
+    "audit_v2/reports/**",
+    "audit_v2/drafts/**",
+    "audit_v2/ledger/**",
+    "audit_v2/state/**",
+    "audit_v2/logs/**",
+    "audit_v2/ENABLED",
+    "**/__pycache__/**",
+    "audit_dept/logs/**",
+    "_out/**"
+   ]
+  }
+ },
+ "forbid_sets": {
+  "company": [
+   "帛卉集团",
+   "BOHUI GROUP",
+   "集团旗下",
+   "印尼工厂",
+   "Tangerang",
+   "双基地",
+   "SueAI",
+   "莱诺鸟",
+   "自有厂房"
+  ],
+  "platform": [
+   "帛卉",
+   "BIOSPHERE",
+   "biosphere-ai",
+   "白云区",
+   "龙兴东路"
+  ]
+ },
+ "control_url": "https://www.cloudflare.com/cdn-cgi/trace"
+}
