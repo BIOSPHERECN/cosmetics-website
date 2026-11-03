@@ -154,12 +154,35 @@ const ld = [
       <p class="lede">{T.lede}</p>
     </header>
 
-    <section id="services-rfq" class="sv-rfq">
-      <p>{zh
-        ? '个性化 OEM/ODM：七步流程、仅列已有认证（GMPC / ISO 22716 / HALAL）、打样通常 5–14 天书面确认。不自动报价，也不写未核准低起订量口号。'
-        : 'Custom OEM/ODM: seven-step process, certifications we actually hold (GMPC / ISO 22716 / HALAL), sampling typically 5–14 days confirmed in writing. No auto-quotes and no unapproved low-MOQ slogans.'}</p>
-      <p><a href={`${B}/rfq/`}>{zh ? '提交 RFQ / 申请样品' : 'Submit RFQ / request sample'}</a>
-         · <a href={`${B}/oem/`}>{zh ? '按市场与品类看 OEM' : 'OEM by market & category'}</a></p>
+    {/* P0-C：贴牌/PL 证据须在正文 SSR 可读（无 JS），与 /oem/ 同口径 */}
+    <section id="services-evidence" class="sv-evidence" aria-labelledby="sv-process-h">
+      <h2 id="sv-process-h">{zh ? '从需求到交付 · 七步（OEM / 贴牌）' : 'Brief to shipment · 7 steps (OEM / private label)'}</h2>
+      <p class="sv-lede">{zh
+        ? '贴牌与定制同一条项目链。本页不写未核准的低起订量口号；起订量与交期一律书面确认。'
+        : 'Private label and custom work share one project chain. This page never advertises unapproved low-MOQ slogans; MOQ and lead time are confirmed in writing.'}</p>
+      <ol class="sv-steps">
+        <li><strong>{zh ? '需求' : 'Brief'}</strong> — {zh ? '品类 / 目标市场 / 首批数量 / 参考产品或全成分表' : 'Category / target market / first-order volume / reference product or INCI'}</li>
+        <li><strong>{zh ? '匹配基底' : 'Match base'}</strong> — {zh ? '从在库基底里选 2–3 条，定活性物与肤感方向' : 'Shortlist 2–3 in-house bases; lock actives and skin feel'}</li>
+        <li><strong>{zh ? '寄样' : 'Sample'}</strong> — {zh ? '通常 5–14 天；评估后修改再寄（书面确认）' : 'Typically 5–14 days; revise after evaluation (confirmed in writing)'}</li>
+        <li><strong>{zh ? '合规资料' : 'Compliance'}</strong> — {zh ? '目标市场备案 / 通报路径与责任方，标签与宣称核对' : 'Market filing / notification path and responsible person; label and claims check'}</li>
+        <li><strong>{zh ? '包装' : 'Packaging'}</strong> — {zh ? '现货包材选型或定制；包装稿逐字核对' : 'Stock packaging selection or custom tooling; artwork checked line by line'}</li>
+        <li><strong>{zh ? '试产' : 'Pilot'}</strong> — {zh ? '小批量走一遍产线，确认稳定性与灌装' : 'Small pilot run to confirm stability and filling'}</li>
+        <li><strong>{zh ? '大货与放行' : 'Mass production & release'}</strong> — {zh ? '按 QC 项目检验；放行报告随货' : 'QC checklist; release report ships with the goods'}</li>
+      </ol>
+
+      <h2 id="sv-certs-h">{zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}</h2>
+      <p class="sv-lede">{zh
+        ? '按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。'
+        : 'Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications.'}</p>
+
+      <h2 id="sv-sample-h">{zh ? '打样逻辑' : 'Sampling logic'}</h2>
+      <p class="sv-lede">{zh
+        ? '确认品类与目标市场后打样；寄样通常 5–14 天（按品类与包材备料，书面告知）。样品签样后进入量产排程。起订量按品类与包材议定，不以未核准低 MOQ 口号对外承诺。'
+        : 'Sampling starts after category and target market are clear. Samples typically ship in 5–14 days (by category and packaging stock; confirmed in writing). Mass production is scheduled after sample sign-off. MOQ is agreed per category and packaging — we do not promise unapproved low-MOQ slogans.'}</p>
+      <p class="sv-cta">
+        <a class="sv-btn" href={`${B}/rfq/`}>{zh ? '提交 RFQ / 申请样品' : 'Submit RFQ / request sample'}</a>
+        <a class="sv-btn ghost" href={`${B}/oem/`}>{zh ? '按市场与品类看 OEM' : 'OEM by market & category'}</a>
+      </p>
     </section>
 
 
@@ -397,7 +420,13 @@ const ld = [
       .chain li { flex: 0 0 auto; }
     }
   
-  .sv-rfq{margin:0 0 1.5rem;padding:1rem 1.125rem;border:1px solid var(--ck-line,rgba(0,0,0,.12));border-radius:12px;line-height:1.65}
-  .sv-rfq a{font-weight:600}
+  .sv-evidence{margin:0 0 2rem;padding:1.25rem 1.25rem 1.5rem;border:1px solid var(--ck-line,rgba(0,0,0,.12));border-radius:12px;display:grid;gap:.75rem}
+  .sv-evidence h2{font-size:1.125rem;margin:.5rem 0 0}
+  .sv-evidence h2:first-child{margin-top:0}
+  .sv-lede{margin:0;color:var(--ck-ink-soft);font-size:.9375rem;line-height:1.7;max-width:52rem}
+  .sv-steps{margin:0;padding-left:1.25rem;display:grid;gap:.45rem;line-height:1.55;font-size:.9375rem}
+  .sv-cta{display:flex;flex-wrap:wrap;gap:.75rem;margin:.25rem 0 0}
+  .sv-btn{display:inline-flex;align-items:center;padding:.625rem 1.125rem;border-radius:999px;background:var(--ck-accent,#333);color:var(--ck-on-accent,#fff);text-decoration:none;font-weight:600;font-size:.9375rem}
+  .sv-btn.ghost{background:transparent;color:inherit;border:1px solid var(--ck-line,rgba(0,0,0,.2))}
 </style>
 </BaseLayout>
