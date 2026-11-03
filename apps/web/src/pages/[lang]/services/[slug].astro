@@ -1,0 +1,84 @@
+---
+/**
+ * /{lang}/services/{slug}/ 的 CMS 空壳 → 服务总页。
+ *
+ * 2026-09-07 起，方案正文收在 /services/ 的锚点上。库里若仍留着
+ * services/{slug} 这种一截子路径、但没有可见正文，抓取到的就是空壳。
+ * 这里 301 回总页：slug 在 SOLUTIONS 里才带 #锚点，其余只到总页，
+ * 不把任意字符串写进 Location。
+ *
+ * factory-quality 与 product-development 有同目录静态页，路由更具体，不会进到这里。
+ * 若这块 slug 在 CMS 里已经有可见正文，不 301 —— 动态路由会盖住 [...path]，
+ * 有正文时把文字原样打出来，避免把已写的页吞成跳转。
+ */
+import { env } from 'cloudflare:workers';
+import { SOLUTIONS } from '@cosmetic/core/content/solutions.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { t as uiT } from '@cosmetic/core/i18n';
+import { isLang, DEFAULT_LANG, getPageBundle, type Lang } from '../../../lib/db';
+import { pageShell } from '../../../lib/shell';
+
+export const prerender = false;
+
+const rawLang = Astro.params.lang ?? DEFAULT_LANG;
+const lang: Lang = (isLang(rawLang) ? rawLang : DEFAULT_LANG) as Lang;
+const slug = String(Astro.params.slug ?? '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+const known = SOLUTIONS.some((s) => s.slug === slug);
+const hub = `/${lang}/services/${known ? `#${slug}` : ''}`;
+
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const siteId = shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai';
+
+const textOf = (v: unknown): string => {
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (Array.isArray(v)) return v.map(textOf).join('\n');
+  if (v && typeof v === 'object') return Object.values(v as Record<string, unknown>).map(textOf).join('\n');
+  return '';
+};
+
+let blocks: { type: string; text: string }[] = [];
+if (db && slug) {
+  const bundle = await getPageBundle(db, siteId, `services/${slug}`, lang).catch(() => null);
+  blocks = (bundle?.blocks ?? [])
+    .map((b) => ({ type: b.type, text: textOf(b.data).replace(/\s+/g, ' ').trim() }))
+    .filter((b) => b.text.length > 0);
+}
+const visible = blocks.map((b) => b.text).join('\n').trim();
+/* 没有可见正文（未发布、无版块、或只剩空白）= 空壳，301 回总页。 */
+if (visible.length < 40) return Astro.redirect(hub, 301);
+
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const path = `/${lang}/services/${slug}/`;
+const title = zh ? '服务' : 'Services';
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? 'biosphere-ai'} title={title} description={blocks[0]?.text.slice(0, 160) ?? title}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={false} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main" class="sh">
+    <p class="back"><a href={`/${lang}/services/`}>{zh ? '返回服务总页' : 'Back to the services hub'}</a></p>
+    {blocks.map((b) => (<p>{b.text}</p>))}
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  .sh { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; display: grid; gap: 1rem; }
+  .sh p { margin: 0; line-height: 1.7; }
+  .back a { text-decoration: underline; text-underline-offset: .15em; }
+</style>

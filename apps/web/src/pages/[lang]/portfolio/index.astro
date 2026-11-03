@@ -103,6 +103,24 @@ const faqs = zh
      { q: 'What is the MOQ?', a: 'It is set per category and packaging; the reference MOQ is shown on each product card.' },
      { q: 'Can I get samples before ordering?', a: 'Yes. Sampling lead time depends on the category and packaging stock; order after sign-off samples.' },
      { q: 'What certifications does the plant hold?', a: 'Capacity, systems and certifications are listed under Services · Factory quality.' }];
+/* W5：product_id 必须是库内 id，缺则 slug，禁止 product_id= 空串。样品是真 <a href>，不靠无 JS 的 span。 */
+const productRef = (p: { id?: unknown; slug?: unknown }) => {
+  const id = String(p?.id ?? '').trim();
+  return id || String(p?.slug ?? '').trim();
+};
+const withPid = (href: string, p: { id?: unknown; slug?: unknown }) => {
+  const ref = productRef(p);
+  return ref ? `${href}?product_id=${encodeURIComponent(ref)}` : href;
+};
+const sampleHref = (p: { id?: unknown; slug?: unknown; name?: unknown; category?: unknown }) => {
+  const ref = productRef(p);
+  const q = [
+    ref ? `product_id=${encodeURIComponent(ref)}` : '',
+    `about=${encodeURIComponent(String(p.name ?? p.slug ?? ''))}`,
+    `category=${encodeURIComponent(String(p.category ?? ''))}`,
+  ].filter(Boolean).join('&');
+  return `${B}/rfq/?${q}`;
+};
 const jsonLd = ldJson({
   '@context': 'https://schema.org',
   '@graph': [{
@@ -171,12 +189,14 @@ const jsonLd = ldJson({
             </a>
             <div class="cat-sec-grid">
               {catItems.map((p: any, mi: number) => (
-                <a class="card mini" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`} data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
-                  {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="450" loading={mi === 0 && c === catCounts[0] ? 'eager' : 'lazy'} decoding="async" /> : <div class="ph" />}
-                  <h3>{p.name ?? p.slug}</h3>
-                  <small class="meta">{p.moq ? `${zh ? '起订' : 'MOQ'} ${p.moq}` : T.moq} · {T.sample}</small>
-                  <span class="sample" data-href={`${B}/rfq/?product_id=${encodeURIComponent(String(p.id ?? ''))}&about=${encodeURIComponent(String(p.name ?? p.slug))}&category=${encodeURIComponent(String(p.category ?? ''))}`}>{T.sampleCta}</span>
-                </a>
+                <article class="card mini" data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
+                  <a class="mini-main" href={withPid(`${B}/product/${p.slug}/`, p)}>
+                    {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="450" loading={mi === 0 && c === catCounts[0] ? 'eager' : 'lazy'} decoding="async" /> : <div class="ph" />}
+                    <h3>{p.name ?? p.slug}</h3>
+                    <small class="meta">{p.moq ? `${zh ? '起订' : 'MOQ'} ${p.moq}` : T.moq} · {T.sample}</small>
+                  </a>
+                  <a class="sample" href={sampleHref(p)}>{T.sampleCta}</a>
+                </article>
               ))}
             </div>
           </section>
@@ -189,15 +209,15 @@ const jsonLd = ldJson({
       {items.map((p, idx) => (
         <li class="pg-item" data-idx={idx} data-id={String(p.id ?? '')} data-name={(p.name ?? p.slug).toLowerCase()} data-summary={(p.summary ?? '').toLowerCase()} data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
           <article class="card">
-            <a class="card-main" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>
+            <a class="card-main" href={withPid(`${B}/product/${p.slug}/`, p)}>
               {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="600" loading={idx < 4 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" /> : <div class="ph" />}
               <h2>{p.name ?? p.slug}</h2>
               {p.summary && <p>{p.summary}</p>}
             </a>
             <p class="meta">{catLabel(p.category)} · {p.moq ? `${zh ? '起订量' : 'MOQ'}: ${p.moq}` : T.moq} · {T.sample}</p>
             <div class="cta-row">
-              <a class="more" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>{T.more} →</a>
-              <a class="sample" href={`${B}/rfq/?product_id=${encodeURIComponent(String(p.id ?? ''))}&about=${encodeURIComponent(String(p.name ?? p.slug))}&category=${encodeURIComponent(String(p.category ?? ''))}`}>{T.sampleCta}</a>
+              <a class="more" href={withPid(`${B}/product/${p.slug}/`, p)}>{T.more} →</a>
+              <a class="sample" href={sampleHref(p)}>{T.sampleCta}</a>
             </div>
           </article>
         </li>
@@ -244,7 +264,8 @@ const jsonLd = ldJson({
   .cta-row .sample:hover { background: var(--ck-accent, #333); color: #fff; }
   .pg-empty[hidden] { display: none !important; }
 
-  .card-main { display: grid; gap: .5rem; text-decoration: none; color: inherit; }
+  .card-main, .card.mini .mini-main { display: grid; gap: .5rem; text-decoration: none; color: inherit; }
+  .card.mini .mini-main { gap: .25rem; }
   .card .more { font-size: .8125rem; opacity: .75; text-decoration: none; color: inherit; }
 
   .ask { margin: 1.75rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
@@ -456,14 +477,6 @@ const jsonLd = ldJson({
         }, 200);
       });
     }
-
-    /* 手机卡 Request sample（嵌在 <a.card> 内，用 data-href 跳 RFQ） */
-    document.querySelectorAll('.card.mini .sample[data-href]').forEach(function(el) {
-      el.addEventListener('click', function(e) {
-        e.preventDefault(); e.stopPropagation();
-        location.href = el.getAttribute('data-href');
-      });
-    });
 
     /* 初始渲染 */
     renderPage(1);
