@@ -154,6 +154,15 @@ const ld = [
       <p class="lede">{T.lede}</p>
     </header>
 
+    <section id="services-rfq" class="sv-rfq">
+      <p>{zh
+        ? '个性化 OEM/ODM：七步流程、仅列已有认证（GMPC / ISO 22716 / HALAL）、打样通常 5–14 天书面确认。不自动报价，也不写未核准低起订量口号。'
+        : 'Custom OEM/ODM: seven-step process, certifications we actually hold (GMPC / ISO 22716 / HALAL), sampling typically 5–14 days confirmed in writing. No auto-quotes and no unapproved low-MOQ slogans.'}</p>
+      <p><a href={`${B}/rfq/`}>{zh ? '提交 RFQ / 申请样品' : 'Submit RFQ / request sample'}</a>
+         · <a href={`${B}/oem/`}>{zh ? '按市场与品类看 OEM' : 'OEM by market & category'}</a></p>
+    </section>
+
+
     {/* 链路 —— 和三个货架页顶上的那条是同一条,同一个顺序 */}
     <section class="sec" aria-labelledby="h-chain">
       <h2 id="h-chain">{T.hChain}</h2>
@@ -387,5 +396,8 @@ const ld = [
       .chain::-webkit-scrollbar { display: none; }
       .chain li { flex: 0 0 auto; }
     }
-  </style>
+  
+  .sv-rfq{margin:0 0 1.5rem;padding:1rem 1.125rem;border:1px solid var(--ck-line,rgba(0,0,0,.12));border-radius:12px;line-height:1.65}
+  .sv-rfq a{font-weight:600}
+</style>
 </BaseLayout>

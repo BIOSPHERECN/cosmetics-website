@@ -44,7 +44,7 @@ if (db) {
        成本#2 C2 审核:catCounts 用独立 memo(键不含 catFilter/lang),避免每个 catFilter 都重跑同一查询。 */
     const rows = await memo(`portfolio5:${siteId}:${lang}:${catFilter}`, 3600, async () => {
       return ((await db.prepare(
-        `SELECT p.slug, p.category, p.moq, p.cover_media, p.updated_at, i.name, i.summary
+        `SELECT p.id, p.slug, p.category, p.moq, p.cover_media, p.updated_at, i.name, i.summary
            FROM products p LEFT JOIN product_i18n i ON i.product_id = p.id AND i.lang = ?
           WHERE p.site_id = ? AND p.status = 'published' AND p.is_showcase = 1
             AND (? = '' OR p.category = ?) ORDER BY p.sort_order, p.id DESC`)
@@ -67,11 +67,11 @@ const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
 const B = `/${lang}`;
 const nTotal = items.length;
 const T = zh ? { eyebrow: '成品', title: nTotal ? `化妆品 OEM/ODM 成熟产品库 · ${nTotal} 款` : '化妆品 OEM/ODM 成熟产品库', lede: `化妆品 OEM/ODM 代工厂的成熟产品库:${nTotal} 款已量产成品,覆盖护肤、彩妆、洗护、口腔、防晒、香氛等品类,支持品牌定制与来样打样,起订量按品类与包材议定;每款标注品类、剂型、规格与卖点。`,
-                 empty: '首批成品正在拍摄整理,近期上线。想先看某个品类的成品样例,发询盘告诉我们品类与目标市场。', moq: '起订量按品类议定', more: '看详情', ask: '想做类似的?告诉我们品类与目标市场。', inq: '发起询盘', all: '全部',
+                 empty: '首批成品正在拍摄整理,近期上线。想先看某个品类的成品样例,发询盘告诉我们品类与目标市场。', moq: '起订量按品类与包材议定（书面确认）', sample: '打样通常 5–14 天（书面确认）', sampleCta: '申请样品', more: '看详情', ask: '想做类似的?告诉我们品类与目标市场。', inq: '发起询盘', all: '全部',
                  search: '搜索产品名称、品类…', found: '找到 {n} 款', noResults: '没有找到匹配的产品，换个关键词试试',
                  profile: '广州化妆品 OEM/ODM 工厂:20,000 ㎡ 厂房、15 条自动化产线;面膜日产能 50 万片、膏霜日产能 30 万支;在册配方 13,000+;持有 GMPC、ISO 22716:2007 与 HALAL 认证;打样 5–14 天出样;以上成品均来自该产线的量产记录,可按品牌定制,打样与交期按品类与包材以书面确认。' }
              : { eyebrow: 'Finished products', title: nTotal ? `Cosmetics OEM/ODM product library · ${nTotal} items` : 'Cosmetics OEM/ODM product library', lede: `A ready-to-ship product library from a cosmetics OEM/ODM manufacturer: ${nTotal} mass-produced items across skincare, makeup, hair & body care, oral care, sunscreen and fragrance — private-label customization and sampling supported, MOQ agreed per category and packaging. Category, format, specs and selling points on every card.`,
-                 empty: 'The first batch is being photographed and will go live shortly. To see samples in a category now, send an inquiry with the category and target market.', moq: 'MOQ agreed per category', more: 'Details', ask: 'Want something similar? Tell us the category and target market.', inq: 'Send an inquiry', all: 'All',
+                 empty: 'The first batch is being photographed and will go live shortly. To see samples in a category now, send an inquiry with the category and target market.', moq: 'MOQ agreed per category and packaging (confirmed in writing)', sample: 'Sampling typically 5–14 days (confirmed in writing)', sampleCta: 'Request sample', more: 'Details', ask: 'Want something similar? Tell us the category and target market.', inq: 'Send an inquiry', all: 'All',
                  search: 'Search by name, category…', found: '{n} found', noResults: 'No matching products. Try a different keyword',
                  profile: 'Guangzhou cosmetics OEM/ODM factory: over 20,000 m² of manufacturing floor and 15 automated production lines; more than 13,000 formulations on file; GMPC, ISO 22716:2007 and HALAL certified. Every item here comes from that production line and can be customized under your brand; sampling and lead time are confirmed in writing per category and packaging.' };
 
@@ -148,14 +148,14 @@ const jsonLd = ldJson({
           {T.all}（{catCounts.reduce((a, c) => a + c.n, 0)}）
         </a>
         {catCounts.map((c) => (
-          <a class:list={['chip', { on: catFilter === c.category }]} href={`${B}/collections/${c.category}/`}>
+          <a class:list={['chip', { on: catFilter === c.category }]} href={`${B}/portfolio/?cat=${encodeURIComponent(c.category)}`}>
             {catLabel(c.category)}（{c.n}）
           </a>
         ))}
       </nav>
     )}
     {items.length === 0 && <p class="lede">{T.empty}</p>}
-    <p class="lede pg-empty hidden" id="pg-empty">{T.noResults}</p>
+    <p class="lede pg-empty hidden" id="pg-empty" data-msg={T.noResults} hidden aria-hidden="true"></p>
 
     {/* 手机端:按品类分区展示(电商APP风格,每品类前4款+查看全部) */}
     <div class="cat-sections" id="cat-sections">
@@ -171,9 +171,11 @@ const jsonLd = ldJson({
             </a>
             <div class="cat-sec-grid">
               {catItems.map((p: any, mi: number) => (
-                <a class="card mini" href={`${B}/product/${p.slug}/`}>
+                <a class="card mini" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`} data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
                   {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="450" loading={mi === 0 && c === catCounts[0] ? 'eager' : 'lazy'} decoding="async" /> : <div class="ph" />}
                   <h3>{p.name ?? p.slug}</h3>
+                  <small class="meta">{p.moq ? `${zh ? '起订' : 'MOQ'} ${p.moq}` : T.moq} · {T.sample}</small>
+                  <span class="sample" data-href={`${B}/rfq/?product_id=${encodeURIComponent(String(p.id ?? ''))}&about=${encodeURIComponent(String(p.name ?? p.slug))}&category=${encodeURIComponent(String(p.category ?? ''))}`}>{T.sampleCta}</span>
                 </a>
               ))}
             </div>
@@ -185,12 +187,20 @@ const jsonLd = ldJson({
     {/* 桌面端:平铺全部+翻页+搜索 */}
     <ul class="grid" id="pg-grid" data-page-size="60">
       {items.map((p, idx) => (
-        <li class="pg-item" data-idx={idx} data-name={(p.name ?? p.slug).toLowerCase()} data-summary={(p.summary ?? '').toLowerCase()}><a class="card" href={`${B}/product/${p.slug}/`}>
-          {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="600" loading={idx < 4 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" /> : <div class="ph" />}
-          <h2>{p.name ?? p.slug}</h2>
-          {p.summary && <p>{p.summary}</p>}
-          <small>{catLabel(p.category)} · {T.moq} · {T.more} →</small>
-        </a></li>
+        <li class="pg-item" data-idx={idx} data-id={String(p.id ?? '')} data-name={(p.name ?? p.slug).toLowerCase()} data-summary={(p.summary ?? '').toLowerCase()} data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
+          <article class="card">
+            <a class="card-main" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>
+              {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="600" loading={idx < 4 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" /> : <div class="ph" />}
+              <h2>{p.name ?? p.slug}</h2>
+              {p.summary && <p>{p.summary}</p>}
+            </a>
+            <p class="meta">{catLabel(p.category)} · {p.moq ? `${zh ? '起订量' : 'MOQ'}: ${p.moq}` : T.moq} · {T.sample}</p>
+            <div class="cta-row">
+              <a class="more" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>{T.more} →</a>
+              <a class="sample" href={`${B}/rfq/?product_id=${encodeURIComponent(String(p.id ?? ''))}&about=${encodeURIComponent(String(p.name ?? p.slug))}&category=${encodeURIComponent(String(p.category ?? ''))}`}>{T.sampleCta}</a>
+            </div>
+          </article>
+        </li>
       ))}
     </ul>
     <section class="faq" aria-label={zh ? '采购常见问题' : 'Buying FAQ'}>
@@ -226,7 +236,17 @@ const jsonLd = ldJson({
   .card img, .ph { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: var(--ck-surface-alt, #f3f3f1); }
   .card h2 { font-size: 1.0625rem; margin: 0; line-height: 1.4; }
   .card p { margin: 0; font-size: .9rem; line-height: 1.6; opacity: .75; }
-  .card small { margin-top: auto; opacity: .65; }
+  .card small, .card .meta { margin-top: auto; opacity: .65; font-size: .8125rem; line-height: 1.5; }
+  .card .meta { margin: 0; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .25rem; }
+  .cta-row .more { font-size: .8125rem; opacity: .7; }
+  .cta-row .sample, .card.mini .sample { display: inline-flex; align-items: center; font-size: .8125rem; font-weight: 600; padding: .25rem .625rem; border-radius: 999px; border: 1px solid var(--ck-accent, #333); color: var(--ck-accent, #333); text-decoration: none; }
+  .cta-row .sample:hover { background: var(--ck-accent, #333); color: #fff; }
+  .pg-empty[hidden] { display: none !important; }
+
+  .card-main { display: grid; gap: .5rem; text-decoration: none; color: inherit; }
+  .card .more { font-size: .8125rem; opacity: .75; text-decoration: none; color: inherit; }
+
   .ask { margin: 1.75rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
   @media (min-width: 900px) { main { padding: 2rem 1.5rem 4rem; } }
   /* 手机端(≤48rem):品类分区布局+双列紧凑+图片4:3 */
@@ -322,7 +342,14 @@ const jsonLd = ldJson({
       }
       renderNav();
       if (countEl) countEl.textContent = filtered.length + (filtered.length === allItems.length ? '' : ' / ' + allItems.length);
-      if (emptyEl) emptyEl.classList.toggle('hidden', filtered.length > 0);
+      if (emptyEl) {
+        var showEmpty = filtered.length === 0;
+        emptyEl.classList.toggle('hidden', !showEmpty);
+        emptyEl.hidden = !showEmpty;
+        emptyEl.setAttribute('aria-hidden', showEmpty ? 'false' : 'true');
+        if (showEmpty && !emptyEl.textContent) emptyEl.textContent = emptyEl.getAttribute('data-msg') || '';
+        if (!showEmpty) emptyEl.textContent = '';
+      }
       if (nav) nav.style.display = pages > 1 ? '' : 'none';
     }
 
@@ -415,13 +442,28 @@ const jsonLd = ldJson({
             filtered = allItems.filter(function(el) {
               var name = el.getAttribute('data-name') || '';
               var sum = el.getAttribute('data-summary') || '';
-              return name.indexOf(q) !== -1 || sum.indexOf(q) !== -1;
+              var cat = el.getAttribute('data-category') || '';
+              var catL = el.getAttribute('data-cat-label') || '';
+              /* Serums / serum / 精华 等同义词，避免筛 Serums 空态误报 */
+              var aliases = (cat === 'serum' || catL.indexOf('serum') !== -1)
+                ? ' serum serums 精华 '
+                : '';
+              var hay = (' ' + name + ' ' + sum + ' ' + cat + ' ' + catL + aliases + ' ').toLowerCase();
+              return hay.indexOf(q) !== -1;
             });
           }
           renderPage(1);
         }, 200);
       });
     }
+
+    /* 手机卡 Request sample（嵌在 <a.card> 内，用 data-href 跳 RFQ） */
+    document.querySelectorAll('.card.mini .sample[data-href]').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        location.href = el.getAttribute('data-href');
+      });
+    });
 
     /* 初始渲染 */
     renderPage(1);

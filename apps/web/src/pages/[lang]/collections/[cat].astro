@@ -44,7 +44,7 @@ if (db) {
   try {
     items = await memo(`collection:${siteId}:${lang}:${cat}`, 3600, async () => {
       return ((await db.prepare(
-        `SELECT p.slug, p.category, p.moq, p.cover_media, p.updated_at, i.name, i.summary
+        `SELECT p.id, p.slug, p.category, p.moq, p.cover_media, p.updated_at, i.name, i.summary
            FROM products p LEFT JOIN product_i18n i ON i.product_id = p.id AND i.lang = ?
           WHERE p.site_id = ? AND p.status = 'published' AND p.is_showcase = 1 AND p.category = ?
           ORDER BY p.sort_order, p.id DESC`,
@@ -97,7 +97,7 @@ const T = zh
       ],
       otherH: '其他品类', ask: '没找到合适的款?告诉我们品类、目标市场与数量。', inq: '发起询盘',
       empty: '该品类暂未上架成品。',
-      moq: '起订量', more: '看详情',
+      moq: '起订量按品类与包材议定（书面确认）', sample: '打样通常 5–14 天（书面确认）', sampleCta: '申请样品', more: '看详情',
   }
   : {
       crumbAll: 'All products', eyebrow: 'Collection',
@@ -118,7 +118,7 @@ const T = zh
       ],
       otherH: 'Other categories', ask: 'Nothing quite right? Tell us the category, target market and quantity.', inq: 'Send an inquiry',
       empty: 'No products in this category yet.',
-      moq: 'MOQ', more: 'Details',
+      moq: 'MOQ agreed per category and packaging (confirmed in writing)', sample: 'Sampling typically 5–14 days (confirmed in writing)', sampleCta: 'Request sample', more: 'Details',
   };
 
 const listItems = items.map((p: any, i: number) => ({
@@ -183,14 +183,22 @@ const jsonLd = ldJson({
 
     <ul class="grid">
       {items.map((p, idx) => (
-        <li><a class="card" href={`${B}/product/${p.slug}/`}>
-          {p.cover_media
-            ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="600" loading={idx < 6 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" />
-            : <div class="ph" />}
-          <h2>{p.name ?? p.slug}</h2>
-          {p.summary && <p>{p.summary}</p>}
-          <small>{catLabel} · {T.moq} · {T.more} →</small>
-        </a></li>
+        <li>
+          <article class="card">
+            <a class="card-main" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>
+              {p.cover_media
+                ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="600" loading={idx < 6 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" />
+                : <div class="ph" />}
+              <h2>{p.name ?? p.slug}</h2>
+              {p.summary && <p>{p.summary}</p>}
+            </a>
+            <p class="meta">{catLabel} · {p.moq ? `${T.moq}: ${p.moq}` : T.moq} · {T.sample}</p>
+            <div class="cta-row">
+              <a class="more" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>{T.more} →</a>
+              <a class="sample" href={`${B}/rfq/?product_id=${encodeURIComponent(String(p.id ?? ''))}&about=${encodeURIComponent(String(p.name ?? p.slug))}&category=${encodeURIComponent(cat)}`}>{T.sampleCta}</a>
+            </div>
+          </article>
+        </li>
       ))}
     </ul>
 
@@ -238,4 +246,10 @@ const jsonLd = ldJson({
   .faq p { margin: .5rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .82; }
   .ask { margin: 1.5rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
   @media (min-width: 900px) { .cl { padding: 2rem 1.5rem 4rem; } }
+  .card { display: grid; gap: .5rem; height: 100%; padding: .875rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; }
+  .card-main { display: grid; gap: .5rem; text-decoration: none; color: inherit; }
+  .card .meta { margin: 0; font-size: .8125rem; line-height: 1.5; opacity: .65; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+  .cta-row .more { font-size: .8125rem; opacity: .75; text-decoration: none; color: inherit; }
+  .cta-row .sample { display: inline-flex; font-size: .8125rem; font-weight: 600; padding: .25rem .625rem; border-radius: 999px; border: 1px solid var(--ck-accent, #333); color: var(--ck-accent, #333); text-decoration: none; }
 </style>

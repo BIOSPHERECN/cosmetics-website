@@ -182,6 +182,13 @@ const T = zh
       var q = new URLSearchParams(location.search);
       var prod = q.get('about') || q.get('formula') || '';
       if (prod && f.iq_product) f.iq_product.value = prod;
+      var pid = q.get('product_id') || '';
+      if (pid) {
+        var hid = document.createElement('input');
+        hid.type = 'hidden'; hid.name = 'product_id'; hid.value = pid;
+        f.appendChild(hid);
+      }
+
       var mkt = q.get('market') || '';
       if (mkt && f.iq_market) f.iq_market.value = mkt;
       var claim = q.get('claim') || '';
@@ -245,13 +252,28 @@ const T = zh
       var btn = f.querySelector('.btn');
       btn.disabled = true;
       if (fb) { fb.className = 'fb'; fb.textContent = T.sending; }
-      fetch('/api/inquiry', { method: 'POST', body: new FormData(f) })
-        .then(function (r) {
+      var fd = new FormData(f);
+      var payload = {};
+      fd.forEach(function (v, k) { payload[k] = String(v); });
+      if (payload.iq_market && !payload.market) payload.market = payload.iq_market;
+      if (payload.iq_qty && !payload.volume) payload.volume = payload.iq_qty;
+      fetch('/api/inquiry', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }).catch(function () { return { ok: r.ok, j: {} }; }); })
+        .then(function (res) {
           if (fb) {
-            fb.className = 'fb ' + (r.ok ? 'ok' : 'err');
-            fb.textContent = r.ok ? T.sent : T.fail;
+            var good = res.ok && res.j && res.j.ok !== false;
+            fb.className = 'fb ' + (good ? 'ok' : 'err');
+            if (good) {
+              fb.textContent = T.sent + (res.j.ticket_id ? (' #' + res.j.ticket_id) : '');
+              f.reset();
+            } else {
+              fb.textContent = (res.j && res.j.msg) ? res.j.msg : T.fail;
+            }
           }
-          if (r.ok) f.reset();
         })
         .catch(function () {
           if (fb) { fb.className = 'fb err'; fb.textContent = T.netErr; }

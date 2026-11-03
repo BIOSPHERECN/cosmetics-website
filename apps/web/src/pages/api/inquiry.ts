@@ -90,6 +90,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
      判据用 Content-Type 而不是有没有 X-Requested-With —— 后者不是标准,不可靠。 */
   const ctype = request.headers.get('Content-Type') || '';
   const isForm = ctype.includes('form-urlencoded') || ctype.includes('multipart/form-data');
+  const wantsJson = (request.headers.get('Accept') || '').includes('application/json');
   let f: Record<string, string> = {};
   try {
     if (isForm) {
@@ -104,6 +105,19 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   const source = (f.source ?? 'form').slice(0, 32);
   const name = (f.name ?? '').trim();
+  /* P0 RFQ: 市场/品类/量必填；不自动报价（仅入库+通知） */
+  const market = (f.market ?? f.iq_market ?? '').trim().slice(0, 80);
+  const productId = (f.product_id ?? f.productId ?? '').trim().slice(0, 40);
+  if (source === 'rfq' || source === 'sample') {
+    const cat0 = (f.category ?? '').trim();
+    const vol0 = (f.volume ?? '').trim();
+    if (!market || !cat0 || !vol0) {
+      return isForm
+        ? backTo(request, 'bad')
+        : json({ ok: false, msg: 'RFQ requires market, category and volume / RFQ 需填写市场、品类与预估量' }, 400);
+    }
+  }
+
   /* Turnstile:蜜罐只挡最笨的脚本。09-24 W1b 起配了 secret 就缺令牌一律拒收(原来不带令牌直接放行),规则见 lib/human.ts */
   const human = await humanGate(env, String((f as any)['cf-turnstile-response'] ?? ''), isForm,
     new URL(request.url).hostname.endsWith('beauty2oem.com'));   // beauty2oem 只出中文
@@ -121,10 +135,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
        蜜罐被填(真人看不见这个框)· 消息里塞满链接 · 名字与消息完全为空 */
   let spam = 0;
   if ((f.website ?? '').trim()) spam += 5;
-  const message = (f.message ?? '').trim();
-  const answers = questionAnswers(message.slice(0, 8000));   // 请求体不限长,懒惰匹配 + 前瞻在超长正文上会吃 CPU,只解析前 8000 字
+    let message = (f.message ?? '').trim();
+  const answers = questionAnswers(message.slice(0, 8000));   // only parse first 8000 chars
   const category = (answers[3] ?? f.category ?? '').trim().slice(0, 40) || null;
   const volume = (answers[8] ?? f.volume ?? '').trim().slice(0, 40) || null;
+  /* 结构化字段写入正文前缀，便于小满/人工检索；不生成报价 */
+  if (market || productId) {
+    const head = [market ? `market=${market}` : '', productId ? `product_id=${productId}` : ''].filter(Boolean).join('; ');
+    if (head && !message.includes(head)) message = (head + (message ? '\n' + message : '')).slice(0, 4000);
+  }
   if ((message.match(/https?:\/\//g) ?? []).length >= 3) spam += 3;
   if (!message && !(f.name ?? '').trim()) spam += 1;
 
@@ -184,13 +203,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   /* 入库之后:AI 分级 + 群通知,放到响应之后跑(waitUntil),访客秒得回执。
      订阅框(newsletter)不通知 —— 那不是询盘。 */
+  /* 小满字段映射（获客回写）: ticket_id=newId; name; company; email; whatsapp; market; category; volume; product_id; source */
   if (newId && source !== 'newsletter') {
     const job = gradeAndNotify(db, env as any, newId, { name: name.slice(0, 120) || '(未填姓名)', company: (f.company ?? '').slice(0, 160) || null, email: email.slice(0, 200), country: request.headers.get('CF-IPCountry') || null, message: message.slice(0, 4000), lang: (f.lang ?? 'zh-cn').slice(0, 12), source_path: srcPath, category, volume, whatsapp });
     const ctx = (locals as any)?.cfContext;   // Astro 6:runtime.ctx 已移除,用 cfContext
     if (ctx?.waitUntil) ctx.waitUntil(job); else await job.catch(() => {});
   }
 
-  return isForm ? backTo(request, 'ok') : json({ ok: true, msg: '已收到,我们会在两个工作日内书面回复。' });
+  return (isForm && !wantsJson) ? backTo(request, 'ok') : json({ ok: true, ticket_id: newId || null, msg: '已收到,我们会在两个工作日内书面回复。本接口不自动报价。' });
 };
 
 /**
