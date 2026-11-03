@@ -1,4 +1,4 @@
----
+﻿---
 import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { t as uiT, type Locale } from '@cosmetic/core/i18n';
 /**
@@ -42,6 +42,7 @@ const path = `/${lang}/about/founder/`;
 const B = `/${lang}`;
 
 const VIDEO = '/asset/video/founder-story-720p.mp4';
+const VIDEO_POSTER = '/asset/video/founder-story-poster.jpg';
 
 const T = zh ? {
   eyebrow: '创始人',
@@ -136,6 +137,7 @@ const videoLd = {
   name: zh ? '帛卉 · 公司片' : 'BIOSPHERE · company film',
   description: T.lede.replace(/\s+/g, ' ').trim(),
   contentUrl: `${origin}${VIDEO}`,
+  thumbnailUrl: `${origin}${VIDEO_POSTER}`,
   uploadDate: '2026-09-09',
   duration: 'PT50S',
   inLanguage: lang,
@@ -183,7 +185,7 @@ const desc = zh
     </header>
 
     <figure class="film">
-      <video controls preload="metadata" playsinline src={VIDEO}></video>
+      <video controls preload="metadata" playsinline poster={VIDEO_POSTER} src={VIDEO}></video>
       <figcaption>{T.videoTitle} · <span>{T.videoNote}</span></figcaption>
     </figure>
 
