@@ -446,6 +446,15 @@ const ogImage = (() => {
   }
   return '/media/57';
 })();
+
+/* 首页三块临时下线，改 true 即恢复。组件文件保留，其它页照旧挂载。
+   ① BioTrustStrip（.bio-trust-strip）
+   ② CosmopackInquiry（#cosmopack-asia-inquiry / .cpk）只关首页这一处
+   ③ Shelf（.dtc-sec.shelf，CMS 标题「爆款产品」）只关首页
+   HomeLead、漏斗 Funnel、页头页脚、全站询盘与 WhatsApp 入口不动。 */
+const SHOW_HOME_TRUST_STRIP = false;
+const SHOW_HOME_COSMOPACK = false;
+const SHOW_HOME_HOT_SHELF = false;
 ---
 
 {dbError ? (
@@ -596,10 +605,10 @@ const ogImage = (() => {
     {site.id === 'biosphere-ai' && !slug && (
       <HomeLead locale={lang} whatsapp={contactWa} />
     )}
-    {site.id === 'biosphere-ai' && !slug && (
+    {SHOW_HOME_TRUST_STRIP && site.id === 'biosphere-ai' && !slug && (
       <BioTrustStrip locale={lang} />
     )}
-    {site.id === 'biosphere-ai' && !slug && (
+    {SHOW_HOME_COSMOPACK && site.id === 'biosphere-ai' && !slug && (
       <CosmopackInquiry lang={lang} siteId={site.id} />
     )}
     {site.id === 'biosphere-ai' && !slug && (
@@ -643,6 +652,8 @@ const ogImage = (() => {
       if ((b.type === 'fx_hero' || b.type === 'hero' || b.type === 'banner') && site.id === 'biosphere-ai' && !slug) return null;
       /* 10-22 创始人:「看到一个产品就交给工厂做」先隐藏 */
       if (b.type === 'fx_latest' && site.id === 'biosphere-ai' && !slug) return null;
+      /* 首页爆款货架整块下线（可回开）。类名 dtc-sec shelf，用户可见标题来自 CMS，现网为「爆款产品」。 */
+      if (b.type === 'shelf' && site.id === 'biosphere-ai' && !slug && !SHOW_HOME_HOT_SHELF) return null;
       switch (b.type) {
         case 'hero':
           // demo 阶段:每站取一张占位实拍图证明图片管线通;真图入库后由 d.image 覆盖
