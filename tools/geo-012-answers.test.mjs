@@ -123,6 +123,6 @@ assert.equal(DEFAULT_OG_PATH, '/media/57');
 assert.equal((layout.match(/orgJsonLd\s*\(/g) ?? []).length, 1);
 
 const middleware = readFileSync(new URL('apps/web/src/middleware.ts', root), 'utf8');
-assert.match(middleware, /const CACHE_V = 'v138'/);
+assert.match(middleware, /const CACHE_V = 'v139'/);
 
 console.log(`geo-012 ok · ${samples.length} answer samples`);
