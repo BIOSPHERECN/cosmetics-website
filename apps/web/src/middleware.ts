@@ -557,7 +557,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   /* v3(2026-09-07 上午):D1 额度耗尽期间,边缘把一批 404 与 503 缓存住了 ——
      修好之后访客拿到的仍是坏副本。推版本号是清掉它们唯一干净的办法。 */
   /* v4(2026-09-07 晚):sitemap 拆分、繁中上线、跨站兜底重写 —— 清掉全部旧副本 */
-  const CACHE_V = 'v136';   // 2026-11-04: 产品详情双 CTA + RFQ 视觉分区（P0-4/P0-5，此前 v135）
+  const CACHE_V = 'v137';   // 2026-11-04: MoCRA 协助落地页（MM-SITE-03，此前 v136）
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。

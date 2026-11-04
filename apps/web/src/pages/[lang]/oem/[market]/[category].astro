@@ -22,6 +22,7 @@ import GccFairStatus from '../../../../components/GccFairStatus.astro';
 import GhadBoundary from '../../../../components/GhadBoundary.astro';
 import { isGccOemMarket } from '../../../../lib/gcc-fair-status';
 import { certWallCopy } from '../../../../lib/comply-copy';
+import { MOCRA_DETAIL_CATS, MOCRA_DETAIL_LINK, mocraPagePath } from '../../../../lib/mocra-assistance';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'zh-cn';
@@ -126,6 +127,7 @@ const fill = (s: string) => (s || '')
   .replace(/\{rp\}/g, first(pick('rp'), 240) || (zh ? '见法规页' : 'See the regulation digest.')).replace(/\{labeling\}/g, first(pick('labeling'), 240) || (zh ? '见法规页' : 'See the regulation digest.'));
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const mocraLine = M.id === 'us' ? certWallCopy(zh).mocra : '';
+const mocraDetail = M.id === 'us' && (MOCRA_DETAIL_CATS as readonly string[]).includes(C.id);
 const title = cap(fill(T.title)); const h1 = cap(fill(T.h1)); const lead = fill(T.lead);
 const capQ = cap(fill(T.capQ)); const capA = fill(T.capA);
 const faqs = [[capQ, capA], [fill(T.faq5q), fill(T.faq5a)], [fill(T.faq6q), fill(T.faq6a)], [fill(T.faq2q), fill(T.faq2a)], [fill(T.faq3q), fill(T.faq3a)], [fill(T.faq4q), fill(T.faq4a)]].filter((f) => f[0] && f[1]);   // 09-21 加 5/6:决策阶段问题(核实工厂、项目怎么走),其它语种没译文时回落英文
@@ -146,7 +148,7 @@ const ld = [
   <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
   <main id="main">
     <p class="back"><a href={`${B}/oem/`}>{T.back}</a></p>
-    <header class="hd"><p class="eyebrow">{T.eyebrow} · {marketName}</p><h1>{h1}</h1><p class="answer">{lead}</p><p class="note">{T.note}</p>{mocraLine && <p class="mocra">{mocraLine}</p>}</header>
+    <header class="hd"><p class="eyebrow">{T.eyebrow} · {marketName}</p><h1>{h1}</h1><p class="answer">{lead}</p><p class="note">{T.note}</p>{mocraLine && <p class="mocra">{mocraLine}{mocraDetail && <a class="more" href={mocraPagePath(lang)}>{zh ? MOCRA_DETAIL_LINK.zh : MOCRA_DETAIL_LINK.en}</a>}</p>}</header>
     {isGccOemMarket(M.id) && <GccFairStatus lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />}
     {M.id === 'sa' && <GhadBoundary lang={lang} />}
 
@@ -186,7 +188,7 @@ const ld = [
   main{max-width:56rem;margin:0 auto;padding:2rem 1rem 4rem}
   .back{font-size:.875rem;margin:0 0 1rem} .eyebrow{text-transform:uppercase;letter-spacing:.08em;font-size:.75rem;opacity:.7;margin:0 0 .5rem}
   h1{font-size:clamp(1.5rem,3vw,2.25rem);line-height:1.2;margin:0 0 1rem} .answer{font-size:1.125rem;line-height:1.7;margin:0 0 .5rem} .note{font-size:.8125rem;opacity:.7}
-  .mocra{line-height:1.7;margin:.75rem 0 0;max-width:52rem}
+  .mocra{line-height:1.7;margin:.75rem 0 0;max-width:52rem} .mocra .more{margin-inline-start:.5rem;text-decoration:underline;text-underline-offset:.15em}
   .blk{margin:2rem 0} .blk h2,.faq h2,.rel h2{font-size:1.25rem;margin:0 0 .75rem} .blk p{line-height:1.7}
   .facts{display:grid;grid-template-columns:9rem 1fr;gap:.5rem 1rem;margin:0 0 1rem} .facts dt{font-weight:600} .facts dd{margin:0;line-height:1.6;overflow-wrap:anywhere}
   .capsule{margin:1.5rem 0;padding:1rem 1.25rem;border:1px solid var(--ck-line, rgba(0,0,0,.12));border-radius:12px} .capsule h2{font-size:1.125rem;margin:0 0 .5rem} .capsule p{line-height:1.7;margin:0 0 .5rem} .capsule .certs{font-size:.875rem;margin:0}

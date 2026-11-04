@@ -17,6 +17,7 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
+import { certWallCopy } from '../../../lib/comply-copy';
 import { oemEvidenceCertLabel } from '../../../lib/oem-evidence';
 import CosmopackInquiry from '../../../components/CosmopackInquiry.astro';
 import CertMatrix from '../../../components/CertMatrix.astro';
@@ -91,9 +92,7 @@ const ld = [
       waHref={waHref}
       ctaLabel={zh ? '发起询盘' : 'Start RFQ'}
       evidenceTitle={zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}
-      evidenceBody={zh
-        ? '按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。注册≠批准、不发证书。以证书原件为准。'
-        : 'Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications. Registration is not approval, and no certificate is issued. Original certificates prevail.'}
+      evidenceBody={`${certWallCopy(zh).lede}${zh ? '以证书原件为准。' : ' Original certificates prevail.'}`}
       certs={certs}
       evidenceLinks={evidenceLinks}
       painsTitle={zh ? '你现在大概卡在这几件事上' : 'What is probably holding you up'}
