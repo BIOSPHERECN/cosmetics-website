@@ -104,7 +104,7 @@ export function rfqFieldCopy(zh: boolean) {
         countryPh: '例：印尼、美国、沙特',
         notify: '备案 / 通告协助国家',
         notifyHint: '通告 / 备案协助：只协助准备工厂侧资料。这不是代办承诺，也不保证获批。',
-        halal: '是否需要 Halal-ready？',
+        halal: '是否需要清真就绪（Halal-ready）配方/产线能力？',
         halalHint: '只询问需求（原料、成品或工厂哪一层）。不表示本品已有清真证书。',
         halalYes: '需要',
         halalNo: '不需要',
@@ -132,6 +132,9 @@ export function rfqFieldCopy(zh: boolean) {
         texture: '肤感',
         skin: '肤质',
         needMarket: '请至少选择一个目标市场（SEA、GCC 或其他）。',
+        pleaseSpecifyMarket: '请写明目标市场',
+        needBand: '请选择首单量区间',
+        needNotify: '请写明备案协助国家',
       }
     : {
         targetMarket: 'Target market',
@@ -170,6 +173,9 @@ export function rfqFieldCopy(zh: boolean) {
         texture: 'Texture',
         skin: 'Skin type',
         needMarket: 'Select at least one target market (SEA, GCC or Other).',
+        pleaseSpecifyMarket: 'Please specify market',
+        needBand: 'Select estimated first order volume',
+        needNotify: 'Please specify notification assist country',
       };
 }
 
