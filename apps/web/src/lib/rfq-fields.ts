@@ -209,6 +209,43 @@ export function rfqQueryPrefill(input: { market?: string; target_market?: string
   };
 }
 
+export interface RfqLinkPrefill {
+  target_market: string[];
+  notification_assist_country: string[];
+  halal_ready: string;
+  first_order_band: string;
+  need_msds_coa: string;
+}
+
+/**
+ * 产品深链上的勾选预填。
+ * ?notification_assist_country= 与 ?market= 里的国家码合并。
+ * halal_ready / first_order_band / need_msds_coa 只接受表单允许的值，certified 这类词丢掉。
+ */
+export function rfqLinkPrefill(input: {
+  market?: string;
+  target_market?: string;
+  halal_ready?: string;
+  notification_assist_country?: string;
+  first_order_band?: string;
+  need_msds_coa?: string;
+}): RfqLinkPrefill {
+  const base = rfqQueryPrefill({ market: input.market, target_market: input.target_market });
+  const notify = new Set(base.notification_assist_country);
+  for (const part of asList(input.notification_assist_country)) {
+    const token = part.trim().toUpperCase();
+    if ((NOTIFY_COUNTRIES as readonly string[]).includes(token)) notify.add(token);
+    else if (token === 'OTHER') notify.add('Other');
+  }
+  return {
+    target_market: base.target_market,
+    notification_assist_country: NOTIFY_COUNTRIES.filter((id) => notify.has(id)),
+    halal_ready: oneOf(input.halal_ready, HALAL_READY),
+    first_order_band: oneOf(input.first_order_band, ORDER_BANDS),
+    need_msds_coa: oneOf(input.need_msds_coa, YES_NO),
+  };
+}
+
 function hookFromLabel(label: string): keyof RfqHooks | null {
   const l = label.toLowerCase();
   if (/spf|pa\+|防晒/.test(l)) return 'spf_pa';
