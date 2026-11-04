@@ -26,7 +26,7 @@ import { overQuota, recordUse, tooMany, clientId, sweep } from '../../lib/rateli
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { gradeAndNotify } from '../../lib/inquiry-ai';
 import { humanGateUnlessE2e } from '../../lib/human';
-import { assignInquiryField, normalizeRfqTicket, rfqTicketLines, type RfqTicket } from '../../lib/rfq-fields';
+import { assignInquiryField, normalizeRfqTicket, prefixFormulaPath, rfqTicketLines, type RfqTicket } from '../../lib/rfq-fields';
 
 export const prerender = false;
 
@@ -149,6 +149,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if ((f.website ?? '').trim()) spam += 5;
     let message = (f.message ?? '').trim();
   if (!message && (source === 'rfq' || source === 'sample') && (f.notes ?? '').trim()) message = (f.notes ?? '').trim();
+  /* 配方路径不是新字段。无脚本提交时，把可选 radio 收成备注前缀；脚本已写入则不重复。 */
+  if (source === 'rfq' || source === 'sample') message = prefixFormulaPath(message, f.formula_path);
   const answers = questionAnswers(message.slice(0, 8000));   // only parse first 8000 chars
   const category = (answers[3] ?? f.category ?? '').trim().slice(0, 40) || null;
   const volume = (answers[8] ?? f.volume ?? '').trim().slice(0, 40) || null;

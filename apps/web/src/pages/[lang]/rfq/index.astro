@@ -8,6 +8,8 @@
  * market→国家或城市；category→品类；volume→预估量；product_id→产品编码；
  * target_market / halal_ready / halal_scope_note / notification_assist_country / first_order_band；
  * source=rfq。不自动报价。Halal 只问需求。通告国家是协助，不是代办承诺。
+ * 配方路径 radio 仅 UI（name=formula_path，非必填，不进五键）。落库只作 notes 前缀。
+ * intent=sample|quote|docs 只预填或高亮既有字段，不新增必填键。
  */
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
@@ -20,8 +22,8 @@ import { CAT_LABEL, PRODUCT_CAT, label } from '../../../lib/catalog';
 import { publicMoq } from '../../../lib/comply-copy';
 import { rfqCanLookup, rfqHasContext, rfqIdState, type RfqLookup } from '../../../lib/rfq-context';
 import {
-  NOTIFY_COUNTRIES, ORDER_BANDS, TARGET_MARKETS,
-  leadTimeWindowNote, rfqFieldCopy, rfqLinkPrefill, rfqProductHooks, rfqQueryPrefill,
+  FORMULA_PATHS, NOTIFY_COUNTRIES, ORDER_BANDS, RFQ_DOORS, TARGET_MARKETS,
+  leadTimeWindowNote, rfqDoorHref, rfqFieldCopy, rfqLinkPrefill, rfqProductHooks, rfqQueryPrefill,
 } from '../../../lib/rfq-fields';
 import { waveBySlug, waveCopy, waveFormPrefill } from '../../../lib/wave-products';
 import GhadBoundary from '../../../components/GhadBoundary.astro';
@@ -220,9 +222,30 @@ const T = zh
     <header class="hd">
       <h1>{T.h1}</h1>
       <p class="lede">{T.lede}</p>
+      <p class="path-lead">{F.pathLead}</p>
+      <fieldset class="checks path-pick">
+        <legend>{F.pathLegend}</legend>
+        <div class="opts path-opts">
+          {FORMULA_PATHS.map((id) => (
+            <label class="check">
+              <input type="radio" form="rfq-form" name="formula_path" value={id} />
+              <span><strong>{F.pathOpt[id].name}</strong><small>{F.pathOpt[id].guide}</small></span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <nav class="doors" aria-label={F.doorsLabel}>
+        {RFQ_DOORS.map((id) => (
+          <a class="door" data-door={id} href={rfqDoorHref(lang, id, Astro.url.search)}>
+            <strong>{F.doorOpt[id].name}</strong>
+            <span>{F.doorOpt[id].hint}</span>
+          </a>
+        ))}
+      </nav>
       {lang !== 'en' && !lang.startsWith('zh') && <p class="note en-labels">{T.formLabelsEnglish}</p>}
       <p class="note">{T.note}</p>
       <p class="note strong">{T.noQuote}</p>
+      <p class="note">{F.complyLine}</p>
     </header>
 
     {showCard && (
@@ -402,6 +425,26 @@ const T = zh
     var fb = document.getElementById('rfq-fb');
     var ok = document.getElementById('rfq-ok');
     if (!form) return;
+    /* intent 不进服务端 HTML，避免和空白表单抢同一份边缘缓存。这里只预填空字段、高亮入口。 */
+    var intent = '';
+    try { intent = String(new URLSearchParams(location.search).get('intent') || '').trim().toLowerCase(); } catch (e0) { intent = ''; }
+    if (intent === 'sample' || intent === 'quote' || intent === 'docs') {
+      var door = document.querySelector('a[data-door="' + intent + '"]');
+      if (door) { door.classList.add('is-on'); door.setAttribute('aria-current', 'page'); }
+    }
+    if (intent === 'quote') {
+      var order = document.getElementById('mkt-order');
+      if (order) order.classList.add('is-quote');
+    }
+    if (intent === 'sample') {
+      var bandEl = form.querySelector('select[name="first_order_band"]');
+      if (bandEl && !String(bandEl.value || '')) bandEl.value = 'sample';
+    }
+    if (intent === 'docs') {
+      var picked = form.querySelector('input[name="need_msds_coa"]:checked');
+      var yes = form.querySelector('input[name="need_msds_coa"][value="yes"]');
+      if (yes && !picked) yes.checked = true;
+    }
     function pack(fd, name, allowed, otherName) {
       var selected = fd.getAll(name).map(function (v) { return String(v); });
       var other = String(fd.get(otherName) || '').trim().slice(0, 80).replace(/[,;\n]/g, ' ');
@@ -465,6 +508,13 @@ const T = zh
       var product = String(fd.get('iq_product') || '').trim();
       var productId = String(fd.get('product_id') || '').trim();
       var notes = String(fd.get('notes') || '').trim();
+      var pathEl = document.querySelector('input[name="formula_path"]:checked');
+      var path = pathEl ? String(pathEl.value || '').trim() : '';
+      if (path !== 'ready' && path !== 'tweak' && path !== 'new') path = '';
+      var tags = [];
+      if (path) tags.push('formula_path=' + path);
+      if (intent === 'sample' || intent === 'quote' || intent === 'docs') tags.push('intent=' + intent);
+      if (tags.length) notes = notes ? (tags.join('\n') + '\n' + notes) : tags.join('\n');
       var bits = [];
       bits.push((zh ? '【RFQ/样品】' : '[RFQ/Sample]') + ' market=' + market + '; category=' + category + '; volume=' + volume);
       function addLine(k, v) { if (v) bits.push(k + '=' + v); }
@@ -540,7 +590,21 @@ const T = zh
   .rfq { max-width: 40rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
   .hd { display: grid; gap: .625rem; margin-bottom: 1.25rem; }
   h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); margin: 0; line-height: 1.25; }
-  .lede, .note, .hint { margin: 0; line-height: 1.65; opacity: .85; font-size: .9375rem; }
+  .lede, .note, .hint, .path-lead { margin: 0; line-height: 1.65; opacity: .85; font-size: .9375rem; }
+  .path-pick { margin: 0; }
+  .path-opts { display: grid; gap: .125rem; }
+  .path-opts .check { align-items: flex-start; height: auto; padding: .35rem 0; }
+  .path-opts .check span { display: grid; gap: .125rem; }
+  .path-opts strong { font-weight: 650; }
+  .path-opts small { font-size: .8125rem; line-height: 1.45; opacity: .75; }
+  .doors { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; }
+  .door { display: grid; gap: .25rem; flex: 1 1 9.5rem; min-height: 44px; padding: .625rem .75rem;
+          color: inherit; text-decoration: none; border: 1px solid var(--ck-line, rgba(0,0,0,.16)); border-radius: 12px; }
+  .door strong { font-size: .9375rem; line-height: 1.35; }
+  .door span { font-size: .75rem; line-height: 1.45; opacity: .8; }
+  .door.is-on { border-color: var(--ck-accent, #333); box-shadow: inset 0 0 0 1px var(--ck-accent, #333); }
+  .mkt-block.is-quote { box-shadow: inset 0 0 0 1px var(--ck-accent, #333); }
+  .mkt-block.is-quote .hint { font-weight: 650; opacity: 1; }
   .mkt-block { display: grid; gap: .625rem; margin: 0; padding: .875rem .875rem 1rem; border: 1px solid var(--ck-line, rgba(0,0,0,.14)); border-radius: 14px; background: var(--ck-surface, transparent); }
   .mkt-title { margin: 0; font-size: 1rem; font-weight: 650; line-height: 1.35; }
   .field-err { color: #A02B20; font-size: .8125rem; line-height: 1.4; }

@@ -14,6 +14,12 @@ export const HALAL_READY = ['yes', 'no', 'unsure'] as const;
 export const NOTIFY_COUNTRIES = ['ID', 'MY', 'TH', 'VN', 'AE', 'SA', 'EU', 'Other'] as const;
 export const ORDER_BANDS = ['sample', '<1k', '1k-5k', '5k-20k', '>20k', 'tbd'] as const;
 export const YES_NO = ['yes', 'no'] as const;
+/** 配方路径只做页面选项。不是五键以外的新必填字段。 */
+export const FORMULA_PATHS = ['ready', 'tweak', 'new'] as const;
+export const RFQ_DOORS = ['sample', 'quote', 'docs'] as const;
+
+export type FormulaPath = (typeof FORMULA_PATHS)[number];
+export type RfqDoor = (typeof RFQ_DOORS)[number];
 
 const SEA_CC = ['ID', 'MY', 'TH', 'VN'];
 const GCC_CC = ['AE', 'SA'];
@@ -135,6 +141,20 @@ export function rfqFieldCopy(zh: boolean) {
         pleaseSpecifyMarket: '请写明目标市场',
         needBand: '请选择首单量区间',
         needNotify: '请写明备案协助国家',
+        pathLead: '先选配方路径（现成 / 改方 / 全新），再选样品、报价区间询或文件包入口。',
+        pathLegend: '配方路径',
+        pathOpt: {
+          ready: { name: '现成 · 已有完整配方', guide: '可在备注附上 INCI 或工艺摘要。' },
+          tweak: { name: '改方 · 在现有配方上改方', guide: '写明要改的活性物、肤感或宣称边界。' },
+          new: { name: '全新 · 全新配方开发', guide: '写目标市场、肤质和宣称边界。不写功效断言。' },
+        },
+        doorsLabel: '样品、报价区间或文件包',
+        doorOpt: {
+          sample: { name: '申请样品', hint: '建议把首单区间选为「仅样品」。样品费用以书面确认为准，本页不列固定样品费。' },
+          quote: { name: '询报价区间', hint: '只询区间，并以书面回复为准。提交不会自动生成报价，本页不列固定目录价。' },
+          docs: { name: '申请文件包', hint: '建议勾选需要 MSDS/COA。文件包是协助，不是获批。' },
+        },
+        complyLine: '备案协助不是获批。清真就绪不是证书。',
       }
     : {
         targetMarket: 'Target market',
@@ -176,7 +196,77 @@ export function rfqFieldCopy(zh: boolean) {
         pleaseSpecifyMarket: 'Please specify market',
         needBand: 'Select estimated first order volume',
         needNotify: 'Please specify notification assist country',
+        pathLead: 'Tell us your formula path — ready, tweak, or new — then pick Sample / Quote / Docs below.',
+        pathLegend: 'Formula path',
+        pathOpt: {
+          ready: { name: 'Ready · We have a finished formula', guide: 'You can add an INCI list or a process summary in notes.' },
+          tweak: { name: 'Tweak · Adapt an existing formula', guide: 'Name the active, texture, or claim boundary you want changed.' },
+          new: { name: 'New · Develop a new formula', guide: 'Share the target market, skin type, and claim boundary. No efficacy claims.' },
+        },
+        doorsLabel: 'Sample, quote band, or docs',
+        doorOpt: {
+          sample: { name: 'Request sample', hint: 'Suggests the first-order band “Sample only”. Sample fees are confirmed in writing; this page does not list a fixed sample fee.' },
+          quote: { name: 'Request quote band', hint: 'A volume band plus a written reply. Submitting does not generate an automatic quote, and this page does not list a fixed catalog price.' },
+          docs: { name: 'Request docs pack', hint: 'Suggests MSDS/COA = yes. The pack is filing assistance, not an approval.' },
+        },
+        complyLine: 'Filing assist is not approval. Halal-ready is not a certificate.',
       };
+}
+
+/** 只接受三选一。其它词（含 certified）丢掉，避免写进备注。 */
+export function formulaPathToken(raw: unknown): FormulaPath | '' {
+  const v = String(raw ?? '').trim().toLowerCase();
+  return (FORMULA_PATHS as readonly string[]).includes(v) ? (v as FormulaPath) : '';
+}
+
+/** 落库时只给备注加前缀，不新增五键以外的字段。已有同一行则不重复。 */
+export function prefixFormulaPath(notes: string, raw: unknown): string {
+  const token = formulaPathToken(raw);
+  if (!token) return notes;
+  const line = `formula_path=${token}`;
+  if (notes.includes(line)) return notes;
+  const body = notes.trim();
+  return body ? `${line}\n${body}` : line;
+}
+
+/**
+ * intent 只提示既有字段，不造新键，也不改枚举。
+ * sample → 建议 first_order_band=sample（调用方仅在当前为空时预填）。
+ * docs → 建议 need_msds_coa=yes（同样不覆盖已选）。
+ * quote → 只强调区间和书面回复，不填价格、不自动报价。
+ */
+export function rfqIntentEffect(intent: string): {
+  door: RfqDoor | '';
+  suggestBand: 'sample' | '';
+  suggestMsds: 'yes' | '';
+  emphasizeQuote: boolean;
+} {
+  const id = intent.trim().toLowerCase();
+  if (id === 'sample') return { door: 'sample', suggestBand: 'sample', suggestMsds: '', emphasizeQuote: false };
+  if (id === 'docs') return { door: 'docs', suggestBand: '', suggestMsds: 'yes', emphasizeQuote: false };
+  if (id === 'quote') return { door: 'quote', suggestBand: '', suggestMsds: '', emphasizeQuote: true };
+  return { door: '', suggestBand: '', suggestMsds: '', emphasizeQuote: false };
+}
+
+const DOOR_KEEP = [
+  'product_id', 'category', 'market', 'about', 'formula',
+  'spf_pa', 'texture', 'skin_type', 'target_market',
+  'halal_ready', 'notification_assist_country',
+  'first_order_band', 'need_msds_coa',
+] as const;
+
+/** 三个入口回到同一 RFQ。保留已有产品/市场参数，只替换 intent。 */
+export function rfqDoorHref(lang: string, door: RfqDoor, search = ''): string {
+  const raw = search.startsWith('?') ? search.slice(1) : search;
+  const sp = new URLSearchParams(raw);
+  const out = new URLSearchParams();
+  for (const key of DOOR_KEEP) {
+    const v = sp.get(key);
+    if (v && v.trim()) out.set(key, v);
+  }
+  out.set('intent', door);
+  const locale = String(lang || 'en').trim() || 'en';
+  return `/${locale}/rfq/?${out.toString()}`;
 }
 
 /** 深链 ?market= 只在整段就是区域或国家码时预勾，避免把自由文本误当成 SEA。 */
