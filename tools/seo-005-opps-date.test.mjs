@@ -20,6 +20,6 @@ assert.match(page, /scrubDaily/);
 assert.match(page, /48/);
 
 const middleware = readFileSync(new URL('../apps/web/src/middleware.ts', import.meta.url), 'utf8');
-assert.match(middleware, /const CACHE_V = 'v135'/);
+assert.match(middleware, /const CACHE_V = 'v136'/);
 
 console.log('seo-005 opps-date ok');
