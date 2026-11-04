@@ -22,6 +22,7 @@ import NarrativeStages from '@cosmetic/core/components/NarrativeStages.astro';
 import Funnel from '@cosmetic/core/components/Funnel.astro';
 import CosmopackInquiry from '../components/CosmopackInquiry.astro';
 import HomeLead from '../components/HomeLead.astro';
+import BioTrustStrip from '../components/BioTrustStrip.astro';
 import BigBanner from '@cosmetic/core/components/BigBanner.astro';
 import MastheadNav from '@cosmetic/core/components/MastheadNav.astro';
 import StatementFooter from '@cosmetic/core/components/StatementFooter.astro';
@@ -594,6 +595,9 @@ const ogImage = (() => {
     {/* BIOSPHERE-AI 首页首屏:左文案 + 右真瓶。展会条与漏斗留在首屏之下。 */}
     {site.id === 'biosphere-ai' && !slug && (
       <HomeLead locale={lang} whatsapp={contactWa} />
+    )}
+    {site.id === 'biosphere-ai' && !slug && (
+      <BioTrustStrip locale={lang} />
     )}
     {site.id === 'biosphere-ai' && !slug && (
       <CosmopackInquiry lang={lang} siteId={site.id} />
