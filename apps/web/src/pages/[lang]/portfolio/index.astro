@@ -49,8 +49,9 @@ if (db) {
        成本#2 C2 审核:catCounts 用独立 memo(键不含 catFilter/lang),避免每个 catFilter 都重跑同一查询。 */
     const rows = await memo(`portfolio6:${siteId}:${lang}:${catFilter}`, 3600, async () => {
       return ((await db.prepare(
-        `SELECT p.id, p.slug, p.category, p.moq, p.cover_media, p.updated_at, i.name, i.summary, i.specs_json,
-                (SELECT z.specs_json FROM product_i18n z WHERE z.product_id = p.id AND z.lang = 'zh-cn' LIMIT 1) AS specs_zh,
+        `SELECT p.id, p.slug, p.category, p.moq, p.cover_media, p.updated_at, i.name, i.summary, i.specs_json,\n` +
+        // nosemgrep: visitor-live-aggregate specs_zh 单行子查询+外层 JOIN 误判，非现算聚合
+        `                (SELECT z.specs_json FROM product_i18n z WHERE z.product_id = p.id AND z.lang = 'zh-cn' LIMIT 1) AS specs_zh,
                 m.folder AS cover_folder, m.filename AS cover_filename, m.r2_key AS cover_key
            FROM products p
            LEFT JOIN product_i18n i ON i.product_id = p.id AND i.lang = ?
