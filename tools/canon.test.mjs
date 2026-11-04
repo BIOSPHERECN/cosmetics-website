@@ -96,5 +96,8 @@ assert.deepEqual(kp('/en/rfq/?formula=SR-1101&about=Night'), [['about', 'Night']
 assert.equal(unc('/en/rfq/?formula=SR-1101'), false);
 assert.deepEqual(kp('/en/rfq/'), []);
 assert.equal(unc('/en/rfq/?product_id=85&intent=sample'), false);
+assert.equal(can('/en/rfq/?product_id=85&spf_pa=SPF50&texture=gel&skin_type=oily'), null);
+assert.deepEqual(kp('/en/rfq/?product_id=85&spf_pa=SPF50&texture=gel&skin_type=oily'), [['product_id', '85'], ['skin_type', 'oily'], ['spf_pa', 'SPF50'], ['texture', 'gel']]);
+assert.equal(can('/en/rfq/?product_id=85&spf_pa=SPF50&booth=A1'), '/en/rfq/?product_id=85&spf_pa=SPF50');
 
 console.log('canon.test.mjs:全部通过');

@@ -26,6 +26,7 @@ import { overQuota, recordUse, tooMany, clientId, sweep } from '../../lib/rateli
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { gradeAndNotify } from '../../lib/inquiry-ai';
 import { humanGate } from '../../lib/human';
+import { assignInquiryField, normalizeRfqTicket, rfqTicketLines, type RfqTicket } from '../../lib/rfq-fields';
 
 export const prerender = false;
 
@@ -94,10 +95,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
   let f: Record<string, string> = {};
   try {
     if (isForm) {
-      for (const [k, v] of await request.formData()) f[k] = String(v);
+      for (const [k, v] of await request.formData()) assignInquiryField(f, k, String(v));
     } else {
       const b = (await request.json()) as Record<string, unknown>;
-      for (const [k, v] of Object.entries(b)) f[k] = String(v ?? '');
+      for (const [k, v] of Object.entries(b)) {
+        const text = Array.isArray(v) ? v.map((x) => String(x ?? '')).join(',') : String(v ?? '');
+        assignInquiryField(f, k, text);
+      }
     }
   } catch {
     return json({ ok: false, msg: '请求格式错误' }, 400);
@@ -105,9 +109,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   const source = (f.source ?? 'form').slice(0, 32);
   const name = (f.name ?? '').trim();
-  /* P0 RFQ: 市场/品类/量必填；不自动报价（仅入库+通知） */
+  /* P0 RFQ: 市场/品类/量必填，且至少选一个目标市场区域；不自动报价（仅入库+通知） */
   const market = (f.market ?? f.iq_market ?? '').trim().slice(0, 80);
   const productId = (f.product_id ?? f.productId ?? '').trim().slice(0, 40);
+  const rfqZh = String(f.lang ?? '').startsWith('zh');
+  let ticket: RfqTicket | null = null;
   if (source === 'rfq' || source === 'sample') {
     const cat0 = (f.category ?? '').trim();
     const vol0 = (f.volume ?? '').trim();
@@ -116,6 +122,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
         ? backTo(request, 'bad')
         : json({ ok: false, msg: 'RFQ requires market, category and volume / RFQ 需填写市场、品类与预估量' }, 400);
     }
+    const parsed = normalizeRfqTicket(f, rfqZh);
+    if (!parsed.ok) {
+      return isForm ? backTo(request, 'bad') : json({ ok: false, msg: parsed.msg }, 400);
+    }
+    ticket = parsed.fields;
   }
 
   /* Turnstile:蜜罐只挡最笨的脚本。09-24 W1b 起配了 secret 就缺令牌一律拒收(原来不带令牌直接放行),规则见 lib/human.ts */
@@ -136,14 +147,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
   let spam = 0;
   if ((f.website ?? '').trim()) spam += 5;
     let message = (f.message ?? '').trim();
+  if (!message && (source === 'rfq' || source === 'sample') && (f.notes ?? '').trim()) message = (f.notes ?? '').trim();
   const answers = questionAnswers(message.slice(0, 8000));   // only parse first 8000 chars
   const category = (answers[3] ?? f.category ?? '').trim().slice(0, 40) || null;
   const volume = (answers[8] ?? f.volume ?? '').trim().slice(0, 40) || null;
-  /* 结构化字段写入正文前缀，便于小满/人工检索；不生成报价 */
-  if (market || productId) {
-    const head = [market ? `market=${market}` : '', productId ? `product_id=${productId}` : ''].filter(Boolean).join('; ');
-    if (head && !message.includes(head)) message = (head + (message ? '\n' + message : '')).slice(0, 4000);
-  }
+  /* 结构化字段写入正文前缀，便于小满/人工检索；不生成报价。
+     Market① 的 target_market 等与 market/product_id 一样落在工单正文，不另开表。 */
+  const prefix = [
+    ...(ticket ? rfqTicketLines(ticket) : []),
+    market ? `market=${market}` : '',
+    productId ? `product_id=${productId}` : '',
+  ].filter((line) => line && !message.includes(line));
+  if (prefix.length) message = (prefix.join('\n') + (message ? '\n' + message : '')).slice(0, 4000);
   if ((message.match(/https?:\/\//g) ?? []).length >= 3) spam += 3;
   if (!message && !(f.name ?? '').trim()) spam += 1;
 
@@ -203,7 +218,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   /* 入库之后:AI 分级 + 群通知,放到响应之后跑(waitUntil),访客秒得回执。
      订阅框(newsletter)不通知 —— 那不是询盘。 */
-  /* 小满字段映射（获客回写）: ticket_id=newId; name; company; email; whatsapp; market; category; volume; product_id; source */
+  /* 小满字段映射（获客回写）: ticket_id=newId; name; company; email; whatsapp; market; category; volume; product_id;
+     target_market; halal_ready; halal_scope_note; notification_assist_country; first_order_band; source。不自动报价。 */
   if (newId && source !== 'newsletter') {
     const job = gradeAndNotify(db, env as any, newId, { name: name.slice(0, 120) || '(未填姓名)', company: (f.company ?? '').slice(0, 160) || null, email: email.slice(0, 200), country: request.headers.get('CF-IPCountry') || null, message: message.slice(0, 4000), lang: (f.lang ?? 'zh-cn').slice(0, 12), source_path: srcPath, category, volume, whatsapp });
     const ctx = (locals as any)?.cfContext;   // Astro 6:runtime.ctx 已移除,用 cfContext

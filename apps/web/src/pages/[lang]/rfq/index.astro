@@ -5,7 +5,9 @@
  * POST /api/inquiry → D1 inquiries + 通知；成功页展示 ticket_id
  * 不自动报价。Turnstile 走 humanGate（配了 TURNSTILE_SECRET 即校验）。
  * 小满映射（获客侧回写）：ticket_id→外部单号；name/company/email/whatsapp；
- * market→目标市场；category→品类；volume→预估量；product_id→产品编码；source=rfq。
+ * market→国家或城市；category→品类；volume→预估量；product_id→产品编码；
+ * target_market / halal_ready / halal_scope_note / notification_assist_country / first_order_band；
+ * source=rfq。不自动报价。Halal 只问需求。通告国家是协助，不是代办承诺。
  */
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
@@ -15,7 +17,12 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
 import { CAT_LABEL, PRODUCT_CAT, label } from '../../../lib/catalog';
+import { publicMoq } from '../../../lib/comply-copy';
 import { rfqCanLookup, rfqHasContext, rfqIdState, type RfqLookup } from '../../../lib/rfq-context';
+import {
+  NOTIFY_COUNTRIES, ORDER_BANDS, TARGET_MARKETS,
+  leadTimeWindowNote, rfqFieldCopy, rfqPrefill, rfqProductHooks,
+} from '../../../lib/rfq-fields';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'en';
@@ -35,21 +42,24 @@ const categoryQ = (q.get('category') ?? '').trim().slice(0, 40);
 const marketQ = (q.get('market') ?? '').trim().slice(0, 80);
 /* 有 product_id 才查一行。查不到且不是配方/包材编码 → 错误卡;库故障不误报。边缘缓存按 product_id 分键,同一 id 不会每次都打到 D1。 */
 let lookup: RfqLookup = 'skip';
-let found: { category: string; name: string } | null = null;
+let found: { category: string; name: string; specs: string } | null = null;
 if (productId && rfqCanLookup(productId) && db) {
   try {
     const row = await db.prepare(
       `SELECT p.category,
               (SELECT x.name FROM product_i18n x WHERE x.product_id = p.id
                 ORDER BY CASE x.lang WHEN ? THEN 0 WHEN 'en' THEN 1 WHEN 'zh-cn' THEN 2 ELSE 3 END
-                LIMIT 1) AS name
+                LIMIT 1) AS name,
+              (SELECT x.specs_json FROM product_i18n x WHERE x.product_id = p.id
+                ORDER BY CASE x.lang WHEN ? THEN 0 WHEN 'en' THEN 1 WHEN 'zh-cn' THEN 2 ELSE 3 END
+                LIMIT 1) AS specs_json
          FROM products p
         WHERE p.site_id = ? AND p.status = 'published' AND (p.id = ? OR p.slug = ?)
         LIMIT 1`,
-    ).bind(lang, siteId, productId, productId).first<{ category: string | null; name: string | null }>();
+    ).bind(lang, lang, siteId, productId, productId).first<{ category: string | null; name: string | null; specs_json: string | null }>();
     if (row) {
       lookup = 'found';
-      found = { category: String(row.category ?? ''), name: String(row.name ?? '') };
+      found = { category: String(row.category ?? ''), name: String(row.name ?? ''), specs: String(row.specs_json ?? '') };
     } else lookup = 'miss';
   } catch { lookup = 'error'; }
 }
@@ -59,6 +69,39 @@ const categoryKnown = !categoryRaw || categoryRaw in PRODUCT_CAT;
 const catChip = categoryRaw ? label(CAT_LABEL, categoryRaw, zh) : '';
 const showCard = rfqHasContext({ productId, about, formula: formulaQ, category: categoryQ });
 const idState = rfqIdState({ productId, about, formula: formulaQ, category: categoryQ, lookup });
+let formulaTexture = '';
+if (showCard && formulaQ && db) {
+  try {
+    const fr = await db.prepare(`SELECT texture FROM formulas WHERE code = ? LIMIT 1`).bind(formulaQ).first<{ texture: string | null }>();
+    formulaTexture = String(fr?.texture ?? '');
+  } catch { formulaTexture = ''; }
+}
+const F = rfqFieldCopy(zh);
+const prefill = rfqPrefill(marketQ);
+const leadNote = leadTimeWindowNote(zh);
+const hooks = rfqProductHooks({
+  hasContext: showCard,
+  specsJson: found?.specs ?? '',
+  hideCjk: !zh,
+  query: {
+    spf_pa: (q.get('spf_pa') ?? '').trim(),
+    texture: (q.get('texture') ?? '').trim(),
+    skin_type: (q.get('skin_type') ?? '').trim(),
+  },
+});
+/* 配方链只在产品规格没写肤感时补一行，避免空卡。 */
+if (!hooks.texture && formulaTexture) {
+  hooks.texture = rfqProductHooks({
+    hasContext: showCard,
+    hideCjk: !zh,
+    query: { texture: formulaTexture },
+  }).texture;
+}
+const hookCards = [
+  hooks.spf_pa ? { k: 'spf_pa', label: F.spf, v: hooks.spf_pa } : null,
+  hooks.texture ? { k: 'texture', label: F.texture, v: hooks.texture } : null,
+  hooks.skin_type ? { k: 'skin_type', label: F.skin, v: hooks.skin_type } : null,
+].filter((x): x is { k: string; label: string; v: string } => !!x);
 const siteKey = (import.meta.env.TURNSTILE_SITE_KEY as string | undefined) ?? '0x4AAAAAAEh9PTvpt4eaYV_q';
 const waNum = String(((Astro.locals as any)?.contact ?? {}).whatsapp ?? '').replace(/\D/g, '');
 const cats = Object.entries(PRODUCT_CAT);
@@ -67,10 +110,8 @@ const T = zh
   ? {
       title: '申请样品 / RFQ',
       h1: '申请样品或提交 RFQ',
-      lede: '填写市场、品类、预估量与联系方式。我们写入工单后通知销售；两个工作日内书面回复。本表不自动报价。',
-      note: '起订量与交期按品类与包材书面确认；打样通常 5–14 天（书面确认）。',
-      market: '目标市场',
-      marketPh: '例：印尼、美国、沙特',
+      lede: '填写目标市场、品类、预估量与联系方式。我们写入工单后通知销售；两个工作日内书面回复。本表不自动报价。',
+      note: `${publicMoq(true)}。${leadNote}`,
       category: '品类',
       categoryPh: '选择品类',
       volume: '预估首单量',
@@ -104,9 +145,7 @@ const T = zh
       title: 'Request sample / RFQ',
       h1: 'Request a sample or submit an RFQ',
       lede: 'Required: target market, category, estimated volume, and a contact. We create a ticket, notify sales, and reply in writing within two business days. This form never auto-quotes.',
-      note: 'MOQ and lead time are confirmed in writing per category and packaging. Sampling typically 5–14 days (confirmed in writing).',
-      market: 'Target market',
-      marketPh: 'e.g. Indonesia, US, Saudi Arabia',
+      note: `${publicMoq(false)}. ${leadNote}`,
       category: 'Category',
       categoryPh: 'Select a category',
       volume: 'Estimated first order',
@@ -167,6 +206,13 @@ const T = zh
             {!categoryKnown && <span class="chip bad">{T.catUnknown}</span>}
           </p>
         )}
+        {hookCards.length > 0 && (
+          <ul class="hooks">
+            {hookCards.map((h) => (
+              <li><span>{h.label}</span> {h.v}</li>
+            ))}
+          </ul>
+        )}
         <a class="change" href={`${B}/products/`}>{T.change}</a>
       </section>
     )}
@@ -181,10 +227,54 @@ const T = zh
       <input type="hidden" name="site" value={siteId} />
       <input type="hidden" name="sourcePath" value={path} />
       <input type="hidden" name="product_id" value={productId} />
+      {hookCards.map((h) => <input type="hidden" name={h.k} value={h.v} />)}
 
-      <label><span>{T.market} *</span>
-        <input type="text" name="market" required maxlength="80" placeholder={T.marketPh} value={marketQ} />
+      <fieldset class="checks">
+        <legend>{F.targetMarket} *</legend>
+        <p class="hint">{F.targetMarketHint}</p>
+        <div class="opts">
+          {TARGET_MARKETS.map((id) => (
+            <label class="check">
+              <input type="checkbox" name="target_market" value={id} checked={prefill.target_market.includes(id)} />
+              <span>{id === 'Other' ? F.other : id}</span>
+            </label>
+          ))}
+        </div>
+        <label class="other-in"><span>{F.otherPh}</span>
+          <input type="text" name="target_market_other" maxlength="80" placeholder={F.otherPh} />
+        </label>
+      </fieldset>
+      <label><span>{F.country} *</span>
+        <input type="text" name="market" required maxlength="80" placeholder={F.countryPh} value={marketQ} />
       </label>
+      <fieldset class="checks">
+        <legend>{F.notify}</legend>
+        <p class="hint">{F.notifyHint}</p>
+        <div class="opts">
+          {NOTIFY_COUNTRIES.map((id) => (
+            <label class="check">
+              <input type="checkbox" name="notification_assist_country" value={id} checked={prefill.notification_assist_country.includes(id)} />
+              <span>{id === 'Other' ? F.other : id}</span>
+            </label>
+          ))}
+        </div>
+        <label class="other-in"><span>{F.otherPh}</span>
+          <input type="text" name="notification_assist_other" maxlength="80" placeholder={F.otherPh} />
+        </label>
+      </fieldset>
+      <fieldset class="checks">
+        <legend>{F.halal}</legend>
+        <p class="hint">{F.halalHint}</p>
+        <div class="opts">
+          <label class="check"><input type="radio" name="halal_ready" value="yes" /><span>{F.halalYes}</span></label>
+          <label class="check"><input type="radio" name="halal_ready" value="no" /><span>{F.halalNo}</span></label>
+          <label class="check"><input type="radio" name="halal_ready" value="unsure" /><span>{F.halalUnsure}</span></label>
+        </div>
+      </fieldset>
+      <label class="scope"><span>{F.halalScope}</span>
+        <input type="text" name="halal_scope_note" maxlength="200" placeholder={F.halalScopePh} />
+      </label>
+      <p class="hint">{F.held}</p>
       <label><span>{T.category} *</span>
         <select name="category" required>
           <option value="">{T.categoryPh}</option>
@@ -197,9 +287,29 @@ const T = zh
         </select>
         {categoryRaw && !categoryKnown && <span class="chip bad">{T.catUnknown}</span>}
       </label>
+      <label><span>{F.band}</span>
+        <select name="first_order_band">
+          <option value="">{F.bandPh}</option>
+          {ORDER_BANDS.map((id) => <option value={id}>{F.bandOpt[id]}</option>)}
+        </select>
+        <span class="hint">{F.bandHint}</span>
+      </label>
       <label><span>{T.volume} *</span>
         <input type="text" name="volume" required maxlength="40" placeholder={T.volumePh} />
       </label>
+      <p class="note" id="lead_time_window_note">{leadNote}</p>
+      <label class="check solo">
+        <input type="checkbox" name="need_written_lead_confirm" value="1" checked />
+        <span>{F.leadConfirm}</span>
+      </label>
+      <p class="hint">{F.leadConfirmHint}</p>
+      <fieldset class="checks">
+        <legend>{F.msds}</legend>
+        <div class="opts">
+          <label class="check"><input type="radio" name="need_msds_coa" value="yes" /><span>{F.msdsYes}</span></label>
+          <label class="check"><input type="radio" name="need_msds_coa" value="no" /><span>{F.msdsNo}</span></label>
+        </div>
+      </fieldset>
       <label><span>{T.product}</span>
         <input type="text" name="iq_product" maxlength="160" placeholder={T.productPh} value={productName} />
       </label>
@@ -231,12 +341,22 @@ const T = zh
 </BaseLayout>
 
 {siteKey && <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer is:inline />}
-<script is:inline define:vars={{ zh, tOk: T.ok, tOkHint: T.okHint, tFail: T.fail, tSending: T.sending, tNeedContact: T.needContact, tNeedFields: T.needFields, tSubmit: T.submit }}>
+<script is:inline define:vars={{ zh, tOk: T.ok, tOkHint: T.okHint, tFail: T.fail, tSending: T.sending, tNeedContact: T.needContact, tNeedFields: T.needFields, tNeedMarket: F.needMarket, tSubmit: T.submit }}>
   (function () {
     var form = document.getElementById('rfq-form');
     var fb = document.getElementById('rfq-fb');
     var ok = document.getElementById('rfq-ok');
     if (!form) return;
+    function pack(fd, name, allowed, otherName) {
+      var selected = fd.getAll(name).map(function (v) { return String(v); });
+      var other = String(fd.get(otherName) || '').trim().slice(0, 80).replace(/[,;\n]/g, ' ');
+      var out = [];
+      allowed.forEach(function (k) {
+        if (selected.indexOf(k) < 0) return;
+        out.push(k === 'Other' && other ? 'Other:' + other : k);
+      });
+      return out.join(',');
+    }
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
       var fd = new FormData(form);
@@ -246,6 +366,14 @@ const T = zh
       var email = String(fd.get('email') || '').trim();
       var whatsapp = String(fd.get('whatsapp') || '').trim();
       var name = String(fd.get('name') || '').trim();
+      var targetMarket = pack(fd, 'target_market', ['SEA', 'GCC', 'Other'], 'target_market_other');
+      var notify = pack(fd, 'notification_assist_country', ['ID', 'MY', 'TH', 'VN', 'AE', 'SA', 'Other'], 'notification_assist_other');
+      var halal = String(fd.get('halal_ready') || '').trim();
+      var scope = halal === 'yes' ? String(fd.get('halal_scope_note') || '').trim().slice(0, 200) : '';
+      var band = String(fd.get('first_order_band') || '').trim();
+      var msds = String(fd.get('need_msds_coa') || '').trim();
+      var leadConfirm = fd.get('need_written_lead_confirm') ? '1' : '0';
+      if (!targetMarket) { fb.className = 'fb err'; fb.textContent = tNeedMarket; return; }
       if (!market || !category || !volume) { fb.className = 'fb err'; fb.textContent = tNeedFields; return; }
       if (!email && !whatsapp) { fb.className = 'fb err'; fb.textContent = tNeedContact; return; }
       var product = String(fd.get('iq_product') || '').trim();
@@ -253,7 +381,18 @@ const T = zh
       var notes = String(fd.get('notes') || '').trim();
       var bits = [];
       bits.push((zh ? '【RFQ/样品】' : '[RFQ/Sample]') + ' market=' + market + '; category=' + category + '; volume=' + volume);
+      function addLine(k, v) { if (v) bits.push(k + '=' + v); }
+      addLine('target_market', targetMarket);
+      addLine('halal_ready', halal);
+      addLine('halal_scope_note', scope);
+      addLine('notification_assist_country', notify);
+      addLine('first_order_band', band);
+      addLine('need_msds_coa', msds);
+      bits.push('need_written_lead_confirm=' + leadConfirm);
       if (productId) bits.push('product_id=' + productId);
+      addLine('spf_pa', String(fd.get('spf_pa') || '').trim());
+      addLine('texture', String(fd.get('texture') || '').trim());
+      addLine('skin_type', String(fd.get('skin_type') || '').trim());
       if (product) bits.push((zh ? '产品: ' : 'Product: ') + product);
       if (notes) bits.push(notes);
       bits.push(zh ? '（不自动报价；待销售书面回复）' : '(No auto-quote; written reply from sales)');
@@ -270,6 +409,16 @@ const T = zh
         category: category,
         volume: volume,
         product_id: productId,
+        target_market: targetMarket,
+        halal_ready: halal,
+        halal_scope_note: scope,
+        notification_assist_country: notify,
+        first_order_band: band,
+        need_msds_coa: msds,
+        need_written_lead_confirm: leadConfirm,
+        spf_pa: String(fd.get('spf_pa') || '').trim(),
+        texture: String(fd.get('texture') || '').trim(),
+        skin_type: String(fd.get('skin_type') || '').trim(),
         message: bits.join('\n'),
         'cf-turnstile-response': String(fd.get('cf-turnstile-response') || ''),
       };
@@ -304,6 +453,18 @@ const T = zh
   .hd { display: grid; gap: .625rem; margin-bottom: 1.25rem; }
   h1 { font-size: clamp(1.5rem, 2.6vw, 2rem); margin: 0; line-height: 1.25; }
   .lede, .note, .hint { margin: 0; line-height: 1.65; opacity: .85; font-size: .9375rem; }
+  .checks { border: 1px solid var(--ck-line, rgba(0,0,0,.14)); border-radius: 12px; padding: .75rem .875rem .875rem; display: grid; gap: .5rem; margin: 0; }
+  .checks legend { font-size: .875rem; opacity: .75; padding: 0 .25rem; }
+  .opts { display: flex; flex-wrap: wrap; gap: .125rem .75rem; }
+  .check { display: flex; flex-direction: row; align-items: center; gap: .5rem; min-height: 44px; font-size: .9375rem; }
+  .check input { width: 1.125rem; height: 1.125rem; padding: 0; flex: 0 0 auto; }
+  .check.solo { justify-self: start; }
+  .other-in, .scope { display: none; }
+  .checks:has(input[value="Other"]:checked) .other-in { display: grid; }
+  .f:has(input[name="halal_ready"][value="yes"]:checked) .scope { display: grid; }
+  .hooks { list-style: none; display: flex; flex-wrap: wrap; gap: .375rem; margin: 0; padding: 0; }
+  .hooks li { font-size: .8125rem; line-height: 1.35; padding: .3rem .65rem; border-radius: 999px; border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
+  .hooks span { opacity: .7; margin-right: .25rem; }
   .note.strong { font-weight: 600; opacity: 1; }
   .f { display: grid; gap: .875rem; }
   .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: .875rem; }
@@ -340,7 +501,8 @@ const T = zh
   @media (max-width: 40rem) {
     .g2 { grid-template-columns: 1fr; }
     .btn { width: 100%; }
-    /* 右下角悬浮客服会盖住卡片右缘,窄屏给正文留出位置 */
-    .sum { padding-right: 4.75rem; }
+    /* 右下角悬浮客服会盖住右缘,窄屏给摘要和多选留出位置 */
+    .rfq { padding-right: 4.75rem; }
+    .sum { padding-right: 0; }
   }
 </style>
