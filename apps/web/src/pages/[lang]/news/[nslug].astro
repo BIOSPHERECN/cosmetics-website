@@ -12,7 +12,7 @@ import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { env } from 'cloudflare:workers';
 import { pageShell } from '../../../lib/shell';
 import { isLang, DEFAULT_LANG, type Lang } from '../../../lib/db';
-import { orgJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
+import { breadcrumbJsonLd } from '../../../lib/jsonld';
 
 export const prerender = false;
 
@@ -55,7 +55,6 @@ const T = zh
       cta: 'Turn trends into your product — start an inquiry →' };
 
 const jsonLd = [
-  orgJsonLd(base, shell.site?.name ?? 'BIOSPHERE', lang, summary),
   breadcrumbJsonLd(base, lang, path, zh ? '首页' : 'Home', [
     { label: zh ? '行业资讯' : 'Industry News', href: `/${lang}/news/` },
     { label: title, href: path },

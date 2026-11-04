@@ -54,7 +54,7 @@ import '../styles/b2o.css';   // 09-24 图文版:全部规则挂在 html[data-br
 import FactoryBlock from '../components/FactoryBlock.astro';
 import { getSiteByHost, getSiteById, getPageBundle, DEFAULT_LANG, type Lang } from '../lib/db';
 import { readSession, readCookie, COOKIE as ADMIN_COOKIE } from '../lib/auth';
-import { orgJsonLd, siteJsonLd, breadcrumbJsonLd, faqJsonLd, productJsonLd, itemListJsonLd } from '../lib/jsonld';
+import { siteJsonLd, breadcrumbJsonLd, faqJsonLd, productJsonLd, itemListJsonLd } from '../lib/jsonld';
 import { isLocale, t as uiT, isLocale as _l } from '@cosmetic/core/i18n';
 import { getVariant, getSite as getStaticSite } from '@cosmetic/core/registry';
 // Astro v6 起 Astro.locals.runtime.env 已移除,绑定改从 cloudflare:workers 取
@@ -416,8 +416,8 @@ const pageSeo = (site?.id === 'biosphere-ai' && !slug && bundle)
   ? homeSeo(lang, bundle.page.title, bundle.page.seo_desc)
   : { title: bundle?.page.title ?? '', description: bundle?.page.seo_desc ?? '' };
 
+/* Organization 由 BaseLayout 发一份(带联络方式)。这里再塞一份会让首页出现两个相同 @id。 */
 const jsonLd = [
-  orgJsonLd(base0, site?.name ?? 'BIOSPHERE', lang, pageSeo.description || site?.tagline || ''),
   siteJsonLd(base0, site?.name ?? 'BIOSPHERE'),
   breadcrumbJsonLd(base0, lang, path, uiT(lang as any)('nav.home'), trail),
   faqJsonLd(faqItems),

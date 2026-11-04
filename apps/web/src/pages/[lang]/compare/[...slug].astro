@@ -21,7 +21,7 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { COMPARE_ZH, type CompareItem } from '@cosmetic/core/content/compare.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
-import { orgJsonLd, faqJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
+import { faqJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
 import { pageShell } from '../../../lib/shell';
 
 export const prerender = false;
@@ -63,7 +63,6 @@ const crumbs = breadcrumbJsonLd(origin, lang, path, uiT(lang as any)('nav.home')
     ? [{ label: L.eyebrow, href: `${B}/compare/` }, { label: item.q, href: path }]
     : [{ label: L.eyebrow, href: path }]);
 const jsonLd = [
-  orgJsonLd(origin, site?.name ?? 'BIOSPHERE', lang, L.lede),
   faqJsonLd(ldItems),
   crumbs,
 ].filter(Boolean);

@@ -26,7 +26,7 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
-import { orgJsonLd, breadcrumbJsonLd } from '../../../../lib/jsonld';
+import { breadcrumbJsonLd } from '../../../../lib/jsonld';
 import { pageShell } from '../../../../lib/shell';
 
 export const prerender = false;
@@ -155,7 +155,6 @@ const personLd = {
 const crumbs = breadcrumbJsonLd(origin, lang, path, uiT(lang as any)('nav.home'),
   [{ label: zh ? '关于帛卉' : 'About', href: `${B}/about/` }, { label: T.eyebrow, href: path }]);
 const jsonLd = [
-  orgJsonLd(origin, site?.name ?? 'BIOSPHERE', lang, T.lede),
   personLd, videoLd, crumbs,
 ].filter(Boolean);
 

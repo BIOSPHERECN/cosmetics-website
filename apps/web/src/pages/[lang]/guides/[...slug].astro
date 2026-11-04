@@ -20,7 +20,7 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { GUIDES_ZH, type GuideItem } from '@cosmetic/core/content/guides.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
-import { orgJsonLd, faqJsonLd, howToJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
+import { faqJsonLd, howToJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
 import { pageShell } from '../../../lib/shell';
 
 export const prerender = false;
@@ -80,7 +80,6 @@ const videoLd = item?.media?.video
   : null;
 
 const jsonLd = [
-  orgJsonLd(origin, site?.name ?? 'BIOSPHERE', lang, L.lede),
   videoLd,
   item
     ? howToJsonLd({

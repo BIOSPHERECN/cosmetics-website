@@ -13,8 +13,9 @@
  * 原则:这里**只能**放页面上真实存在、且来自公司介绍资料的事实。
  * 结构化数据里写页面上没有的内容,搜索引擎判为 spam,得不偿失。
  */
-/* ORG 与 orgJsonLd 已挪到 packages/core/src/content/org.ts —— 见那边的说明。
-   这里再导出一次,站内所有既有 import 保持不变。 */
+/* ORG 与 orgJsonLd 的实现在 packages/core/src/content/org.ts。
+   全站只由 BaseLayout 发射这一块。页面再调用会和布局里的那份撞同一个 @id。
+   这里再导出一次,调用方仍可以从本文件引用函数本身(不要把它再塞进页面 jsonLd)。 */
 export { ORG, orgJsonLd } from '@cosmetic/core/content/org.ts';
 
 /** 面包屑 —— 搜索结果里把路径显示成「首页 › 能力与服务 › 生产制造」而不是一串 URL */

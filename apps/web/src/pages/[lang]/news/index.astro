@@ -10,7 +10,7 @@ import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { env } from 'cloudflare:workers';
 import { pageShell } from '../../../lib/shell';
 import { isLang, DEFAULT_LANG, type Lang } from '../../../lib/db';
-import { orgJsonLd, breadcrumbJsonLd, itemListJsonLd } from '../../../lib/jsonld';
+import { breadcrumbJsonLd, itemListJsonLd } from '../../../lib/jsonld';
 
 export const prerender = false;
 
@@ -90,7 +90,6 @@ const T = zh
       trendsC: 'Browse by country →' };
 
 const jsonLd = [
-  orgJsonLd(base, shell.site?.name ?? 'BIOSPHERE', lang, T.lead),
   breadcrumbJsonLd(base, lang, path, zh ? '首页' : 'Home', [{ label: T.h1, href: path }]),
   itemListJsonLd(base, lang, list.map((n) => ({ slug: `news/${n.slug}`, name: n.title }))),
 ];
