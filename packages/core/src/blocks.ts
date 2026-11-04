@@ -285,7 +285,7 @@ export const BLOCKS: BlockDef[] = [
       lead: '从一个产品想法,到一批可以卖到目标市场的成品。找同款、拆全成分、匹配在库配方基底、寄样、合规资料、包装、试产、大货,由 {site} 的工厂团队完成;你的品牌与客户始终是你的。',
       placeholder: '例:玻尿酸精华、SPF50 轻薄防晒、氨基酸洁面、烟酰胺身体乳', submit: '找同款',
       items: [
-        { label: '找产品机会', note: '不知道下一款做什么?看今天的机会卡', href: '#opps' },
+        { label: '找产品机会', note: '不知道下一款做什么?看机会卡', href: '#opps' },
         { label: '我有产品想法', note: '在库配方基底按品类 / 剂型 / 功效筛', href: '/formulas/' },
         { label: '已有产品要代工', note: '发全成分表或样品,工厂直接出方案', href: 'whatsapp' },
       ],
@@ -313,13 +313,13 @@ export const BLOCKS: BlockDef[] = [
     labels: { evidence: '证据行(可用占位符)' },
   },
   {
-    id: 'fx_opps', name: '今天,什么产品值得做?', family: 'factory', renderer: 'FactoryBlock/fx_opps', once: true,
-    note: '六张机会卡由机会引擎每日生成(pulse opps),这里只改标题、导语、四个维度名与按钮字。',
+    id: 'fx_opps', name: '什么产品值得做?', family: 'factory', renderer: 'FactoryBlock/fx_opps', once: true,
+    note: '机会引擎写入 pulse opps，文案用最近更新（不暗示每日刷新）。',
     sketch: '⊞',
     defaults: {
-      title: '今天,什么产品值得做?',
-      intro: '按跨境爆款榜、同类产品库与目标市场法规每日生成 · 更新 {date} · 星级是相对定性,不是测算数字。',
-      empty: '机会卡每日生成;先看配方库或直接说你的处境。',
+      title: '什么产品值得做?',
+      intro: '按跨境爆款榜、同类产品库与目标市场法规整理 · 最近更新 {date} · 星级是相对定性,不是测算数字。',
+      empty: '机会卡按最近一次成功生成展示;先看配方库或直接说你的处境。',
       axes: ['市场需求', '竞争程度', '价格空间', '供应链可行性'], submit: '让工厂给方案',
       moreText: '没有你要的?发一句话说你的处境,工厂按目标市场给方向', moreHref: 'whatsapp',
     },
