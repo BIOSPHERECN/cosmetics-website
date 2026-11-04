@@ -1,0 +1,152 @@
+---
+/**
+ * 首页信任带（莱诺鸟 P0-2）：紧贴 HomeLead 之下，能力区之上。
+ *
+ * 左：工厂已持有的三证（GMPC / ISO 22716 / HALAL），与 OEM_CERTS 同一份 id。
+ * 缩略是文字标，不嵌证书扫描件——扫描件上有编号和有效期，口径是凭原件提供、不上网页。
+ * 中：交期以书面确认为准。
+ * 右：申请样品，进 apex /{lang}/rfq/，查询串为空，也不是主色按钮。
+ * 主色只留在 Hero 的 Start RFQ。厂证只列已持有的三项。
+ */
+import { OEM_CERTS } from '@cosmetic/core/content/oem.ts';
+
+interface Props {
+  locale: string;
+}
+
+const { locale } = Astro.props;
+const zh = String(locale).startsWith('zh');
+const base = `/${locale}`;
+const held = zh ? '已持有' : 'Held';
+---
+
+<section class="bio-trust-strip" aria-label={zh ? '工厂已持有认证与交期' : 'Held plant certificates and lead time'}>
+  <div class="ck-wrap bio-trust-row">
+    <div class="bio-trust-left">
+      <p class="bio-trust-held">{held}</p>
+      <ul class="bio-trust-certs">
+        {OEM_CERTS.map((c) => (
+          <li>
+            <a href={`${base}/oem/cert/${c.id}/`}>
+              <span class="bio-trust-mark" aria-hidden="true">{c.name.slice(0, 1)}</span>
+              <span>{c.name}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+    <p class="bio-trust-lead">{zh ? '交期以书面确认为准' : 'Lead time confirmed in writing'}</p>
+    <a class="bio-trust-sample" href={`${base}/rfq/`}>{zh ? '申请样品' : 'Request sample'}</a>
+  </div>
+</section>
+
+<style>
+  .bio-trust-strip {
+    background: var(--bio-bg);
+    color: var(--bio-fg);
+    padding-block: 56px;
+    border-block: 1px solid color-mix(in srgb, var(--bio-fg) 12%, transparent);
+  }
+  .bio-trust-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem 1.75rem;
+  }
+  .bio-trust-held {
+    margin: 0 0 0.35rem;
+    color: var(--bio-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .bio-trust-certs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .bio-trust-certs a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 44px;
+    padding: 0.2rem 0.75rem 0.2rem 0.3rem;
+    border: 1px solid color-mix(in srgb, var(--bio-fg) 16%, transparent);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--bio-fg);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .bio-trust-mark {
+    display: inline-grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 8px;
+    background: #f6f5f2;
+    color: var(--bio-fg);
+    font-size: 0.75rem;
+  }
+  .bio-trust-lead {
+    margin: 0;
+    color: var(--bio-muted);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    text-align: center;
+  }
+  .bio-trust-sample {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    background: transparent;
+    color: var(--bio-fg);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+    white-space: nowrap;
+  }
+  html[data-brand][data-editorial] .bio-trust-strip a {
+    color: var(--bio-fg);
+    background: transparent;
+    box-shadow: none;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .bio-trust-certs a:focus-visible,
+  .bio-trust-sample:focus-visible {
+    outline: 2px solid var(--bio-fg);
+    outline-offset: 2px;
+  }
+  @media (max-width: 760px) and (min-width: 391px) {
+    .bio-trust-row {
+      grid-template-columns: 1fr;
+      justify-items: start;
+    }
+    .bio-trust-lead { text-align: start; }
+  }
+  @media (max-width: 390px) {
+    .bio-trust-row {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 1.25rem;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+    .bio-trust-left,
+    .bio-trust-lead,
+    .bio-trust-sample { flex: 0 0 auto; }
+    .bio-trust-lead { white-space: nowrap; text-align: start; }
+    .bio-trust-certs { flex-wrap: nowrap; }
+  }
+</style>
