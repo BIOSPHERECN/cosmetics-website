@@ -15,7 +15,11 @@ import { pageShell } from '../../../lib/shell';
 import { memo } from '../../../lib/memo';
 import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import InquiryFormLite from '@cosmetic/core/components/InquiryFormLite.astro';
-import { catalogLabel, claimNote, publicMoq, publicSample, softenClaims } from '../../../lib/comply-copy';
+import PortfolioCard from '../../../components/PortfolioCard.astro';
+import { catalogLabel, claimNote, publicMoq, publicSample } from '../../../lib/comply-copy';
+import {
+  portfolioCoverSrc, portfolioDetailHref, portfolioFormatBadge, portfolioSampleHref,
+} from '../../../lib/portfolio-card';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'zh-cn';
@@ -43,10 +47,14 @@ if (db) {
   try {
     /* 10-22:品类筛选+产品列表走 memo(1 小时) + 边缘缓存 6 小时,爬虫复访 0 D1
        成本#2 C2 审核:catCounts 用独立 memo(键不含 catFilter/lang),避免每个 catFilter 都重跑同一查询。 */
-    const rows = await memo(`portfolio5:${siteId}:${lang}:${catFilter}`, 3600, async () => {
+    const rows = await memo(`portfolio6:${siteId}:${lang}:${catFilter}`, 3600, async () => {
       return ((await db.prepare(
-        `SELECT p.id, p.slug, p.category, p.moq, p.cover_media, p.updated_at, i.name, i.summary
-           FROM products p LEFT JOIN product_i18n i ON i.product_id = p.id AND i.lang = ?
+        `SELECT p.id, p.slug, p.category, p.moq, p.cover_media, p.updated_at, i.name, i.summary, i.specs_json,
+                (SELECT z.specs_json FROM product_i18n z WHERE z.product_id = p.id AND z.lang = 'zh-cn' LIMIT 1) AS specs_zh,
+                m.folder AS cover_folder, m.filename AS cover_filename, m.r2_key AS cover_key
+           FROM products p
+           LEFT JOIN product_i18n i ON i.product_id = p.id AND i.lang = ?
+           LEFT JOIN media m ON m.id = p.cover_media
           WHERE p.site_id = ? AND p.status = 'published' AND p.is_showcase = 1
             AND (? = '' OR p.category = ?) ORDER BY p.sort_order, p.id DESC`)
         .bind(lang, siteId, catFilter, catFilter).all().catch(() => ({ results: [] }))).results ?? []) as any[];
@@ -93,16 +101,19 @@ const factoryHref = `${B}/services/factory-quality/`;
    CollectionPage + ItemList(前 30 款 Product 摘要)+ FAQPage:
    让搜索引擎与 AI 引擎能"据实"抓到这是一家代工厂的产品集,而不是空页面。
    数据全部来自当前渲染的 items,零编造。 */
-const listItems = items.slice(0, 30).map((p: any, i: number) => ({
-  '@type': 'ListItem', position: i + 1,
-  item: {
-    '@type': 'Product',
-    name: catalogLabel(p.name ?? p.slug, zh).name,
-    url: `${origin}${B}/product/${p.slug}/`,
-    ...(p.cover_media ? { image: `${origin}/media/${p.cover_media}` } : {}),
-    ...(p.category ? { category: catLabel(p.category) } : {}),
-  },
-}));
+const listItems = items.slice(0, 30).map((p: any, i: number) => {
+  const shot = portfolioCoverSrc(p);
+  return {
+    '@type': 'ListItem', position: i + 1,
+    item: {
+      '@type': 'Product',
+      name: catalogLabel(p.name ?? p.slug, zh).name,
+      url: `${origin}${B}/product/${p.slug}/`,
+      ...(shot ? { image: `${origin}${shot}` } : {}),
+      ...(p.category ? { category: catLabel(p.category) } : {}),
+    },
+  };
+});
 /* 页面最近一次真实更新:取当前列表里最新的 updated_at,不编时间 */
 const lastMod = items.reduce((m: string, p: any) => {
   const v = String(p.updated_at ?? '').slice(0, 10);
@@ -117,23 +128,19 @@ const faqs = zh
      { q: 'What is the MOQ?', a: 'MOQ is agreed per category and packaging and confirmed in writing. Cards do not show an unapproved single-number MOQ.' },
      { q: 'Can I get samples before ordering?', a: 'Yes. Sampling lead time depends on the category and packaging stock; order after sign-off samples.' },
      { q: 'What certifications does the plant hold?', a: 'Capacity, systems and certifications are listed under Services · Factory quality.' }];
-/* W5：product_id 必须是库内 id，缺则 slug，禁止 product_id= 空串。样品是真 <a href>，不靠无 JS 的 span。 */
-const productRef = (p: { id?: unknown; slug?: unknown }) => {
-  const id = String(p?.id ?? '').trim();
-  return id || String(p?.slug ?? '').trim();
-};
-const withPid = (href: string, p: { id?: unknown; slug?: unknown }) => {
-  const ref = productRef(p);
-  return ref ? `${href}?product_id=${encodeURIComponent(ref)}` : href;
-};
-const sampleHref = (p: { id?: unknown; slug?: unknown; name?: unknown; category?: unknown }) => {
-  const ref = productRef(p);
-  const q = [
-    ref ? `product_id=${encodeURIComponent(ref)}` : '',
-    `about=${encodeURIComponent(catalogLabel(String(p.name ?? p.slug ?? ''), zh).name)}`,
-    `category=${encodeURIComponent(String(p.category ?? ''))}`,
-  ].filter(Boolean).join('&');
-  return `${B}/rfq/?${q}`;
+/* P0-3：Sample 主链走 portfolioSampleHref，id 优先、缺则 slug。没有引用就不渲染链接，避免 product_id= 空串。 */
+const cardOf = (p: any, eager: boolean) => {
+  const shown = catalogLabel(String(p?.name ?? p?.slug ?? ''), zh);
+  const about = shown.name;
+  return {
+    name: about,
+    formatLabel: portfolioFormatBadge(p?.specs_json, p?.specs_zh, String(p?.category ?? ''), zh),
+    sampleHref: portfolioSampleHref(lang, p, about),
+    detailHref: portfolioDetailHref(lang, String(p?.slug ?? ''), p),
+    imageSrc: portfolioCoverSrc(p),
+    imageAlt: about,
+    eager,
+  };
 };
 const jsonLd = ldJson({
   '@context': 'https://schema.org',
@@ -196,8 +203,14 @@ const jsonLd = ldJson({
         ))}
       </nav>
     )}
-    {items.length === 0 && <p class="lede">{T.empty}</p>}
-    {/* 搜索零结果:标题、说明、清除。品类出口是后面的 #cat-sections,空手询盘在品类之后。 */}
+    {items.length === 0 && (
+      <section class="pg-empty pg-none" aria-labelledby="pg-none-title">
+        <h2 id="pg-none-title">{T.emptyTitle}</h2>
+        <p>{T.empty}</p>
+        <p class="pg-empty-rfq"><a href={`${B}/rfq/`}>{T.emptyRfq}</a></p>
+      </section>
+    )}
+    {/* 搜索零结果:标题、说明、清除。信任条留在上方。品类出口是后面的 #cat-sections,空手询盘在品类之后。 */}
     <section class="pg-empty" id="pg-empty" hidden aria-hidden="true" aria-labelledby="pg-empty-title">
       <h2 id="pg-empty-title">{T.emptyTitle}</h2>
       <p>{T.emptyExplain}</p>
@@ -218,16 +231,22 @@ const jsonLd = ldJson({
               <span class="cat-sec-more">{zh ? '查看全部 →' : 'View all →'}</span>
             </a>
             <div class="cat-sec-grid">
-              {catItems.map((p: any, mi: number) => (
-                <article class="card mini" data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
-                  <a class="mini-main" href={withPid(`${B}/product/${p.slug}/`, p)}>
-                    {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={catalogLabel(p.name ?? p.slug, zh).name} width="600" height="450" loading={mi === 0 && c === catCounts[0] ? 'eager' : 'lazy'} decoding="async" /> : <div class="ph" />}
-                    <h3>{catalogLabel(p.name ?? p.slug, zh).name}</h3>
-                    <small class="meta">{T.moq} · {T.sample}</small>
-                  </a>
-                  <a class="sample" href={sampleHref(p)}>{T.sampleCta}</a>
-                </article>
-              ))}
+              {catItems.map((p: any, mi: number) => {
+                const card = cardOf(p, mi === 0 && c === catCounts[0]);
+                return (
+                  <PortfolioCard
+                    name={card.name}
+                    formatLabel={card.formatLabel}
+                    sampleHref={card.sampleHref}
+                    sampleLabel={T.sampleCta}
+                    detailHref={card.detailHref}
+                    imageSrc={card.imageSrc}
+                    imageAlt={card.imageAlt}
+                    eager={card.eager}
+                    priority={card.eager}
+                  />
+                );
+              })}
             </div>
           </section>
         );
@@ -239,22 +258,24 @@ const jsonLd = ldJson({
 
     {/* 桌面端:平铺全部+翻页+搜索 */}
     <ul class="grid" id="pg-grid" data-page-size="60">
-      {items.map((p, idx) => (
+      {items.map((p, idx) => {
+        const card = cardOf(p, idx < 4);
+        return (
         <li class="pg-item" data-idx={idx} data-id={String(p.id ?? '')} data-name={(p.name ?? p.slug).toLowerCase()} data-summary={(p.summary ?? '').toLowerCase()} data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
-          <article class="card">
-            <a class="card-main" href={withPid(`${B}/product/${p.slug}/`, p)}>
-              {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={catalogLabel(p.name ?? p.slug, zh).name} width="600" height="600" loading={idx < 4 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" /> : <div class="ph" />}
-              <h2>{catalogLabel(p.name ?? p.slug, zh).name}</h2>
-              {p.summary && <p>{softenClaims(p.summary)}</p>}
-            </a>
-            <p class="meta">{catLabel(p.category)} · {T.moq} · {T.sample}</p>
-            <div class="cta-row">
-              <a class="more" href={withPid(`${B}/product/${p.slug}/`, p)}>{T.more} →</a>
-              <a class="sample" href={sampleHref(p)}>{T.sampleCta}</a>
-            </div>
-          </article>
+          <PortfolioCard
+            name={card.name}
+            formatLabel={card.formatLabel}
+            sampleHref={card.sampleHref}
+            sampleLabel={T.sampleCta}
+            detailHref={card.detailHref}
+            imageSrc={card.imageSrc}
+            imageAlt={card.imageAlt}
+            eager={card.eager}
+            priority={idx < 4}
+          />
         </li>
-      ))}
+        );
+      })}
     </ul>
     <section class="faq" aria-label={zh ? '采购常见问题' : 'Buying FAQ'}>
       <h2>{zh ? '采购常见问题' : 'Buying FAQ'}</h2>
@@ -276,26 +297,17 @@ const jsonLd = ldJson({
   <SiteFooter locale={lang} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} nav={shell.nav} />
 </BaseLayout>
 <style>
-  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+  main { max-width: 112.5rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; min-width: 0; overflow-x: clip; }
   .hd { display: grid; gap: .75rem; margin-bottom: 1.5rem; max-width: 62rem; }
   .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0; }
   h1 { font-size: clamp(1.625rem, 3vw, 2.25rem); line-height: 1.24; margin: 0; }
   .lede { font-size: 1rem; line-height: 1.75; opacity: .85; margin: 0; }
   .brief { font-size: .9375rem; line-height: 1.8; opacity: .8; margin: 0; padding: .875rem 1rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 12px; background: var(--ck-surface-alt, #f5f5f1); }
-  .catbar { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1.5rem; padding: 0; }
+  .catbar { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1.5rem; padding: 0; max-width: 100%; }
   .chip { display: inline-flex; align-items: center; gap: .25rem; padding: .375rem .75rem; border-radius: 999px; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); text-decoration: none; color: inherit; font-size: .875rem; line-height: 1.4; white-space: nowrap; }
   .chip.on { background: var(--ck-accent, #333); color: #fff; border-color: var(--ck-accent, #333); }
-  .grid { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
-  .card { display: grid; gap: .5rem; height: 100%; padding: .875rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; text-decoration: none; color: inherit; }
-  .card img, .ph { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: var(--ck-surface-alt, #f3f3f1); }
-  .card h2 { font-size: 1.0625rem; margin: 0; line-height: 1.4; }
-  .card p { margin: 0; font-size: .9rem; line-height: 1.6; opacity: .75; }
-  .card small, .card .meta { margin-top: auto; opacity: .65; font-size: .8125rem; line-height: 1.5; }
-  .card .meta { margin: 0; }
-  .cta-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .25rem; }
-  .cta-row .more { font-size: .8125rem; opacity: .7; }
-  .cta-row .sample, .card.mini .sample { display: inline-flex; align-items: center; font-size: .8125rem; font-weight: 600; padding: .25rem .625rem; border-radius: 999px; border: 1px solid var(--ck-accent, #333); color: var(--ck-accent, #333); text-decoration: none; }
-  .cta-row .sample:hover { background: var(--ck-accent, #333); color: #fff; }
+  .grid { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); }
+  .pg-item { min-width: 0; }
   .pg-empty[hidden], .pg-empty-rfq[hidden] { display: none !important; }
   .pg-empty { display: grid; gap: .75rem; max-width: 40rem; margin: 0 0 1.25rem; padding: 1.25rem 1.125rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; background: var(--ck-surface-alt, #f5f5f1); }
   .pg-empty h2 { font-size: 1.25rem; line-height: 1.35; margin: 0; }
@@ -312,6 +324,7 @@ const jsonLd = ldJson({
   .cat-sec-n { font-size: .75rem; opacity: .75; }
   .cat-sec-more { margin-left: auto; font-size: .8125rem; white-space: nowrap; }
   .pg-trust p a { text-underline-offset: .18em; }
+  main.is-search-empty .pg-trust { display: grid; }
   main.is-search-empty .cat-sections { display: grid; gap: .75rem; margin-bottom: .25rem; }
   main.is-search-empty .cat-exit-label { display: block; }
   main.is-search-empty .cat-sec-grid,
@@ -323,30 +336,23 @@ const jsonLd = ldJson({
   .pg-trust p { margin: 0; font-size: .8125rem; line-height: 1.6; }
   .pg-trust p a { color: inherit; }
 
-  .card-main, .card.mini .mini-main { display: grid; gap: .5rem; text-decoration: none; color: inherit; }
-  .card.mini .mini-main { gap: .25rem; }
-  .card .more { font-size: .8125rem; opacity: .75; text-decoration: none; color: inherit; }
-
   .ask { margin: 1.75rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
   @media (min-width: 900px) { main { padding: 2rem 1.5rem 4rem; } }
-  /* 手机端(≤48rem):品类分区布局+双列紧凑+图片4:3 */
+  /* 手机端(≤48rem):品类分区 + 双列。图框仍是卡组件上的 1:1，不再另写比例。 */
   .cat-sections { display: none; }
   @media (max-width: 48rem) {
     /* 手机端:显示品类分区,隐藏平铺网格 */
-    .cat-sections { display: grid; gap: 1.25rem; }
+    .cat-sections { display: grid; gap: 1.25rem; min-width: 0; }
     .grid { display: none; }
     .pager { display: none; }
     /* 品类分区标题行 */
-    .cat-sec { border: 1px solid var(--ck-line, rgba(0,0,0,.1)); border-radius: 12px; overflow: hidden; }
+    .cat-sec { border: 1px solid var(--ck-line, rgba(0,0,0,.1)); border-radius: 12px; overflow: hidden; min-width: 0; }
     .cat-sec-h { display: flex; align-items: center; gap: .5rem; padding: .75rem 1rem; text-decoration: none; color: inherit; background: var(--ck-surface-alt, #f5f5f1); }
     .cat-sec-name { font-weight: 700; font-size: .9375rem; }
     .cat-sec-n { font-size: .75rem; color: var(--ck-ink-soft, #888); background: var(--ck-bg, #fff); padding: .125rem .5rem; border-radius: 999px; }
     .cat-sec-more { margin-left: auto; font-size: .75rem; color: var(--ck-accent, #333); white-space: nowrap; }
-    /* 品类内4卡双列 */
-    .cat-sec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; padding: .5rem; }
-    .card.mini { padding: .375rem; gap: .25rem; border: none; border-radius: 8px; }
-    .card.mini img, .card.mini .ph { aspect-ratio: 4/3; border-radius: 6px; }
-    .card.mini h3 { font-size: .75rem; line-height: 1.3; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    /* ≤390 仍是两列，列宽可缩到 0，避免整页横向滚动 */
+    .cat-sec-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; padding: .5rem; min-width: 0; }
     /* 紧凑头部+chip */
     .hd { gap: .5rem; margin-bottom: 1rem; }
     h1 { font-size: 1.25rem; }

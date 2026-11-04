@@ -20,7 +20,11 @@ import { pageShell } from '../../../lib/shell';
 import { memo } from '../../../lib/memo';
 import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { CAT_LABEL } from '../../../lib/catalog';
-import { catalogLabel, claimNote, publicMoq, publicSample, softenClaims } from '../../../lib/comply-copy';
+import PortfolioCard from '../../../components/PortfolioCard.astro';
+import { catalogLabel, claimNote } from '../../../lib/comply-copy';
+import {
+  portfolioCoverSrc, portfolioDetailHref, portfolioFormatBadge, portfolioSampleHref,
+} from '../../../lib/portfolio-card';
 
 export const prerender = false;
 
@@ -43,10 +47,14 @@ let items: any[] = [];
 let catCounts: Array<{ category: string; n: number }> = [];
 if (db) {
   try {
-    items = await memo(`collection:${siteId}:${lang}:${cat}`, 3600, async () => {
+    items = await memo(`collection2:${siteId}:${lang}:${cat}`, 3600, async () => {
       return ((await db.prepare(
-        `SELECT p.id, p.slug, p.category, p.moq, p.cover_media, p.updated_at, i.name, i.summary
-           FROM products p LEFT JOIN product_i18n i ON i.product_id = p.id AND i.lang = ?
+        `SELECT p.id, p.slug, p.category, p.cover_media, p.updated_at, i.name, i.summary, i.specs_json,
+                (SELECT z.specs_json FROM product_i18n z WHERE z.product_id = p.id AND z.lang = 'zh-cn' LIMIT 1) AS specs_zh,
+                m.folder AS cover_folder, m.filename AS cover_filename, m.r2_key AS cover_key
+           FROM products p
+           LEFT JOIN product_i18n i ON i.product_id = p.id AND i.lang = ?
+           LEFT JOIN media m ON m.id = p.cover_media
           WHERE p.site_id = ? AND p.status = 'published' AND p.is_showcase = 1 AND p.category = ?
           ORDER BY p.sort_order, p.id DESC`,
       ).bind(lang, siteId, cat).all().catch(() => ({ results: [] }))).results ?? []) as any[];
@@ -98,7 +106,7 @@ const T = zh
       ],
       otherH: '其他品类', ask: '没找到合适的款?告诉我们品类、目标市场与数量。', inq: '发起询盘',
       empty: '该品类暂未上架成品。',
-      moq: publicMoq(true), sample: publicSample(true), sampleCta: '申请样品', more: '看详情',
+      sampleCta: '申请样品',
   }
   : {
       crumbAll: 'All products', eyebrow: 'Collection',
@@ -119,19 +127,22 @@ const T = zh
       ],
       otherH: 'Other categories', ask: 'Nothing quite right? Tell us the category, target market and quantity.', inq: 'Send an inquiry',
       empty: 'No products in this category yet.',
-      moq: publicMoq(false), sample: publicSample(false), sampleCta: 'Request sample', more: 'Details',
+      sampleCta: 'Request sample',
   };
 
-const listItems = items.map((p: any, i: number) => ({
-  '@type': 'ListItem', position: i + 1,
-  item: {
-    '@type': 'Product',
-    name: catalogLabel(p.name ?? p.slug, zh).name,
-    url: `${origin}${B}/product/${p.slug}/`,
-    ...(p.cover_media ? { image: `${origin}/media/${p.cover_media}` } : {}),
-    category: catLabel,
-  },
-}));
+const listItems = items.map((p: any, i: number) => {
+  const shot = portfolioCoverSrc(p);
+  return {
+    '@type': 'ListItem', position: i + 1,
+    item: {
+      '@type': 'Product',
+      name: catalogLabel(p.name ?? p.slug, zh).name,
+      url: `${origin}${B}/product/${p.slug}/`,
+      ...(shot ? { image: `${origin}${shot}` } : {}),
+      category: catLabel,
+    },
+  };
+});
 
 const jsonLd = ldJson({
   '@context': 'https://schema.org',
@@ -183,24 +194,24 @@ const jsonLd = ldJson({
     </section>
 
     <ul class="grid">
-      {items.map((p, idx) => (
+      {items.map((p, idx) => {
+        const shown = catalogLabel(String(p.name ?? p.slug ?? ''), zh);
+        return (
         <li>
-          <article class="card">
-            <a class="card-main" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>
-              {p.cover_media
-                ? <img src={`/media/${p.cover_media}`} alt={catalogLabel(p.name ?? p.slug, zh).name} width="600" height="600" loading={idx < 6 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" />
-                : <div class="ph" />}
-              <h2>{catalogLabel(p.name ?? p.slug, zh).name}</h2>
-              {p.summary && <p>{softenClaims(p.summary)}</p>}
-            </a>
-            <p class="meta">{catLabel} · {T.moq} · {T.sample}</p>
-            <div class="cta-row">
-              <a class="more" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>{T.more} →</a>
-              <a class="sample" href={`${B}/rfq/?product_id=${encodeURIComponent(String(p.id ?? ''))}&about=${encodeURIComponent(catalogLabel(String(p.name ?? p.slug), zh).name)}&category=${encodeURIComponent(cat)}`}>{T.sampleCta}</a>
-            </div>
-          </article>
+          <PortfolioCard
+            name={shown.name}
+            formatLabel={portfolioFormatBadge(p.specs_json, p.specs_zh, String(p.category ?? cat), zh)}
+            sampleHref={portfolioSampleHref(lang, p, shown.name)}
+            sampleLabel={T.sampleCta}
+            detailHref={portfolioDetailHref(lang, String(p.slug ?? ''), p)}
+            imageSrc={portfolioCoverSrc(p)}
+            imageAlt={shown.name}
+            eager={idx < 4}
+            priority={idx < 4}
+          />
         </li>
-      ))}
+        );
+      })}
     </ul>
 
     <section class="faq">
@@ -235,12 +246,9 @@ const jsonLd = ldJson({
   .intro { max-width: 62rem; margin: 0 0 1.5rem; }
   .intro h2 { font-size: 1.125rem; margin: 0 0 .5rem; }
   .intro p { font-size: .9375rem; line-height: 1.8; opacity: .85; margin: 0 0 .625rem; }
-  .grid { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
-  .card { display: grid; gap: .5rem; height: 100%; padding: .875rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; text-decoration: none; color: inherit; }
-  .card img, .ph { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: var(--ck-surface-alt, #f3f3f1); }
-  .card h2 { font-size: 1.0625rem; margin: 0; line-height: 1.4; }
-  .card p { margin: 0; font-size: .9rem; line-height: 1.6; opacity: .75; }
-  .card small { margin-top: auto; opacity: .65; }
+  .cl { min-width: 0; overflow-x: clip; }
+  .grid { list-style: none; padding: 0; margin: 0; display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); }
+  .grid > li { min-width: 0; }
   .faq { max-width: 62rem; margin: 2rem 0 0; }
   .faq h2 { font-size: 1.125rem; margin: 0 0 .5rem; }
   .faq details { border-top: 1px solid var(--ck-line, rgba(0,0,0,.12)); padding: .75rem 0; }
@@ -248,10 +256,4 @@ const jsonLd = ldJson({
   .faq p { margin: .5rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .82; }
   .ask { margin: 1.5rem 0 0; font-size: .9375rem; line-height: 1.75; opacity: .85; }
   @media (min-width: 900px) { .cl { padding: 2rem 1.5rem 4rem; } }
-  .card { display: grid; gap: .5rem; height: 100%; padding: .875rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 14px; }
-  .card-main { display: grid; gap: .5rem; text-decoration: none; color: inherit; }
-  .card .meta { margin: 0; font-size: .8125rem; line-height: 1.5; opacity: .65; }
-  .cta-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
-  .cta-row .more { font-size: .8125rem; opacity: .75; text-decoration: none; color: inherit; }
-  .cta-row .sample { display: inline-flex; font-size: .8125rem; font-weight: 600; padding: .25rem .625rem; border-radius: 999px; border: 1px solid var(--ck-accent, #333); color: var(--ck-accent, #333); text-decoration: none; }
 </style>
