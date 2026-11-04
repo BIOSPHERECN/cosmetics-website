@@ -26,7 +26,7 @@ import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { readSession, readCookie, COOKIE } from '../../../lib/auth';
 import { catalogLabel, softenClaims } from '../../../lib/comply-copy';
 import { rfqProductHooks } from '../../../lib/rfq-fields';
-import { waveBySlug, waveCopy, waveRfqPath, waveSiblings } from '../../../lib/wave-products';
+import { productPageFaqs, waveBySlug, waveCopy, waveCorrectedProductLd, waveMarketFaqs, waveRfqPath, waveSiblings } from '../../../lib/wave-products';
 
 export const prerender = false;
 
@@ -56,7 +56,7 @@ let product = db ? await db.prepare(
     ORDER BY ${PRI} LIMIT 1`,
 ).bind(lang, siteId, pslug, preview ? 1 : 0, lang).first<any>() : null;
 
-/* 首波三卡：公开文案以内容模块为准，product_id 用 slug。无库也能开页。 */
+/* 爆品卡：公开文案以内容模块为准，product_id 用 slug。无库也能开页。 */
 const waveCard = waveBySlug(pslug);
 const waveView = waveCard ? waveCopy(waveCard, lang) : null;
 if (waveCard && waveView) {
@@ -87,6 +87,8 @@ if (product.id != null && db) {
   images = (gallery ?? []).map((g) => `/media/${g.media_id}`);
   if (!images.length && product.cover_media) images.push(`/media/${product.cover_media}`);
 }
+/* 第二波无库图时用包材示意。示意不是成品实拍，说明写在图下。 */
+if (!images.length && waveCard?.image) images.push(waveCard.image);
 
 /* 同品类的其他产品 —— 「看更多」要有去处 */
 const related = (product.id != null && db)
@@ -128,7 +130,7 @@ const shown = catalogLabel(String(product.name ?? ''), zh);
 const displayName = shown.name;
 const displaySummary = product.summary ? softenClaims(String(product.summary)) : '';
 /* W5：详情页三个行动都进 RFQ。普通产品用库内 id，缺则 slug。
-   首波三卡的 product_id 必须等于 slug，并带上市场①预填，不把防晒数字写进链接。 */
+   爆品卡的 product_id 必须等于 slug，并带上市场预填。防晒卡不把防晒数字写进链接。 */
 const productRef = waveCard ? waveCard.slug : (String(product.id ?? '').trim() || String(product.slug || pslug).trim());
 const productHooks = rfqProductHooks({
   hasContext: true,
@@ -189,51 +191,57 @@ const metaDesc = descStub
       : `${displayName} — ${catLabel} OEM/ODM manufacturing. MOQ by category and packaging, confirmed in writing. Formula, packaging, fragrance and label customization on our Guangzhou lines (GMPC, ISO 22716, HALAL); sampling available.`))
   : softenClaims(descRaw).slice(0, 158);
 /* 产品 FAQ 只定义一次:同时进 FAQPage schema 与可见 HTML。
-   2026-10-28 调研结论:AI 只读可见正文,藏在 JSON-LD 里的问答等于没写。 */
-const faqs = [
-  { q: zh ? `${displayName} 的起订量是多少？` : `What is the MOQ for ${displayName}?`,
-    a: zh ? `起订量按品类与包材议定,具体以书面确认为准。请通过询盘告知品类与目标量,我们会在一个工作日内回复。`
-         : `MOQ is agreed per category and packaging and confirmed in writing. Send your target quantity via inquiry; we reply within one business day.` },
-  { q: zh ? `${displayName} 可以打样吗？多久能拿到样品？` : `Can I get a sample of ${displayName}? How long does sampling take?`,
-    a: zh ? `可以打样。打样通常 5–14 天，这是样品指示，须书面确认，不是大货交期。样品是否收费视复杂度而定，询盘时说明。`
-         : `Yes. Sampling is typically 5–14 days: a sample indication, confirmed in writing, not a production lead time. Sample fees depend on complexity; mention it in your inquiry.` },
-  { q: zh ? `这款产品有哪些认证支持？` : `What certifications are available for this product?`,
-    a: waveView
-      ? waveView.certAnswer
-      : (zh ? `工厂持有 GMPC、ISO 22716、HALAL 认证;出口支持 FDA 注册（注册≠批准、不发证书）、CPNP 通报、东南亚备案。具体到本品的适用认证请询盘确认。`
-         : `The factory holds GMPC, ISO 22716, and HALAL certifications. Export compliance includes FDA registration (registration is not approval, and no certificate is issued), CPNP notification, and Southeast Asian market filings. Applicable certifications for this product are confirmed per inquiry.`) },
-  { q: zh ? `${displayName} 的生产周期/交期是多久？` : `What is the production lead time for ${displayName}?`,
-    a: zh ? `生产周期按品类、包材与订单量确认,以书面合同为准。打样后可进入量产排程,询盘时说明目标上市时间。`
-         : `Lead time is confirmed per category, packaging and order quantity in writing. After sample sign-off the order enters production scheduling; mention your target launch date in the inquiry.` },
-  { q: zh ? `${displayName} 可以做 OEM/ODM 定制吗？定制范围是什么？` : `Can ${displayName} be customized under OEM/ODM? What can be changed?`,
-    a: zh ? `配方、包材、香型、质地、规格与标签语言可按项目确定。功效宣称受目标市场规则与第三方报告限制：没有对应报告，就不能上标签宣称。`
-         : `Formula, packaging, fragrance, texture, volume and label language are scoped per project. Claims are limited by target-market rules and third-party reports: no report, no label claim.` },
-];
+   2026-10-28 调研结论:AI 只读可见正文,藏在 JSON-LD 里的问答等于没写。
+   第二波在 5 条通用问之后再加 2 条市场问，两边仍是同一份数组。
+   非爆品卡的认证答沿用 FDA 口径：注册≠批准、不发证书。 */
+const faqs = productPageFaqs({
+  zh,
+  name: displayName,
+  certAnswer: waveView
+    ? waveView.certAnswer
+    : (zh ? `工厂持有 GMPC、ISO 22716、HALAL 认证;出口支持 FDA 注册（注册≠批准、不发证书）、CPNP 通报、东南亚备案。具体到本品的适用认证请询盘确认。`
+         : `The factory holds GMPC, ISO 22716, and HALAL certifications. Export compliance includes FDA registration (registration is not approval, and no certificate is issued), CPNP notification, and Southeast Asian market filings. Applicable certifications for this product are confirmed per inquiry.`),
+  market: waveCard ? waveMarketFaqs(waveCard, lang) : [],
+});
+const productDescription = descRaw && !descStub ? softenClaims(descRaw).slice(0, 900) : aboutText.join(' ');
+const legacyProductLd = {
+  '@context': 'https://schema.org', '@type': 'Product',
+  '@id': `${base}${path}`, name: displayName,
+  url: `${base}${path}`,
+  description: productDescription,
+  category: catLabel,
+  sku: product.slug,
+  ...(images.length ? { image: images.map((img) => `${base}${img}`) } : {}),
+  brand: { '@id': `${base}/#organization` },
+  manufacturer: { '@id': `${base}/#organization` },
+  offers: { '@type': 'Offer',
+    businessFunction: 'http://purl.org/goodrelations/v1#ProvideService',
+    availability: 'https://schema.org/InStock',
+    seller: { '@id': `${base}/#organization` },
+    url: `${base}${path}` },
+  ...(specList.length ? {
+    additionalProperty: specList.map((x) => ({ '@type': 'PropertyValue', name: x.label, value: x.value })),
+  } : {}),
+};
+const productLd = waveCard?.ld === 'corrected'
+  ? waveCorrectedProductLd({
+      origin: base,
+      path,
+      name: displayName,
+      description: productDescription,
+      category: catLabel,
+      sku: product.slug,
+      image: images[0] || waveCard?.image || '',
+      specs: specList,
+    })
+  : legacyProductLd;
 const jsonLd = [
   breadcrumbJsonLd(base, lang, path, lang === 'zh-cn' ? '首页' : 'Home', [
     { label: lang === 'zh-cn' ? '产品列表' : 'Products', href: `/${lang}/portfolio/` },
     { label: catLabel, href: `/${lang}/collections/${product.category}/` },
     { label: displayName, href: path },
   ]),
-  {
-    '@context': 'https://schema.org', '@type': 'Product',
-    '@id': `${base}${path}`, name: displayName,
-    url: `${base}${path}`,
-    description: descRaw && !descStub ? softenClaims(descRaw).slice(0, 900) : aboutText.join(' '),
-    category: catLabel,
-    sku: product.slug,
-    ...(images.length ? { image: images.map((img) => `${base}${img}`) } : {}),
-    brand: { '@id': `${base}/#organization` },
-    manufacturer: { '@id': `${base}/#organization` },
-    offers: { '@type': 'Offer',
-      businessFunction: 'http://purl.org/goodrelations/v1#ProvideService',
-      availability: 'https://schema.org/InStock',
-      seller: { '@id': `${base}/#organization` },
-      url: `${base}${path}` },
-    ...(specList.length ? {
-      additionalProperty: specList.map((x) => ({ '@type': 'PropertyValue', name: x.label, value: x.value })),
-    } : {}),
-  },
+  productLd,
   faqJsonLd(faqs),
 ].filter(Boolean) as Record<string, unknown>[];
 ---
@@ -267,7 +275,7 @@ const jsonLd = [
         <div class="gallery" data-gallery>
           <div class="stage">
             {images[0]
-              ? <img class="stage-img" data-stage src={images[0]} alt={displayName} decoding="async" />
+              ? <img class="stage-img" data-stage src={images[0]} alt={waveView?.imageCaption ? `${displayName}. ${waveView.imageCaption}` : displayName} decoding="async" />
               : <div class="noimg" aria-hidden="true"></div>}
             {images.length > 1 && <span class="count" data-count>1 / {images.length}</span>}
             {images.length > 1 && (
@@ -289,6 +297,7 @@ const jsonLd = [
               ))}
             </div>
           )}
+          {waveView?.imageCaption && <p class="imgnote">{waveView.imageCaption}</p>}
         </div>
         <div class="info">
           <p class="cat">{catLabel}</p>
@@ -397,8 +406,8 @@ const jsonLd = [
       </section>
 
       <p class="legal">{T.note}</p>
-      {waveView && waveCard && (
-        <p class="legal">{waveView.footnote} <a href={waveCard.source} rel="noopener noreferrer" target="_blank">{waveCard.source}</a></p>
+      {waveView?.footnote && (
+        <p class="legal">{waveView.footnote}{waveCard?.source ? <> <a href={waveCard.source} rel="noopener noreferrer" target="_blank">{waveCard.source}</a></> : null}</p>
       )}
 
       <section class="rel">
@@ -435,6 +444,7 @@ const jsonLd = [
 </BaseLayout>
 
 <style>
+  .imgnote { margin: .625rem 0 0; font-size: .875rem; line-height: 1.6; opacity: .72; }
   .faq { margin: 2rem 0 0; }
   .faq h2 { font-size: 1.125rem; margin: 0 0 .75rem; }
   .faq .qa { padding: .875rem 0; border-top: 1px solid var(--ck-line, rgba(0,0,0,.12)); }

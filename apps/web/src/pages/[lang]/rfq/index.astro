@@ -396,7 +396,7 @@ const T = zh
 </BaseLayout>
 
 {siteKey && <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer is:inline />}
-<script is:inline define:vars={{ zh, tOk: T.ok, tOkHint: T.okHint, tFail: T.fail, tSending: T.sending, tNeedContact: T.needContact, tNeedFields: T.needFields, tNeedMarket: F.needMarket, tPleaseSpecifyMarket: F.pleaseSpecifyMarket, tNeedBand: F.needBand, tNeedNotify: F.needNotify, tSubmit: T.submit }}>
+<script is:inline define:vars={{ zh, tOk: T.ok, tOkHint: T.okHint, tFail: T.fail, tSending: T.sending, tNeedContact: T.needContact, tNeedFields: T.needFields, tNeedMarket: F.needMarket, tPleaseSpecifyMarket: F.pleaseSpecifyMarket, tNeedBand: F.needBand, tNeedNotify: F.needNotify, tSubmit: T.submit, targetMarkets: [...TARGET_MARKETS], notifyCountries: [...NOTIFY_COUNTRIES] }}>
   (function () {
     var form = document.getElementById('rfq-form');
     var fb = document.getElementById('rfq-fb');
@@ -421,8 +421,8 @@ const T = zh
       var email = String(fd.get('email') || '').trim();
       var whatsapp = String(fd.get('whatsapp') || '').trim();
       var name = String(fd.get('name') || '').trim();
-      var targetMarket = pack(fd, 'target_market', ['SEA', 'GCC', 'Other'], 'target_market_other');
-      var notify = pack(fd, 'notification_assist_country', ['ID', 'MY', 'TH', 'VN', 'AE', 'SA', 'Other'], 'notification_assist_other');
+      var targetMarket = pack(fd, 'target_market', targetMarkets, 'target_market_other');
+      var notify = pack(fd, 'notification_assist_country', notifyCountries, 'notification_assist_other');
       var halal = String(fd.get('halal_ready') || '').trim();
       var scope = halal === 'yes' ? String(fd.get('halal_scope_note') || '').trim().slice(0, 200) : '';
       var band = String(fd.get('first_order_band') || '').trim();
