@@ -31,7 +31,7 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { PACK_SHELF } from '@cosmetic/core/generated/pack-shelf.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
-import { PACK_TYPE_LABEL, FMT_LABEL, label, packName, dualCapacity, materialFamily }
+import { PACK_TYPE_LABEL, FMT_LABEL, PRODUCT_CAT, label, packName, dualCapacity, materialFamily }
   from '../../../lib/catalog';
 import { pageShell } from '../../../lib/shell';
 
@@ -107,8 +107,8 @@ const T = zh ? {
   empty: '还没选', pick: '挑一个', drop: '换一个', more: '去库里慢慢挑',
   narrow: (n: number, why: string) => `按${why}筛过,${n.toLocaleString()} 款可选`,
   all: (n: number) => `${n.toLocaleString()} 款可选`,
-  send: '把这张清单发给我们', wa: 'WhatsApp',
-  ready: '这张清单已经能报价了 —— 把它发过来,我们按编码回复,不用再描述一遍。',
+  send: '提交 RFQ', wa: 'WhatsApp',
+  ready: '把这张清单提交为 RFQ。销售按编码书面回复,这里不自动报价。',
   hint: '每填一格,后面的可选范围就窄一截。填了配方,包材按剂型筛;填了包材,配方按它能装的剂型筛。',
 } : {
   eyebrow: 'Chain workbench',
@@ -119,8 +119,8 @@ const T = zh ? {
   empty: 'Empty', pick: 'Pick one', drop: 'Change', more: 'Browse the library',
   narrow: (n: number, why: string) => `${n.toLocaleString()} left after filtering by ${why}`,
   all: (n: number) => `${n.toLocaleString()} available`,
-  send: 'Send us this sheet', wa: 'WhatsApp',
-  ready: 'This sheet is quotable — send it over and we reply by code, no re-describing.',
+  send: 'Submit RFQ', wa: 'WhatsApp',
+  ready: 'Submit this sheet as an RFQ. Sales replies in writing by code. Nothing here is auto-quoted.',
   hint: 'Each slot you fill narrows the next. Pick a formula and containers filter by its format; pick a container and formulas filter by what it can hold.',
 };
 
@@ -144,6 +144,25 @@ const indexable = shell.site?.is_live === 1 && filled.length === 0;
 const nextSlot = (['pack', 'formula', 'carton', 'product'] as const)
   .find((k) => !slot[k]) ?? null;
 const PER = 24;
+/* 链位清单进 RFQ,不进 /contact/。product_id 用成品格,否则配方,否则包材,否则地址栏里的编码。
+   品类只在配方行真有 products.category 时带上;这条页没有目标市场,就不编 market。 */
+const rfqId = String(slot.product || slot.formula || slot.pack || codes[0] || '').slice(0, 40);
+const rfqCat = fx?.category && PRODUCT_CAT[String(fx.category)] ? String(fx.category).slice(0, 40) : '';
+const aboutParts = [
+  slot.formula ? `formula ${slot.formula}` : '',
+  slot.pack ? `pack ${slot.pack}` : '',
+  slot.carton ? `carton ${slot.carton}` : '',
+].filter(Boolean);
+const usedCodes = new Set([slot.formula, slot.pack, slot.carton, slot.product].filter(Boolean) as string[]);
+const extraCodes = codes.filter((c) => !usedCodes.has(c));
+if (extraCodes.length) aboutParts.push(extraCodes.join(' + '));
+const rfqAbout = aboutParts.join(' · ').slice(0, 160);
+const rfqQs = new URLSearchParams();
+if (rfqId) rfqQs.set('product_id', rfqId);
+if (rfqCat) rfqQs.set('category', rfqCat);
+if (rfqAbout) rfqQs.set('about', rfqAbout);
+rfqQs.set('intent', 'inquiry');
+const rfqHref = `${B}/rfq/?${rfqQs.toString()}`;
 ---
 
 <BaseLayout
@@ -193,12 +212,18 @@ const PER = 24;
 
     <p class="hint">{T.hint}</p>
 
-    {/* 结算态:四格填满(或至少配方+包材都有) */}
+    {rfqId && !(slot.pack && slot.formula) && (
+      <p class="acts">
+        <a class="btn pri" href={rfqHref}>{T.send}</a>
+      </p>
+    )}
+
+    {/* 结算态:配方 + 包材都有。主按钮只去 RFQ,不在这里报价。 */}
     {slot.pack && slot.formula ? (
       <section class="done">
         <p>{T.ready}</p>
         <p class="acts">
-          <a class="btn pri" href={`${B}/contact/?source=${encodeURIComponent(path)}`}>{T.send}</a>
+          <a class="btn pri" href={rfqHref}>{T.send}</a>
           <a class="btn" href="/zh-cn/contact/" rel="noopener">💬 {T.wa}</a>
           {/* WeChat 号不翻译,18 语种统一写「WeChat」 */}
           <span class="btn wx">💬 WeChat</span>

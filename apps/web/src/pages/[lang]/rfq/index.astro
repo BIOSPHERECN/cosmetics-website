@@ -14,7 +14,8 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
-import { PRODUCT_CAT } from '../../../lib/catalog';
+import { CAT_LABEL, PRODUCT_CAT, label } from '../../../lib/catalog';
+import { rfqCanLookup, rfqHasContext, rfqIdState, type RfqLookup } from '../../../lib/rfq-context';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'en';
@@ -29,8 +30,35 @@ const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
 const q = Astro.url.searchParams;
 const productId = (q.get('product_id') ?? '').trim().slice(0, 40);
 const about = (q.get('about') ?? '').trim().slice(0, 160);
+const formulaQ = (q.get('formula') ?? '').trim().slice(0, 40);
 const categoryQ = (q.get('category') ?? '').trim().slice(0, 40);
 const marketQ = (q.get('market') ?? '').trim().slice(0, 80);
+/* 有 product_id 才查一行。查不到且不是配方/包材编码 → 错误卡;库故障不误报。边缘缓存按 product_id 分键,同一 id 不会每次都打到 D1。 */
+let lookup: RfqLookup = 'skip';
+let found: { category: string; name: string } | null = null;
+if (productId && rfqCanLookup(productId) && db) {
+  try {
+    const row = await db.prepare(
+      `SELECT p.category,
+              (SELECT x.name FROM product_i18n x WHERE x.product_id = p.id
+                ORDER BY CASE x.lang WHEN ? THEN 0 WHEN 'en' THEN 1 WHEN 'zh-cn' THEN 2 ELSE 3 END
+                LIMIT 1) AS name
+         FROM products p
+        WHERE p.site_id = ? AND p.status = 'published' AND (p.id = ? OR p.slug = ?)
+        LIMIT 1`,
+    ).bind(lang, siteId, productId, productId).first<{ category: string | null; name: string | null }>();
+    if (row) {
+      lookup = 'found';
+      found = { category: String(row.category ?? ''), name: String(row.name ?? '') };
+    } else lookup = 'miss';
+  } catch { lookup = 'error'; }
+}
+const productName = (about || formulaQ || found?.name || '').trim().slice(0, 160);
+const categoryRaw = (categoryQ || found?.category || '').trim().slice(0, 40);
+const categoryKnown = !categoryRaw || categoryRaw in PRODUCT_CAT;
+const catChip = categoryRaw ? label(CAT_LABEL, categoryRaw, zh) : '';
+const showCard = rfqHasContext({ productId, about, formula: formulaQ, category: categoryQ });
+const idState = rfqIdState({ productId, about, formula: formulaQ, category: categoryQ, lookup });
 const siteKey = (import.meta.env.TURNSTILE_SITE_KEY as string | undefined) ?? '0x4AAAAAAEh9PTvpt4eaYV_q';
 const waNum = String(((Astro.locals as any)?.contact ?? {}).whatsapp ?? '').replace(/\D/g, '');
 const cats = Object.entries(PRODUCT_CAT);
@@ -49,7 +77,6 @@ const T = zh
       volumePh: '例：5000 件',
       product: '产品 / 编码（可选）',
       productPh: '产品名或内部编码',
-      productId: '产品 ID',
       name: '称呼',
       company: '公司（可选）',
       email: '邮箱',
@@ -64,9 +91,14 @@ const T = zh
       fail: '提交失败，请稍后重试或改用邮件。',
       needContact: '请填写邮箱或 WhatsApp。',
       needFields: '请填写市场、品类与预估量。',
-      portfolio: '返回产品库',
-      oem: 'OEM 市场矩阵',
+      portfolio: '浏览产品',
+      oem: 'OEM',
       noQuote: '提交后不会自动报价。',
+      forProduct: '正在申请样品',
+      change: '更换产品',
+      missId: '这条链接没有产品 ID。仍可手动填写并提交。',
+      badId: '这个产品 ID 无法识别。仍可手动填写并提交。',
+      catUnknown: '不在品类列表中',
     }
   : {
       title: 'Request sample / RFQ',
@@ -81,7 +113,6 @@ const T = zh
       volumePh: 'e.g. 5,000 pcs',
       product: 'Product / code (optional)',
       productPh: 'Product name or internal code',
-      productId: 'Product ID',
       name: 'Name',
       company: 'Company (optional)',
       email: 'Email',
@@ -96,9 +127,14 @@ const T = zh
       fail: 'Could not send — please retry or email us.',
       needContact: 'Enter an email or WhatsApp number.',
       needFields: 'Market, category and volume are required.',
-      portfolio: 'Back to product library',
-      oem: 'OEM by market',
+      portfolio: 'Browse products',
+      oem: 'OEM',
       noQuote: 'Submitting does not generate an automatic quote.',
+      forProduct: 'Requesting sample for',
+      change: 'Change product',
+      missId: 'This link has no product id. You can still fill in the form and submit.',
+      badId: 'This product id is not recognized. You can still fill in the form and submit.',
+      catUnknown: 'Not a listed category',
     };
 ---
 <BaseLayout locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={siteId}
@@ -113,6 +149,27 @@ const T = zh
       <p class="note">{T.note}</p>
       <p class="note strong">{T.noQuote}</p>
     </header>
+
+    {showCard && (
+      <section class:list={['sum', idState]} id="rfq-context" data-state={idState || 'ok'} aria-live="polite">
+        {idState === 'missing' && <p class="errline" role="alert">{T.missId}</p>}
+        {idState === 'bad' && <p class="errline" role="alert">{T.badId}</p>}
+        {idState === '' && <p class="kicker">{T.forProduct}</p>}
+        {(productName || productId) && (
+          <p class="pname">
+            {productName && <strong>{productName}</strong>}
+            {productId && <code>{productId}</code>}
+          </p>
+        )}
+        {categoryRaw && (
+          <p class="chips">
+            <span class:list={['chip', !categoryKnown && 'bad']}>{categoryKnown ? catChip : categoryRaw}</span>
+            {!categoryKnown && <span class="chip bad">{T.catUnknown}</span>}
+          </p>
+        )}
+        <a class="change" href={`${B}/products/`}>{T.change}</a>
+      </section>
+    )}
 
     <div id="rfq-ok" class="ok hidden" role="status" aria-live="polite" hidden></div>
 
@@ -131,18 +188,21 @@ const T = zh
       <label><span>{T.category} *</span>
         <select name="category" required>
           <option value="">{T.categoryPh}</option>
-          {cats.map(([id, label]) => (
-            <option value={id} selected={categoryQ === id}>{zh ? label : id}</option>
+          {cats.map(([id, lab]) => (
+            <option value={id} selected={categoryRaw === id}>{zh ? lab : id}</option>
           ))}
+          {categoryRaw && !(categoryRaw in PRODUCT_CAT) && (
+            <option value={categoryRaw} selected>{categoryRaw}</option>
+          )}
         </select>
+        {categoryRaw && !categoryKnown && <span class="chip bad">{T.catUnknown}</span>}
       </label>
       <label><span>{T.volume} *</span>
         <input type="text" name="volume" required maxlength="40" placeholder={T.volumePh} />
       </label>
       <label><span>{T.product}</span>
-        <input type="text" name="iq_product" maxlength="160" placeholder={T.productPh} value={about} />
+        <input type="text" name="iq_product" maxlength="160" placeholder={T.productPh} value={productName} />
       </label>
-      {productId && <p class="pid">{T.productId}: <code>{productId}</code></p>}
 
       <div class="g2">
         <label><span>{T.name} *</span><input type="text" name="name" required maxlength="120" autocomplete="name" /></label>
@@ -161,7 +221,7 @@ const T = zh
     </form>
 
     <p class="links">
-      <a href={`${B}/portfolio/`}>{T.portfolio}</a>
+      <a href={`${B}/products/`}>{T.portfolio}</a>
       · <a href={`${B}/oem/`}>{T.oem}</a>
       {waNum && <> · <a href={`https://wa.me/${waNum}`} target="_blank" rel="noopener">WhatsApp</a></>}
       · <a href={`mailto:${shell.email}`}>{shell.email}</a>
@@ -227,6 +287,7 @@ const T = zh
           form.classList.add('hidden');
           ok.hidden = false; ok.classList.remove('hidden');
           ok.innerHTML = '<strong>' + tOk + '<code>' + tid + '</code></strong><br>' + tOkHint;
+          try { history.replaceState(null, '', '#rfq-ok'); } catch (e2) {}
           fb.className = 'fb ok'; fb.textContent = '';
         }
       } catch (err) {
@@ -255,8 +316,31 @@ const T = zh
   .fb.err { color: #A02B20; } .fb.ok { color: #1D7A46; }
   .ok { padding: 1rem 1.125rem; border-radius: 12px; border: 1px solid #1D7A46; background: #f0faf4; margin-bottom: 1rem; line-height: 1.6; }
   .ok.hidden, .hidden { display: none !important; }
-  .pid { font-size: .8125rem; opacity: .75; margin: 0; }
-  .links { margin-top: 1.5rem; font-size: .875rem; }
+  .sum { display: grid; gap: .5rem; margin: 0 0 1.25rem; padding: .875rem 1rem;
+         border: 1px solid var(--ck-line, rgba(0,0,0,.14)); border-radius: 12px; }
+  .sum.missing, .sum.bad { border-color: #A02B20; background: rgba(160, 43, 32, .08); }
+  .sum .kicker, .sum .errline, .sum .pname, .sum .chips { margin: 0; }
+  .sum .kicker { font-size: .8125rem; letter-spacing: .01em; opacity: .75; }
+  .sum .errline { color: #A02B20; font-size: .875rem; line-height: 1.5; }
+  :global(html[data-noir]) .sum.missing, :global(html[data-noir]) .sum.bad { border-color: #E07A72; background: rgba(224, 122, 114, .16); }
+  :global(html[data-noir]) .sum .errline { color: #F0B4AE; }
+  .pname { display: flex; flex-wrap: wrap; gap: .375rem .75rem; align-items: baseline; }
+  .pname strong { font-size: 1.0625rem; line-height: 1.35; overflow-wrap: anywhere; }
+  .pname code { font-size: .8125rem; overflow-wrap: anywhere; }
+  .chips { display: flex; flex-wrap: wrap; gap: .375rem; }
+  .chip { font-size: .75rem; line-height: 1.3; padding: .25rem .6rem; border-radius: 999px;
+          border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
+  .chip.bad { color: #A02B20; border-color: #A02B20; }
+  :global(html[data-noir]) .chip.bad { color: #F0B4AE; border-color: #E07A72; }
+  label .chip { justify-self: start; }
+  .change { font-size: .875rem; min-height: 44px; display: inline-flex; align-items: center; }
+  .links { margin-top: 1.5rem; font-size: .875rem; line-height: 1.7; }
+  .links a { display: inline-block; padding: .35rem 0; }
   .cf-turnstile { margin: .25rem 0; }
-  @media (max-width: 40rem) { .g2 { grid-template-columns: 1fr; } }
+  @media (max-width: 40rem) {
+    .g2 { grid-template-columns: 1fr; }
+    .btn { width: 100%; }
+    /* 右下角悬浮客服会盖住卡片右缘,窄屏给正文留出位置 */
+    .sum { padding-right: 4.75rem; }
+  }
 </style>
