@@ -3,7 +3,9 @@
  * 无库时也能开页；库里若已有同 slug，公开文案仍以这里为准，product_id 用 slug 不用数字 id。
  *
  * 首波三卡：价带只是零售观察区间，不是报价。spf_pa 只留字段，无第三方报告不写防晒数字。
- * 第二波两卡（精华）：不写死价，不写功效百分比。JSON-LD 走修正后形状（无 offers / InStock）。
+ * 五张卡的 Product JSON-LD 都走修正后形状：无 offers / InStock，@id 为 canonical#product，image 为包材示意（不是成品实拍）。
+ * 首波每卡在 5 条通用问之后加 2 条市场问；第二波每卡 3 条。页内 FAQ 与 FAQPage 同一份数组。
+ * 第二波两卡（精华）：不写死价，不写功效百分比。
  * Halal 只讨论 ready / 评估，不写本品已有证书。通告是协助，不是获批保证。
  * 欧盟责任人由客户担任，帛卉不担任 RP。
  */
@@ -84,23 +86,42 @@ function langBlock(partial: Omit<WaveLang, 'assure' | 'certAnswer'> & Partial<Pi
 
 /** 滴管瓶示意。页面上写明不是成品实拍。 */
 const SERUM_FORMAT_IMAGE = '/media/shots/fmt-serum.webp';
+/** 泵头瓶示意。防晒卡的软管 / 泵头或流体瓶未定稿时用它，图注写明不是成品。 */
+const PUMP_FORMAT_IMAGE = '/media/shots/fmt-cleanser.webp';
 
 export const WAVE_CARDS: WaveCard[] = [
   {
     slug: 'spf50-acne-gel-id',
     category: 'suncare',
     source: 'https://magpieiq.com/insights/top-sunscreen-brands-indonesia-2026/',
+    ld: 'corrected',
+    image: PUMP_FORMAT_IMAGE,
     rfq: {
       target_market: 'SEA',
       halal_ready: 'yes',
       notification_assist_country: 'ID',
       first_order_band: 'tbd',
     },
+    marketFaqs: [
+      {
+        qEn: 'What does Indonesia notification assist cover for this gel?',
+        aEn: 'Factory-side documents only. Indonesia notification assist, if requested, is not an approval guarantee and does not replace the local notifier.',
+        qZh: '这款凝胶的印尼通告协助包含什么？',
+        aZh: '只协助准备工厂侧资料。印尼通告协助若提出，不保证获批，也不替代当地通知主体。',
+      },
+      {
+        qEn: 'Can Halal-ready be discussed for this gel?',
+        aEn: 'Yes. Halal-ready can be discussed for the project. This page does not say the item already has a halal certificate.',
+        qZh: '这款凝胶可以讨论 Halal-ready 吗？',
+        aZh: '可以。项目可以讨论 Halal-ready。本页不表示本品已有清真证书。',
+      },
+    ],
     en: langBlock({
       name: 'Oil-control gel sunscreen (Indonesia)',
       summary: 'Lightweight gel sunscreen direction for Indonesia: oil-control, blemish-care, oily and acne-prone skin. Tube or pump, 30–50 mL. Observed retail band IDR 25k–50k — a range only, not a quote. No SPF or PA number is shown: there is no third-party report on this page.',
       description: 'OEM/ODM brief for a lightweight gel sunscreen aimed at Indonesia. Positioning is oil-control and blemish-care for oily, acne-prone skin. Pack talk is a tube or pump, 30–50 mL. The observed retail band IDR 25k–50k is a market range only, not a factory quote and not an automatic price. The spf_pa field stays empty of numbers until a third-party report exists. Halal-ready can be discussed for the project. Indonesia notification assist, if requested, is factory-side document help, not an approval guarantee. MOQ and lead time are confirmed in writing.',
       footnote: 'Retail-band note (public page, not a quote for this item):',
+      imageCaption: 'Pump-bottle format reference only. The brief is a tube or pump, confirmed in writing. Not a finished-goods photo.',
       specs: [
         { label: 'spf_pa', value: SPF_FIELD },
         { label: 'texture', value: 'gel' },
@@ -116,6 +137,7 @@ export const WAVE_CARDS: WaveCard[] = [
       summary: '面向印尼的轻薄凝胶防晒方向：控油、油痘肌护理，适合油性与易出痘肌肤。软管或泵头，30–50 mL。零售观察区间 IDR 25k–50k，只是区间，不是报价。本页没有第三方报告，所以不写防晒数字。',
       description: '这是面向印尼的 OEM/ODM 方向：轻薄凝胶防晒，控油，油痘肌护理，适合油性与易出痘肌肤。包材按软管或泵头讨论，容量 30–50 mL。零售观察区间 IDR 25k–50k 只展示区间，不是工厂报价，本页不生成报价。spf_pa 只留字段；本页没有第三方报告，所以不写防晒数字。清真只讨论项目是否需要 Halal-ready。印尼通告协助若提出，只协助准备工厂侧资料，不是代办承诺，也不保证获批。起订量与交期以书面确认为准。',
       footnote: '零售区间观察来源（公开页面，不是本品报价）：',
+      imageCaption: '泵头瓶包材示意。本品按软管或泵头讨论，以书面确认为准。不是成品实拍。',
       specs: [
         { label: 'spf_pa', value: '待第三方报告' },
         { label: 'texture', value: 'gel' },
@@ -131,17 +153,34 @@ export const WAVE_CARDS: WaveCard[] = [
     slug: 'serum-spf50-my',
     category: 'suncare',
     source: 'https://www.minimeinsights.com/2025/12/09/safi-launches-its-first-serum-sunscreen-safi-perfect-white-3x-advance-watery-light-serum-sunscreen/',
+    ld: 'corrected',
+    image: SERUM_FORMAT_IMAGE,
     rfq: {
       target_market: 'SEA',
       halal_ready: 'yes',
       notification_assist_country: 'MY',
       first_order_band: 'tbd',
     },
+    marketFaqs: [
+      {
+        qEn: 'What does Malaysia notification assist cover for this serum sunscreen?',
+        aEn: 'Factory-side documents only. Malaysia notification assist, if requested, is not an approval guarantee and does not replace the local notifier.',
+        qZh: '这款水感防晒的马来西亚通告协助包含什么？',
+        aZh: '只协助准备工厂侧资料。马来西亚通告协助若提出，不保证获批，也不替代当地通知主体。',
+      },
+      {
+        qEn: 'Is Halal-ready a certificate for this item?',
+        aEn: 'No. Halal-ready can be discussed for the project. This page does not say the item already has a halal certificate.',
+        qZh: 'Halal-ready 是不是本品的清真证书？',
+        aZh: '不是。项目只讨论是否需要 Halal-ready，不表示本品已有清真证书。',
+      },
+    ],
     en: langBlock({
       name: 'Watery serum sunscreen (Malaysia)',
       summary: 'Watery serum sunscreen for Malaysia: brightening-oriented, and it can sit as a makeup base. Observed retail band MYR 15–40 — a range only, not a quote. No SPF or PA number is shown: there is no third-party report on this page.',
       description: 'OEM/ODM brief for Malaysia: a watery serum sunscreen that can work as a makeup base. The claim field is brightening-oriented. Pack is a serum bottle or tube; fill volume is confirmed in writing. The observed retail band MYR 15–40 is a market range only, not a factory quote and not an automatic price. The spf_pa field stays empty of numbers until a third-party report exists. Halal-ready can be discussed. Malaysia notification assist, if requested, is factory-side document help, not an approval guarantee. MOQ and lead time are confirmed in writing.',
       footnote: 'Retail-band note (public page, not a quote for this item):',
+      imageCaption: 'Serum-bottle format reference only. The brief is a serum bottle or tube, confirmed in writing. Not a finished-goods photo.',
       specs: [
         { label: 'spf_pa', value: SPF_FIELD },
         { label: 'texture', value: 'serum' },
@@ -157,6 +196,7 @@ export const WAVE_CARDS: WaveCard[] = [
       summary: '面向马来西亚的水感精华防晒：提亮取向，可作妆前基底。零售观察区间 MYR 15–40，只是区间，不是报价。本页没有第三方报告，所以不写防晒数字。',
       description: '这是面向马来西亚的 OEM/ODM 方向：水感精华防晒，可作妆前基底。宣称口径是提亮取向。包材按精华瓶或软管讨论，容量书面确认。零售观察区间 MYR 15–40 只展示区间，不是工厂报价，本页不生成报价。spf_pa 只留字段；本页没有第三方报告，所以不写防晒数字。清真只讨论是否需要 Halal-ready。马来西亚通告协助若提出，只协助准备工厂侧资料，不是代办承诺，也不保证获批。起订量与交期以书面确认为准。',
       footnote: '零售区间观察来源（公开页面，不是本品报价）：',
+      imageCaption: '精华瓶包材示意。本品按精华瓶或软管讨论，以书面确认为准。不是成品实拍。',
       specs: [
         { label: 'spf_pa', value: '待第三方报告' },
         { label: 'texture', value: 'serum' },
@@ -172,6 +212,8 @@ export const WAVE_CARDS: WaveCard[] = [
     slug: 'zerocast-spf50-ae',
     category: 'suncare',
     source: 'https://www.amazon.ae/gp/bestsellers/beauty/12149885031',
+    ld: 'corrected',
+    image: PUMP_FORMAT_IMAGE,
     rfq: {
       target_market: 'GCC',
       halal_ready: 'unsure',
@@ -179,11 +221,26 @@ export const WAVE_CARDS: WaveCard[] = [
       first_order_band: 'tbd',
       need_msds_coa: 'yes',
     },
+    marketFaqs: [
+      {
+        qEn: 'What do UAE notification assist and Arabic label assist cover?',
+        aEn: 'Document help only. They are not an approval guarantee and do not replace the in-market notifier.',
+        qZh: '阿联酋通告协助和阿拉伯语标签协助包含什么？',
+        aZh: '只协助资料。不保证获批，也不替代当地通知主体。',
+      },
+      {
+        qEn: 'Can an MSDS and COA pack be requested, and is Halal-ready decided?',
+        aEn: 'An MSDS/COA file pack can be requested on the RFQ. Halal-ready stays unsure until the project scope is discussed. This page does not say the item already has a halal certificate.',
+        qZh: '能否索取 MSDS 与 COA？Halal-ready 是否已定？',
+        aZh: 'MSDS/COA 文件包可在询盘里提出需要。Halal-ready 先标为还不确定，等项目范围再讨论。本页不表示本品已有清真证书。',
+      },
+    ],
     en: langBlock({
       name: 'Zero-white-cast fluid sunscreen (UAE)',
       summary: 'Invisible fluid or aqua gel for the UAE: zero-white-cast, lightweight, sensitive-friendly. Observed retail band AED 20–70 — a range only, not a quote. No SPF or PA number is shown: there is no third-party report on this page. Halal-ready is unsure until the project scope is discussed.',
       description: 'OEM/ODM brief for the UAE: an invisible fluid or aqua gel sunscreen, zero-white-cast, lightweight, and sensitive-friendly. Pack format is confirmed in writing. The observed retail band AED 20–70 is a market range only, not a factory quote and not an automatic price. The spf_pa field stays empty of numbers until a third-party report exists. Halal-ready is marked unsure until the project scope is discussed. Arabic label assist and UAE notification assist are document help only, not an approval guarantee. An MSDS/COA file pack can be requested on the RFQ. MOQ and lead time are confirmed in writing.',
       footnote: 'Retail-band note (public bestseller page, not a listing of this item and not a quote):',
+      imageCaption: 'Pump-bottle format reference only. The brief is a fluid or aqua-gel bottle, confirmed in writing. Not a finished-goods photo.',
       specs: [
         { label: 'spf_pa', value: SPF_FIELD },
         { label: 'texture', value: 'fluid/gel' },
@@ -200,6 +257,7 @@ export const WAVE_CARDS: WaveCard[] = [
       summary: '面向阿联酋的隐形流体或水感凝胶：无白痕、轻薄、敏感肌友好。零售观察区间 AED 20–70，只是区间，不是报价。本页没有第三方报告，所以不写防晒数字。Halal-ready 先标为还不确定。',
       description: '这是面向阿联酋的 OEM/ODM 方向：隐形流体或水感凝胶防晒，无白痕、轻薄、敏感肌友好。包材形式书面确认。零售观察区间 AED 20–70 只展示区间，不是工厂报价，本页不生成报价。spf_pa 只留字段；本页没有第三方报告，所以不写防晒数字。Halal-ready 先标为还不确定，等项目范围再讨论。阿拉伯语标签协助与阿联酋通告协助都只协助资料，不保证获批。MSDS/COA 文件包可在询盘里提出需要。起订量与交期以书面确认为准。',
       footnote: '零售区间观察来源（公开榜单页，不是本品在售链接，也不是报价）：',
+      imageCaption: '泵头瓶包材示意。本品按流体或水感凝胶瓶讨论，以书面确认为准。不是成品实拍。',
       specs: [
         { label: 'spf_pa', value: '待第三方报告' },
         { label: 'texture', value: 'fluid/gel' },
@@ -236,6 +294,12 @@ export const WAVE_CARDS: WaveCard[] = [
         aEn: 'Halal-ready is unsure until the project scope is discussed. The wording is process评估 not certification. This page does not say the item already has a halal certificate.',
         qZh: '这款精华的清真状态怎么说？',
         aZh: 'Halal-ready 先标为还不确定，等项目范围再讨论。口径是 process评估 not certification。不表示本品已有清真证书。',
+      },
+      {
+        qEn: 'Do you offer Halal-ready formulation for this serum?',
+        aEn: 'We can assess raw materials and process for Halal-ready suitability. This is not Halal certification; if you need a certificate, please name your preferred certification body and we will align the dossier.',
+        qZh: '这支精华能否做 Halal-ready？',
+        aZh: '可做原料与工艺的 Halal-ready 可评估；不是 Halal 认证。若需证书，请指定认证机构，我们配合资料包。',
       },
     ],
     en: langBlock({
@@ -299,6 +363,12 @@ export const WAVE_CARDS: WaveCard[] = [
         aEn: 'Factory-side MSDS, COA and the factory portion of a PIF can be requested on the RFQ. That set is not the full EU product information file, and it does not replace the customer as RP.',
         qZh: '能不能提供 MSDS、COA 和 PIF？',
         aZh: '可以按询盘提供工厂侧 MSDS、COA，以及 PIF 里属于工厂的那一部分。这不是完整的欧盟产品信息档案，也不能代替客户担任责任人。',
+      },
+      {
+        qEn: 'Can you provide MSDS and COA for EU private-label orders?',
+        aEn: 'Yes. For EU projects we assist with MSDS/COA and CPNP dossier materials. The Responsible Person (RP) and CPNP notification must be held by you or your appointed third party—Bohui does not act as RP.',
+        qZh: '欧盟私牌能否提供 MSDS / COA？',
+        aZh: '可。欧盟项目我们协助 MSDS/COA 与 CPNP 资料包；责任人（RP）与 CPNP 通报须由贵司或指定第三方担任，帛卉不任 RP。',
       },
     ],
     en: langBlock({

@@ -87,12 +87,14 @@ for (const card of WAVE_CARDS) {
   assert.match(blob, /moq_note/);
   assert.doesNotMatch(blob, /自动报价/);
   assert.equal(card.rfq.first_order_band, 'tbd');
+  assert.equal(card.ld, 'corrected');
+  assert.ok(card.image && card.image.startsWith('/media/shots/'));
+  assert.equal(existsSync(new URL(`../apps/web/public${card.image}`, import.meta.url)), true, card.image);
   const want = expectRfq[card.slug];
   if (want.category === 'suncare') {
     assert.match(blob, /spf_pa/);
     assert.match(blob, /lead_time_window_note/);
   } else {
-    assert.equal(card.ld, 'corrected');
     assert.doesNotMatch(blob, /spf_pa/);
     assert.doesNotMatch(blob, /lead_time_window_note/);
     assert.doesNotMatch(blob, /\d+\s*%/);
@@ -213,6 +215,67 @@ for (const card of [sa, eu]) {
       assert.equal(ld.additionalProperty.find((p) => p.name === 'target_market').value, 'EU');
     }
     const market = waveMarketFaqs(card, lang);
+    assert.equal(market.length, 3);
+    const faqs = productPageFaqs({
+      zh: lang === 'zh-cn',
+      name: copy.name,
+      certAnswer: copy.certAnswer,
+      market,
+    });
+    assert.equal(faqs.length, 8);
+    assert.deepEqual(faqs.slice(5), market);
+    if (card.slug === 'niacinamide-txa-serum-sa') {
+      assert.match(market.map((f) => f.a).join('\n'), /SFDA 资料协助≠批准/);
+      assert.match(market.map((f) => f.a).join('\n'), /process评估 not certification/);
+      if (lang === 'zh-cn') {
+        assert.equal(market[2].q, '这支精华能否做 Halal-ready？');
+        assert.match(market[2].a, /不是 Halal 认证/);
+      } else {
+        assert.equal(market[2].q, 'Do you offer Halal-ready formulation for this serum?');
+        assert.match(market[2].a, /This is not Halal certification/);
+      }
+    } else {
+      assert.match(market.map((f) => f.a).join('\n'), /CPNP assist/);
+      assert.match(market.map((f) => f.a).join('\n'), /Bohui not RP/);
+      assert.match(market.map((f) => f.q + f.a).join('\n'), /MSDS/);
+      assert.match(market.map((f) => f.a).join('\n'), /COA/);
+      assert.match(market.map((f) => f.a).join('\n'), /PIF/);
+      if (lang === 'zh-cn') {
+        assert.equal(market[2].q, '欧盟私牌能否提供 MSDS / COA？');
+        assert.match(market[2].a, /帛卉不任 RP/);
+      } else {
+        assert.equal(market[2].q, 'Can you provide MSDS and COA for EU private-label orders?');
+        assert.match(market[2].a, /Bohui does not act as RP/);
+      }
+    }
+  }
+}
+const FIRST_WAVE = ['spf50-acne-gel-id', 'serum-spf50-my', 'zerocast-spf50-ae'];
+for (const slug of FIRST_WAVE) {
+  const card = waveBySlug(slug);
+  assert.equal(card.ld, 'corrected', slug);
+  assert.equal((card.marketFaqs ?? []).length, 2, slug);
+  for (const lang of ['en', 'zh-cn']) {
+    const copy = waveCopy(card, lang);
+    const origin = 'https://biosphere-ai.com';
+    const path = `/${lang}/product/${card.slug}/`;
+    const ld = waveCorrectedProductLd({
+      origin,
+      path,
+      name: copy.name,
+      description: copy.description,
+      category: lang === 'zh-cn' ? '防晒' : 'Sun care',
+      sku: card.slug,
+      image: card.image,
+      specs: copy.specs,
+    });
+    assert.equal(ld['@id'], `${origin}${path}#product`);
+    assert.equal(ld.image, `${origin}${card.image}`);
+    assert.equal(Object.hasOwn(ld, 'offers'), false);
+    const raw = JSON.stringify(ld);
+    assert.doesNotMatch(raw, /InStock/);
+    assert.doesNotMatch(raw, /"offers"/);
+    const market = waveMarketFaqs(card, lang);
     assert.equal(market.length, 2);
     const faqs = productPageFaqs({
       zh: lang === 'zh-cn',
@@ -222,24 +285,13 @@ for (const card of [sa, eu]) {
     });
     assert.equal(faqs.length, 7);
     assert.deepEqual(faqs.slice(5), market);
-    if (card.slug === 'niacinamide-txa-serum-sa') {
-      assert.match(market.map((f) => f.a).join('\n'), /SFDA 资料协助≠批准/);
-      assert.match(market.map((f) => f.a).join('\n'), /process评估 not certification/);
-    } else {
-      assert.match(market.map((f) => f.a).join('\n'), /CPNP assist/);
-      assert.match(market.map((f) => f.a).join('\n'), /Bohui not RP/);
-      assert.match(market.map((f) => f.q + f.a).join('\n'), /MSDS/);
-      assert.match(market.map((f) => f.a).join('\n'), /COA/);
-      assert.match(market.map((f) => f.a).join('\n'), /PIF/);
-    }
+    const joined = market.map((f) => `${f.q}\n${f.a}`).join('\n');
+    assert.match(joined, /Halal-ready/);
+    assert.doesNotMatch(joined, /halal[-\s]?certified/i);
+    assert.doesNotMatch(joined, /SFDA[-\s]?approv/i);
+    assert.doesNotMatch(joined, /FDA/);
   }
 }
-assert.equal(productPageFaqs({
-  zh: false,
-  name: 'Oil-control gel sunscreen (Indonesia)',
-  certAnswer: waveCopy(waveBySlug('spf50-acne-gel-id'), 'en').certAnswer,
-  market: waveMarketFaqs(waveBySlug('spf50-acne-gel-id'), 'en'),
-}).length, 5);
 
 const overridden = waveFormPrefill('spf50-acne-gel-id', { ...EMPTY, halal_ready: 'no', target_market: ['GCC'] });
 assert.equal(overridden.halal_ready, 'no');
@@ -265,7 +317,7 @@ assert.match(rfq, /product_id: productId/);
 assert.match(rfq, /waveSummary/);
 assert.doesNotMatch(rfq, /halal certified/i);
 const middleware = read('apps/web/src/middleware.ts');
-assert.match(middleware, /const CACHE_V = 'v130'/);
+assert.match(middleware, /const CACHE_V = 'v131'/);
 assert.doesNotMatch(read('apps/web/src/lib/gcc-fair-status.ts'), /wave-products/);
 assert.doesNotMatch(read('apps/web/src/lib/cosmopack-inquiry.ts'), /wave-products/);
 assert.doesNotMatch(read('apps/web/src/lib/cert-matrix.ts'), /wave-products/);
