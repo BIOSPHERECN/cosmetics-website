@@ -27,6 +27,7 @@ test('home cert wall splits factory certs from filings', () => {
   assert.deepEqual(wall.filing.map((i) => i.label), ['US FDA', 'EU CPNP']);
   assert.equal(wall.factory.some((i) => /FDA|CPNP|SGS|\bCE\b/i.test(`${i.label} ${i.note}`)), false);
   assert.match(wall.filing[0].note ?? '', /not a factory certification/i);
+  assert.match(wall.filing[0].note ?? '', /registration is not approval/i);
   assert.match(wall.filing[1].note ?? '', /not a factory certification/i);
   assert.equal(wall.sawSgs, true);
   assert.equal(wall.other.some((i) => /patent/i.test(i.label ?? '')), true);
@@ -60,6 +61,7 @@ test('cert answers lead with three factory certs and keep filings in a separate 
   );
   assert.match(en, /^Factory certifications held: GMPC, ISO 22716:2007 and HALAL only/);
   assert.match(en, /not factory certifications/);
+  assert.match(en, /registration is not approval/i);
   assert.doesNotMatch(en, /SGS,|\bCE\b|FDA certified/);
   const zh = rewriteHeldCertAnswer(
     'GMPC、ISO 22716:2007、HALAL、FDA 工厂注册、EU CPNP、SGS。证书编号与有效期凭原件提供。',
@@ -67,6 +69,7 @@ test('cert answers lead with three factory certs and keep filings in a separate 
   );
   assert.match(zh, /^工厂持有认证仅列：GMPC、ISO 22716:2007、HALAL/);
   assert.match(zh, /不是工厂认证/);
+  assert.match(zh, /注册≠批准、不发证书/);
   assert.equal(rewriteHeldCertAnswer(en, false), en);
 });
 

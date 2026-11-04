@@ -34,7 +34,7 @@ const BLOCKS = [
     title: '专利、认证与资质文件',
     intro: '证书编号与有效期可对扫描件核验。出口目的地不同需要的文件也不同 —— 这部分我们按目的地清单统一备齐,不是等你被卡在海关时才开始找。',
     items: [
-      { image: P('certs-wall-01'), label: '认证证书墙', note: 'GMPC / ISO 22716 / HALAL / FDA / CPNP' },
+      { image: P('certs-wall-01'), label: '认证与注册', note: 'GMPC / ISO 22716 / HALAL；FDA 为设施注册（注册≠批准、不发证书）；CPNP 为通报' },
       { image: P('certs-detail-01'), label: '证书原件', note: '编号与有效期可核验' },
       { image: '/media/60', label: '资质陈列', note: '接待区常设' },
     ] } },

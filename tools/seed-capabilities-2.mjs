@@ -37,12 +37,12 @@ const heroEn = {
 const ansZh = {
   tone: 'paper',
   question: '帛卉(BIOSPHERE-AI)能为品牌方提供什么代工能力?',
-  answer: '广州市帛卉化妆品有限公司是 AI 驱动的草本美妆智造平台:广州与印尼双基地合计 20,000+ ㎡,15 条自动化产线,10 万级 GMP 洁净车间;面膜日产能 50 万片以上、水乳霜日产能 30 万个以上;13,000+ 个成熟配方储备支撑 3–7 天快速打样。GMPC、ISO 22716、HALAL 认证与美国 FDA 设施注册、欧盟 CPNP 通报经验,覆盖欧美、东南亚与中东的市场准入。从 OEM 贴牌、ODM 定制到品牌全案孵化都能承接。',
+  answer: '广州市帛卉化妆品有限公司是 AI 驱动的草本美妆智造平台:广州与印尼双基地合计 20,000+ ㎡,15 条自动化产线,10 万级 GMP 洁净车间;面膜日产能 50 万片以上、水乳霜日产能 30 万个以上;13,000+ 个成熟配方储备支撑 3–7 天快速打样。GMPC、ISO 22716、HALAL 认证，以及美国 FDA 设施注册（注册≠批准、不发证书）与欧盟 CPNP 通报经验,覆盖欧美、东南亚与中东的市场准入。从 OEM 贴牌、ODM 定制到品牌全案孵化都能承接。',
   faqs: [
     { q: 'OEM 和 ODM 在帛卉分别怎么走?', a: 'OEM:您带配方或标准来,我们负责按标生产与全程质控。ODM:从 13,000+ 配方储备里按品牌定位选型改良,3–7 天打样,确认后进入中试与量产。只有一个想法也可以 —— 那就从品牌孵化开始。' },
     { q: '起订量(MOQ)怎么算?', a: '按剂型与包材组合评估:成熟剂型走标准起订量(产品目录各剂型均已标注),特殊包材或定制配方在需求判定阶段给出明确门槛 —— 报价单一次说清,不藏后手。' },
     { q: '打样要多久?', a: '成熟配方方向 3–7 天出样。样品阶段就前置体验性与稳定性初筛,避免「样品好看、量产翻车」。' },
-    { q: '出口认证与文件谁来准备?', a: '工厂持 GMPC、ISO 22716(DEKRA)与 HALAL 认证,有美国 FDA 化妆品设施注册与欧盟 CPNP 通报经验;COA、MSDS 等出口文件随单配套。' },
+    { q: '出口认证与文件谁来准备?', a: '工厂持 GMPC、ISO 22716(DEKRA)与 HALAL 认证,有美国 FDA 化妆品设施注册（注册≠批准、不发证书）与欧盟 CPNP 通报经验;COA、MSDS 等出口文件随单配套。' },
     { q: '可以只买其中一项能力吗?', a: '可以。制造、品牌孵化、供应链整合、全球交付四件能力独立计价 —— 已有成熟供应链的品牌只下制造单,新品牌可以整包托付。' },
     { q: '广州和印尼两个基地怎么选?', a: '面向中国与亚太的订单走广州总部(全球研发与品牌服务中心);东南亚与中东订单可走印尼工厂 —— 本土化交付、HALAL 合规、关税与物流占优。' },
   ],
@@ -50,12 +50,12 @@ const ansZh = {
 const ansEn = {
   tone: 'paper',
   question: 'What manufacturing capabilities does BIOSPHERE-AI offer brands?',
-  answer: 'Guangzhou Biosphere Cosmetics is an AI-driven herbal beauty manufacturing platform: 20,000+ m² across two plants in Guangzhou and Indonesia, 15 automated lines and a Class-100,000 GMP cleanroom; daily capacity above 500,000 sheet masks and 300,000 lotion/cream units. A library of 13,000+ proven formulations supports 3–7 day sampling. GMPC, ISO 22716 and HALAL certification plus US FDA facility registration and EU CPNP notification experience cover market entry across Europe, the Americas, Southeast Asia and the Middle East. We take on OEM, ODM and full brand incubation.',
+  answer: 'Guangzhou Biosphere Cosmetics is an AI-driven herbal beauty manufacturing platform: 20,000+ m² across two plants in Guangzhou and Indonesia, 15 automated lines and a Class-100,000 GMP cleanroom; daily capacity above 500,000 sheet masks and 300,000 lotion/cream units. A library of 13,000+ proven formulations supports 3–7 day sampling. GMPC, ISO 22716 and HALAL certification plus US FDA facility registration (registration is not approval, and no certificate is issued) and EU CPNP notification experience cover market entry across Europe, the Americas, Southeast Asia and the Middle East. We take on OEM, ODM and full brand incubation.',
   faqs: [
     { q: 'How do OEM and ODM work here?', a: 'OEM: you bring the formula or standard, we manufacture to it under full quality control. ODM: we shortlist from 13,000+ formulations on file to match your positioning, sample in 3–7 days, then move to pilot and mass production. Only an idea? Start with brand incubation.' },
     { q: 'How is MOQ calculated?', a: 'By format and packaging combination: mature formats run standard MOQs (marked on every format in the catalogue); special packaging or custom formulas get a clear threshold at the scoping stage — one quotation, nothing hidden.' },
     { q: 'How long does sampling take?', a: '3–7 days for mature formulation directions. Experience and stability screening starts at the sample stage, so what you approve is what scales.' },
-    { q: 'Who prepares export certification and documents?', a: 'The factory holds GMPC, ISO 22716 (DEKRA) and HALAL certification, with US FDA facility registration and EU CPNP notification experience; COA, MSDS and other export documents ship with the order.' },
+    { q: 'Who prepares export certification and documents?', a: 'The factory holds GMPC, ISO 22716 (DEKRA) and HALAL certification, with US FDA facility registration (registration is not approval, and no certificate is issued) and EU CPNP notification experience; COA, MSDS and other export documents ship with the order.' },
     { q: 'Can I buy just one capability?', a: 'Yes. Manufacturing, brand incubation, supply-chain integration and global delivery are priced independently — brands with a mature supply chain place manufacturing-only orders; new brands can hand over the whole job.' },
     { q: 'Guangzhou or Indonesia — which plant?', a: 'China and Asia-Pacific orders run through the Guangzhou headquarters (global R&D and brand-service centre); Southeast Asia and Middle East orders can run through the Indonesia plant — local delivery, HALAL compliance, tariff and logistics advantages.' },
   ],
@@ -202,12 +202,12 @@ const baseEn = {
 /* ── 117. 认证墙(PDF 第 12、13 页)──────────────────────────── */
 const certZh = {
   title: '认证与市场准入',
-  note: '认证不是墙上的装饰:GMPC 与 ISO 22716(DEKRA)是欧美订单的验厂底线,FDA 注册与 CPNP 通报支撑美欧上架;HALAL 覆盖范围以证书为准。',
+  note: '认证不是墙上的装饰:GMPC 与 ISO 22716(DEKRA)是欧美订单的验厂底线。FDA 是设施注册协助，注册≠批准、不发证书。CPNP 是通报。HALAL 覆盖范围以证书为准。',
   items: [
     { id: 'gmpc', label: 'GMPC', note: '化妆品良好生产规范(DEKRA 认证)' },
     { id: 'iso22716', label: 'ISO 22716:2007', note: '化妆品 GMP 国际标准(DEKRA 认证)' },
     { id: 'halal', label: 'HALAL', note: 'HALAL 认证(覆盖范围以证书为准)' },
-    { id: 'fda', label: 'FDA', note: '美国 FDA 化妆品设施注册' },
+    { id: 'fda', label: 'FDA', note: '美国 FDA 化妆品设施注册（注册≠批准、不发证书）' },
     { id: 'cpnp', label: 'CPNP', note: '欧盟化妆品通报' },
     { id: 'sgs', label: 'SGS', note: '第三方检测报告' },
     { id: 'ce', label: 'CE', note: '欧盟符合性标志' },
@@ -216,12 +216,12 @@ const certZh = {
 };
 const certEn = {
   title: 'Certification & market access',
-  note: 'Certificates are not wall decoration: GMPC and ISO 22716 (DEKRA) clear factory audits for Western orders, FDA registration and CPNP notification support US and EU listings; HALAL scope is as stated on the certificate.',
+  note: 'Certificates are not wall decoration: GMPC and ISO 22716 (DEKRA) clear factory audits for Western orders. FDA is facility-registration assistance: registration is not approval, and no certificate is issued. CPNP is notification. HALAL scope is as stated on the certificate.',
   items: [
     { id: 'gmpc', label: 'GMPC', note: 'Good Manufacturing Practice of Cosmetics (DEKRA)' },
     { id: 'iso22716', label: 'ISO 22716:2007', note: 'Cosmetics GMP international standard (DEKRA)' },
     { id: 'halal', label: 'HALAL', note: 'HALAL certification (scope as stated on the certificate)' },
-    { id: 'fda', label: 'FDA', note: 'US FDA cosmetic facility registration' },
+    { id: 'fda', label: 'FDA', note: 'US FDA cosmetic facility registration (registration is not approval, and no certificate is issued)' },
     { id: 'cpnp', label: 'CPNP', note: 'EU cosmetic product notification' },
     { id: 'sgs', label: 'SGS', note: 'Third-party testing reports' },
     { id: 'ce', label: 'CE', note: 'EU conformity marking' },
@@ -280,8 +280,8 @@ for (const [type, order, zh, en] of inserts) {
 }
 
 /* 页面 SEO 描述同步升级 */
-sql.push(`UPDATE page_i18n SET seo_desc=${lit('帛卉 BIOSPHERE-AI 能力与服务:20,000+㎡ 广州+印尼双基地、15 条智能产线、13,000+ 配方储备、3–7 天打样;GMPC / ISO 22716 / HALAL / FDA / CPNP 认证,OEM、ODM 与品牌孵化一站式。')} WHERE page_id=${PAGE} AND lang='zh-cn';`);
-sql.push(`UPDATE page_i18n SET seo_desc=${lit('BIOSPHERE-AI capabilities: 20,000+ m² across Guangzhou and Indonesia, 15 smart lines, 13,000+ formulations, 3–7 day sampling; GMPC / ISO 22716 / HALAL / FDA / CPNP certified. OEM, ODM and brand incubation.')} WHERE page_id=${PAGE} AND lang='en';`);
+sql.push(`UPDATE page_i18n SET seo_desc=${lit('帛卉 BIOSPHERE-AI 能力与服务:20,000+㎡ 广州+印尼双基地、15 条智能产线、13,000+ 配方储备、3–7 天打样;工厂认证仅 GMPC / ISO 22716 / HALAL。FDA 为设施注册协助，注册≠批准、不发证书。CPNP 为通报。OEM、ODM 与品牌孵化一站式。')} WHERE page_id=${PAGE} AND lang='zh-cn';`);
+sql.push(`UPDATE page_i18n SET seo_desc=${lit('BIOSPHERE-AI capabilities: 20,000+ m² across Guangzhou and Indonesia, 15 smart lines, 13,000+ formulations, 3–7 day sampling. Factory certifications: GMPC / ISO 22716 / HALAL only. FDA is facility-registration assistance: registration is not approval, and no certificate is issued. CPNP is notification. OEM, ODM and brand incubation.')} WHERE page_id=${PAGE} AND lang='en';`);
 
 const file = 'C:/Users/Administrator/AppData/Local/Temp/claude/F--0cosmetic/9c9aec8d-36c0-40f1-8422-d1cf7dcc8dd8/scratchpad/seed-cap2.sql';
 writeFileSync(file, sql.join('\n'));

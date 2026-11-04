@@ -30,7 +30,7 @@ const CERTS = [
   [136, 'cert-patent',  '发明专利证书'],
   [142, 'cert-halal',   'HALAL 清真认证证书'],
   [140, 'cert-cpnp',    '欧盟 CPNP 注册证书'],
-  [141, 'cert-fda',     '美国 FDA 注册证书'],
+  [141, 'cert-fda',     '美国 FDA 设施注册回执（注册≠批准、不发证书）'],
   [138, 'cert-halal-ahf', '美国清真基金会 AHF HALAL 证书'],
   [150, 'cert-ccpit',   '中国国际贸易促进委员会证明书'],
   [144, 'cert-license', '营业执照(广州市帛卉化妆品有限公司)'],
@@ -85,7 +85,7 @@ if (grid) {
       { image: M['cert-patent'], label: '发明专利', note: '核心技术专利证书' },
       { image: M['cert-halal'], label: 'HALAL 清真认证', note: '覆盖范围以证书为准' },
       { image: M['cert-cpnp'], label: '欧盟 CPNP', note: '欧盟化妆品注册' },
-      { image: M['cert-fda'], label: '美国 FDA', note: '化妆品设施注册' },
+      { image: M['cert-fda'], label: '美国 FDA', note: '化妆品设施注册（注册≠批准、不发证书）' },
     ],
   })}, mt=0 WHERE block_id=${grid.id} AND lang='zh-cn';`);
   sql2.push(`DELETE FROM block_i18n WHERE block_id=${grid.id} AND lang<>'zh-cn';`);
@@ -99,12 +99,12 @@ const qExist = d1(`SELECT b.id FROM blocks b JOIN block_i18n i ON i.block_id=b.i
 const qData = {
   eyebrow: 'EXPORT CREDENTIALS', tone: 'paper', cols: 2,
   title: '出口认证原件',
-  intro: '出口要用的注册与认证原件都在这里。两张 HALAL(国际清真 + 美国 AHF)的覆盖范围以证书为准,目的地认不认由当地主管机构决定;CPNP 与 FDA 分别对应欧盟与美国。MSDS 安全数据表与 COA 检测报告随批出具。',
+  intro: '出口要用的注册与认证原件都在这里。两张 HALAL(国际清真 + 美国 AHF)的覆盖范围以证书为准,目的地认不认由当地主管机构决定。CPNP 是欧盟通报。FDA 是美国设施注册协助，注册≠批准、不发证书。MSDS 安全数据表与 COA 检测报告随批出具。',
   items: [
     { image: M['cert-halal'], label: 'HALAL 清真认证', note: '覆盖范围以证书为准' },
     { image: M['cert-halal-ahf'], label: 'AHF HALAL(美国清真基金会)', note: '覆盖范围以证书为准' },
     { image: M['cert-cpnp'], label: '欧盟 CPNP 注册', note: '欧盟全境' },
-    { image: M['cert-fda'], label: '美国 FDA 注册', note: '化妆品设施注册' },
+    { image: M['cert-fda'], label: '美国 FDA 注册', note: '化妆品设施注册（注册≠批准、不发证书）' },
   ],
 };
 if (qExist) {

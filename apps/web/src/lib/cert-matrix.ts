@@ -45,7 +45,7 @@ function zhRows(ghad: string): CertMatrixRow[] {
     },
     {
       market: '美国',
-      item: '工厂已持有：GMPC、ISO 22716。FDA 设施注册是协助，不是工厂认证。',
+      item: '工厂已持有：GMPC、ISO 22716。FDA 设施注册是协助，不是工厂认证。注册≠批准、不发证书。',
       rfq: '是否需要 FDA 设施注册协助。',
     },
     {
@@ -76,7 +76,7 @@ function enRows(ghad: string): CertMatrixRow[] {
     },
     {
       market: 'United States',
-      item: 'Held at the plant: GMPC and ISO 22716. FDA facility registration is assistance, not a factory certification.',
+      item: 'Held at the plant: GMPC and ISO 22716. FDA facility registration is assistance, not a factory certification. Registration is not approval, and no certificate is issued.',
       rfq: 'Whether FDA facility-registration assist is needed.',
     },
     {
