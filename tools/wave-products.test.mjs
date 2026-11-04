@@ -440,7 +440,7 @@ assert.match(rfq, /product_id: productId/);
 assert.match(rfq, /waveSummary/);
 assert.doesNotMatch(rfq, /halal certified/i);
 const middleware = read('apps/web/src/middleware.ts');
-assert.match(middleware, /const CACHE_V = 'v138'/);
+assert.match(middleware, /const CACHE_V = 'v139'/);
 assert.doesNotMatch(read('apps/web/src/lib/gcc-fair-status.ts'), /wave-products/);
 assert.doesNotMatch(read('apps/web/src/lib/cosmopack-inquiry.ts'), /wave-products/);
 assert.doesNotMatch(read('apps/web/src/lib/cert-matrix.ts'), /wave-products/);
