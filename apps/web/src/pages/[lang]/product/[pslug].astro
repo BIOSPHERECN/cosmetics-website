@@ -25,6 +25,8 @@ import { breadcrumbJsonLd, faqJsonLd } from '../../../lib/jsonld';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { readSession, readCookie, COOKIE } from '../../../lib/auth';
 import { catalogLabel, softenClaims } from '../../../lib/comply-copy';
+import { gateProductRfqHref, productDetailRfqHref, productDosageLine } from '../../../lib/product-cta';
+import { portfolioCoverSrc } from '../../../lib/portfolio-card';
 import { rfqProductHooks } from '../../../lib/rfq-fields';
 import { productPageFaqs, waveBySlug, waveCopy, waveCorrectedProductLd, waveMarketFaqs, waveRfqPath, waveSiblings } from '../../../lib/wave-products';
 
@@ -47,14 +49,22 @@ const PRI = `CASE i.lang WHEN ? THEN 0 WHEN 'en' THEN 1 WHEN 'zh-cn' THEN 2 ELSE
 const preview = Astro.url.searchParams.has('preview')
   && !!(await readSession(readCookie(Astro.request.headers.get('cookie'), COOKIE), (env as any)?.AUTH_SECRET ?? '').catch(() => null));
 
-let product = db ? await db.prepare(
-  `SELECT p.id, p.slug, p.category, p.moq, p.cover_media,
-          i.name, i.summary, i.description, i.specs_json
-     FROM products p
-     JOIN product_i18n i ON i.product_id = p.id AND i.lang IN (?, 'en', 'zh-cn')
-    WHERE p.site_id = ? AND p.slug = ? AND (p.status = 'published' OR ?)
-    ORDER BY ${PRI} LIMIT 1`,
-).bind(lang, siteId, pslug, preview ? 1 : 0, lang).first<any>() : null;
+let product: any = null;
+if (db) {
+  try {
+    product = await db.prepare(
+      `SELECT p.id, p.slug, p.category, p.moq, p.cover_media,
+              i.name, i.summary, i.description, i.specs_json
+         FROM products p
+         JOIN product_i18n i ON i.product_id = p.id AND i.lang IN (?, 'en', 'zh-cn')
+        WHERE p.site_id = ? AND p.slug = ? AND (p.status = 'published' OR ?)
+        ORDER BY ${PRI} LIMIT 1`,
+    ).bind(lang, siteId, pslug, preview ? 1 : 0, lang).first<any>();
+  } catch {
+    /* 库没就绪时爆品卡仍要能开页。查得到再用库内 id。 */
+    product = null;
+  }
+}
 
 /* 爆品卡：公开文案以内容模块为准，product_id 用 slug。无库也能开页。 */
 const waveCard = waveBySlug(pslug);
@@ -80,15 +90,35 @@ if (!product) {
 }
 
 let images: string[] = [];
+/* 主图只留真产品图。证书章、原料溯源、车间/工厂实拍（含假车间）不进画廊。 */
+const shotOf = (row: { media_id?: unknown; folder?: unknown; filename?: unknown; r2_key?: unknown } | null | undefined) =>
+  portfolioCoverSrc({
+    cover_media: row?.media_id,
+    cover_folder: row?.folder,
+    cover_filename: row?.filename,
+    cover_key: row?.r2_key,
+  });
 if (product.id != null && db) {
   const { results: gallery } = await db.prepare(
-    `SELECT media_id FROM product_media WHERE product_id = ? ORDER BY sort_order`,
-  ).bind(product.id).all<{ media_id: number }>();
-  images = (gallery ?? []).map((g) => `/media/${g.media_id}`);
-  if (!images.length && product.cover_media) images.push(`/media/${product.cover_media}`);
+    `SELECT m.id AS media_id, m.folder, m.filename, m.r2_key
+       FROM product_media pm
+       JOIN media m ON m.id = pm.media_id
+      WHERE pm.product_id = ?
+      ORDER BY pm.sort_order`,
+  ).bind(product.id).all<{ media_id: number; folder: string | null; filename: string | null; r2_key: string | null }>();
+  images = (gallery ?? []).map((g) => shotOf(g)).filter((src): src is string => !!src);
+  if (!images.length && product.cover_media) {
+    const cover = await db.prepare(
+      `SELECT id AS media_id, folder, filename, r2_key FROM media WHERE id = ?`,
+    ).bind(product.cover_media).first<{ media_id: number; folder: string | null; filename: string | null; r2_key: string | null }>();
+    const coverSrc = shotOf(cover);
+    if (coverSrc) images.push(coverSrc);
+  }
 }
-/* 第二波无库图时用包材示意。示意不是成品实拍，说明写在图下。 */
+/* 第二波无库图时用包材示意。示意不是成品实拍，也不是车间图，说明写在图下。 */
 if (!images.length && waveCard?.image) images.push(waveCard.image);
+/* 大图 + 最多三张缩略点选。不补假图。 */
+images = images.slice(0, 3);
 
 /* 同品类的其他产品 —— 「看更多」要有去处 */
 const related = (product.id != null && db)
@@ -129,28 +159,35 @@ const zh = lang === 'zh-cn';
 const shown = catalogLabel(String(product.name ?? ''), zh);
 const displayName = shown.name;
 const displaySummary = product.summary ? softenClaims(String(product.summary)) : '';
+const dosage = productDosageLine(product.specs_json, String(product.category ?? ''), zh);
 /* W5：详情页三个行动都进 RFQ。普通产品用库内 id，缺则 slug。
-   爆品卡的 product_id 必须等于 slug，并带上市场预填。防晒卡不把防晒数字写进链接。 */
+   爆品卡的 product_id 必须等于 slug，并带上市场预填。防晒卡不把防晒数字写进链接。
+   门闩：href 必须同时有非空 product_id 与 about，否则不渲染。 */
 const productRef = waveCard ? waveCard.slug : (String(product.id ?? '').trim() || String(product.slug || pslug).trim());
+const aboutRef = displayName.trim() || productRef;
 const productHooks = rfqProductHooks({
   hasContext: true,
   specsJson: typeof product.specs_json === 'string' ? product.specs_json : JSON.stringify(product.specs_json ?? ''),
   hideCjk: lang !== 'zh-cn',
 });
 const rfqFor = (intent: string) => {
-  if (waveCard) return waveRfqPath(lang, waveCard.slug, intent, displayName);
-  const qs = new URLSearchParams();
-  qs.set('product_id', productRef);
-  qs.set('about', displayName);
-  qs.set('category', String(product.category ?? ''));
-  qs.set('intent', intent);
-  if (productHooks.spf_pa) qs.set('spf_pa', productHooks.spf_pa);
-  if (productHooks.texture) qs.set('texture', productHooks.texture);
-  if (productHooks.skin_type) qs.set('skin_type', productHooks.skin_type);
-  return `/${lang}/rfq/?${qs.toString()}`;
+  if (waveCard) return waveRfqPath(lang, waveCard.slug, intent, aboutRef);
+  return productDetailRfqHref({
+    lang,
+    intent,
+    productRef,
+    about: aboutRef,
+    category: String(product.category ?? ''),
+    spf_pa: productHooks.spf_pa,
+    texture: productHooks.texture,
+    skin_type: productHooks.skin_type,
+  });
 };
+const inquiryHref = gateProductRfqHref(rfqFor('inquiry'));
+const sampleHref = gateProductRfqHref(rfqFor('sample'));
+const developHref = gateProductRfqHref(rfqFor('custom'));
 const T = lang === 'zh-cn'
-  ? { back: '返回产品列表', moq: '起订量', inquiry: '就这款发起询盘', more: '同品类还有', desc: '产品说明',
+  ? { back: '返回产品列表', moq: '起订量', inquiry: '询盘', sample: '申请样品', develop: '开发同款', more: '同品类还有', desc: '产品说明',
       tech: '产品特点', specs: '产品规格', position: '产品定位', posMarket: '目标市场', posAudience: '目标客户',
       sales: '销售情况', versus: '竞品对照', vsThem: '常见竞品', vsUs: '本品优势',
       chainH: '这支产品背后的链路',
@@ -158,7 +195,7 @@ const T = lang === 'zh-cn'
       cFormula: '同品类配方', cIng: '草本原料库', cOrigin: '原料溯源与主产区',
       cPack: '包材库(含彩盒与外封膜)', cQc: '质检体系 36 项', cReg: '各国备案索引',
       note: '以上为公开产品信息。具体规格、包材与交期按询盘沟通；功效宣称以第三方检测报告为准。展示名 ≠ 可宣称功效。' }
-  : { back: 'Back to products', moq: 'MOQ', inquiry: 'Inquire about this product', more: 'More in this category', desc: 'About this product',
+  : { back: 'Back to products', moq: 'MOQ', inquiry: 'Inquire', sample: 'Request sample', develop: 'Develop similar', more: 'More in this category', desc: 'About this product',
       tech: 'Product highlights', specs: 'Specifications', position: 'Positioning', posMarket: 'Target markets', posAudience: 'Target buyers',
       sales: 'Sales record', versus: 'Versus common alternatives', vsThem: 'Common alternative', vsUs: 'This product',
       chainH: 'The chain behind this product',
@@ -272,7 +309,7 @@ const jsonLd = [
       <p class="crumb"><a href={`/${lang}/portfolio/`}>← {T.back}</a> / <a href={`/${lang}/collections/${product.category}/`}>{catLabel}</a></p>
 
       <div class="top">
-        <div class="gallery" data-gallery>
+        <div class="gallery" data-gallery data-autoplay="off">
           <div class="stage">
             {images[0]
               ? <img class="stage-img" data-stage src={images[0]} alt={waveView?.imageCaption ? `${displayName}. ${waveView.imageCaption}` : displayName} decoding="async" />
@@ -300,21 +337,20 @@ const jsonLd = [
           {waveView?.imageCaption && <p class="imgnote">{waveView.imageCaption}</p>}
         </div>
         <div class="info">
-          <p class="cat">{catLabel}</p>
           <h1>{displayName}</h1>
-          {shown.delist && <p class="sum">{zh ? '下架复核：该展示名不是可宣称功效。' : 'Delist review: this display name is not a marketable claim.'}</p>}
-          {displaySummary && <p class="sum">{displaySummary}</p>}
-          {(zh || product.moq) && <p class="moq"><b>{T.moq}</b> {zh ? '按品类与包材议定,以书面确认为准' : 'Agreed per category & packaging, confirmed in writing'}</p>}
+          {dosage && <p class="dosage">{dosage}</p>}
+          {shown.delist && <p class="delist">{zh ? '下架复核：该展示名不是可宣称功效。' : 'Delist review: this display name is not a marketable claim.'}</p>}
+          {displaySummary && <p class="points">{displaySummary}</p>}
+          <p class="moq"><b>{T.moq}</b> {zh ? '按品类与包材书面确认' : 'Confirmed in writing per category and packaging'}</p>
           <div class="acts">
-            {/* 创始人 2026-10-23 最高原则:每个详情页必须有三个明确行动,降低询盘门槛。
-                W5：三枚都进 /rfq/?product_id=（非空 id 或 slug），不再去 /contact/。 */}
-            <a class="cta primary" href={rfqFor('inquiry')}>{T.inquiry}</a>
-            <a class="cta" href={rfqFor('sample')}>{zh ? '拿样品' : 'Request sample'}</a>
-            <a class="cta" href={rfqFor('custom')}>{zh ? '发参考开发同款/升级款' : 'Develop similar / upgrade'}</a>
+            {/* 主 CTA 只一颗实心。样品是描边。开发同款是文字链。三枚都进 RFQ，且 href 过 product_id 门闩。 */}
+            {inquiryHref && <a class="cta primary" href={inquiryHref}>{T.inquiry}</a>}
+            {sampleHref && <a class="sample-btn" href={sampleHref}>{T.sample}</a>}
             {contactWa && (
               <a class="wa" href={`https://wa.me/${contactWa.replace(/[^0-9]/g, '')}?text=${encodeURIComponent((zh ? '我对这款产品感兴趣: ' : 'I am interested in this product: ') + displayName + ' | ' + Astro.url.href)}`} target="_blank" rel="noopener">💬 WhatsApp</a>
             )}
           </div>
+          {developHref && <p class="develop-row"><a class="develop-link" href={developHref}>{T.develop}</a></p>}
           <ul class="assure">
             <li>{waveView ? waveView.assure : (zh ? 'GMPC · ISO 22716 · HALAL（持证，范围以证书为准）' : 'GMPC · ISO 22716 · HALAL (held; scope as on the certificate)')}</li>
             <li>{zh ? '支持 OEM / ODM 打样' : 'OEM / ODM sampling supported'}</li>
@@ -479,16 +515,16 @@ const jsonLd = [
 
   .top { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 2.5rem; align-items: start; }
   .gallery { position: sticky; top: 1.5rem; }
-  .stage { position: relative; }
-  /* 左右切换箭头 */
+  .stage { position: relative; background: #f6f5f2; border-radius: var(--ck-radius); }
+  /* 左右切换箭头。位移只用于垂直居中，不是轮播动画。 */
   .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 2.75rem; height: 2.75rem; border: none; border-radius: 50%; background: rgba(0,0,0,.45); color: #fff; font-size: 1.75rem; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .25s, background .25s; z-index: 5; }
   .stage:hover .nav, .nav:focus-visible { opacity: 1; }
   .nav:hover { background: rgba(0,0,0,.65); }
   .nav-prev { left: .875rem; }
   .nav-next { right: .875rem; }
   @media (hover: none) { .nav { opacity: 1; } }
-  .stage-img { width: 100%; border-radius: var(--ck-radius); border: var(--ck-border-w) solid var(--ck-line); display: block; }
-  .noimg { aspect-ratio: 4/3; background: var(--ck-surface-alt); border-radius: var(--ck-radius); }
+  .stage-img { width: 100%; border-radius: var(--ck-radius); border: var(--ck-border-w) solid var(--ck-line); display: block; background: #f6f5f2; object-fit: contain; }
+  .noimg { aspect-ratio: 1 / 1; background: #f6f5f2; border-radius: var(--ck-radius); }
   .stage .count { position: absolute; bottom: .75rem; right: .75rem; background: rgba(0,0,0,.6); color: #fff; padding: .25rem .625rem; border-radius: 6px; font-size: .8125rem; }
   .thumbs { display: flex; gap: .5rem; margin-top: .75rem; overflow-x: auto; }
   .thumb { width: 76px; height: 76px; flex: 0 0 76px; padding: 0; background: none; border: 2px solid transparent; border-radius: 8px; cursor: pointer; transition: border-color 0.2s; }
@@ -498,20 +534,32 @@ const jsonLd = [
   .assure li { margin-bottom: .5rem; position: relative; padding-inline-start: 1.25rem; }
   .assure li::before { content: '✓'; position: absolute; left: 0; top: 0; color: var(--ck-accent); }
 
-  .cat { font-size: max(0.75rem, 14px); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ck-ink-faint); margin: 0 0 0.5rem; }
-  .info h1 { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem); line-height: 1.2; margin: 0 0 0.875rem; letter-spacing: -0.01em; }
-  .sum { font-size: 1rem; line-height: 1.8; color: var(--ck-ink-soft); margin: 0 0 1rem; }
+  .info { min-width: 0; }
+  .info h1 { font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem); line-height: 1.2; margin: 0 0 0.5rem; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+  .dosage { margin: 0 0 0.625rem; max-width: 100%; font-size: 0.9375rem; line-height: 1.4; color: var(--ck-ink-soft, var(--bio-muted, #5e5a53)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .points { margin: 0 0 1rem; font-size: 1rem; line-height: 1.5; color: var(--ck-ink-soft, var(--bio-muted, #5e5a53));
+            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+  .delist { font-size: 1rem; line-height: 1.5; color: var(--ck-ink-soft); margin: 0 0 1rem; }
   .moq { font-size: var(--ck-small); color: var(--ck-ink-soft); margin: 0 0 1.5rem; }
   .moq b { color: var(--ck-ink); margin-inline-end: 0.5rem; }
-  .cta { display: inline-block; padding: 0.8125rem 1.625rem; background: var(--ck-accent); color: var(--ck-on-accent);
-         border-radius: var(--ck-cta-radius); text-decoration: none; font-size: var(--ck-small); font-weight: 600; border: 2px solid var(--ck-accent); }
-  .cta:hover { background: var(--ck-accent-deep); }
-  .cta:not(.primary) { background: transparent; color: var(--ck-accent); }
-  .cta:not(.primary):hover { background: var(--ck-accent); color: var(--ck-on-accent); }
+  .cta.primary { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0.8125rem 1.625rem;
+         background: var(--bio-primary, #3b4a8c); color: #fff; border-radius: var(--bio-radius, 14px);
+         text-decoration: none; font-size: var(--ck-small); font-weight: 600; border: 2px solid var(--bio-primary, #3b4a8c); }
+  .cta.primary:hover { background: #2f3d73; border-color: #2f3d73; }
+  .sample-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0.8125rem 1.625rem;
+         background: transparent; color: var(--bio-primary, #3b4a8c); border: 2px solid var(--bio-primary, #3b4a8c);
+         border-radius: var(--bio-radius, 14px); text-decoration: none; font-size: var(--ck-small); font-weight: 600; }
+  .sample-btn:hover { background: transparent; color: var(--bio-primary, #3b4a8c); }
+  .develop-row { margin: 0.25rem 0 0; }
+  .develop-link { display: inline-flex; align-items: center; min-height: 44px; background: none; border: 0; padding: 0;
+         color: var(--ck-ink-soft, var(--bio-muted, #5e5a53)); font-size: 0.875rem; text-decoration: underline; text-underline-offset: 0.18em; }
   .wa { display: inline-flex; align-items: center; gap: .375rem; font-size: var(--ck-small); font-weight: 600;
-        text-decoration: none; color: #25D366; padding: .8125rem 1.25rem; border: 2px solid #25D366; border-radius: var(--ck-cta-radius); }
-  .wa:hover { background: #25D366; color: #fff; }
+        text-decoration: none; color: #25D366; padding: .8125rem 1.25rem; border: 2px solid #25D366; border-radius: var(--bio-radius, 14px); background: transparent; min-height: 44px; }
+  .wa:hover { background: transparent; color: #25D366; }
   .acts { display: flex; gap: .625rem; flex-wrap: wrap; align-items: center; }
+  .cta.primary:focus-visible, .sample-btn:focus-visible, .develop-link:focus-visible, .wa:focus-visible {
+    outline: 2px solid var(--bio-primary, #3b4a8c); outline-offset: 2px;
+  }
 
   .desc { margin-top: 2.75rem; max-width: 62ch; }
   .desc h2 { font-size: 1.125rem; margin: 0 0 0.875rem; }
@@ -536,71 +584,59 @@ const jsonLd = [
   .to-top { position: fixed; right: 1.25rem; bottom: 1.25rem; width: 3rem; height: 3rem; border: none; border-radius: 50%; background: var(--ck-accent, #333); color: #fff; font-size: 1.5rem; line-height: 1; cursor: pointer; opacity: 0; transform: translateY(1rem); transition: opacity .25s, transform .25s; pointer-events: none; z-index: 999; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
   .to-top.show { opacity: .85; transform: translateY(0); pointer-events: auto; }
   .to-top:hover { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    .nav, .thumb, .stage-img, .rel img, .to-top { transition: none; animation: none; }
+    .rel a:hover img { transform: none; }
+    .to-top, .to-top.show { transform: none; }
+  }
 </style>
 
 <script>
-  // 画廊交互：缩略图点击 + 左右箭头 + 3秒自动轮播
+  // 画廊只响应缩略图、箭头和键盘。不自动轮播。
   document.addEventListener('DOMContentLoaded', () => {
-    const stageImg = document.querySelector('.stage-img');
-    const thumbs = Array.from(document.querySelectorAll('.thumb'));
-    const countSpan = document.querySelector('[data-count]');
-    const prevBtn = document.querySelector('[data-prev]');
-    const nextBtn = document.querySelector('[data-next]');
+    const gallery = document.querySelector('[data-gallery]');
+    const stageImg = gallery ? gallery.querySelector('.stage-img') : null;
+    const thumbs = gallery ? Array.from(gallery.querySelectorAll('.thumb')) : [];
+    const countSpan = gallery ? gallery.querySelector('[data-count]') : null;
+    const prevBtn = gallery ? gallery.querySelector('[data-prev]') : null;
+    const nextBtn = gallery ? gallery.querySelector('[data-next]') : null;
     const total = thumbs.length;
     let current = 0;
-    let timer = null;
 
-    if (!stageImg || total === 0) return;
+    if (!gallery || !stageImg || total === 0) return;
 
     function goTo(idx) {
       current = (idx + total) % total;
-      stageImg.src = thumbs[current].getAttribute('data-src');
-      thumbs.forEach(t => t.classList.remove('on'));
+      const src = thumbs[current].getAttribute('data-src');
+      if (src) stageImg.src = src;
+      thumbs.forEach((t) => t.classList.remove('on'));
       thumbs[current].classList.add('on');
       if (countSpan) countSpan.textContent = `${current + 1} / ${total}`;
     }
 
-    function next() { goTo(current + 1); }
-    function prev() { goTo(current - 1); }
-
-    // 缩略图点击
-    thumbs.forEach((thumb, i) => thumb.addEventListener('click', () => { goTo(i); reset(); }));
-
-    // 左右箭头
-    if (prevBtn) prevBtn.addEventListener('click', () => { prev(); reset(); });
-    if (nextBtn) nextBtn.addEventListener('click', () => { next(); reset(); });
-
-    // 3秒自动轮播
-    function start() { timer = setInterval(next, 3000); }
-    function reset() { if (timer) clearInterval(timer); start(); }
-
-    // 鼠标悬停暂停
-    const stage = document.querySelector('.stage');
-    if (stage) {
-      stage.addEventListener('mouseenter', () => { if (timer) clearInterval(timer); });
-      stage.addEventListener('mouseleave', () => { start(); });
-    }
-
-    // 键盘左右
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft') { prev(); reset(); }
-      else if (e.key === 'ArrowRight') { next(); reset(); }
+    thumbs.forEach((thumb, i) => thumb.addEventListener('click', () => { goTo(i); }));
+    if (prevBtn) prevBtn.addEventListener('click', () => { goTo(current - 1); });
+    if (nextBtn) nextBtn.addEventListener('click', () => { goTo(current + 1); });
+    gallery.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      goTo(e.key === 'ArrowLeft' ? current - 1 : current + 1);
     });
-
-    start();
   });
 
-  // 返回顶部
+  // 返回顶部。减少动效时不做平滑位移。
   (function() {
     var btn = document.getElementById('to-top');
     if (!btn) return;
+    var reduce = false;
+    try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { reduce = false; }
     function onScroll() {
       if (window.scrollY > 400) btn.classList.add('show');
       else btn.classList.remove('show');
     }
     window.addEventListener('scroll', onScroll, { passive: true });
     btn.addEventListener('click', function() {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
     });
     onScroll();
   })();

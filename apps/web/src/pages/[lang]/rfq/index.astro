@@ -248,35 +248,6 @@ const T = zh
       <p class="note">{F.complyLine}</p>
     </header>
 
-    {showCard && (
-      <section class:list={['sum', idState]} id="rfq-context" data-state={idState || 'ok'} aria-live="polite">
-        {idState === 'missing' && <p class="errline" role="alert">{T.missId}</p>}
-        {idState === 'bad' && <p class="errline" role="alert">{T.badId}</p>}
-        {idState === '' && <p class="kicker">{T.forProduct}</p>}
-        {(productName || productId) && (
-          <p class="pname">
-            {productName && <strong>{productName}</strong>}
-            {productId && <code>{productId}</code>}
-          </p>
-        )}
-        {waveSummary && <p class="brief">{waveSummary}</p>}
-        {categoryRaw && (
-          <p class="chips">
-            <span class:list={['chip', !categoryKnown && 'bad']}>{categoryKnown ? catChip : categoryRaw}</span>
-            {!categoryKnown && <span class="chip bad">{T.catUnknown}</span>}
-          </p>
-        )}
-        {hookCards.length > 0 && (
-          <ul class="hooks">
-            {hookCards.map((h) => (
-              <li><span>{h.label}</span> {h.v}</li>
-            ))}
-          </ul>
-        )}
-        <a class="change" href={`${B}/products/`}>{T.change}</a>
-      </section>
-    )}
-
     <div id="rfq-ok" class="ok hidden" role="status" aria-live="polite" hidden></div>
 
     <form id="rfq-form" class="f" action="/api/inquiry" method="post" novalidate>
@@ -289,8 +260,37 @@ const T = zh
       <input type="hidden" name="product_id" value={productId} />
       {hookCards.map((h) => <input type="hidden" name={h.k} value={h.v} />)}
 
-      <section class="mkt-block" aria-labelledby="mkt-target">
-        <h2 class="mkt-title" id="mkt-target">{T.secTarget}</h2>
+      {productId && (
+        <section class:list={['sum', 'rfq-summary', idState]} id="rfq-context" data-state={idState || 'ok'} aria-live="polite">
+          {idState === 'missing' && <p class="errline" role="alert">{T.missId}</p>}
+          {idState === 'bad' && <p class="errline" role="alert">{T.badId}</p>}
+          {idState === '' && <p class="kicker">{T.forProduct}</p>}
+          {(productName || productId) && (
+            <p class="pname">
+              {productName && <strong>{productName}</strong>}
+              {productId && <code>{productId}</code>}
+            </p>
+          )}
+          {waveSummary && <p class="brief">{waveSummary}</p>}
+          {categoryRaw && (
+            <p class="chips">
+              <span class:list={['chip', !categoryKnown && 'bad']}>{categoryKnown ? catChip : categoryRaw}</span>
+              {!categoryKnown && <span class="chip bad">{T.catUnknown}</span>}
+            </p>
+          )}
+          {hookCards.length > 0 && (
+            <ul class="hooks">
+              {hookCards.map((h) => (
+                <li><span>{h.label}</span> {h.v}</li>
+              ))}
+            </ul>
+          )}
+          <a class="change" href={`${B}/products/`}>{T.change}</a>
+        </section>
+      )}
+
+      <section class="rfq-block" aria-labelledby="mkt-target">
+        <h2 class="rfq-title" id="mkt-target">{T.secTarget}</h2>
         <fieldset class="checks">
           <legend>{F.targetMarket} *</legend>
           <p class="hint">{F.targetMarketHint}</p>
@@ -312,8 +312,8 @@ const T = zh
         </label>
       </section>
 
-      <section class="mkt-block" aria-labelledby="mkt-filing">
-        <h2 class="mkt-title" id="mkt-filing">{T.secFiling}</h2>
+      <section class="rfq-block" aria-labelledby="mkt-filing">
+        <h2 class="rfq-title" id="mkt-filing">{T.secFiling}</h2>
         <fieldset class="checks">
           <legend>{F.notify}</legend>
           <p class="hint">{F.notifyHint}</p>
@@ -333,8 +333,8 @@ const T = zh
         <GhadBoundary lang={lang} />
       </section>
 
-      <section class="mkt-block" aria-labelledby="mkt-halal">
-        <h2 class="mkt-title" id="mkt-halal">{T.secHalal}</h2>
+      <section class="rfq-block" aria-labelledby="mkt-halal">
+        <h2 class="rfq-title" id="mkt-halal">{T.secHalal}</h2>
         <fieldset class="checks">
           <legend>{F.halal}</legend>
           <p class="hint">{F.halalHint}</p>
@@ -361,8 +361,8 @@ const T = zh
         </select>
         {categoryRaw && !categoryKnown && <span class="chip bad">{T.catUnknown}</span>}
       </label>
-      <section class="mkt-block" aria-labelledby="mkt-order">
-        <h2 class="mkt-title" id="mkt-order">{T.secOrder}</h2>
+      <section class="rfq-block" aria-labelledby="mkt-order">
+        <h2 class="rfq-title" id="mkt-order">{T.secOrder}</h2>
         <label><span>{F.band}</span>
           <select name="first_order_band">
             <option value="">{F.bandPh}</option>
@@ -603,10 +603,12 @@ const T = zh
   .door strong { font-size: .9375rem; line-height: 1.35; }
   .door span { font-size: .75rem; line-height: 1.45; opacity: .8; }
   .door.is-on { border-color: var(--ck-accent, #333); box-shadow: inset 0 0 0 1px var(--ck-accent, #333); }
-  .mkt-block.is-quote { box-shadow: inset 0 0 0 1px var(--ck-accent, #333); }
-  .mkt-block.is-quote .hint { font-weight: 650; opacity: 1; }
-  .mkt-block { display: grid; gap: .625rem; margin: 0; padding: .875rem .875rem 1rem; border: 1px solid var(--ck-line, rgba(0,0,0,.14)); border-radius: 14px; background: var(--ck-surface, transparent); }
-  .mkt-title { margin: 0; font-size: 1rem; font-weight: 650; line-height: 1.35; }
+  .rfq-block.is-quote { box-shadow: inset 3px 0 0 var(--bio-primary, #3b4a8c); }
+  .rfq-block.is-quote .hint { font-weight: 650; opacity: 1; }
+  .rfq-block { display: grid; gap: .625rem; margin: 0; margin-top: calc(var(--rfq-block-gap) - 0.875rem); padding: 1rem 1rem 1.125rem; border: 0; border-inline-start: 3px solid var(--bio-primary, #3b4a8c); border-radius: 12px; background: #f6f5f2; color: var(--bio-fg, #1c1b19); min-width: 0; max-width: 100%; }
+  .rfq-block input, .rfq-block select, .rfq-block textarea { background: #fff; color: var(--bio-fg, #1c1b19); }
+  #rfq-form > section.rfq-block:first-of-type { margin-top: 0; }
+  .rfq-title { margin: 0; font-size: 1rem; font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; max-width: 100%; min-width: 0; }
   .field-err { color: #A02B20; font-size: .8125rem; line-height: 1.4; }
   .checks { border: 1px solid var(--ck-line, rgba(0,0,0,.14)); border-radius: 12px; padding: .75rem .875rem .875rem; display: grid; gap: .5rem; margin: 0; }
   .checks legend { font-size: .875rem; opacity: .75; padding: 0 .25rem; }
@@ -614,19 +616,22 @@ const T = zh
   .check { display: flex; flex-direction: row; align-items: center; gap: .5rem; min-height: 44px; font-size: .9375rem; }
   .check input { width: 1.125rem; height: 1.125rem; padding: 0; flex: 0 0 auto; }
   .check.solo { justify-self: start; }
-  .other-in, .scope { display: none; }
+  .other-in { display: none; }
   .checks:has(input[value="Other"]:checked) .other-in { display: grid; }
-  .f:has(input[name="halal_ready"][value="yes"]:checked) .scope { display: grid; }
+  /* 清真范围始终占位，显隐只改 visibility，避免把 Submit 顶下去。 */
+  .scope { display: grid; visibility: hidden; min-height: 4.75rem; }
+  .f:has(input[name="halal_ready"][value="yes"]:checked) .scope { visibility: visible; }
   .hooks { list-style: none; display: flex; flex-wrap: wrap; gap: .375rem; margin: 0; padding: 0; }
   .hooks li { font-size: .8125rem; line-height: 1.35; padding: .3rem .65rem; border-radius: 999px; border: 1px solid var(--ck-line, rgba(0,0,0,.16)); }
   .hooks span { opacity: .7; margin-right: .25rem; }
   .note.strong { font-weight: 600; opacity: 1; }
-  .f { display: grid; gap: .875rem; }
+  .f { --rfq-block-gap: 28px; display: grid; gap: 0.875rem; }
+  .f > .sum { margin: 0; }
   .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: .875rem; }
   label { display: grid; gap: .3125rem; font-size: .875rem; }
   label > span { opacity: .75; }
   input, select, textarea { font: inherit; padding: .6875rem .8125rem; border: 1px solid var(--ck-line, rgba(0,0,0,.14)); border-radius: 10px; background: var(--ck-surface, #fff); color: inherit; width: 100%; }
-  .btn { font: inherit; font-weight: 600; padding: .8125rem 1.5rem; border: 0; border-radius: 999px; background: var(--ck-accent, #333); color: #fff; cursor: pointer; justify-self: start; }
+  .btn { font: inherit; font-weight: 600; padding: .8125rem 1.5rem; border: 0; border-radius: var(--bio-radius, 14px); background: var(--bio-primary, #3b4a8c); color: #fff; cursor: pointer; width: 100%; justify-self: stretch; }
   .btn:disabled { opacity: .5; cursor: wait; }
   .fb { font-size: .875rem; min-height: 1.25rem; }
   .fb.err { color: #A02B20; } .fb.ok { color: #1D7A46; }
@@ -658,10 +663,15 @@ const T = zh
     .g2 { grid-template-columns: 1fr; }
     .btn { width: 100%; justify-self: stretch; }
     .links a { font-weight: 500; }
-    /* Submit is the only primary filled button; WhatsApp stays text link in .links */
+    /* Submit 是页内唯一实心主色；WhatsApp 仍是 .links 里的文字链 */
     /* 右下角悬浮客服会盖住右缘,窄屏给摘要和多选留出位置 */
     .rfq { padding-right: 4.75rem; }
     .sum { padding-right: 0; }
-    .mkt-block { padding-right: .75rem; }
+    .rfq-block { padding-right: .75rem; }
+  }
+  @media (max-width: 390px) {
+    .rfq { padding-left: 0.75rem; padding-right: 0.75rem; overflow-x: clip; }
+    .rfq-title { font-size: 1rem; }
+    .rfq-block { padding-right: 0.75rem; }
   }
 </style>
