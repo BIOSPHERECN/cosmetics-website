@@ -91,6 +91,9 @@ assert.equal(can('/en/rfq?product_id=85&category=serum&market=ID&about=Night+Cre
 assert.equal(can('/en/rfq/?product_id=85&evil=1'), '/en/rfq/?product_id=85');
 assert.equal(can('/zh-cn/about/?product_id=85'), '/zh-cn/about/');
 assert.deepEqual(kp('/en/rfq/?product_id=85&category=serum&market=ID&about=Night%20Cream&intent=sample'), [['about', 'Night Cream'], ['category', 'serum'], ['market', 'ID'], ['product_id', '85']]);
+assert.equal(can('/en/rfq/?formula=SR-1101&product_id=SR-1101'), null);
+assert.deepEqual(kp('/en/rfq/?formula=SR-1101&about=Night'), [['about', 'Night'], ['formula', 'SR-1101']]);
+assert.equal(unc('/en/rfq/?formula=SR-1101'), false);
 assert.deepEqual(kp('/en/rfq/'), []);
 assert.equal(unc('/en/rfq/?product_id=85&intent=sample'), false);
 
