@@ -20,6 +20,7 @@ const BANNED = new RegExp(
     String.raw`approved by (the )?EU\b`,
     String.raw`欧盟\s*批准`,
     String.raw`(?<![A-Za-z])FDA[\s\-]*(certified|certificate|certification|cleared)\b`,
+    String.raw`(?<![A-Za-z])FDA[\s\-]+registered\s+product\b`,
     String.raw`FDA\s*/\s*CPNP\s*certified`,
     String.raw`FDA\s*/\s*CPNP\s*认证`,
     String.raw`FDA\s*批准`,
@@ -127,6 +128,9 @@ for (const sample of [
   'FDA certified',
   'FDA 批准',
   '获FDA批准',
+  'FDA registered product',
+  'FDA-registered product',
+  'FDA  registered product',
 ]) assert.match(sample, BANNED, sample);
 
 for (const sample of [
@@ -139,6 +143,9 @@ for (const sample of [
   '欧盟已批准 UV 滤剂清单',
   '欧盟 CPNP',
   '注册≠批准、不发证书）；欧盟 CPNP',
+  'Is the factory FDA-registered?',
+  'We can assist with U.S. facility registration and product listing paperwork under MoCRA; we do not guarantee FDA outcomes or "approved" status.',
+  '可协助准备美国 MoCRA 设施注册与产品列名的备案与上市资料；不保证监管结果，协助不等于批准或认证。',
 ]) assert.doesNotMatch(sample, BANNED, sample);
 
 const hits = [];

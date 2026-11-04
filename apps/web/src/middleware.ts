@@ -557,7 +557,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   /* v3(2026-09-07 上午):D1 额度耗尽期间,边缘把一批 404 与 503 缓存住了 ——
      修好之后访客拿到的仍是坏副本。推版本号是清掉它们唯一干净的办法。 */
   /* v4(2026-09-07 晚):sitemap 拆分、繁中上线、跨站兜底重写 —— 清掉全部旧副本 */
-  const CACHE_V = 'v132';   // 2026-11-04: bust edge HTML for portfolio card grid 1:1 contain (was v131)
+  const CACHE_V = 'v133';   // 2026-11-05: US OEM MoCRA assistance sentence + services/oem compliance note (was v132)
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。
