@@ -9,6 +9,7 @@ const {
   normalizeRfqTicket,
   rfqFieldCopy,
   rfqPrefill,
+  rfqQueryPrefill,
   rfqProductHooks,
   rfqTicketLines,
 } = await import(lib);
@@ -86,6 +87,10 @@ assert.deepEqual(rfqPrefill('ID'), { target_market: ['SEA'], notification_assist
 assert.deepEqual(rfqPrefill('AE'), { target_market: ['GCC'], notification_assist_country: ['AE'] });
 assert.deepEqual(rfqPrefill('SEA'), { target_market: ['SEA'], notification_assist_country: [] });
 assert.deepEqual(rfqPrefill('Indonesia, Saudi Arabia'), { target_market: [], notification_assist_country: [] });
+assert.deepEqual(rfqQueryPrefill({ target_market: 'SEA' }), { target_market: ['SEA'], notification_assist_country: [] });
+assert.deepEqual(rfqQueryPrefill({ market: 'ID', target_market: 'GCC' }), { target_market: ['SEA', 'GCC'], notification_assist_country: ['ID'] });
+assert.deepEqual(rfqQueryPrefill({ market: 'Indonesia', target_market: 'booth' }), { target_market: [], notification_assist_country: [] });
+assert.deepEqual(rfqQueryPrefill({ target_market: 'sea,gcc,other' }), { target_market: ['SEA', 'GCC', 'Other'], notification_assist_country: [] });
 
 assert.deepEqual(rfqProductHooks({ hasContext: false, query: { spf_pa: 'SPF50' } }), { spf_pa: '', texture: '', skin_type: '' });
 const fromList = rfqProductHooks({

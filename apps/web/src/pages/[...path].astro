@@ -20,6 +20,7 @@ import EvidenceGrid from '@cosmetic/core/components/EvidenceGrid.astro';
 import ProductionBases from '@cosmetic/core/components/ProductionBases.astro';
 import NarrativeStages from '@cosmetic/core/components/NarrativeStages.astro';
 import Funnel from '@cosmetic/core/components/Funnel.astro';
+import CosmopackInquiry from '../components/CosmopackInquiry.astro';
 import BigBanner from '@cosmetic/core/components/BigBanner.astro';
 import MastheadNav from '@cosmetic/core/components/MastheadNav.astro';
 import StatementFooter from '@cosmetic/core/components/StatementFooter.astro';
@@ -579,6 +580,10 @@ const ogImage = (() => {
       </section>
     )}
 
+    {/* BIOSPHERE-AI 首页:展会同期可询在漏斗之上,首屏先看见入口 */}
+    {site.id === 'biosphere-ai' && !slug && (
+      <CosmopackInquiry lang={lang} siteId={site.id} />
+    )}
     {/* BIOSPHERE-AI 首页:化繁为简 —— 把漏斗放在首屏,替代默认 hero */}
     {site.id === 'biosphere-ai' && !slug && (
       <Funnel locale={lang} />

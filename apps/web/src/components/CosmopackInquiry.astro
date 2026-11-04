@@ -1,0 +1,88 @@
+---
+/**
+ * Cosmopack Asia 2026 同期可询条。
+ * 只说明展会日期内可以提交 OEM / 私牌 / 供应链询盘。
+ * 外链是主办方日程，不是我方展商身份。
+ */
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import {
+  COSMOPACK_FAIR_INFO, COSMOPACK_VENUE,
+  cosmopackCopy, cosmopackIsoPath, cosmopackRfqPath,
+} from '../lib/cosmopack-inquiry';
+
+interface Props {
+  lang: string;
+  /** 传入时仅 biosphere-ai 渲染；缺省再按域名判断，认不出域名则照常渲染（本地预览）。 */
+  siteId?: string | null;
+}
+
+const { lang, siteId = null } = Astro.props;
+const resolved = siteId ?? siteIdForHost(Astro.url.hostname);
+const show = !resolved || resolved === 'biosphere-ai';
+const C = cosmopackCopy(lang);
+const rfq = cosmopackRfqPath(lang);
+const iso = cosmopackIsoPath(lang);
+---
+
+{show && (
+  <section class="cpk" id="cosmopack-asia-inquiry" aria-labelledby="cpk-h">
+    <p class="cpk-kicker">{C.kicker}</p>
+    <h2 id="cpk-h">{C.title}</h2>
+    <p class="cpk-lede">{C.lede}</p>
+    <ul class="cpk-cats" aria-label={C.catsLabel}>
+      {C.cats.map((cat) => <li>{cat}</li>)}
+    </ul>
+    <div class="cpk-docs">
+      <h3>{C.docsTitle}</h3>
+      <ul>
+        {C.docs.map((item) => <li>{item}</li>)}
+      </ul>
+    </div>
+    <p class="cpk-held">{C.heldBefore}<a href={iso}>{C.heldLink}</a>{C.heldAfter}</p>
+    <p class="cpk-note">{C.quoteNote}</p>
+    <p class="cpk-ref">
+      {C.scheduleNote}{' '}
+      <a href={COSMOPACK_FAIR_INFO} rel="noopener noreferrer" target="_blank">{C.fairInfoLabel}</a>
+      <span aria-hidden="true"> · </span>
+      <a href={COSMOPACK_VENUE} rel="noopener noreferrer" target="_blank">{C.venueLabel}</a>
+    </p>
+    <p class="cpk-cta"><a class="cpk-btn" href={rfq}>{C.cta}</a></p>
+  </section>
+)}
+
+<style>
+  .cpk {
+    width: min(64rem, calc(100% - 2rem));
+    margin: 1rem auto 1.25rem;
+    padding: 1.1rem 1.15rem 1.15rem;
+    border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+    border-left: 3px solid var(--ck-accent, currentColor);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--ck-accent, currentColor) 7%, transparent);
+  }
+  .cpk-kicker { margin: 0; font-size: 0.8125rem; font-weight: 650; letter-spacing: 0.02em; }
+  .cpk h2 { font-size: clamp(1.15rem, 2.4vw, 1.45rem); margin: 0.2rem 0 0.55rem; line-height: 1.35; }
+  .cpk-lede, .cpk-held, .cpk-note, .cpk-ref { margin: 0.55rem 0 0; line-height: 1.65; max-width: 52rem; }
+  .cpk-cats { display: flex; flex-wrap: wrap; gap: 0.4rem; list-style: none; padding: 0; margin: 0.75rem 0 0; }
+  .cpk-cats li {
+    border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+    border-radius: 999px;
+    padding: 0.28rem 0.7rem;
+    font-size: 0.875rem;
+  }
+  .cpk-docs { margin-top: 0.9rem; }
+  .cpk-docs h3 { margin: 0; font-size: 0.95rem; }
+  .cpk-docs ul { margin: 0.35rem 0 0; padding-left: 1.2rem; line-height: 1.55; }
+  .cpk-held a, .cpk-ref a { color: inherit; }
+  .cpk-cta { margin: 0.9rem 0 0; }
+  .cpk-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.625rem 1.125rem;
+    border-radius: 999px;
+    background: var(--ck-accent, #222);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 650;
+  }
+</style>

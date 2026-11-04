@@ -16,6 +16,17 @@ export type Norm = (v: string, sp: URLSearchParams) => string;
 export type Reg = { k?: Record<string, Norm>; u?: string[]; c?: string[] };
 
 const txt = (n: number): Norm => (v) => v.trim().slice(0, n);
+/* RFQ 勾选预填。只留 SEA / GCC / Other，顺序固定，便于缓存键稳定。非法值整段丢掉。 */
+const targetMarket: Norm = (v) => {
+  const allow = ['SEA', 'GCC', 'Other'];
+  const picked = new Set<string>();
+  for (const part of v.split(',')) {
+    const t = part.trim();
+    const hit = allow.find((a) => a.toLowerCase() === t.toLowerCase());
+    if (hit) picked.add(hit);
+  }
+  return allow.filter((a) => picked.has(a)).join(',');
+};
 const int = (lo: number, hi: number): Norm => (v) => {
   const x = parseInt(v, 10);
   return Number.isFinite(x) ? String(Math.min(hi, Math.max(lo, x))) : '';
@@ -54,8 +65,9 @@ const PARAMS: [RegExp, Reg][] = [
   [/^\/[\w-]+\/search\/$/, { c: ['q'] }],   // 站内 AI 检索:q 由前端读、调会员接口,服务端 HTML 与 q 无关
   /* RFQ 深链预填写进服务端 HTML(rfq/index.astro)。必须进缓存键,否则和空白表单共用一份边缘缓存。
      about 与 formula 都写入产品名。intent 只出现在链接里,页面不渲染,留下但不进键。长度与页面 slice 一致。 */
-  /* spf_pa / texture / skin_type 是产品钩子，写进 RFQ 摘要，必须进缓存键；空值规整掉。 */
-  [/^\/[\w-]+\/rfq\/$/, { k: { product_id: txt(40), category: T40, market: txt(80), about: txt(160), formula: txt(40), spf_pa: txt(40), texture: txt(80), skin_type: txt(40) }, c: ['intent'] }],
+  /* spf_pa / texture / skin_type 是产品钩子，写进 RFQ 摘要，必须进缓存键；空值规整掉。
+     target_market 会改服务端勾选，必须进缓存键；不进国家/城市文本框。 */
+  [/^\/[\w-]+\/rfq\/$/, { k: { product_id: txt(40), category: T40, market: txt(80), about: txt(160), formula: txt(40), spf_pa: txt(40), texture: txt(80), skin_type: txt(40), target_market: targetMarket }, c: ['intent'] }],
   /* lang 必须进缓存键:子图按语种拆开之后,漏掉这一项会让 /id/ 与 /en/ 共用一份边缘缓存。 */
   [/^\/sitemap\.xml$/, { k: {
     part: (v) => (SITEMAP_PARTS.includes(v) ? v : ''),

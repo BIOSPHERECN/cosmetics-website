@@ -1,5 +1,6 @@
 ---
 import { ldJson } from '@cosmetic/core/content/ldjson.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 /**
  * 个性化 OEM/ODM 服务 —— 一页说完。
@@ -34,6 +35,7 @@ import { SOLUTIONS } from '@cosmetic/core/content/solutions.ts';
 import { CHAIN_COUNTS } from '@cosmetic/core/content/chain.ts';
 import { ORG } from '@cosmetic/core/content/org.ts';
 import { pageShell } from '../../../lib/shell';
+import CosmopackInquiry from '../../../components/CosmopackInquiry.astro';
 
 export const prerender = false;
 
@@ -153,6 +155,8 @@ const ld = [
       <h1>{T.title}</h1>
       <p class="lede">{T.lede}</p>
     </header>
+
+    <CosmopackInquiry lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
 
     {/* P0-C：贴牌/PL 证据须在正文 SSR 可读（无 JS），与 /oem/ 同口径 */}
     <section id="services-evidence" class="sv-evidence" aria-labelledby="sv-process-h">
