@@ -1,4 +1,4 @@
----
+﻿---
 /**
  * 基座布局 —— 5 站唯一 HTML 外壳。
  * 风格三层叠加全部落在 <html> 的属性上:
@@ -10,6 +10,7 @@
 import { ldJson } from '../content/ldjson.ts';
 import { HREFLANG, OG_LOCALE, LOCALES, DEFAULT_LOCALE, isRtl, switchLocalePath, type Locale } from '../i18n/index.ts';
 import ChatWidget from '../components/ChatWidget.astro';
+import MobileDualCta from '../components/MobileDualCta.astro';
 import { env as cfEnv } from 'cloudflare:workers';
 import '../styles/tokens.css';
 // 字体层放在中性令牌之后、流派之前:它改写字体族与字号阶梯,
@@ -200,6 +201,7 @@ const tsKey = String((cfEnv as any)?.TURNSTILE_SITE_KEY ?? '').trim();
         滚过约一屏才出现:页面还在首屏时给"回到顶部"是噪音。 */}
     {/* AI 客服(先机器人后人工)。左下角 —— 右下已有询盘车与回顶两个浮层 */}
     <ChatWidget locale={locale} site={brand ?? 'biosphere-ai'} />
+    <MobileDualCta locale={locale} brand={brand} />
 
     <button class="ck-top" id="ck-top" aria-label="回到顶部" hidden>
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none"
