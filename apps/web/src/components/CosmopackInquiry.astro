@@ -5,6 +5,7 @@
  * 外链是主办方日程，不是我方展商身份。
  */
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import FairTrio from './FairTrio.astro';
 import {
   COSMOPACK_FAIR_INFO, COSMOPACK_VENUE,
   cosmopackCopy, cosmopackIsoPath, cosmopackRfqPath,
@@ -27,6 +28,8 @@ const iso = cosmopackIsoPath(lang);
 ---
 
 {show && (
+  <>
+  <FairTrio lang={lang} ctaGhost={ctaGhost} />
   <section class="cpk" id="cosmopack-asia-inquiry" aria-labelledby="cpk-h">
     <p class="cpk-kicker">{C.kicker}</p>
     <h2 id="cpk-h">{C.title}</h2>
@@ -50,6 +53,7 @@ const iso = cosmopackIsoPath(lang);
     </p>
     <p class="cpk-cta"><a class:list={['cpk-btn', { ghost: ctaGhost }]} href={rfq}>{C.cta}</a></p>
   </section>
+  </>
 )}
 
 <style>

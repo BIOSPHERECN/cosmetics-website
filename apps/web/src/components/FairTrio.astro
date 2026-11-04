@@ -1,0 +1,112 @@
+---
+/**
+ * 三展同期短卡。挂在既有 Cosmopack 同期模块里，不另开页面。
+ * 只列主办方已公布档期。CTA 进 RFQ，查询串只有 about。
+ */
+import { fairRfqPath, fairTrioCopy } from '../lib/fair-trio';
+
+interface Props {
+  lang: string;
+  /** 证据四段页降为幽灵次钮，避免和第二颗实心主色抢主 CTA。 */
+  ctaGhost?: boolean;
+}
+
+const { lang, ctaGhost = false } = Astro.props;
+const C = fairTrioCopy(lang);
+---
+
+<section class="fair-trio" id="fair-trio" aria-labelledby="fair-trio-h">
+  <h2 id="fair-trio-h">{C.title}</h2>
+  <p class="fair-note">{C.note}</p>
+  <ul class="fair-cards">
+    {C.cards.map((card) => (
+      <li>
+        <h3>{card.name}</h3>
+        <p class="fair-when">{card.when}</p>
+        <p class="fair-line">{card.line}</p>
+        <p class="fair-cta">
+          <a class:list={['fair-btn', { ghost: ctaGhost }]} href={fairRfqPath(lang, card.about)}>{card.cta}</a>
+        </p>
+        <p class="fair-src">
+          <a href={card.source} rel="noopener noreferrer" target="_blank">{card.sourceLabel}</a>
+        </p>
+      </li>
+    ))}
+  </ul>
+</section>
+
+<style>
+  .fair-trio {
+    width: min(64rem, calc(100% - 2rem));
+    margin: 1rem auto 0.75rem;
+    min-width: 0;
+  }
+  .fair-trio h2 {
+    font-size: clamp(1.05rem, 2.2vw, 1.25rem);
+    margin: 0 0 0.35rem;
+    line-height: 1.35;
+  }
+  .fair-note {
+    margin: 0;
+    max-width: 52rem;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+  }
+  .fair-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    list-style: none;
+    padding: 0;
+    margin: 0.75rem 0 0;
+  }
+  .fair-cards li {
+    min-width: 0;
+    padding: 0.85rem 0.9rem 0.95rem;
+    border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--ck-accent, currentColor) 5%, transparent);
+  }
+  .fair-cards h3 {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+  .fair-when {
+    margin: 0.35rem 0 0;
+    font-size: 0.8125rem;
+    font-weight: 650;
+    line-height: 1.45;
+  }
+  .fair-line {
+    margin: 0.4rem 0 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  .fair-cta { margin: 0.7rem 0 0; }
+  .fair-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0.55rem 0.95rem;
+    border-radius: 999px;
+    background: var(--ck-accent, #222);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 650;
+  }
+  .fair-btn.ghost {
+    background: transparent;
+    color: inherit;
+    border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  }
+  .fair-src {
+    margin: 0.45rem 0 0;
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+  .fair-src a { color: inherit; }
+  @media (max-width: 800px) {
+    .fair-cards { grid-template-columns: 1fr; }
+  }
+</style>

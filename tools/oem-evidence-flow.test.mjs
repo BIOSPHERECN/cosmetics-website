@@ -1,6 +1,7 @@
 // 莱诺鸟 P0-6：证据四段壳 + oem-evidence 主 CTA。node tools/oem-evidence-flow.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { factoryQualityAssist } from '../apps/web/src/lib/factory-quality-assist.ts';
 import {
   oemEvidenceCertLabel,
   oemEvidenceCertPath,
@@ -123,6 +124,17 @@ assert.match(rfq, /name="target_market"/);
 assert.match(rfq, /name="halal_ready"/);
 assert.match(rfq, /name="notification_assist_country"/);
 assert.match(rfq, /name="first_order_band"/);
-assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v138'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v139'/);
+
+const assistZh = factoryQualityAssist('zh-cn');
+const assistEn = factoryQualityAssist('en');
+assert.match(assistZh, /Halal OEM 路径与目标市场注册协助（MY NPRA \/ ID BPOM·BPJPH）/);
+assert.match(assistEn, /Halal OEM pathway and target-market registration assistance \(Malaysia NPRA \/ Indonesia BPOM·BPJPH\)/);
+assert.match(assistEn, /Document support only — not a Halal certificate on your SKU, not guaranteed approval\./);
+assert.doesNotMatch(assistZh, /已获证|包过审/);
+assert.doesNotMatch(`${assistZh}\n${assistEn}`, /Halal certified|JAKIM certified|Halal approved|FDA approved|EU approved|NPRA approved|BPOM approved|普草/i);
+assert.doesNotMatch(assistEn, /(?<!not )guaranteed approval/i);
+assert.match(fq, /evidenceNote=\{factoryQualityAssist\(lang\)\}/);
+assert.doesNotMatch(pd, /factoryQualityAssist/);
 
 console.log('oem-evidence-flow.test.mjs:全部通过');

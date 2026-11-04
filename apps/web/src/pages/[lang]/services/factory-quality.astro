@@ -18,6 +18,7 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
 import { certWallCopy } from '../../../lib/comply-copy';
+import { factoryQualityAssist } from '../../../lib/factory-quality-assist';
 import { oemEvidenceCertLabel } from '../../../lib/oem-evidence';
 import CosmopackInquiry from '../../../components/CosmopackInquiry.astro';
 import CertMatrix from '../../../components/CertMatrix.astro';
@@ -93,6 +94,7 @@ const ld = [
       ctaLabel={zh ? '发起询盘' : 'Start RFQ'}
       evidenceTitle={zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}
       evidenceBody={`${certWallCopy(zh).lede}${zh ? '以证书原件为准。' : ' Original certificates prevail.'}`}
+      evidenceNote={factoryQualityAssist(lang)}
       certs={certs}
       evidenceLinks={evidenceLinks}
       painsTitle={zh ? '你现在大概卡在这几件事上' : 'What is probably holding you up'}
