@@ -8,6 +8,7 @@ const {
   leadTimeWindowNote,
   normalizeRfqTicket,
   rfqFieldCopy,
+  rfqLinkPrefill,
   rfqPrefill,
   rfqQueryPrefill,
   rfqProductHooks,
@@ -91,6 +92,21 @@ assert.deepEqual(rfqQueryPrefill({ target_market: 'SEA' }), { target_market: ['S
 assert.deepEqual(rfqQueryPrefill({ market: 'ID', target_market: 'GCC' }), { target_market: ['SEA', 'GCC'], notification_assist_country: ['ID'] });
 assert.deepEqual(rfqQueryPrefill({ market: 'Indonesia', target_market: 'booth' }), { target_market: [], notification_assist_country: [] });
 assert.deepEqual(rfqQueryPrefill({ target_market: 'sea,gcc,other' }), { target_market: ['SEA', 'GCC', 'Other'], notification_assist_country: [] });
+assert.deepEqual(rfqLinkPrefill({
+  target_market: 'SEA',
+  halal_ready: 'yes',
+  notification_assist_country: 'ID',
+  first_order_band: 'tbd',
+}), {
+  target_market: ['SEA'],
+  notification_assist_country: ['ID'],
+  halal_ready: 'yes',
+  first_order_band: 'tbd',
+  need_msds_coa: '',
+});
+assert.equal(rfqLinkPrefill({ target_market: 'GCC', halal_ready: 'certified', first_order_band: '3000' }).halal_ready, '');
+assert.equal(rfqLinkPrefill({ target_market: 'GCC', halal_ready: 'unsure', need_msds_coa: 'yes', notification_assist_country: 'AE' }).need_msds_coa, 'yes');
+assert.deepEqual(rfqLinkPrefill({ market: 'ID', notification_assist_country: 'MY' }).notification_assist_country, ['ID', 'MY']);
 
 assert.deepEqual(rfqProductHooks({ hasContext: false, query: { spf_pa: 'SPF50' } }), { spf_pa: '', texture: '', skin_type: '' });
 const fromList = rfqProductHooks({

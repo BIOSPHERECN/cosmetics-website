@@ -107,5 +107,14 @@ assert.equal(can('/en/rfq/?target_market=SEA,GCC'), null);
 assert.equal(can('/en/rfq/?target_market=booth'), '/en/rfq/');
 assert.equal(can('/en/rfq/?product_id=85&target_market=booth'), '/en/rfq/?product_id=85');
 assert.equal(unc('/en/rfq/?target_market=SEA'), false);
+assert.equal(can('/en/rfq/?product_id=spf50-acne-gel-id&target_market=SEA&halal_ready=yes&notification_assist_country=ID&first_order_band=tbd'), null);
+assert.equal(can('/en/rfq/?product_id=zerocast-spf50-ae&halal_ready=unsure&need_msds_coa=yes&notification_assist_country=AE&first_order_band=tbd&target_market=GCC'), null);
+assert.equal(can('/en/rfq/?halal_ready=certified'), '/en/rfq/');
+assert.equal(can('/en/rfq/?first_order_band=3000'), '/en/rfq/');
+assert.equal(can('/en/rfq/?need_msds_coa=maybe'), '/en/rfq/');
+assert.deepEqual(
+  kp('/zh-cn/rfq/?product_id=serum-spf50-my&target_market=SEA&halal_ready=yes&notification_assist_country=MY&first_order_band=tbd'),
+  [['first_order_band', 'tbd'], ['halal_ready', 'yes'], ['notification_assist_country', 'MY'], ['product_id', 'serum-spf50-my'], ['target_market', 'SEA']],
+);
 
 console.log('canon.test.mjs:全部通过');

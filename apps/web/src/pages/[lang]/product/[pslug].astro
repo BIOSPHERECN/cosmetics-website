@@ -26,6 +26,7 @@ import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { readSession, readCookie, COOKIE } from '../../../lib/auth';
 import { catalogLabel, softenClaims } from '../../../lib/comply-copy';
 import { rfqProductHooks } from '../../../lib/rfq-fields';
+import { waveBySlug, waveCopy, waveRfqPath, waveSiblings } from '../../../lib/wave-products';
 
 export const prerender = false;
 
@@ -46,7 +47,7 @@ const PRI = `CASE i.lang WHEN ? THEN 0 WHEN 'en' THEN 1 WHEN 'zh-cn' THEN 2 ELSE
 const preview = Astro.url.searchParams.has('preview')
   && !!(await readSession(readCookie(Astro.request.headers.get('cookie'), COOKIE), (env as any)?.AUTH_SECRET ?? '').catch(() => null));
 
-const product = db ? await db.prepare(
+let product = db ? await db.prepare(
   `SELECT p.id, p.slug, p.category, p.moq, p.cover_media,
           i.name, i.summary, i.description, i.specs_json
      FROM products p
@@ -55,30 +56,52 @@ const product = db ? await db.prepare(
     ORDER BY ${PRI} LIMIT 1`,
 ).bind(lang, siteId, pslug, preview ? 1 : 0, lang).first<any>() : null;
 
+/* 首波三卡：公开文案以内容模块为准，product_id 用 slug。无库也能开页。 */
+const waveCard = waveBySlug(pslug);
+const waveView = waveCard ? waveCopy(waveCard, lang) : null;
+if (waveCard && waveView) {
+  product = {
+    id: product?.id ?? null,
+    slug: waveCard.slug,
+    category: waveCard.category,
+    moq: product?.moq ?? null,
+    cover_media: product?.cover_media ?? null,
+    name: waveView.name,
+    summary: waveView.summary,
+    description: waveView.description,
+    specs_json: JSON.stringify(waveView.specs),
+  };
+}
+
 if (!product) {
   /* 没这个产品就回列表,别给 404 —— 链接可能来自旧收藏或改过 slug,
      落回列表访客还能自己找;落到 404 这条线索就断了。 */
   return Astro.redirect(`/${lang}/portfolio/`, 302);
 }
 
-const { results: gallery } = await db!.prepare(
-  `SELECT media_id FROM product_media WHERE product_id = ? ORDER BY sort_order`,
-).bind(product.id).all<{ media_id: number }>();
-let images = (gallery ?? []).map((g) => `/media/${g.media_id}`);
-// 如果 product_media 为空但有 cover_media，回退到 cover_media
-if (!images.length && product.cover_media) images.push(`/media/${product.cover_media}`);
-// 如果仍然没有图片，设为空数组防止渲染错误
-if (!images.length) images = [];
+let images: string[] = [];
+if (product.id != null && db) {
+  const { results: gallery } = await db.prepare(
+    `SELECT media_id FROM product_media WHERE product_id = ? ORDER BY sort_order`,
+  ).bind(product.id).all<{ media_id: number }>();
+  images = (gallery ?? []).map((g) => `/media/${g.media_id}`);
+  if (!images.length && product.cover_media) images.push(`/media/${product.cover_media}`);
+}
 
 /* 同品类的其他产品 —— 「看更多」要有去处 */
-const { results: related } = await db!.prepare(
-  `SELECT p.slug, p.cover_media,
-          (SELECT x.name FROM product_i18n x WHERE x.product_id = p.id
-            ORDER BY CASE x.lang WHEN ? THEN 0 WHEN 'en' THEN 1 ELSE 2 END LIMIT 1) AS name
-     FROM products p
-    WHERE p.site_id = ? AND p.status = 'published' AND p.category = ? AND p.id <> ?
-    ORDER BY p.sort_order LIMIT 4`,
-).bind(lang, siteId, product.category, product.id).all<any>();
+const related = (product.id != null && db)
+  ? ((await db.prepare(
+      `SELECT p.slug, p.cover_media,
+              (SELECT x.name FROM product_i18n x WHERE x.product_id = p.id
+                ORDER BY CASE x.lang WHEN ? THEN 0 WHEN 'en' THEN 1 ELSE 2 END LIMIT 1) AS name
+         FROM products p
+        WHERE p.site_id = ? AND p.status = 'published' AND p.category = ? AND p.id <> ?
+        ORDER BY p.sort_order LIMIT 4`,
+    ).bind(lang, siteId, product.category, product.id).all<any>()).results ?? [])
+  : [];
+const siblings = waveSiblings(product.slug, lang);
+const siblingSlugs = new Set(siblings.map((s) => s.slug));
+const relatedRest = (related ?? []).filter((r: any) => r?.slug && r.slug !== product.slug && !siblingSlugs.has(r.slug));
 
 const CAT_LABEL: Record<string, Record<string, string>> = {
   'zh-cn': { skincare: '护肤', makeup: '彩妆', oral: '口腔护理', kids: '儿童护肤', body: '身体护理', hair: '洗护', haircare: '洗护', cleansing: '洁护', suncare: '防晒', fragrance: '香氛', cleanser: '洁面', toner: '爽肤水', serum: '精华', cream: '面霜乳液', mask: '面膜', 'special-care': '特护', pet: '宠物护理' },
@@ -104,14 +127,16 @@ const zh = lang === 'zh-cn';
 const shown = catalogLabel(String(product.name ?? ''), zh);
 const displayName = shown.name;
 const displaySummary = product.summary ? softenClaims(String(product.summary)) : '';
-/* W5：详情页三个行动都进 RFQ，product_id 用库内 id，缺则 slug，禁止空串，也不再送到 /contact/。 */
-const productRef = String(product.id ?? '').trim() || String(product.slug || pslug).trim();
+/* W5：详情页三个行动都进 RFQ。普通产品用库内 id，缺则 slug。
+   首波三卡的 product_id 必须等于 slug，并带上市场①预填，不把防晒数字写进链接。 */
+const productRef = waveCard ? waveCard.slug : (String(product.id ?? '').trim() || String(product.slug || pslug).trim());
 const productHooks = rfqProductHooks({
   hasContext: true,
   specsJson: typeof product.specs_json === 'string' ? product.specs_json : JSON.stringify(product.specs_json ?? ''),
   hideCjk: lang !== 'zh-cn',
 });
 const rfqFor = (intent: string) => {
+  if (waveCard) return waveRfqPath(lang, waveCard.slug, intent, displayName);
   const qs = new URLSearchParams();
   qs.set('product_id', productRef);
   qs.set('about', displayName);
@@ -173,8 +198,10 @@ const faqs = [
     a: zh ? `可以打样。打样通常 5–14 天，这是样品指示，须书面确认，不是大货交期。样品是否收费视复杂度而定，询盘时说明。`
          : `Yes. Sampling is typically 5–14 days: a sample indication, confirmed in writing, not a production lead time. Sample fees depend on complexity; mention it in your inquiry.` },
   { q: zh ? `这款产品有哪些认证支持？` : `What certifications are available for this product?`,
-    a: zh ? `工厂持有 GMPC、ISO 22716、HALAL 认证;出口支持 FDA 注册、CPNP 通报、东南亚备案。具体到本品的适用认证请询盘确认。`
-         : `The factory holds GMPC, ISO 22716, and HALAL certifications. Export compliance includes FDA registration, CPNP notification, and Southeast Asian market filings. Applicable certifications for this product are confirmed per inquiry.` },
+    a: waveView
+      ? waveView.certAnswer
+      : (zh ? `工厂持有 GMPC、ISO 22716、HALAL 认证;出口支持 FDA 注册、CPNP 通报、东南亚备案。具体到本品的适用认证请询盘确认。`
+         : `The factory holds GMPC, ISO 22716, and HALAL certifications. Export compliance includes FDA registration, CPNP notification, and Southeast Asian market filings. Applicable certifications for this product are confirmed per inquiry.`) },
   { q: zh ? `${displayName} 的生产周期/交期是多久？` : `What is the production lead time for ${displayName}?`,
     a: zh ? `生产周期按品类、包材与订单量确认,以书面合同为准。打样后可进入量产排程,询盘时说明目标上市时间。`
          : `Lead time is confirmed per category, packaging and order quantity in writing. After sample sign-off the order enters production scheduling; mention your target launch date in the inquiry.` },
@@ -280,7 +307,7 @@ const jsonLd = [
             )}
           </div>
           <ul class="assure">
-            <li>{zh ? 'GMPC · ISO 22716 · HALAL（持证，范围以证书为准）' : 'GMPC · ISO 22716 · HALAL (held; scope as on the certificate)'}</li>
+            <li>{waveView ? waveView.assure : (zh ? 'GMPC · ISO 22716 · HALAL（持证，范围以证书为准）' : 'GMPC · ISO 22716 · HALAL (held; scope as on the certificate)')}</li>
             <li>{zh ? '支持 OEM / ODM 打样' : 'OEM / ODM sampling supported'}</li>
             <li>{zh ? '打样周期按品类与包材备料确认 · 以书面告知为准' : 'Sampling lead time confirmed with category & packaging'}</li>
           </ul>
@@ -370,12 +397,22 @@ const jsonLd = [
       </section>
 
       <p class="legal">{T.note}</p>
+      {waveView && waveCard && (
+        <p class="legal">{waveView.footnote} <a href={waveCard.source} rel="noopener noreferrer" target="_blank">{waveCard.source}</a></p>
+      )}
 
       <section class="rel">
         <h2>{T.more}</h2>
-        {(related ?? []).length > 0 && (
+        {(siblings.length > 0 || relatedRest.length > 0) && (
           <ul>
-            {related.map((r: any) => (
+            {siblings.map((r) => (
+              <li>
+                <a href={`/${lang}/product/${r.slug}/`}>
+                  <span>{catalogLabel(r.name, zh).name}</span>
+                </a>
+              </li>
+            ))}
+            {relatedRest.map((r: any) => (
               <li>
                 <a href={`/${lang}/product/${r.slug}/`}>
                   {r.cover_media && <img src={`/media/${r.cover_media}`} alt={catalogLabel(String(r.name ?? ''), zh).name} loading="lazy" />}

@@ -21,8 +21,9 @@ import { publicMoq } from '../../../lib/comply-copy';
 import { rfqCanLookup, rfqHasContext, rfqIdState, type RfqLookup } from '../../../lib/rfq-context';
 import {
   NOTIFY_COUNTRIES, ORDER_BANDS, TARGET_MARKETS,
-  leadTimeWindowNote, rfqFieldCopy, rfqQueryPrefill, rfqProductHooks,
+  leadTimeWindowNote, rfqFieldCopy, rfqLinkPrefill, rfqProductHooks, rfqQueryPrefill,
 } from '../../../lib/rfq-fields';
+import { waveBySlug, waveCopy, waveFormPrefill } from '../../../lib/wave-products';
 import GhadBoundary from '../../../components/GhadBoundary.astro';
 
 export const prerender = false;
@@ -66,6 +67,15 @@ if (productId && rfqCanLookup(productId) && db) {
     } else lookup = 'miss';
   } catch { lookup = 'error'; }
 }
+/* 首波三卡不依赖库。查到也用内容模块的公开文案，避免数字 id 或空规格把摘要冲掉。 */
+const waveCard = waveBySlug(productId);
+let waveSummary = '';
+if (waveCard) {
+  const view = waveCopy(waveCard, zh ? 'zh-cn' : 'en');
+  lookup = 'found';
+  waveSummary = view.summary;
+  found = { category: waveCard.category, name: view.name, specs: JSON.stringify(view.specs) };
+}
 const productName = (about || formulaQ || found?.name || '').trim().slice(0, 160);
 const categoryRaw = (categoryQ || found?.category || '').trim().slice(0, 40);
 const categoryKnown = !categoryRaw || categoryRaw in PRODUCT_CAT;
@@ -80,7 +90,19 @@ if (showCard && formulaQ && db) {
   } catch { formulaTexture = ''; }
 }
 const F = rfqFieldCopy(zh);
-const prefill = rfqQueryPrefill({ market: marketQ, target_market: targetQ });
+/* 区域勾选仍走 rfqQueryPrefill，不把 target_market 写进国家文本框。 */
+const regionPrefill = rfqQueryPrefill({ market: marketQ, target_market: targetQ });
+const prefill = waveFormPrefill(productId, {
+  ...rfqLinkPrefill({
+    market: marketQ,
+    target_market: targetQ,
+    halal_ready: (q.get('halal_ready') ?? '').trim(),
+    notification_assist_country: (q.get('notification_assist_country') ?? '').trim(),
+    first_order_band: (q.get('first_order_band') ?? '').trim(),
+    need_msds_coa: (q.get('need_msds_coa') ?? '').trim(),
+  }),
+  target_market: regionPrefill.target_market,
+});
 const leadNote = leadTimeWindowNote(zh);
 const hooks = rfqProductHooks({
   hasContext: showCard,
@@ -214,6 +236,7 @@ const T = zh
             {productId && <code>{productId}</code>}
           </p>
         )}
+        {waveSummary && <p class="brief">{waveSummary}</p>}
         {categoryRaw && (
           <p class="chips">
             <span class:list={['chip', !categoryKnown && 'bad']}>{categoryKnown ? catChip : categoryRaw}</span>
@@ -293,9 +316,9 @@ const T = zh
           <legend>{F.halal}</legend>
           <p class="hint">{F.halalHint}</p>
           <div class="opts">
-            <label class="check"><input type="radio" name="halal_ready" value="yes" /><span>{F.halalYes}</span></label>
-            <label class="check"><input type="radio" name="halal_ready" value="no" /><span>{F.halalNo}</span></label>
-            <label class="check"><input type="radio" name="halal_ready" value="unsure" /><span>{F.halalUnsure}</span></label>
+            <label class="check"><input type="radio" name="halal_ready" value="yes" checked={prefill.halal_ready === 'yes'} /><span>{F.halalYes}</span></label>
+            <label class="check"><input type="radio" name="halal_ready" value="no" checked={prefill.halal_ready === 'no'} /><span>{F.halalNo}</span></label>
+            <label class="check"><input type="radio" name="halal_ready" value="unsure" checked={prefill.halal_ready === 'unsure'} /><span>{F.halalUnsure}</span></label>
           </div>
         </fieldset>
         <label class="scope"><span>{F.halalScope}</span>
@@ -320,7 +343,7 @@ const T = zh
         <label><span>{F.band}</span>
           <select name="first_order_band">
             <option value="">{F.bandPh}</option>
-            {ORDER_BANDS.map((id) => <option value={id}>{F.bandOpt[id]}</option>)}
+            {ORDER_BANDS.map((id) => <option value={id} selected={prefill.first_order_band === id}>{F.bandOpt[id]}</option>)}
           </select>
           <span class="hint">{F.bandHint}</span>
           <span id="err-band" class="field-err" hidden></span>
@@ -328,8 +351,8 @@ const T = zh
         <fieldset class="checks">
           <legend>{F.msds}</legend>
           <div class="opts">
-            <label class="check"><input type="radio" name="need_msds_coa" value="yes" /><span>{F.msdsYes}</span></label>
-            <label class="check"><input type="radio" name="need_msds_coa" value="no" /><span>{F.msdsNo}</span></label>
+            <label class="check"><input type="radio" name="need_msds_coa" value="yes" checked={prefill.need_msds_coa === 'yes'} /><span>{F.msdsYes}</span></label>
+            <label class="check"><input type="radio" name="need_msds_coa" value="no" checked={prefill.need_msds_coa === 'no'} /><span>{F.msdsNo}</span></label>
           </div>
         </fieldset>
         <p class="note" id="lead_time_window_note">{leadNote}</p>
@@ -548,7 +571,8 @@ const T = zh
   .sum { display: grid; gap: .5rem; margin: 0 0 1.25rem; padding: .875rem 1rem;
          border: 1px solid var(--ck-line, rgba(0,0,0,.14)); border-radius: 12px; }
   .sum.missing, .sum.bad { border-color: #A02B20; background: rgba(160, 43, 32, .08); }
-  .sum .kicker, .sum .errline, .sum .pname, .sum .chips { margin: 0; }
+  .sum .kicker, .sum .errline, .sum .pname, .sum .chips, .sum .brief { margin: 0; }
+  .sum .brief { font-size: .9375rem; line-height: 1.6; }
   .sum .kicker { font-size: .8125rem; letter-spacing: .01em; opacity: .75; }
   .sum .errline { color: #A02B20; font-size: .875rem; line-height: 1.5; }
   :global(html[data-noir]) .sum.missing, :global(html[data-noir]) .sum.bad { border-color: #E07A72; background: rgba(224, 122, 114, .16); }

@@ -23,6 +23,7 @@ import { CAT_LABEL } from '../lib/catalog';
 import { getCounts } from '../lib/counts';
 import { memo } from '../lib/memo';
 import { indexXml, occupiedShards, planIndex, urlEntry, urlsetXml, DECODER_SHARD } from '../lib/sitemap-plan';
+import { WAVE_SLUGS } from '../lib/wave-products';
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -218,6 +219,21 @@ async function renderSitemap(url: URL): Promise<Response> {
       `    <priority>0.7</priority>\n${alts}\n` +
       `    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(`${base}/${DEFAULT_LANG}/${tail}`)}"/>\n  </url>`,
     );
+  }
+  /* 首波三卡在内容模块里，库里还没有同 slug 时也要进 sitemap。已有则上面的循环已写出。 */
+  if (part === 'pages') {
+    const seenSlug = new Set((prods ?? []).map((p) => p.slug));
+    for (const slug of WAVE_SLUGS) {
+      if (seenSlug.has(slug)) continue;
+      const tail = `product/${slug}/`;
+      const alts = LANGS.map((l) =>
+        `    <xhtml:link rel="alternate" hreflang="${hreflangOf(l)}" href="${esc(`${base}/${l}/${tail}`)}"/>`).join('\n');
+      parts.push(
+        `  <url>\n    <loc>${esc(`${base}/${reqLang}/${tail}`)}</loc>\n` +
+        `    <priority>0.7</priority>\n${alts}\n` +
+        `    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(`${base}/${DEFAULT_LANG}/${tail}`)}"/>\n  </url>`,
+      );
+    }
   }
 
   /* answers 页由下方 line ~260 的 push('answers/<slug>/') 统一处理(2026-10-28 核实),
