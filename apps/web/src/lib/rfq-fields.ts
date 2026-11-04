@@ -191,6 +191,24 @@ export function rfqPrefill(market: string): { target_market: string[]; notificat
   return { target_market: target, notification_assist_country: notify };
 }
 
+/**
+ * ?target_market= 只预勾 SEA / GCC / Other，不写入国家或城市文本框。
+ * 与 ?market= 合并；国家码带来的通告协助国仍只来自 market。
+ */
+export function rfqQueryPrefill(input: { market?: string; target_market?: string }): { target_market: string[]; notification_assist_country: string[] } {
+  const fromMarket = rfqPrefill(input.market ?? '');
+  const chosen = new Set(fromMarket.target_market);
+  for (const part of asList(input.target_market)) {
+    const token = part.trim().toUpperCase();
+    if (token === 'SEA' || token === 'GCC') chosen.add(token);
+    else if (token === 'OTHER') chosen.add('Other');
+  }
+  return {
+    target_market: TARGET_MARKETS.filter((id) => chosen.has(id)),
+    notification_assist_country: fromMarket.notification_assist_country,
+  };
+}
+
 function hookFromLabel(label: string): keyof RfqHooks | null {
   const l = label.toLowerCase();
   if (/spf|pa\+|防晒/.test(l)) return 'spf_pa';

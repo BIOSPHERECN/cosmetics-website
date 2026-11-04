@@ -10,11 +10,13 @@ import { env } from 'cloudflare:workers';
 import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { OEM_CERTS } from '@cosmetic/core/content/oem.ts';
 import { findSolution } from '@cosmetic/core/content/solutions.ts';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
+import CosmopackInquiry from '../../../components/CosmopackInquiry.astro';
 
 export const prerender = false;
 
@@ -79,6 +81,8 @@ const ld = [
       <p class="tag">{copy.tagline}</p>
       <p class="lede">{copy.lede}</p>
     </header>
+
+    <CosmopackInquiry lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
 
     <section class="evidence" id="certs" aria-labelledby="certs-h">
       <h2 id="certs-h">{zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}</h2>

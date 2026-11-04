@@ -99,5 +99,13 @@ assert.equal(unc('/en/rfq/?product_id=85&intent=sample'), false);
 assert.equal(can('/en/rfq/?product_id=85&spf_pa=SPF50&texture=gel&skin_type=oily'), null);
 assert.deepEqual(kp('/en/rfq/?product_id=85&spf_pa=SPF50&texture=gel&skin_type=oily'), [['product_id', '85'], ['skin_type', 'oily'], ['spf_pa', 'SPF50'], ['texture', 'gel']]);
 assert.equal(can('/en/rfq/?product_id=85&spf_pa=SPF50&booth=A1'), '/en/rfq/?product_id=85&spf_pa=SPF50');
+assert.equal(can('/en/rfq/?target_market=SEA&intent=cosmopack-asia-2026'), null);
+assert.deepEqual(kp('/en/rfq/?target_market=SEA&intent=cosmopack-asia-2026'), [['target_market', 'SEA']]);
+assert.equal(can('/en/rfq/?target_market=sea'), '/en/rfq/?target_market=SEA');
+assert.equal(can('/en/rfq/?target_market=GCC,SEA'), '/en/rfq/?target_market=SEA%2CGCC');
+assert.equal(can('/en/rfq/?target_market=SEA,GCC'), null);
+assert.equal(can('/en/rfq/?target_market=booth'), '/en/rfq/');
+assert.equal(can('/en/rfq/?product_id=85&target_market=booth'), '/en/rfq/?product_id=85');
+assert.equal(unc('/en/rfq/?target_market=SEA'), false);
 
 console.log('canon.test.mjs:全部通过');

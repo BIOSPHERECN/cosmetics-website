@@ -21,7 +21,7 @@ import { publicMoq } from '../../../lib/comply-copy';
 import { rfqCanLookup, rfqHasContext, rfqIdState, type RfqLookup } from '../../../lib/rfq-context';
 import {
   NOTIFY_COUNTRIES, ORDER_BANDS, TARGET_MARKETS,
-  leadTimeWindowNote, rfqFieldCopy, rfqPrefill, rfqProductHooks,
+  leadTimeWindowNote, rfqFieldCopy, rfqQueryPrefill, rfqProductHooks,
 } from '../../../lib/rfq-fields';
 
 export const prerender = false;
@@ -40,6 +40,8 @@ const about = (q.get('about') ?? '').trim().slice(0, 160);
 const formulaQ = (q.get('formula') ?? '').trim().slice(0, 40);
 const categoryQ = (q.get('category') ?? '').trim().slice(0, 40);
 const marketQ = (q.get('market') ?? '').trim().slice(0, 80);
+/* target_market 只预勾区域，不填进下面的国家/城市框。 */
+const targetQ = (q.get('target_market') ?? '').trim().slice(0, 40);
 /* 有 product_id 才查一行。查不到且不是配方/包材编码 → 错误卡;库故障不误报。边缘缓存按 product_id 分键,同一 id 不会每次都打到 D1。 */
 let lookup: RfqLookup = 'skip';
 let found: { category: string; name: string; specs: string } | null = null;
@@ -77,7 +79,7 @@ if (showCard && formulaQ && db) {
   } catch { formulaTexture = ''; }
 }
 const F = rfqFieldCopy(zh);
-const prefill = rfqPrefill(marketQ);
+const prefill = rfqQueryPrefill({ market: marketQ, target_market: targetQ });
 const leadNote = leadTimeWindowNote(zh);
 const hooks = rfqProductHooks({
   hasContext: showCard,
