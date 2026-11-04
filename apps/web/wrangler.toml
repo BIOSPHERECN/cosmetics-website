@@ -88,10 +88,12 @@ R2_BUCKET = "bohui-photo"
 # 请求头 X-Bohui-E2E-Token 与该 secret 全等才跳过人机;生产验完执行 wrangler secret delete RFQ_E2E_BYPASS_TOKEN。
 TURNSTILE_SITE_KEY = "0x4AAAAAAEh9PTvpt4eaYV_q"
 # 费用熔断保险丝(2026-10-22,lib/fuse.ts + middleware 缓存 miss 处):
-# 当日「缓存 miss → 渲染」次数超过此值 → 非会员/非后台请求一律 429,不再渲染、不再查 D1、不再花钱。
-# 默认 30 万 ≈ 3000 万行读/天,仅为免费额度(250 亿/月)的 3.6%;正常日渲染 <10 万,远碰不到。
-# 改 0 = 用 lib/fuse.ts 的内置默认;改 -1 = 等价极大约束(实际禁用,但留代码路径在)。
-FUSE_RENDER_CAP = "300000"
+# 当日「缓存 miss → 渲染」次数超过此值 → 非会员/非后台/非探针/非廉价静态一律 429,不再渲染。
+# 2026-11-04 现网 ops 已把 CAP 临时抬到 50 万并清掉当日 fired。这里钉死 500000,
+# 避免下次 ship 把文件里的 30 万盖回去、当天立刻再燃。
+# 正常日渲染仍远低于此线。禁止改成 -1 / 极大值(那等于关掉熔断),禁止删熔断代码。
+# 改 0 = 用 lib/fuse.ts 的内置缺省 30 万(仅变量缺失时的退路,不是生产目标)。
+FUSE_RENDER_CAP = "500000"
 # 付费 AI 全站日预算(2026-11-02,lib/fuse.ts aiDailyCheck):ecom-set/pack/video/chat/design 每次请求
 # 按折算的模型调用次数累计(4 张图记 4、读图+出图记 2、一次对话记 1),超过此值当天一律 503、次日零点恢复。
 # 为什么需要它:ratelimit 的配额全是 per-IP,换 IP 就绕过;而模型池是全站共享的 —— 这条是"总闸"。
