@@ -1,0 +1,74 @@
+﻿---
+/**
+ * Mobile bottom bar dual CTA: WhatsApp + Request sample (架构 §5 P1-3).
+ *
+ * - Mobile viewport only (max-width: 52rem); desktop display:none.
+ * - Sample → /${locale}/rfq/ (optional ?product_id= from URL, W5 pattern; never empty product_id).
+ * - WA: locals.contact.whatsapp digits → wa.me; fallback 8613600050502 (待确认).
+ * - Skip beauty2oem (brand === 'beauty2oem'). No 普草 entry.
+ * - On mobile hide #bh-wa-fab to avoid overlap with this bar.
+ */
+interface Props { locale: string; brand?: string }
+const { locale, brand } = Astro.props;
+const zh = String(locale).startsWith('zh');
+const b2o = brand === 'beauty2oem';
+
+const _wa = String(((Astro.locals as any)?.contact ?? {}).whatsapp ?? '').replace(/\D/g, '');
+/* 待确认: ops-owned WA; fallback placeholder until sites.contact_whatsapp is set */
+const waHref = `https://wa.me/${_wa || '8613600050502'}`;
+
+const pidRaw = String(Astro.url.searchParams.get('product_id') ?? '').trim();
+const sampleHref = pidRaw
+  ? `/${locale}/rfq/?product_id=${encodeURIComponent(pidRaw)}`
+  : `/${locale}/rfq/`;
+
+const sampleLabel = zh ? '申请样品' : 'Request sample';
+---
+{!b2o && (
+  <nav class="mobile-dual-cta" aria-label={zh ? '快捷联系' : 'Quick contact'}>
+    <a class="wa-btn" href={waHref} target="_blank" rel="noopener" aria-label="WhatsApp">WhatsApp</a>
+    <a class="sample-btn" href={sampleHref} aria-label={sampleLabel}>{sampleLabel}</a>
+  </nav>
+)}
+
+<style>
+  .mobile-dual-cta {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    z-index: 64;
+    display: none;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    background: var(--ck-surface, #fff);
+    border-top: 1px solid var(--ck-line, rgba(0, 0, 0, 0.12));
+    box-shadow: 0 -8px 24px -16px rgb(0 0 0 / 0.35);
+  }
+  .mobile-dual-cta .wa-btn,
+  .mobile-dual-cta .sample-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 999px;
+    font-size: var(--ck-small);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .mobile-dual-cta .wa-btn {
+    background: #25D366;
+    color: #fff;
+  }
+  .mobile-dual-cta .wa-btn:hover { background: #1ebe5b; }
+  .mobile-dual-cta .sample-btn {
+    background: var(--ck-accent, #333);
+    color: var(--ck-on-accent, #fff);
+  }
+  .mobile-dual-cta .sample-btn:hover { background: var(--ck-accent-deep, #2a2a2a); }
+
+  @media (max-width: 52rem) {
+    .mobile-dual-cta { display: flex; }
+    :global(#bh-wa-fab) { display: none !important; }
+    :global(body) { padding-bottom: 4.5rem; }
+  }
+</style>
