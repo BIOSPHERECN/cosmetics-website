@@ -165,6 +165,10 @@ const tsKey = String((cfEnv as any)?.TURNSTILE_SITE_KEY ?? '').trim();
     <meta property="og:url" content={canonical} />
     <meta property="og:site_name" content={siteName} />
     <meta property="og:locale" content={OG_LOCALE[locale]} />
+    {/* og:locale:alternate for hreflang set */}
+    {LOCALES.filter((l) => l !== locale).map((l) => (
+      <meta property="og:locale:alternate" content={OG_LOCALE[l]} />
+    ))}
     <meta property="og:image" content={ogImg} />
     <meta property="og:image:alt" content={title} />
 
