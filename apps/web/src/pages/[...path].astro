@@ -21,6 +21,7 @@ import ProductionBases from '@cosmetic/core/components/ProductionBases.astro';
 import NarrativeStages from '@cosmetic/core/components/NarrativeStages.astro';
 import Funnel from '@cosmetic/core/components/Funnel.astro';
 import CosmopackInquiry from '../components/CosmopackInquiry.astro';
+import HomeLead from '../components/HomeLead.astro';
 import BigBanner from '@cosmetic/core/components/BigBanner.astro';
 import MastheadNav from '@cosmetic/core/components/MastheadNav.astro';
 import StatementFooter from '@cosmetic/core/components/StatementFooter.astro';
@@ -565,7 +566,7 @@ const ogImage = (() => {
     {/* banner 与 hero 一样自带 <h1>(BigBanner 第 66 行),所以两者任一存在都不再出页头带。
         漏掉 banner 的后果是双重的:首页同时有两个 h1(搜索引擎不知道该信哪个),
         版式上还多出一条 400px 的标题带把首屏大图整个压到折叠线以下 —— 大图看不见就白做了。 */}
-    {/* BIOSPHERE 首页的 h1 是漏斗 slogan,不再叠一条 CMS 标题(旧译文会露英文 AI platform)。 */}
+    {/* BIOSPHERE 首页的 h1 在 HomeLead,不再叠一条 CMS 标题(旧译文会露英文 AI platform)。 */}
     {!(site.id === 'biosphere-ai' && !slug) && (collectionMode
       || (!bodyBlocks.some((b) => ['hero', 'banner', 'slideshow', 'bandimg', 'storehero', 'fx_hero'].includes(b.type))
           /* BEAUTY2OEM 内页的标题 + 主视觉由 B2oBlock 自己出,这里不再叠一条纯文字页头 */
@@ -590,13 +591,15 @@ const ogImage = (() => {
       </section>
     )}
 
-    {/* BIOSPHERE-AI 首页:展会同期可询在漏斗之上,首屏先看见入口 */}
+    {/* BIOSPHERE-AI 首页首屏:左文案 + 右真瓶。展会条与漏斗留在首屏之下。 */}
+    {site.id === 'biosphere-ai' && !slug && (
+      <HomeLead locale={lang} whatsapp={contactWa} />
+    )}
     {site.id === 'biosphere-ai' && !slug && (
       <CosmopackInquiry lang={lang} siteId={site.id} />
     )}
-    {/* BIOSPHERE-AI 首页:化繁为简 —— 把漏斗放在首屏,替代默认 hero */}
     {site.id === 'biosphere-ai' && !slug && (
-      <Funnel locale={lang} />
+      <Funnel locale={lang} heading="h2" />
     )}
 
     {/* 首页产品展示区:漏斗下面紧接着展示成品,2行+更多方块 */}
@@ -806,8 +809,8 @@ const ogImage = (() => {
                         page={slug} pageTitle={pageSeo.title} pageDesc={pageSeo.description} />
             : <FactoryBlock type={b.type} data={d} lang={lang} db={db} siteName={site!.name} email={fxEmail} whatsapp={contactWa} wechat={contactWx} />;
         case 'funnel':
-          /* 漏斗首页(3步交互式漏斗)—— 替换首页默认 hero,让访客 30 秒内进入方案生成流程 */
-          return <Funnel locale={lang} />;
+          /* 首页 h1 已由 HomeLead 承担,这里降成 h2,避免两个 h1。 */
+          return <Funnel locale={lang} heading={site.id === 'biosphere-ai' && !slug ? 'h2' : 'h1'} />;
         case 'signup':
           return <Signup title={d.title ?? ''} body={d.body} placeholder={d.placeholder ?? 'Email'}
                          button={d.button ?? 'OK'} note={d.note} siteId={site!.id} tone={d.tone} />;

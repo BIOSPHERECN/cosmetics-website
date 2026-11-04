@@ -1,0 +1,173 @@
+---
+/**
+ * 首页首屏（P0-1）：左文案，右包材库真瓶实拍。
+ *
+ * 文字元素只有四件：H1、副文、主 CTA、WhatsApp 次链。
+ * 主色只落在 Start RFQ 上。不写 No MOQ / 低 MOQ / Halal certified / FDA approved / 普草。
+ *
+ * 右图用货架快照里已标实拍的真空瓶 /pack/AL-002-5（白底库图）。
+ * 不用 /media/bohui、/media/factory（渲染或占位车间），也不用首页 showcase 的 AI 产品图。
+ * WhatsApp 号码只读 locals.contact，与 ChatWidget / 证据页同一来源；没有号码就不编 wa.me。
+ */
+interface Props {
+  locale: string;
+  /** 站点设置里的 WhatsApp，可空 */
+  whatsapp?: string | null;
+}
+
+const { locale, whatsapp = null } = Astro.props;
+const zh = String(locale).startsWith('zh');
+const base = `/${locale}`;
+const digits = String(whatsapp ?? '').replace(/\D/g, '');
+const waHref = digits
+  ? `https://wa.me/${digits}?text=${encodeURIComponent(zh ? '你好，想了解化妆品代工。' : 'Hi, I would like to discuss cosmetics OEM.')}`
+  : `${base}/contact/`;
+
+const h1 = zh ? '可来厂核对的化妆品代工' : 'OEM cosmetics from a plant you can audit.';
+const shotAlt = zh
+  ? '包材库真空瓶白底实拍，编码 AL-002-5'
+  : 'Airless bottle from the packaging library, code AL-002-5, white-background photograph';
+---
+
+<section class="bio-hero" aria-labelledby="bio-hero-title">
+  <div class="ck-wrap bio-hero-grid">
+    <div class="bio-hero-copy">
+      <h1 id="bio-hero-title">{h1}</h1>
+      <p class="bio-hero-sub">
+        {zh ? (
+          <>广州工厂做贴牌与 OEM。已持有的 <a href={`${base}/oem/cert/gmpc/`}>GMPC</a> 与 <a href={`${base}/oem/cert/iso-22716/`}>ISO 22716</a> 见证书页，复印件凭原件提供。</>
+        ) : (
+          <>Private label and OEM in Guangzhou. Held plant records for <a href={`${base}/oem/cert/gmpc/`}>GMPC</a> and <a href={`${base}/oem/cert/iso-22716/`}>ISO 22716</a> are on file.</>
+        )}
+      </p>
+      <p class="bio-hero-actions">
+        <a class="bio-hero-cta" href={`${base}/rfq/`}>{zh ? '发起询盘' : 'Start RFQ'}</a>
+        <a
+          class="bio-hero-wa"
+          href={waHref}
+          {...(digits ? { target: '_blank', rel: 'noopener' } : { 'data-wa': 'pending' })}
+        >WhatsApp</a>
+      </p>
+    </div>
+    <figure class="bio-hero-shot">
+      <img
+        src="/pack/AL-002-5"
+        alt={shotAlt}
+        width="1200"
+        height="1200"
+        decoding="async"
+        fetchpriority="high"
+      />
+    </figure>
+  </div>
+</section>
+
+<style>
+  .bio-hero {
+    background: var(--bio-bg);
+    color: var(--bio-fg);
+    padding-block: clamp(1.75rem, 4vw, 3.5rem);
+    overflow-x: clip;
+  }
+  .bio-hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: clamp(1.25rem, 3vw, 2.75rem);
+    align-items: center;
+  }
+  .bio-hero-copy { min-width: 0; }
+  html[data-brand][data-editorial] .bio-hero h1 {
+    max-width: 18em;
+    margin: 0;
+    color: var(--bio-fg);
+    font-size: clamp(2rem, 3.2vw, 2.75rem);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  .bio-hero-sub {
+    margin: 0.9rem 0 0;
+    max-width: 36em;
+    color: var(--bio-muted);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.65;
+  }
+  html[data-brand][data-editorial] .bio-hero a:not(.bio-hero-cta) {
+    color: inherit;
+  }
+  .bio-hero-sub a {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+  .bio-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.9rem 1.25rem;
+    margin: 1.35rem 0 0;
+  }
+  html[data-brand][data-editorial] .bio-hero-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.7rem 1.35rem;
+    border-radius: 999px;
+    background: var(--bio-primary);
+    color: #fff;
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.2;
+    letter-spacing: 0;
+    text-decoration: none;
+    text-transform: none;
+    box-shadow: none;
+    transition: transform 200ms ease;
+  }
+  .bio-hero-cta:hover { transform: translateY(-2px); }
+  .bio-hero-cta:active { transform: scale(0.97); }
+  .bio-hero-wa {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+    background: transparent;
+  }
+  .bio-hero-shot {
+    margin: 0;
+    min-width: 0;
+    background: #f6f5f2;
+    border-radius: var(--bio-radius);
+    box-shadow: var(--bio-shadow);
+    overflow: hidden;
+  }
+  html[data-brand][data-editorial] .bio-hero-shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    object-position: center;
+    background: #f6f5f2;
+    filter: none;
+    animation: bio-hero-in 200ms ease both;
+  }
+  @keyframes bio-hero-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @media (max-width: 760px) {
+    .bio-hero-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bio-hero-cta,
+    .bio-hero-cta:hover,
+    .bio-hero-cta:active { transform: none; transition: none; }
+    html[data-brand][data-editorial] .bio-hero-shot img { animation: none; }
+  }
+</style>

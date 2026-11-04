@@ -31,9 +31,14 @@ import { funnelHero } from '../content/funnel-hero.ts';
 interface Props {
   /** 语言,如 'zh-cn' / 'en'(由 [...path].astro 传入) */
   locale: string;
+  /**
+   * 首页另有首屏 h1 时传 h2，避免一页两个 h1。
+   * 其它页仍用 h1（漏斗就是那一页的标题）。
+   */
+  heading?: 'h1' | 'h2';
 }
 
-const { locale } = Astro.props;
+const { locale, heading = 'h1' } = Astro.props;
 const zhPage = String(locale).startsWith('zh');
 /* 首屏(h1 与三步)按 html 语言出。结果卡仍是中/英两套,点「生成」之后才出现。 */
 const H = funnelHero(String(locale));
@@ -146,7 +151,9 @@ const PACKAGING: Record<string, string[]> = {
 <section class="funnel-hero" aria-labelledby="funnel-title">
   <div class="ck-wrap">
     <p class="brand-tag">BIOSPHERE-AI</p>
-    <h1 id="funnel-title">{L.slogan}</h1>
+    {heading === 'h2'
+      ? <h2 id="funnel-title">{L.slogan}</h2>
+      : <h1 id="funnel-title">{L.slogan}</h1>}
     <p class="subline">{L.subline}</p>
 
     {/* 漏斗容器 */}
@@ -227,7 +234,7 @@ const PACKAGING: Record<string, string[]> = {
     padding-block: clamp(1.5rem, 4vw, 3.5rem);
   }
   .brand-tag { font-size: var(--ck-small); color: var(--ck-accent); letter-spacing: var(--ck-cta-tracking); text-transform: var(--ck-cta-transform); }
-  .funnel-hero h1 { margin-top: 0.5rem; font-size: clamp(1.4rem, 3vw, 2.5rem); max-width: 28ch; }
+  .funnel-hero :is(h1, h2) { margin-top: 0.5rem; font-size: clamp(1.4rem, 3vw, 2.5rem); max-width: 28ch; }
   .subline { margin-top: 0.75rem; font-size: var(--ck-small); color: color-mix(in srgb, currentColor 70%, transparent); }
 
   .funnel { margin-top: 2rem; }
@@ -265,7 +272,7 @@ const PACKAGING: Record<string, string[]> = {
 
   /* 移动端适配:首页目标长度不超过6000px */
   @media (max-width: 46rem) {
-    .funnel-hero h1 { font-size: clamp(1.25rem, 5vw, 2rem); }
+    .funnel-hero :is(h1, h2) { font-size: clamp(1.25rem, 5vw, 2rem); }
     .funnel-step { margin-bottom: 1rem; }
     .funnel-opt { padding: 0.5rem 0.875rem; font-size: 0.8125rem; }
   }

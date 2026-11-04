@@ -94,4 +94,16 @@
      回退值兜底:即使 open-props 未加载也不至于无阴影。 */
   --ck-shadow-card: var(--shadow-1, 0 1px 2px rgb(2 8 20 / 0.06));
   --ck-shadow-lift: var(--shadow-3, 0 10px 24px rgb(2 8 20 / 0.12));
+
+  /* ── 帛卉首页令牌（P1-2）─────────────────────────────────
+     只给本站新视觉复用，不改 --ck-*，也不整站换品牌。
+     主色钉 BIOSPHERE-AI 现网品牌靛蓝（registry / brand.css 的 #3b4a8c），
+     不另取 skin2oem 的青。正文用墨色。圆角落在 12–16px。阴影只这一档。
+     交替底：页面用 --bio-bg（白），图衬用 #f6f5f2（写在用到的组件里）。 */
+  --bio-fg: #1c1b19;
+  --bio-bg: #ffffff;
+  --bio-muted: #5e5a53;
+  --bio-primary: #3b4a8c;
+  --bio-radius: 14px;
+  --bio-shadow: 0 12px 32px rgb(28 27 25 / 0.08);
 }
