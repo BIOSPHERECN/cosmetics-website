@@ -122,7 +122,7 @@ export const FACTS = {
     { id: 'gmpc', label: 'GMPC', note: { zh: '化妆品良好生产规范(DEKRA 认证)', en: 'Good Manufacturing Practice of Cosmetics (DEKRA)' } },
     { id: 'iso22716', label: 'ISO 22716:2007', note: { zh: '化妆品 GMP 国际标准(DEKRA 认证)', en: 'Cosmetics GMP international standard (DEKRA)' } },
     { id: 'halal', label: 'HALAL', note: { zh: 'HALAL 认证(覆盖范围以证书为准)', en: 'HALAL certification (scope as stated on the certificate)' } },
-    { id: 'fda', label: 'FDA', note: { zh: '美国 FDA 化妆品设施注册', en: 'US FDA cosmetic facility registration' } },
+    { id: 'fda', label: 'FDA', note: { zh: '美国 FDA 化妆品设施注册（注册≠批准、不发证书）', en: 'US FDA cosmetic facility registration (registration is not approval, and no certificate is issued)' } },
     { id: 'cpnp', label: 'CPNP', note: { zh: '欧盟化妆品通报', en: 'EU cosmetic product notification' } },
     { id: 'sgs', label: 'SGS', note: { zh: '第三方检测报告', en: 'Third-party testing reports' } },
     { id: 'ce', label: 'CE', note: { zh: '欧盟符合性标志', en: 'EU conformity marking' } },

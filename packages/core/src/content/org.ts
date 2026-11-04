@@ -39,8 +39,8 @@ export const ORG = {
   /* 2026-09-25:US FDA, EU CPNP, UK SCPN and Canada CNF accounts are open.
      Wording is registration / listing / notification only, never certification: FDA does not certify cosmetics. */
   compliance: {
-    en: 'Accounts in place with US FDA (cosmetic facility registration), EU CPNP, UK SCPN and Canada CNF. Third-party testing by SGS.',
-    zh: '美国 FDA、欧盟 CPNP、英国 SCPN、加拿大 CNF 注册均已开户;第三方检测由 SGS 出具。',
+    en: 'Accounts in place with US FDA (cosmetic facility registration; registration is not approval, and no certificate is issued), EU CPNP, UK SCPN and Canada CNF. Third-party testing by SGS.',
+    zh: '美国 FDA 设施注册已开户（注册≠批准、不发证书）；欧盟 CPNP、英国 SCPN、加拿大 CNF 注册均已开户;第三方检测由 SGS 出具。',
   },
   figures: [
     { name: '全球生产基地总面积', nameEn: 'Manufacturing floor area', value: '20000', unit: 'MTK' },

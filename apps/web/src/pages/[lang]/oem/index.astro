@@ -90,8 +90,8 @@ const ld = [
     <section class="evidence" id="oem-certs" aria-labelledby="oem-certs-h">
       <h2 id="oem-certs-h">{zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}</h2>
       <p class="lede">{zh
-        ? '按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。'
-        : 'Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications.'}</p>
+        ? '按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。注册≠批准、不发证书。'
+        : 'Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications. Registration is not approval, and no certificate is issued.'}</p>
       <ul class="certs">
         {OEM_CERTS.map((c) => <li><a href={`${B}/oem/cert/${c.id}/`}>{c.name}</a></li>)}
       </ul>

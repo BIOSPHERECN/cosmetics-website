@@ -31,24 +31,24 @@ export function certWallCopy(zh: boolean) {
   return zh
     ? {
         title: '工厂已有认证（仅列真有）',
-        lede: '按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。',
+        lede: '按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。注册≠批准、不发证书。',
         factory: '工厂认证（仅持有）',
         filing: '备案与协助（不是工厂认证）',
         other: '其他在档文件（不是工厂认证）',
         sgs: 'SGS 为第三方检测，不列入工厂持证清单。',
         held: '范围以证书原件为准',
-        fda: '设施注册协助，不是工厂认证',
+        fda: '设施注册协助，不是工厂认证。注册≠批准、不发证书。',
         cpnp: '产品通报协助，不是工厂认证',
       }
     : {
         title: 'Plant certifications on file (held only)',
-        lede: 'Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications.',
+        lede: 'Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications. Registration is not approval, and no certificate is issued.',
         factory: 'Factory certifications (held only)',
         filing: 'Filings and assistance (not factory certifications)',
         other: 'Other documents on file (not factory certifications)',
         sgs: 'SGS is third-party testing, not a held factory certificate.',
         held: 'Scope as stated on the certificate',
-        fda: 'Facility registration assistance — not a factory certification',
+        fda: 'Facility registration assistance, not a factory certification. Registration is not approval, and no certificate is issued.',
         cpnp: 'Product notification assistance — not a factory certification',
       };
 }
@@ -170,14 +170,22 @@ export function partitionCertWall(items: CertItem[], zh: boolean): CertPartition
 }
 
 const HELD_ANSWER = {
-  zh: '工厂持有认证仅列：GMPC、ISO 22716:2007、HALAL（范围以证书原件为准）。FDA 工厂注册与 EU CPNP 是备案或通报协助，不是工厂认证。SGS 为第三方检测，不列入持证清单。编号与有效期凭原件提供。',
-  en: 'Factory certifications held: GMPC, ISO 22716:2007 and HALAL only (scope as stated on each certificate). FDA facility registration and EU CPNP are filing or notification assistance, not factory certifications. SGS reports are third-party tests and are not part of the held-certificate list. Numbers and validity are shared from the originals.',
+  zh: '工厂持有认证仅列：GMPC、ISO 22716:2007、HALAL（范围以证书原件为准）。FDA 工厂注册与 EU CPNP 是备案或通报协助，不是工厂认证。注册≠批准、不发证书。SGS 为第三方检测，不列入持证清单。编号与有效期凭原件提供。',
+  en: 'Factory certifications held: GMPC, ISO 22716:2007 and HALAL only (scope as stated on each certificate). FDA facility registration and EU CPNP are filing or notification assistance, not factory certifications. Registration is not approval, and no certificate is issued. SGS reports are third-party tests and are not part of the held-certificate list. Numbers and validity are shared from the originals.',
 };
 
 /** Rewrite a cert inventory that lists filings or SGS/CE in the same held-certs sentence. */
 export function rewriteHeldCertAnswer(text: string, zh: boolean): string {
   const t = String(text ?? '');
-  if (/不是工厂认证|not a factory certification|never marketed as plant/i.test(t)) return t;
+  if (/不是工厂认证|not a factory certification|never marketed as plant/i.test(t)) {
+    if (/注册≠批准|registration is not approval/i.test(t)) return t;
+    if (/\bFDA\b|美国\s*FDA/i.test(t)) {
+      const zhClause = '注册≠批准、不发证书。';
+      const enClause = 'Registration is not approval, and no certificate is issued.';
+      return zh ? `${t}${zhClause}` : `${t} ${enClause}`;
+    }
+    return t;
+  }
   if (!/GMPC/i.test(t)) return t;
   if (t.length > 700) return t;
   const mixed = /(FDA|SGS|\bCE\b|CPNP)/i.test(t);

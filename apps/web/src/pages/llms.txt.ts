@@ -123,7 +123,7 @@ export const GET: APIRoute = async ({ url }) => {
 ## Certifications
 
 Factory certifications held: GMPC · ISO 22716:2007 · HALAL only.
-FDA facility registration and EU CPNP notification are filing assistance, not factory certifications.
+FDA facility registration and EU CPNP notification are filing assistance, not factory certifications. Registration is not approval, and no certificate is issued.
 SGS reports are third-party tests and are not part of the held-certificate list. Certificate numbers and validity are provided against scanned originals on request.
 
 ## What they make

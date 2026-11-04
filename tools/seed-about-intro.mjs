@@ -23,14 +23,14 @@ const introZh = {
   paragraphs: [
     '帛卉化妆品(广州市帛卉化妆品有限公司)立足广州、布局印尼,是一家集「数据洞察、智能研发、柔性智造、品牌孵化、全球服务」于一体的草本美妆产业平台。',
     '以东方草本与亚马逊植物双源原料为根基,AI 算法贯穿配方研发与生产全流程,为美妆品牌提供从 0 到 1 的全链路赋能。',
-    '双基地布局:广州白云 + 印尼唐格朗。20,000+ ㎡ 全球生产基地、15 条智能生产线、13,000+ 个成熟配方储备、300+ 家战略供应商;ISO 22716、GMPC、HALAL 认证与美国 FDA 注册、欧盟 CPNP 通报覆盖全球市场准入。',
+    '双基地布局:广州白云 + 印尼唐格朗。20,000+ ㎡ 全球生产基地、15 条智能生产线、13,000+ 个成熟配方储备、300+ 家战略供应商;ISO 22716、GMPC、HALAL 认证，以及美国 FDA 设施注册（注册≠批准、不发证书）与欧盟 CPNP 通报覆盖全球市场准入。',
   ],
 };
 const introEn = {
   paragraphs: [
     'BIOSPHERE (Guangzhou Biosphere Cosmetics Co., Ltd.) operates from Guangzhou with a second base in Indonesia — a herbal beauty platform uniting data insight, smart R&D, flexible manufacturing, brand incubation and global service.',
     'Built on dual-source raw materials — Eastern herbs and Amazonian botanicals — with AI running through formulation and production end to end, we enable beauty brands from zero to one.',
-    'Dual bases: Baiyun, Guangzhou and Tangerang, Indonesia. 20,000+ m² of production floor, 15 smart lines, 13,000+ proven formulations and 300+ strategic suppliers; ISO 22716, GMPC and HALAL certification plus US FDA registration and EU CPNP notification cover global market entry.',
+    'Dual bases: Baiyun, Guangzhou and Tangerang, Indonesia. 20,000+ m² of production floor, 15 smart lines, 13,000+ proven formulations and 300+ strategic suppliers; ISO 22716, GMPC and HALAL certification plus US FDA facility registration (registration is not approval, and no certificate is issued) and EU CPNP notification cover global market entry.',
   ],
 };
 d1(`DELETE FROM block_i18n WHERE block_id IN (SELECT id FROM blocks WHERE page_id=36 AND sort_order=25)`);

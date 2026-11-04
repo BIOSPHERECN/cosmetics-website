@@ -176,11 +176,11 @@ const aboutText = descStub
   ? (zh
       ? [
           `${displayName} 是帛卉为 OEM/ODM 项目供应的${catLabel}类产品:配方、包材与标签可按品牌需求在自有产线上调整,打样签样后进入量产。`,
-          `工厂位于广州,20,000 ㎡ 厂房、15 条自动化产线,在册配方 13,000+,持有 GMPC、ISO 22716:2007 与 HALAL 认证;出口可配合 FDA 注册、CPNP 通报与东南亚市场备案。起订量按品类与包材议定，以书面确认为准。打样通常 5–14 天，这是样品指示，不是大货交期。`,
+          `工厂位于广州,20,000 ㎡ 厂房、15 条自动化产线,在册配方 13,000+,持有 GMPC、ISO 22716:2007 与 HALAL 认证;出口可配合 FDA 注册（注册≠批准、不发证书）、CPNP 通报与东南亚市场备案。起订量按品类与包材议定，以书面确认为准。打样通常 5–14 天，这是样品指示，不是大货交期。`,
         ]
       : [
           `${displayName} is a ${catLabel.toLowerCase()} product supplied by BIOSPHERE-AI for OEM/ODM projects: formula, packaging and labels can be adjusted to your brand on our own lines, with sampling and sign-off before mass production.`,
-          `The factory is in Guangzhou — over 20,000 m² of manufacturing floor, 15 automated production lines and 13,000+ formulations on file, certified to GMPC, ISO 22716:2007 and HALAL; export support covers FDA registration, CPNP notification and Southeast Asian filings. MOQ is agreed per category and packaging and confirmed in writing. Sampling is typically 5–14 days as a sample indication, not a production lead time.`,
+          `The factory is in Guangzhou — over 20,000 m² of manufacturing floor, 15 automated production lines and 13,000+ formulations on file, certified to GMPC, ISO 22716:2007 and HALAL; export support covers FDA registration (registration is not approval, and no certificate is issued), CPNP notification and Southeast Asian filings. MOQ is agreed per category and packaging and confirmed in writing. Sampling is typically 5–14 days as a sample indication, not a production lead time.`,
         ])
   : [softenClaims(descRaw)];
 const metaDesc = descStub
@@ -200,8 +200,8 @@ const faqs = [
   { q: zh ? `这款产品有哪些认证支持？` : `What certifications are available for this product?`,
     a: waveView
       ? waveView.certAnswer
-      : (zh ? `工厂持有 GMPC、ISO 22716、HALAL 认证;出口支持 FDA 注册、CPNP 通报、东南亚备案。具体到本品的适用认证请询盘确认。`
-         : `The factory holds GMPC, ISO 22716, and HALAL certifications. Export compliance includes FDA registration, CPNP notification, and Southeast Asian market filings. Applicable certifications for this product are confirmed per inquiry.`) },
+      : (zh ? `工厂持有 GMPC、ISO 22716、HALAL 认证;出口支持 FDA 注册（注册≠批准、不发证书）、CPNP 通报、东南亚备案。具体到本品的适用认证请询盘确认。`
+         : `The factory holds GMPC, ISO 22716, and HALAL certifications. Export compliance includes FDA registration (registration is not approval, and no certificate is issued), CPNP notification, and Southeast Asian market filings. Applicable certifications for this product are confirmed per inquiry.`) },
   { q: zh ? `${displayName} 的生产周期/交期是多久？` : `What is the production lead time for ${displayName}?`,
     a: zh ? `生产周期按品类、包材与订单量确认,以书面合同为准。打样后可进入量产排程,询盘时说明目标上市时间。`
          : `Lead time is confirmed per category, packaging and order quantity in writing. After sample sign-off the order enters production scheduling; mention your target launch date in the inquiry.` },

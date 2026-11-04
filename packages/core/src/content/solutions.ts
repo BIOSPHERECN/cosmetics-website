@@ -852,7 +852,7 @@ export const SOLUTIONS: Solution[] = [
         ['生产流程', '从原料到出库的完整流程,标注每个质检节点。'],
       ],
       faq: [
-        ['工厂有FDA注册吗?', 'FDA是美国的注册/通报机制,不是工厂认证。我们的工厂认证是GMPC和ISO 22716。FDA相关注册由责任人提交。'],
+        ['工厂有FDA注册吗?', 'FDA是美国的注册机制,不是工厂认证。注册≠批准、不发证书。我们的工厂认证是GMPC和ISO 22716。FDA相关注册由责任人提交。'],
         ['可以参观工厂吗?', '可以。提前预约,安排参观生产车间和质检实验室。'],
         ['每批产品都有质检报告吗?', '每批有质检记录和留样。完整质检报告根据需要提供。'],
         ['HALAL认证覆盖所有产品吗?', 'HALAL认证覆盖符合清真要求的产品。不含HALAL认证的产品按常规生产。'],
@@ -881,7 +881,7 @@ export const SOLUTIONS: Solution[] = [
         ['Production flow', 'Full flow from raw materials to dispatch, with each quality checkpoint marked.'],
       ],
       faq: [
-        ['Is the factory FDA-registered?', 'FDA is a US registration/notification mechanism, not a factory certification. Our factory certifications are GMPC and ISO 22716. FDA-related filings are submitted by the responsible person.'],
+        ['Is the factory FDA-registered?', 'FDA is a US registration mechanism, not a factory certification. Registration is not approval, and no certificate is issued. Our factory certifications are GMPC and ISO 22716. FDA-related filings are submitted by the responsible person.'],
         ['Can we visit the factory?', 'Yes. Make an appointment in advance. Tours of production floor and QC lab arranged.'],
         ['Does every batch come with a quality report?', 'Every batch has quality records and retained samples. Full quality reports provided on request.'],
         ['Does HALAL certification cover all products?', 'HALAL covers products that meet halal requirements. Non-HALAL products are produced under standard process.'],

@@ -306,7 +306,7 @@ export const BLOCKS: BlockDef[] = [
         { label: '在库配方基底', evidence: '{formulas} 条可直接打样的配方基底 · {classics} 条古方文献数字化', note: '不是从零研发:按品类、剂型、功效、目标市场匹配基底,改活性物与肤感,寄样评估。', href: '/formulas/', image: '' },
         { label: '工厂与产线', evidence: '{lines} 条自动化产线 · {certs}', note: '护肤 / 身体 / 洗护 / 防晒 / 彩妆 / 口腔;欢迎验厂,证书复印件与产线视频随时给。', href: '/about/', image: '' },
         { label: '包材款式库', evidence: '{packaging} 款包材可选', note: '瓶、罐、软管、泵头等款式库:先按剂型选结构,再确认供应与定制方案。', href: '/packaging/', image: '' },
-        { label: '法规与合规', evidence: '{regs} 个市场准入要点 · {inci} 条原料目录', note: '美国 FDA、欧盟 CPNP、英国 SCPN、加拿大 CNF 注册均已开户;印尼 BPOM、马来 NPRA、沙特 SFDA 等配方阶段先核限用与禁用。', href: '/regulations/', image: '' },
+        { label: '法规与合规', evidence: '{regs} 个市场准入要点 · {inci} 条原料目录', note: '美国 FDA 设施注册已开户（注册≠批准、不发证书）；欧盟 CPNP、英国 SCPN、加拿大 CNF 注册均已开户;印尼 BPOM、马来 NPRA、沙特 SFDA 等配方阶段先核限用与禁用。', href: '/regulations/', image: '' },
         { label: '目标市场落地', evidence: '{markets} 个市场 × {cats} 个品类代工页', note: '{marketNames}:每个市场的备案路径、责任方、标签要点与买手问答。', href: '/oem/', image: '' },
       ],
     },

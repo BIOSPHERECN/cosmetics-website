@@ -2686,9 +2686,9 @@
     },
     {
      "h_zh": "标签设计与合规警告",
-     "b_zh": "产品包装须采用 Drug Facts 版面，包含：活动成分（Active Ingredients，如 Avobenzone、Zinc Oxide 及其浓度）、非活动成分（Inactive Ingredients）、方向（Directions，如涂抹方法）、警告（Warnings，如避免儿童接触、可能过敏等）。NDC 编码必须清晰标示；绝对不可印「FDA Approved」或「FDA 认证」等字样，因为 FDA 不审批非处方药以外的化妆品。",
+     "b_zh": "产品包装须采用 Drug Facts 版面，包含：活动成分（Active Ingredients，如 Avobenzone、Zinc Oxide 及其浓度）、非活动成分（Inactive Ingredients）、方向（Directions，如涂抹方法）、警告（Warnings，如避免儿童接触、可能过敏等）。NDC 编码必须清晰标示；绝对不可把设施注册印成批准或证书字样（注册≠批准、不发证书），因为化妆品成品没有上市前批准。",
      "h_en": "Label design and compliance warnings",
-     "b_en": "Labels must feature the 'Drug Facts' panel listing Active Ingredients, Inactive Ingredients, Directions, and Warnings. The NDC code must be clearly visible. Statements such as 'FDA Approved' or 'FDA Certified' are strictly prohibited and constitute false advertising."
+     "b_en": "Labels must feature the 'Drug Facts' panel listing Active Ingredients, Inactive Ingredients, Directions, and Warnings. The NDC code must be clearly visible. Statements that treat facility registration as approval or as a certificate are strictly prohibited (registration is not approval, and no certificate is issued)."
     }
    ],
    "faqs": [
@@ -2734,14 +2734,14 @@
    "category": "makeup",
    "expert": "bohui-regulatory-us-na",
    "dim": "decide",
-   "lead_zh": "在美国市场，彩妆产品的色料与重金属合规需同时满足美国FDA法规及加州Prop 65标准。 所有合成色素必须使用FDA批准的化妆品色素添加剂。 因矿物色料及植物粉体本身存在重金属本底，必须向供应商索取批次级重金属检测报告（特别是铅）；对于含滑石的产品，还需提供对应批次的石棉检测证明。 由于产品必然覆盖加州市场，需按“成分比对、限值判断、暴露量评估”原则排查Prop 65风险，以最新官方文本为准。",
-   "lead_en": "In the US market, color cosmetics must use FDA-approved color additives. Since mineral pigments and talc have inherent heavy-metal backgrounds, batch-level testing for elements like lead is mandatory. Additionally, talc requires batch-specific asbestos testing. Given that e-commerce invariably exposes products to California, the Prop 65 risk must be assessed by comparing ingredients, limit values, and exposure levels, in accordance with the latest official regulatory texts.",
+   "lead_zh": "在美国市场，彩妆产品的色料与重金属合规需同时满足美国FDA法规及加州Prop 65标准。 所有合成色素必须使用已列入 FDA 化妆品色素清单的添加剂（清单不是对成品的批准；注册≠批准、不发证书）。 因矿物色料及植物粉体本身存在重金属本底，必须向供应商索取批次级重金属检测报告（特别是铅）；对于含滑石的产品，还需提供对应批次的石棉检测证明。 由于产品必然覆盖加州市场，需按“成分比对、限值判断、暴露量评估”原则排查Prop 65风险，以最新官方文本为准。",
+   "lead_en": "In the US market, color cosmetics must use color additives listed for cosmetic use (a listing is not product approval; registration is not approval, and no certificate is issued). Since mineral pigments and talc have inherent heavy-metal backgrounds, batch-level testing for elements like lead is mandatory. Additionally, talc requires batch-specific asbestos testing. Given that e-commerce invariably exposes products to California, the Prop 65 risk must be assessed by comparing ingredients, limit values, and exposure levels, in accordance with the latest official regulatory texts.",
    "sections": [
     {
      "h_zh": "色素添加剂合规",
-     "b_zh": "唇釉与粉底中使用的合成色素必须使用FDA已批准并列入允许清单的化妆品色素添加剂。若使用未批准色素，产品将面临FDA视为违法产品的风险，导致清关受阻或平台下架。",
+     "b_zh": "唇釉与粉底中使用的合成色素必须使用已列入 FDA 化妆品色素允许清单的添加剂（清单不是对成品的批准；注册≠批准、不发证书）。若使用未批准色素，产品将面临FDA视为违法产品的风险，导致清关受阻或平台下架。",
      "h_en": "Color additive compliance",
-     "b_en": "All synthetic colorants used in lip gloss and foundation must be FDA-approved color additives for cosmetic use. Unapproved pigments risk the product being deemed adulterated, leading to customs holds or platform removals."
+     "b_en": "All synthetic colorants used in lip gloss and foundation must be color additives listed for cosmetic use (a listing is not product approval; registration is not approval, and no certificate is issued). Unapproved pigments risk the product being deemed adulterated, leading to customs holds or platform removals."
     },
     {
      "h_zh": "重金属与石棉检测",
@@ -3564,8 +3564,8 @@
    "category": null,
    "expert": "bohui-qms-gmp-audit",
    "dim": "decide",
-   "lead_zh": "ISO 22716“按标准建立体系”不等于“持有证书”，客户验厂通常按零售商自有标准核查；审核重点集中在“写、做、记”一致性，具体会查阅偏差与 CAPA 闭环记录、设备清洁效果确认文件及留样管理规程。 帛卉持有 GMPC、ISO 22716、HALAL、FDA、EU CPNP、SGS 证书。 现场审若产线空转，需如实说明排期并提供近期同类产品的完整批记录。",
-   "lead_en": "Claiming to 'establish a system according to ISO 22716' is distinct from 'holding a certificate'; European retailers audit based on their own standards. The focus is on whether written, practical, and recorded processes align. Auditors will check deviation and CAPA closure records, equipment cleaning validation, and sample retention SOPs. BioSphere holds GMPC, ISO 22716, HALAL, FDA, EU CPNP, and SGS certificates. If the audit day finds lines idle, actual production schedules and recent complete batch records for similar products must be provided.",
+   "lead_zh": "ISO 22716“按标准建立体系”不等于“持有证书”，客户验厂通常按零售商自有标准核查；审核重点集中在“写、做、记”一致性，具体会查阅偏差与 CAPA 闭环记录、设备清洁效果确认文件及留样管理规程。 帛卉持有 GMPC、ISO 22716、HALAL 证书。FDA 是设施注册协助，注册≠批准、不发证书。EU CPNP 是通报，SGS 是第三方检测。 现场审若产线空转，需如实说明排期并提供近期同类产品的完整批记录。",
+   "lead_en": "Claiming to 'establish a system according to ISO 22716' is distinct from 'holding a certificate'; European retailers audit based on their own standards. The focus is on whether written, practical, and recorded processes align. Auditors will check deviation and CAPA closure records, equipment cleaning validation, and sample retention SOPs. BioSphere holds GMPC, ISO 22716 and HALAL certificates. FDA is facility-registration assistance: registration is not approval, and no certificate is issued. EU CPNP is notification and SGS is third-party testing. If the audit day finds lines idle, actual production schedules and recent complete batch records for similar products must be provided.",
    "sections": [
     {
      "h_zh": "偏差与CAPA闭环",
@@ -4092,8 +4092,8 @@
    ],
    "faqs": [
     {
-     "q_zh": "出口国已备案或取得 FDA 认证能否免审？",
-     "a_zh": "不能，中国备案或 FDA 证书在阿联酋系统中无互认效力，仍须按当地法规完成全流程审查。",
+     "q_zh": "出口国已备案或完成 FDA 设施注册能否免审？（注册≠批准、不发证书）",
+     "a_zh": "不能。中国备案或美国设施注册回执都不是证书，在阿联酋系统中无互认效力（注册≠批准、不发证书），仍须按当地法规完成全流程审查。",
      "q_en": "Do other jurisdictions' filings exempt UAE review?",
      "a_en": "No. Chinese or FDA filings are not mutually recognized; full UAE local regulatory procedures apply."
     },
@@ -4410,9 +4410,9 @@
     },
     {
      "h_zh": "标签与平台实操",
-     "b_zh": "标签需符合 21 CFR 701，明确成分、净含量及责任人。严禁在标签或电商页面宣称“FDA 批准”或“FDA 认证”。上架亚马逊等北美平台时，平台会自动匹配合规要素，需确保文案与产品备案信息完全一致。",
+     "b_zh": "标签需符合 21 CFR 701，明确成分、净含量及责任人。严禁在标签或电商页面把设施注册写成批准或证书（注册≠批准、不发证书）。上架亚马逊等北美平台时，平台会自动匹配合规要素，需确保文案与产品备案信息完全一致。",
      "h_en": "Labeling & E-commerce",
-     "b_en": "Labels must comply with 21 CFR 701. Prohibited to claim 'FDA Approved' on packaging or listings. Platforms like Amazon require listing data to exactly match regulatory filings to prevent delisting."
+     "b_en": "Labels must comply with 21 CFR 701. Prohibited to claim approval or a certificate from facility registration on packaging or listings (registration is not approval, and no certificate is issued). Platforms like Amazon require listing data to exactly match regulatory filings to prevent delisting."
     }
    ],
    "faqs": [
@@ -4426,7 +4426,7 @@
      "q_zh": "成分需要 FDA 逐一审批吗？",
      "a_zh": "普通化妆品成分无需 FDA 审批，但必须确保不在 FDA 禁用或限用清单中，并保留安全性自证数据。",
      "q_en": "Does FDA approve individual ingredients?",
-     "a_en": "No, standard ingredients aren't pre-approved by FDA, but they must not be on FDA prohibited lists and require safety substantiation."
+     "a_en": "No. Ordinary cosmetic ingredients are not pre-cleared as a product approval; they must stay off prohibited lists and need safety substantiation. Registration is not approval, and no certificate is issued."
     }
    ],
    "sources": [
