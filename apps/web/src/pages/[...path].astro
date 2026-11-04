@@ -47,6 +47,7 @@ import AnswerBlock from '@cosmetic/core/components/dtc/AnswerBlock.astro';
 import Motion from '../components/Motion.astro';
 // BrandEcosystem 已下线:「先删除集团,只是帛卉」(2026-08-31)
 import ProductGrid from '../components/ProductGrid.astro';
+import CertSplit from '../components/CertSplit.astro';
 import InquiryCart from '../components/InquiryCart.astro';
 import B2oBlock from '../components/B2oBlock.astro';
 import '../styles/b2o.css';   // 09-24 图文版:全部规则挂在 html[data-brand="beauty2oem"] 下,别的站不命中
@@ -60,6 +61,7 @@ import { getVariant, getSite as getStaticSite } from '@cosmetic/core/registry';
 import { env } from 'cloudflare:workers';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { memo } from '../lib/memo';
+import { catalogLabel, claimNote, isCertWall, publicMoq, rewriteHeldCertAnswer, softenClaims } from '../lib/comply-copy';
 
 export const prerender = false;
 
@@ -394,13 +396,15 @@ const trail = slug
   : [];
 /* FAQ 来自页面上真实存在的「开头直答」版块 —— 不凭空造。
    结构化数据里写页面上没有的内容,搜索引擎判为 spam,得不偿失。 */
+const zhPage = lang.startsWith('zh');
+const complyA = (a: string) => rewriteHeldCertAnswer(a, zhPage);
 const faqItems = (bundle?.blocks ?? [])
   .filter((b) => b.type === 'answer')
   .flatMap((b) => {
     const d = b.data as any;
-    const own = d?.question && d?.answer ? [{ q: String(d.question), a: String(d.answer) }] : [];
+    const own = d?.question && d?.answer ? [{ q: String(d.question), a: complyA(String(d.answer)) }] : [];
     const more = Array.isArray(d?.faqs)
-      ? d.faqs.filter((f: any) => f?.q && f?.a).map((f: any) => ({ q: String(f.q), a: String(f.a) }))
+      ? d.faqs.filter((f: any) => f?.q && f?.a).map((f: any) => ({ q: String(f.q), a: complyA(String(f.a)) }))
       : [];
     return [...own, ...more];
   });
@@ -414,10 +418,10 @@ const jsonLd = [
      靠的是它能确定的事实 —— 页面上的产品名对机器是字符串,
      放进 Product schema 才是一条可引用的数据。价格刻意不写:代工按单报价。 */
   ...(catalog.length
-    ? [itemListJsonLd(base0, lang, catalog.map((p: any) => ({ slug: p.slug, name: p.name ?? p.slug }))),
+    ? [itemListJsonLd(base0, lang, catalog.map((p: any) => ({ slug: p.slug, name: catalogLabel(p.name ?? p.slug, zhPage).name }))),
        ...catalog.slice(0, 24).map((p: any) => productJsonLd(base0, lang, {
-         slug: p.slug, name: p.name ?? p.slug, summary: p.summary,
-         category: p.category, moq: p.moq,
+         slug: p.slug, name: catalogLabel(p.name ?? p.slug, zhPage).name, summary: p.summary,
+         category: p.category, moq: '',
          image: p.cover_media ? `/media/${p.cover_media}` : null,
        }))]
     : []),
@@ -578,12 +582,15 @@ const ogImage = (() => {
         <div class="ck-wrap">
           <h2>{lang === 'zh-cn' ? '成品展示' : 'Product showcase'}</h2>
           <ul class="showcase-grid">
-            {showcaseData.items.slice(0, 14).map((p: any) => (
+            {showcaseData.items.slice(0, 14).map((p: any) => {
+              const shown = catalogLabel(p.name ?? p.slug, zhPage);
+              return (
               <li><a class="showcase-card" href={`/${lang}/product/${p.slug}/`}>
-                {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} loading="lazy" /> : <div class="showcase-ph"></div>}
-                <h3>{p.name ?? p.slug}</h3>
+                {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={shown.name} loading="lazy" /> : <div class="showcase-ph"></div>}
+                <h3>{shown.name}</h3>
               </a></li>
-            ))}
+              );
+            })}
             {showcaseData.hasMore && (
               <li><a class="showcase-card showcase-more" href={`/${lang}/portfolio/`}>
                 <div class="showcase-more-body">
@@ -593,6 +600,9 @@ const ogImage = (() => {
               </a></li>
             )}
           </ul>
+          {showcaseData.items.slice(0, 14).some((p: any) => catalogLabel(p.name ?? p.slug, zhPage).claim) && (
+            <p class="showcase-claim">{claimNote(zhPage)}</p>
+          )}
         </div>
       </section>
     )}
@@ -633,7 +643,9 @@ const ogImage = (() => {
         case 'workshop':
           return <WorkshopProof title={d.title} intro={d.intro} clips={d.clips ?? []} pendingLabel={pick(SHOT_PENDING, lang)} />;
         case 'certs':
-          return <CertWall title={d.title} note={d.note} items={d.items ?? []} />;
+          return isCertWall(String(d.title ?? ''), d.items ?? [])
+            ? <CertSplit items={d.items ?? []} zh={zhPage} />
+            : <CertWall title={d.title} note={d.note} items={d.items ?? []} />;
         case 'matrix':
           return <CategoryMatrix title={d.title} intro={d.intro} items={d.items ?? []} />;
         case 'process':
@@ -749,14 +761,18 @@ const ogImage = (() => {
                             cardRight={!!d.cardRight} />;
         case 'statsband':
           return <StatsBand items={d.items ?? []} tone={d.tone} />;
-        case 'procgrid':
+        case 'procgrid': {
           /* 2026-09-25: /media/155 is a HALAL certificate issued to a different company (Bloomage), so it is never shown.
-             The company's own earlier certificates (152 GMPC, 153 ISO 22716, 158 AHF HALAL) stay on display by owner decision. */
-          return <ProcGrid eyebrow={d.eyebrow} title={d.title ?? ''} intro={d.intro}
-                           items={(d.items ?? []).filter((it: any) => !['/media/155'].includes(String(it?.image ?? '')))} cols={d.cols ?? 3} tone={d.tone} />;
+             Cert grids are split to match /services/: held factory certs vs filings. */
+          const gridItems = (d.items ?? []).filter((it: any) => !['/media/155'].includes(String(it?.image ?? '')));
+          return isCertWall(String(d.title ?? ''), gridItems)
+            ? <CertSplit items={gridItems} zh={zhPage} />
+            : <ProcGrid eyebrow={d.eyebrow} title={d.title ?? ''} intro={d.intro}
+                        items={gridItems} cols={d.cols ?? 3} tone={d.tone} />;
+        }
         case 'answer':
-          return <AnswerBlock question={d.question ?? ''} answer={d.answer ?? ''}
-                              faqs={d.faqs ?? []} tone={d.tone} />;
+          return <AnswerBlock question={d.question ?? ''} answer={complyA(String(d.answer ?? ''))}
+                              faqs={(d.faqs ?? []).map((f: any) => ({ ...f, a: complyA(String(f?.a ?? '')) }))} tone={d.tone} />;
         case 'procribbon':
           return <ProcRibbon eyebrow={d.eyebrow} title={d.title ?? ''} intro={d.intro}
                              steps={d.steps ?? []} tone={d.tone} />;
@@ -800,19 +816,17 @@ const ogImage = (() => {
         title={pick(CATALOG_TEXT, lang).title}
         intro={collectionMode ? undefined : pick(CATALOG_TEXT, lang).intro}
         items={catalog.map((p: any) => ({
-          id: p.slug, name: p.name ?? p.slug,
-          summary: p.summary ?? '',
+          id: p.slug, name: catalogLabel(p.name ?? p.slug, zhPage).name,
+          summary: softenClaims(p.summary ?? ''),
           image: p.cover_media ? `/media/${p.cover_media}` : '',
-          /* products.moq 是无语种结构列,存的是中文口径 —— 非中文页兜英文,
-             别让英文目录卡上蹦中文(巡检实拍抓到的) */
-          moq: /[一-鿿]/.test(p.moq ?? '') && lang !== 'zh-cn' && lang !== 'zh-tw'
-            ? 'Flexible MOQ · by category & packaging' : (p.moq ?? ''),
+          /* 卡片不渲染库内点值 MOQ（含 3000）。口径与 /services/ 一致：区间 + 书面确认。 */
+          moq: publicMoq(zhPage),
           options: {},
           /* 图和名字点进详情页 —— 访客看到产品卡的第一反应就是点它 */
           href: `/${lang}/product/${p.slug}/`,
         }))}
         addLabel={pick(GRID_TEXT, lang).add}
-        moqLabel={pick(GRID_TEXT, lang).moq}
+        moqLabel=""
       />
     )}
     {/* 筛到空品类:说清楚为什么空、下一步去哪 —— 半屏空白是最伤的收尾 */}
@@ -909,6 +923,7 @@ const ogImage = (() => {
   .showcase-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
   .showcase-card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
   .showcase-card h3 { margin: 0; padding: 0.625rem 0.75rem; font-size: 0.9375rem; line-height: 1.4; }
+  .showcase-claim { margin: 1rem 0 0; font-size: .8125rem; line-height: 1.6; opacity: .75; }
   .showcase-ph { width: 100%; aspect-ratio: 1; background: var(--ck-bg-alt, #f5f5f5); }
   .showcase-more { display: flex; align-items: center; justify-content: center; background: var(--ck-bg-alt, #f0f0f0); border-radius: 0.75rem; }
   .showcase-more .showcase-more-body { text-align: center; }

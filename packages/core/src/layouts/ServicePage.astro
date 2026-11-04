@@ -177,7 +177,7 @@ const inqPrefill = zhPage
           </div>
           <div class="relate-card">
             <h3>{zhPage ? '推荐包材' : 'Packaging'}</h3>
-            <p class="relate-hint">{zhPage ? '现货包材 1,000–3,000支起订' : 'Stock packaging MOQ 1,000–3,000 pcs'}</p>
+            <p class="relate-hint">{zhPage ? '起订量按品类与包材书面确认' : 'MOQ by category and packaging, confirmed in writing'}</p>
             <div class="relate-items" data-solution={solution.slug} data-type="packaging"></div>
           </div>
         </div>
@@ -207,8 +207,8 @@ const inqPrefill = zhPage
       <div class="ck-wrap">
         <h2>{zhPage ? '提交需求' : 'Submit your inquiry'}</h2>
         <p class="inq-hint">{zhPage
-          ? '不用注册,直接填写。常规现货包材代工：单品 1,000–3,000件起订。成熟基底打样周期：5–14个工作日。'
-          : 'No registration. Stock packaging OEM: MOQ 1,000–3,000 pcs. Mature base sampling: 5–14 working days.'}</p>
+          ? '不用注册，直接填写。起订量按品类与包材书面确认。打样通常 5–14 天（样品指示，书面确认；非大货交期）。'
+          : 'No registration. MOQ by category and packaging, confirmed in writing. Sampling typically 5–14 days (sample indication, confirmed in writing; not a production lead time).'}</p>
         <form class="inq" action="/api/inquiry" method="post">
           <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
                  style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
@@ -444,15 +444,15 @@ const inqPrefill = zhPage
           { code: 'BH-S-042', name: zh ? '烟酰胺亮肤精华基底' : 'Niacinamide brightening base', actives: zh ? '烟酰胺3%、熊果苷' : 'Niacinamide 3%, Arbutin' },
         ],
         compliance: zh ? '🇺🇸FDA MoCRA注册 | 🇮🇩BPOM Notifkos | 🇪🇺CPNP通报' : 'US FDA MoCRA | ID BPOM Notifkos | EU CPNP',
-        packaging: zh ? ['滴管玻璃瓶30ml(现货1,000起)', '真空泵瓶50ml(现货1,000起)', '膏霜罐30g(现货3,000起)'] : ['Dropper glass 30ml(MOQ1k)', 'Airless pump 50ml(MOQ1k)', 'Cream jar 30g(MOQ3k)'],
+        packaging: zh ? ['滴管玻璃瓶30ml（现货，起订书面确认）', '真空泵瓶50ml（现货，起订书面确认）', '膏霜罐30g（现货，起订书面确认）'] : ['Dropper glass 30ml (MOQ confirmed in writing)', 'Airless pump 50ml (MOQ confirmed in writing)', 'Cream jar 30g (MOQ confirmed in writing)'],
       },
       'body-care': {
         bases: [
-          { code: 'BH-B-007', name: zh ? '草本止痒防晒乳' : 'Herbal anti-itch suncare lotion', actives: zh ? '薄荷醇、氧化锌、甘草酸' : 'Menthol, Zinc Oxide, Glycyrrhizin' },
+          { code: 'BH-B-007', name: zh ? '草本舒缓防晒乳' : 'Herbal soothing suncare lotion', actives: zh ? '薄荷醇、氧化锌、甘草酸' : 'Menthol, Zinc Oxide, Glycyrrhizin' },
           { code: 'BH-B-023', name: zh ? '果酸身体乳基底' : 'AHA body lotion base', actives: zh ? '乳酸5%、乳木果油' : 'Lactic Acid 5%, Shea Butter' },
         ],
         compliance: zh ? '🇺🇸OTC防晒需药案 | 🇮🇩防晒剂符合ACD限用 | 🇪🇺EC 1223/2009' : 'US OTC drug filing | ID ACD limits | EU EC 1223/2009',
-        packaging: zh ? ['防晒软管100ml(现货1,000起)', '喷雾瓶150ml(现货3,000起)', '泵头瓶200ml(现货1,000起)'] : ['Suncare tube 100ml(MOQ1k)', 'Spray 150ml(MOQ3k)', 'Pump 200ml(MOQ1k)'],
+        packaging: zh ? ['防晒软管100ml（现货，起订书面确认）', '喷雾瓶150ml（现货，起订书面确认）', '泵头瓶200ml（现货，起订书面确认）'] : ['Suncare tube 100ml (MOQ confirmed in writing)', 'Spray 150ml (MOQ confirmed in writing)', 'Pump 200ml (MOQ confirmed in writing)'],
       },
       'oral-care': {
         bases: [
@@ -460,7 +460,7 @@ const inqPrefill = zhPage
           { code: 'BH-O-007', name: zh ? '洁净牙片基底' : 'Tooth tablet base', actives: zh ? '碳酸钙、木糖醇' : 'Calcium Carbonate, Xylitol' },
         ],
         compliance: zh ? '🇺🇸含氟按化妆品管理 | 🇮🇩BPOM按药品 | 🇪🇺CPNP化妆品' : 'US fluoride=cosmetic | ID BPOM=drug | EU CPNP=cosmetic',
-        packaging: zh ? ['牙膏管100g(现货3,000起)', '压片瓶60粒(现货3,000起)'] : ['Toothpaste tube 100g(MOQ3k)', 'Tablet bottle 60ct(MOQ3k)'],
+        packaging: zh ? ['牙膏管100g（现货，起订书面确认）', '压片瓶60粒（现货，起订书面确认）'] : ['Toothpaste tube 100g (MOQ confirmed in writing)', 'Tablet bottle 60ct (MOQ confirmed in writing)'],
       },
       'product-development': {
         bases: [
@@ -468,7 +468,7 @@ const inqPrefill = zhPage
           { code: 'BH-S-001', name: zh ? '草本舒缓精华基底' : 'Herbal soothing serum base', actives: zh ? '积雪草、泛醇、神经酰胺' : 'Centella, Panthenol, Ceramide' },
         ],
         compliance: zh ? '打样阶段先过成分合规，不等标签出来才发现要改配方' : 'Ingredient compliance checked during selection, not after labels',
-        packaging: zh ? ['打样用:通用样品瓶', '量产后:按品类匹配现货包材1,000-3,000起'] : ['Sampling: universal sample bottle', 'Production: stock packaging MOQ 1k-3k'],
+        packaging: zh ? ['打样用:通用样品瓶', '量产后:现货包材起订按品类书面确认'] : ['Sampling: universal sample bottle', 'Production: stock packaging MOQ confirmed in writing'],
       },
       'factory-quality': {
         bases: [{ code: 'GMPC', name: zh ? 'GMPC化妆品良好生产规范认证' : 'GMPC cosmetics GMP certification', actives: zh ? '覆盖全部化妆品产线' : 'Covers all cosmetics lines' }],
@@ -481,7 +481,7 @@ const inqPrefill = zhPage
           { code: 'BH-B-007', name: zh ? '草本防晒乳(东南亚热销)' : 'Herbal suncare (SEA bestseller)', actives: zh ? '薄荷醇、氧化锌' : 'Menthol, Zinc Oxide' },
         ],
         compliance: zh ? '🇮🇩BPOM+HALAL双轨 | 🇺🇸MoCRA | 🇪🇺CPNP' : 'ID BPOM+HALAL | US MoCRA | EU CPNP',
-        packaging: zh ? ['跨境标准:软管100ml(现货1,000起)', '小包裹:滴管30ml(现货1,000起)'] : ['Cross-border: tube 100ml(MOQ1k)', 'Small parcel: dropper 30ml(MOQ1k)'],
+        packaging: zh ? ['跨境标准:软管100ml（现货，起订书面确认）', '小包裹:滴管30ml（现货，起订书面确认）'] : ['Cross-border: tube 100ml (MOQ confirmed in writing)', 'Small parcel: dropper 30ml (MOQ confirmed in writing)'],
       },
     };
 
@@ -489,7 +489,7 @@ const inqPrefill = zhPage
     var DEFAULT_RELATE = {
       bases: [{ code: 'BH-S-001', name: zh ? '草本舒缓精华基底' : 'Herbal soothing serum base', actives: zh ? '积雪草、泛醇' : 'Centella, Panthenol' }],
       compliance: zh ? '43国法规前置核验，以目标市场官方文本为准' : '43-market pre-check. Official text prevails.',
-      packaging: zh ? ['现货包材1,000-3,000起订，按品类匹配'] : ['Stock packaging MOQ 1k-3k, matched by category'],
+      packaging: zh ? ['现货包材起订按品类书面确认'] : ['Stock packaging MOQ confirmed in writing, matched by category'],
     };
 
     document.querySelectorAll('[data-solution]').forEach(function (container) {

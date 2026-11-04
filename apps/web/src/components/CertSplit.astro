@@ -1,0 +1,87 @@
+---
+/**
+ * Home / quality cert wall, two columns, aligned with /services/ mother copy.
+ * Left: held factory certs only. Right: filings, explicitly not factory certs.
+ */
+import { certWallCopy, partitionCertWall, type CertItem } from '../lib/comply-copy';
+
+export interface Props {
+  items?: CertItem[];
+  zh?: boolean;
+}
+
+const { items = [], zh = false } = Astro.props;
+const copy = certWallCopy(zh);
+const wall = partitionCertWall(items, zh);
+
+---
+
+<section class="cert-split" aria-label={copy.title}>
+  <div class="ck-wrap">
+    <h2>{copy.title}</h2>
+    <p class="lede">{copy.lede}</p>
+    <div class="cols">
+      <div>
+        <h3>{copy.factory}</h3>
+        <ul>
+          {wall.factory.map((it) => (
+            <li>
+              <div class:list={['shot', !it.image && 'text']}>
+                {it.image && <img src={it.image} alt={it.label} loading="lazy" decoding="async" />}
+                <span class="cap"><b>{it.label}</b>{it.note && <span>{it.note}</span>}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h3>{copy.filing}</h3>
+        <ul>
+          {wall.filing.map((it) => (
+            <li>
+              <div class:list={['shot', !it.image && 'text']}>
+                {it.image && <img src={it.image} alt={it.label} loading="lazy" decoding="async" />}
+                <span class="cap"><b>{it.label}</b>{it.note && <span>{it.note}</span>}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+    {wall.other.length > 0 && (
+      <div class="other">
+        <h3>{copy.other}</h3>
+        <ul class="flat">
+          {wall.other.map((it) => (
+            <li><b>{it.label}</b>{it.note ? <span> — {it.note}</span> : null}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+    {wall.sawSgs && <p class="foot">{copy.sgs}</p>}
+  </div>
+</section>
+
+<style>
+  .cert-split { padding: clamp(2rem, 4vw, 3.5rem) 0; background: var(--ck-bg, #fff); }
+  h2 { font-size: clamp(1.35rem, 2vw, 1.75rem); margin: 0 0 .75rem; }
+  h3 { font-size: 1rem; margin: 0 0 .75rem; }
+  .lede, .foot { max-width: 62rem; line-height: 1.7; margin: 0 0 1.25rem; }
+  .foot { margin-top: 1rem; font-size: .875rem; opacity: .8; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+  .shot {
+    display: grid; gap: .5rem; padding: .75rem;
+    border: 1px solid var(--ck-line, rgba(0,0,0,.12));
+    border-radius: 12px; background: var(--ck-surface, #fff);
+  }
+  .shot img { width: 100%; max-height: 10rem; object-fit: contain; background: #fff; }
+  .cap { display: grid; gap: .2rem; }
+  .cap span { font-size: .8125rem; line-height: 1.45; opacity: .75; }
+  .other { margin-top: 1.25rem; }
+  .flat { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
+  .flat li { font-size: .875rem; }
+  @media (max-width: 40rem) {
+    .cols { grid-template-columns: 1fr; }
+  }
+</style>
