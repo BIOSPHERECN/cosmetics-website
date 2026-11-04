@@ -1,0 +1,186 @@
+---
+/**
+ * 莱诺鸟 P0-6：证据页四段壳。
+ * 固定顺序 A 证据 → B 卡点 → C 怎么走 → D Start RFQ。
+ * 主 CTA 只这一颗实心，颜色用 --bio-primary，链到 oem-evidence，查询串只有 intent。
+ * WhatsApp 与其它次链只做 ghost。不放车间图。
+ */
+import {
+  oemEvidenceCertPath,
+  oemEvidenceRfqPath,
+} from '../lib/oem-evidence';
+
+interface LinkItem {
+  href: string;
+  label: string;
+}
+
+interface Props {
+  lang: string;
+  waHref?: string;
+  ctaLabel: string;
+  evidenceTitle: string;
+  evidenceBody: string;
+  certs: ReadonlyArray<{ id: string; label: string }>;
+  evidenceNote?: string;
+  evidenceLinks?: readonly LinkItem[];
+  painsTitle: string;
+  pains: ReadonlyArray<readonly [string, string]>;
+  stepsTitle: string;
+  steps: ReadonlyArray<readonly [string, string]>;
+  stepsNote?: string;
+  secondaryLinks?: readonly LinkItem[];
+}
+
+const {
+  lang,
+  waHref = '',
+  ctaLabel,
+  evidenceTitle,
+  evidenceBody,
+  certs,
+  evidenceNote = '',
+  evidenceLinks = [],
+  painsTitle,
+  pains,
+  stepsTitle,
+  steps,
+  stepsNote = '',
+  secondaryLinks = [],
+} = Astro.props;
+const rfq = oemEvidenceRfqPath(lang);
+---
+
+<div class="oem-evidence-flow">
+  <section class="ev-evidence" id="certs" aria-labelledby="certs-h">
+    <h2 id="certs-h">{evidenceTitle}</h2>
+    <p>{evidenceBody}</p>
+    <ul class="certs">
+      {certs.map((c) => (
+        <li><a href={oemEvidenceCertPath(lang, c.id)}>{c.label}</a></li>
+      ))}
+    </ul>
+    {evidenceNote && <p class="note">{evidenceNote}</p>}
+    {evidenceLinks.length > 0 && (
+      <p class="hub">
+        {evidenceLinks.map((l, i) => (
+          <>
+            {i > 0 && <span aria-hidden="true"> · </span>}
+            <a href={l.href}>{l.label}</a>
+          </>
+        ))}
+      </p>
+    )}
+    <slot name="evidence-extra" />
+  </section>
+
+  <section class="ev-pains" aria-labelledby="pains-h">
+    <h2 id="pains-h">{painsTitle}</h2>
+    <dl class="pairs">
+      {pains.map(([k, v]) => (<><dt>{k}</dt><dd>{v}</dd></>))}
+    </dl>
+  </section>
+
+  <section class="ev-steps" aria-labelledby="steps-h">
+    <h2 id="steps-h">{stepsTitle}</h2>
+    <ol class="steps">
+      {steps.map(([k, v]) => (<li><strong>{k}</strong> — {v}</li>))}
+    </ol>
+    {stepsNote && <p class="note">{stepsNote}</p>}
+  </section>
+
+  <div class="ev-cta">
+    <a class="ev-btn" href={rfq}>{ctaLabel}</a>
+    {waHref && <a class="ev-btn ghost" href={waHref}>WhatsApp</a>}
+    {secondaryLinks.map((l) => <a class="ev-btn ghost" href={l.href}>{l.label}</a>)}
+  </div>
+</div>
+
+<style>
+  .oem-evidence-flow {
+    display: flex;
+    flex-direction: column;
+    margin-top: 0;
+    min-width: 0;
+    max-width: 100%;
+    color: var(--bio-fg);
+  }
+  /* 四段共用一个上边距。父级不要再给外壳加 margin，否则第一段会叠成两档。 */
+  .oem-evidence-flow > .ev-evidence,
+  .oem-evidence-flow > .ev-pains,
+  .oem-evidence-flow > .ev-steps,
+  .oem-evidence-flow > .ev-cta {
+    margin-top: var(--bio-space);
+    min-width: 0;
+    max-width: 100%;
+  }
+  .ev-evidence {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem 1.1rem;
+    background: #f6f5f2;
+    border-radius: var(--bio-radius);
+    box-shadow: var(--bio-shadow);
+  }
+  .ev-evidence :global(.cert-mx),
+  .ev-evidence :global(.scroll) {
+    max-width: 100%;
+    min-width: 0;
+  }
+  h2 {
+    font-size: 1.125rem;
+    margin: 0 0 0.75rem;
+    color: var(--bio-fg);
+    line-height: 1.35;
+  }
+  .ev-evidence h2 { margin: 0; }
+  p { margin: 0; line-height: 1.7; color: var(--bio-fg); }
+  .note { color: var(--bio-muted); }
+  .certs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .certs a, .hub a {
+    color: var(--bio-fg);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+  .pairs { display: grid; gap: 0.875rem; margin: 0; }
+  .pairs dt { font-weight: 650; color: var(--bio-fg); }
+  .pairs dd { margin: 0.25rem 0 0; line-height: 1.65; color: var(--bio-muted); }
+  .steps {
+    margin: 0;
+    padding-left: 1.2rem;
+    display: grid;
+    gap: 0.6rem;
+    line-height: 1.6;
+  }
+  .ev-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .ev-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0.625rem 1.125rem;
+    border-radius: 999px;
+    background: var(--bio-primary);
+    color: var(--bio-bg);
+    text-decoration: none;
+    font-weight: 650;
+    max-width: 100%;
+  }
+  .ev-btn.ghost {
+    background: transparent;
+    color: var(--bio-fg);
+    border: 1px solid color-mix(in srgb, var(--bio-fg) 28%, transparent);
+  }
+</style>

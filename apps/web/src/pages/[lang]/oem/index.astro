@@ -9,11 +9,12 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
+import { oemEvidenceCertLabel } from '../../../lib/oem-evidence';
 import CosmopackInquiry from '../../../components/CosmopackInquiry.astro';
 import GccFairStatus from '../../../components/GccFairStatus.astro';
 import CertMatrix from '../../../components/CertMatrix.astro';
+import EvidenceFlow from '../../../components/EvidenceFlow.astro';
 import { oemIndexCrumbs, oemPageTitle } from '../../../lib/oem-index-seo';
-import { certWallCopy } from '../../../lib/comply-copy';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'zh-cn';
@@ -22,7 +23,31 @@ const tSkip = uiT(lang as any)('a11y.skip');
 const db = (env as any).DB as D1Database | undefined;
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const B = `/${lang}`; const path = `${B}/oem/`;
+const _wa = String(((Astro.locals as any)?.contact ?? {}).whatsapp ?? '').replace(/\D/g, '');
+const waHref = _wa ? `https://wa.me/${_wa}?text=${encodeURIComponent(zh ? '你好，我在看 OEM 证据页，想了解代工。' : 'Hi, I am on the OEM evidence page and would like to discuss OEM.')}` : '';
 const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const certs = OEM_CERTS.map((c) => ({ id: c.id, label: oemEvidenceCertLabel(c.id, c.name) }));
+const pains: [string, string][] = zh ? [
+  ['厂证要能对上原件', '只列工厂已持有的 GMPC、ISO 22716:2007、HALAL。FDA / CPNP 是注册或通报，不是厂证。质检节点在工厂质量页。'],
+  ['配方、包材、检测、报关怕分头找', '从需求到放行在同一项目里由同一对接人跟完。'],
+  ['起订量与交期不能先口头答应', '按品类与包材书面确认。本页不写未核准的低起订量。'],
+] : [
+  ['Plant certificates have to match the originals', 'We list only GMPC, ISO 22716:2007, and HALAL held by the plant. FDA / CPNP are registration or notification routes, not plant certificates. Checkpoints are on the factory quality page.'],
+  ['Formula, packaging, testing, and brokerage should not be chased separately', 'One project owner follows the work from brief to release.'],
+  ['MOQ and lead time are not a verbal promise', 'They are confirmed in writing per category and packaging. This page does not state an unapproved minimum.'],
+];
+const steps: [string, string][] = [
+  [zh ? '需求' : 'Brief', zh ? '品类 / 目标市场 / 首批数量 / 参考产品或全成分表' : 'Category / target market / first-order volume / reference product or INCI'],
+  [zh ? '匹配基底' : 'Match base', zh ? '从在库基底里选 2–3 条，定活性物与肤感方向' : 'Shortlist 2–3 in-house bases; lock actives and skin feel'],
+  [zh ? '寄样' : 'Sample', zh ? '通常 5–14 天；评估后修改再寄（书面确认）' : 'Typically 5–14 days; revise after evaluation (confirmed in writing)'],
+  [zh ? '合规资料' : 'Compliance', zh ? '目标市场备案 / 通报路径与责任方，标签与宣称核对' : 'Market filing / notification path and responsible person; label and claims check'],
+  [zh ? '包装' : 'Packaging', zh ? '现货包材选型或定制；包装稿逐字核对' : 'Stock packaging selection or custom tooling; artwork checked line by line'],
+  [zh ? '试产' : 'Pilot', zh ? '小批量走一遍产线，确认稳定性与灌装' : 'Small pilot run to confirm stability and filling'],
+  [zh ? '大货与放行' : 'Mass production & release', zh ? '按 QC 项目检验；放行报告随货' : 'QC checklist; release report ships with the goods'],
+];
+const stepsNote = zh
+  ? '确认品类与目标市场后打样；寄样通常 5–14 天（按品类与包材备料，书面告知）。样品签样后进入量产排程。起订量按品类与包材议定，不以未核准低起订量口号对外承诺。'
+  : 'Sampling starts after category and target market are clear. Samples typically ship in 5–14 days (by category and packaging stock; confirmed in writing). Mass production is scheduled after sample sign-off. MOQ is agreed per category and packaging — this page does not promise an unapproved minimum.';
 let T = zh ? { title: 'OEM / 贴牌代工 · 按市场与品类', h1: '找化妆品代工厂:按目标市场与品类选', lede: '8 个市场 × 6 个品类,每一格一页:该市场的上市路径、责任人与标签要求,库内该品类的配方与包材数,以及买手常问的问题。商务条款按项目书面报价。', market: '市场', cat: '品类' }
   : { title: 'OEM / private label cosmetics manufacturer by market and category', h1: 'Find a cosmetics contract manufacturer by target market and category', lede: '8 markets × 6 categories, one page each: the market\'s entry route, responsible-person rule and label requirements, live counts of formulations and packaging on file for the category, and the questions buyers ask. Commercial terms are quoted per project in writing.', market: 'Market', cat: 'Category' };
 if (!zh && lang !== 'en' && db) {
@@ -40,7 +65,6 @@ const cName = (c: any) => zh ? c.zh : (NAMES[`cat.${c.id}`] || c.en);
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /* 品牌后缀只留 BaseLayout 按站点名补的那一次。译文里若仍带着 `| BIOSPHERE` 也剥掉。 */
 const pageTitle = oemPageTitle(T.title);
-const certLede = certWallCopy(zh).lede;
 const crumbs = oemIndexCrumbs({ lang, homeLabel: uiT(lang as any)('nav.home'), nav: shell.nav });
 const ld = [
   { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: `${origin}${c.path}` })) },
@@ -66,66 +90,43 @@ const ld = [
       </ol>
     </nav>
     <header class="hd"><h1>{T.h1}</h1><p class="lede">{T.lede}</p></header>
-    <GccFairStatus lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
-    <CosmopackInquiry lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
+    <EvidenceFlow
+      lang={lang}
+      waHref={waHref}
+      ctaLabel={zh ? '发起询盘' : 'Start RFQ'}
+      evidenceTitle={zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}
+      evidenceBody={zh
+        ? '按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。注册≠批准、不发证书。'
+        : 'Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications. Registration is not approval, and no certificate is issued.'}
+      certs={certs}
+      evidenceLinks={[{ href: `${B}/services/factory-quality/`, label: zh ? '工厂质量与认证证据' : 'Factory quality and certificates on file' }]}
+      painsTitle={zh ? '下单前通常卡在这几件事上' : 'What usually blocks an order'}
+      pains={pains}
+      stepsTitle={zh ? '从需求到交付 · 七步' : 'Brief to shipment · 7 steps'}
+      steps={steps}
+      stepsNote={stepsNote}
+      secondaryLinks={[{ href: `${B}/portfolio/`, label: zh ? '看成熟产品库' : 'Browse product library' }]}
+    />
+    <GccFairStatus ctaGhost lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
+    <CosmopackInquiry ctaGhost lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
     <table class="mx">
       <thead><tr><th>{T.market} \ {T.cat}</th>{OEM_CATEGORIES.map((c) => <th>{cap(cName(c))}</th>)}</tr></thead>
       <tbody>{OEM_MARKETS.map((m) => (<tr><th>{mName(m)}</th>{OEM_CATEGORIES.map((c) => <td><a href={`${B}/oem/${m.id}/${c.id}/`}>{zh ? `${c.zh}代工` : `${cap(cName(c))} OEM`}</a></td>)}</tr>))}</tbody>
     </table>
-
-    <section class="evidence" id="oem-process" aria-labelledby="oem-process-h">
-      <h2 id="oem-process-h">{zh ? '从需求到交付 · 七步' : 'Brief to shipment · 7 steps'}</h2>
-      <p class="lede">{zh
-        ? '你不需要自己找配方师、包材厂、检测机构与报关行；每一步在同一项目里由同一对接人跟到底。本页不写未核准的低起订量口号；起订量与交期一律书面确认。'
-        : 'You do not need to chase formulators, packaging vendors, labs and brokers separately — one project owner covers each step. This page never advertises unapproved low-MOQ slogans; MOQ and lead time are confirmed in writing.'}</p>
-      <ol class="steps">
-        <li><strong>{zh ? '需求' : 'Brief'}</strong> — {zh ? '品类 / 目标市场 / 首批数量 / 参考产品或全成分表' : 'Category / target market / first-order volume / reference product or INCI'}</li>
-        <li><strong>{zh ? '匹配基底' : 'Match base'}</strong> — {zh ? '从在库基底里选 2–3 条，定活性物与肤感方向' : 'Shortlist 2–3 in-house bases; lock actives and skin feel'}</li>
-        <li><strong>{zh ? '寄样' : 'Sample'}</strong> — {zh ? '通常 5–14 天；评估后修改再寄（书面确认）' : 'Typically 5–14 days; revise after evaluation (confirmed in writing)'}</li>
-        <li><strong>{zh ? '合规资料' : 'Compliance'}</strong> — {zh ? '目标市场备案 / 通报路径与责任方，标签与宣称核对' : 'Market filing / notification path and responsible person; label and claims check'}</li>
-        <li><strong>{zh ? '包装' : 'Packaging'}</strong> — {zh ? '现货包材选型或定制；包装稿逐字核对' : 'Stock packaging selection or custom tooling; artwork checked line by line'}</li>
-        <li><strong>{zh ? '试产' : 'Pilot'}</strong> — {zh ? '小批量走一遍产线，确认稳定性与灌装' : 'Small pilot run to confirm stability and filling'}</li>
-        <li><strong>{zh ? '大货与放行' : 'Mass production & release'}</strong> — {zh ? '按 QC 项目检验；放行报告随货' : 'QC checklist; release report ships with the goods'}</li>
-      </ol>
-    </section>
-
-    <section class="evidence" id="oem-certs" aria-labelledby="oem-certs-h">
-      <h2 id="oem-certs-h">{zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}</h2>
-      <p class="lede">{certLede}</p>
-      <ul class="certs">
-        {OEM_CERTS.map((c) => <li><a href={`${B}/oem/cert/${c.id}/`}>{c.name}</a></li>)}
-      </ul>
-      <CertMatrix lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
-    </section>
-
-    <section class="evidence" id="oem-sample" aria-labelledby="oem-sample-h">
-      <h2 id="oem-sample-h">{zh ? '打样逻辑' : 'Sampling logic'}</h2>
-      <p class="lede">{zh
-        ? '确认品类与目标市场后打样；寄样通常 5–14 天（按品类与包材备料，书面告知）。样品签样后进入量产排程。起订量按品类与包材议定，不以未核准低 MOQ 口号对外承诺。'
-        : 'Sampling starts after category and target market are clear. Samples typically ship in 5–14 days (by category and packaging stock; confirmed in writing). Mass production is scheduled after sample sign-off. MOQ is agreed per category and packaging — we do not promise unapproved low-MOQ slogans.'}</p>
-      <p class="cta"><a class="btn" href={`${B}/rfq/?intent=oem-evidence`}>{zh ? '发起询盘' : 'Start RFQ'}</a>
-        <a class="btn ghost" href={`${B}/portfolio/`}>{zh ? '看成熟产品库' : 'Browse product library'}</a></p>
-    </section>
-
-    <p class="by-cert">{zh ? '按认证找(只列工厂真有的):' : 'By certification (only those the plant holds):'} {OEM_CERTS.map((c, i) => (<>{i > 0 && ' · '}<a href={`${B}/oem/cert/${c.id}/`}>{c.name}</a></>))}</p>
+    <CertMatrix lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
+    <p class="by-cert">{zh ? '按认证找(只列工厂真有的):' : 'By certification (only those the plant holds):'} {certs.map((c, i) => (<>{i > 0 && ' · '}<a href={`${B}/oem/cert/${c.id}/`}>{c.label}</a></>))}</p>
   </main>
   <SiteFooter locale={lang as any} path={path} site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any} siblings={[]} email={shell.email} />
 </BaseLayout>
 
 <style>
-  main{max-width:64rem;margin:0 auto;padding:2rem 1rem 4rem} h1{font-size:clamp(1.5rem,3vw,2.25rem);margin:0 0 .75rem} .lede{line-height:1.7;margin:0 0 1.5rem;max-width:52rem}
-  .crumb{margin:0 0 1rem;font-size:.875rem} .crumb ol{display:flex;flex-wrap:wrap;gap:.35rem .15rem;list-style:none;margin:0;padding:0} .crumb li:not(:last-child)::after{content:"/";margin-inline:.4rem;opacity:.55} .crumb a{color:inherit}
-  .mx{width:100%;border-collapse:collapse;font-size:.9375rem} .mx th,.mx td{border:1px solid rgba(127,127,127,.3);padding:.5rem .75rem;text-align:left;vertical-align:top} .mx thead th{font-weight:600}
-  .by-cert{margin-top:1.25rem} .by-cert a{text-decoration:underline;text-underline-offset:.15em}
+  main{max-width:64rem;margin:0 auto;padding:2rem 1rem 4rem;min-width:0}
+  main>.hd,main>.mx,main>.by-cert,main>:global(.gcc-fair),main>:global(.cpk),main>:global(.cert-mx){margin-top:var(--bio-space)}
+  main>.oem-evidence-flow{margin-top:0}
+  h1{font-size:clamp(1.5rem,3vw,2.25rem);margin:0 0 .75rem;color:var(--bio-fg)} .lede{line-height:1.7;margin:0;max-width:52rem;color:var(--bio-fg)}
+  .crumb{margin:0;font-size:.875rem} .crumb ol{display:flex;flex-wrap:wrap;gap:.35rem .15rem;list-style:none;margin:0;padding:0} .crumb li:not(:last-child)::after{content:"/";margin-inline:.4rem;opacity:.55} .crumb a{color:inherit}
+  .mx{width:100%;border-collapse:collapse;font-size:.9375rem;margin-top:var(--bio-space)} .mx th,.mx td{border:1px solid color-mix(in srgb, var(--bio-fg) 18%, transparent);padding:.5rem .75rem;text-align:left;vertical-align:top} .mx thead th{font-weight:600}
+  .by-cert{margin-top:var(--bio-space)} .by-cert a{color:var(--bio-fg);text-decoration:underline;text-underline-offset:.15em}
   .mx a{text-decoration:underline;text-underline-offset:.15em}
-  @media (max-width:720px){.mx{display:block;overflow-x:auto}}
-
-  .evidence{margin:2rem 0 0;display:grid;gap:.75rem}
-  .evidence h2{font-size:1.25rem;margin:0}
-  .steps{margin:0;padding-left:1.25rem;display:grid;gap:.5rem;line-height:1.55}
-  .certs{display:flex;flex-wrap:wrap;gap:.75rem;list-style:none;padding:0;margin:0}
-  .certs a{text-decoration:underline;text-underline-offset:.15em}
-  .cta{display:flex;flex-wrap:wrap;gap:.75rem;margin:.25rem 0 0}
-  .btn{display:inline-flex;align-items:center;padding:.625rem 1.125rem;border-radius:999px;background:var(--ck-accent,#333);color:#fff;text-decoration:none;font-weight:600;font-size:.9375rem}
-  .btn.ghost{background:transparent;color:inherit;border:1px solid var(--ck-line,rgba(0,0,0,.2))}
+  @media (max-width:720px){.mx{display:block;overflow-x:auto;max-width:100%}}
 </style>

@@ -14,9 +14,11 @@ interface Props {
   lang: string;
   /** 传入时仅 biosphere-ai 渲染；缺省再按域名判断，认不出域名则照常渲染（本地预览）。 */
   siteId?: string | null;
+  /** 证据四段页降为幽灵次钮，避免和第二颗实心主色抢主 CTA。缺省仍是实心。 */
+  ctaGhost?: boolean;
 }
 
-const { lang, siteId = null } = Astro.props;
+const { lang, siteId = null, ctaGhost = false } = Astro.props;
 const resolved = siteId ?? siteIdForHost(Astro.url.hostname);
 const show = !resolved || resolved === 'biosphere-ai';
 const C = cosmopackCopy(lang);
@@ -46,7 +48,7 @@ const iso = cosmopackIsoPath(lang);
       <span aria-hidden="true"> · </span>
       <a href={COSMOPACK_VENUE} rel="noopener noreferrer" target="_blank">{C.venueLabel}</a>
     </p>
-    <p class="cpk-cta"><a class="cpk-btn" href={rfq}>{C.cta}</a></p>
+    <p class="cpk-cta"><a class:list={['cpk-btn', { ghost: ctaGhost }]} href={rfq}>{C.cta}</a></p>
   </section>
 )}
 
@@ -84,5 +86,11 @@ const iso = cosmopackIsoPath(lang);
     color: #fff;
     text-decoration: none;
     font-weight: 650;
+  }
+  .cpk-btn.ghost {
+    background: transparent;
+    color: inherit;
+    border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+    min-height: 44px;
   }
 </style>

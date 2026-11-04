@@ -16,8 +16,9 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
-import { certWallCopy } from '../../../lib/comply-copy';
+import { oemEvidenceCertLabel } from '../../../lib/oem-evidence';
 import CosmopackInquiry from '../../../components/CosmopackInquiry.astro';
+import EvidenceFlow from '../../../components/EvidenceFlow.astro';
 
 export const prerender = false;
 
@@ -35,8 +36,12 @@ const hub = `${B}/services/`;
 const sol = findSolution('product-development');
 if (!sol) return Astro.redirect(hub, 302);
 const copy = zh ? sol.zh : sol.en;
-const certLabel = (id: string, name: string) => (id === 'iso-22716' ? 'ISO 22716:2007' : name);
-const certLede = `${certWallCopy(zh).lede}${zh ? '以证书原件为准。' : ' Original certificates prevail.'}`;
+const certs = OEM_CERTS.map((c) => ({ id: c.id, label: oemEvidenceCertLabel(c.id, c.name) }));
+const evidenceLinks = [
+  { href: hub, label: zh ? '返回服务总页' : 'Back to the services hub' },
+  { href: `${hub}#sv-certs-h`, label: zh ? '总页上的认证说明' : 'Certification note on the hub' },
+  { href: `${hub}#product-development`, label: zh ? '总页上的这一段' : 'This section on the hub' },
+];
 const duration = zh
   ? '确认品类与目标市场后打样；寄样通常 5–14 天（按品类与包材备料，书面告知）。起订量按品类与包材议定，不以未核准低起订量口号对外承诺。'
   : 'Sampling starts after category and target market are clear. Samples typically ship in 5–14 days (by category and packaging stock; confirmed in writing). MOQ is agreed per category and packaging — this page does not promise an unapproved low MOQ.';
@@ -84,44 +89,24 @@ const ld = [
       <p class="lede">{copy.lede}</p>
     </header>
 
-    <CosmopackInquiry lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
+    <EvidenceFlow
+      lang={lang}
+      waHref={waHref}
+      ctaLabel={zh ? '发起询盘' : 'Start RFQ'}
+      evidenceTitle={zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}
+      evidenceBody={zh
+        ? '按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。注册≠批准、不发证书。以证书原件为准。'
+        : 'Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications. Registration is not approval, and no certificate is issued. Original certificates prevail.'}
+      certs={certs}
+      evidenceNote={duration}
+      evidenceLinks={evidenceLinks}
+      painsTitle={zh ? '你现在大概卡在这几件事上' : 'What is probably holding you up'}
+      pains={copy.pains}
+      stepsTitle={zh ? '开发怎么接' : 'How development is taken on'}
+      steps={copy.steps}
+    />
 
-    <section class="evidence" id="certs" aria-labelledby="certs-h">
-      <h2 id="certs-h">{zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}</h2>
-      <p>{certLede}</p>
-      <ul class="certs">
-        {OEM_CERTS.map((c) => (
-          <li><a href={`${B}/oem/cert/${c.id}/`}>{certLabel(c.id, c.name)}</a></li>
-        ))}
-      </ul>
-      <p>{duration}</p>
-      <p class="hub">
-        <a href={hub}>{zh ? '返回服务总页' : 'Back to the services hub'}</a>
-        <span aria-hidden="true"> · </span>
-        <a href={`${hub}#sv-certs-h`}>{zh ? '总页上的认证说明' : 'Certification note on the hub'}</a>
-        <span aria-hidden="true"> · </span>
-        <a href={`${hub}#product-development`}>{zh ? '总页上的这一段' : 'This section on the hub'}</a>
-      </p>
-    </section>
-
-    <section>
-      <h2>{zh ? '你现在大概卡在这几件事上' : 'What is probably holding you up'}</h2>
-      <dl class="pairs">
-        {copy.pains.map(([k, v]) => (<><dt>{k}</dt><dd>{v}</dd></>))}
-      </dl>
-    </section>
-
-    <section>
-      <h2>{zh ? '开发怎么接' : 'How development is taken on'}</h2>
-      <ol class="steps">
-        {copy.steps.map(([k, v]) => (<li><strong>{k}</strong> — {v}</li>))}
-      </ol>
-    </section>
-
-    <p class="cta">
-      <a class="btn" href={`${B}/rfq/?intent=oem-evidence`}>{zh ? '发起询盘' : 'Start RFQ'}</a>
-      {waHref && <a class="btn ghost" href={waHref}>WhatsApp</a>}
-    </p>
+    <CosmopackInquiry ctaGhost lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
 
     <section>
       <h2>{zh ? '先能给你什么' : 'What you get first'}</h2>
@@ -147,24 +132,18 @@ const ld = [
 </BaseLayout>
 
 <style>
-  .sq { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; display: grid; gap: 1.5rem; }
+  .sq { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; min-width: 0; }
+  .sq > .hd,
+  .sq > section { margin-top: var(--bio-space); }
+  .sq > .oem-evidence-flow { margin-top: 0; }
   .crumb { margin: 0; font-size: .875rem; }
   .crumb a { color: inherit; }
   h1 { font-size: clamp(1.5rem, 2.4vw, 2rem); line-height: 1.25; margin: 0 0 .5rem; }
-  .tag { margin: 0 0 .75rem; color: var(--ck-accent, #333); }
+  .tag { margin: 0 0 .75rem; color: var(--bio-muted); }
   .lede, .sq p { margin: 0; line-height: 1.7; }
   h2 { font-size: 1.125rem; margin: 0 0 .75rem; }
-  .evidence { display: grid; gap: .75rem; padding: 1rem 1.1rem; border: 1px solid var(--ck-line, rgba(0,0,0,.14)); border-radius: 12px; }
-  .certs { display: flex; flex-wrap: wrap; gap: .75rem; list-style: none; padding: 0; margin: 0; }
-  .certs a, .hub a { text-decoration: underline; text-underline-offset: .15em; }
-  .pairs { display: grid; gap: .875rem; margin: 0; }
-  .pairs dt { font-weight: 650; }
-  .pairs dd { margin: .25rem 0 0; line-height: 1.65; color: var(--ck-ink-soft, #444); }
-  .steps, .proof { margin: 0; padding-left: 1.2rem; display: grid; gap: .6rem; line-height: 1.6; }
-  .faq details { border-top: 1px solid var(--ck-line, rgba(0,0,0,.12)); padding: .75rem 0; }
+  .proof { margin: 0; padding-left: 1.2rem; display: grid; gap: .6rem; line-height: 1.6; }
+  .faq details { border-top: 1px solid color-mix(in srgb, var(--bio-fg) 12%, transparent); padding: .75rem 0; }
   .faq summary { cursor: pointer; font-weight: 650; }
   .faq p { margin: .5rem 0 0; line-height: 1.65; }
-  .cta { display: flex; flex-wrap: wrap; gap: .75rem; }
-  .btn { display: inline-flex; align-items: center; min-height: 44px; padding: .625rem 1.125rem; border-radius: 999px; background: var(--ck-accent, #333); color: var(--ck-on-accent, #fff); text-decoration: none; font-weight: 650; }
-  .btn.ghost { background: transparent; color: inherit; border: 1px solid var(--ck-line, rgba(0,0,0,.25)); }
 </style>
