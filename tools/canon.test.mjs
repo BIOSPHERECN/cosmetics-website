@@ -69,6 +69,10 @@ assert.deepEqual(kp('/sitemap.xml?part=bogus&p=abc'), []);
 assert.deepEqual(kp('/sitemap.xml?part=decoder&p=500'), [['p', '99'], ['part', 'decoder']]);
 assert.equal(unc('/sitemap.xml?part=decoder&p=1'), false);
 assert.equal(unc('/sitemap.xml?site=x'), true);
+// 语种子图必须进缓存键,否则 /id/ 与 /en/ 命中同一份 XML
+assert.deepEqual(kp('/sitemap.xml?part=pages&lang=id'), [['lang', 'id'], ['part', 'pages']]);
+assert.deepEqual(kp('/sitemap.xml?part=pages&lang=nope'), [['part', 'pages']]);
+assert.deepEqual(kp('/sitemap.xml?lang=en&part=decoder&p=3'), [['lang', 'en'], ['p', '3'], ['part', 'decoder']]);
 
 // ⑥ 会话验签:对的密钥认、假 cookie / 改过的 / 空密钥一律不认(中间件据此决定「会员不走缓存」)
 const tok = await a.issueSession({ id: 7, email: 'm@x.com', role: 'member' }, 'S|member', 1);

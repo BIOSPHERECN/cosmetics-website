@@ -22,6 +22,7 @@ import { SITEMAP_PARTS } from '../lib/canon';
 import { CAT_LABEL } from '../lib/catalog';
 import { getCounts } from '../lib/counts';
 import { memo } from '../lib/memo';
+import { indexXml, occupiedShards, planIndex, urlEntry, urlsetXml, DECODER_SHARD } from '../lib/sitemap-plan';
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -37,34 +38,90 @@ type Part = 'pages' | 'news' | 'formulas' | 'packaging' | 'ingredients' | 'decod
 const PARTS = SITEMAP_PARTS as Part[];   // 名单与中间件缓存键共用 lib/canon.ts 那一份
 /* 09-24 C4(代码审计 P0-3):解读库一片 5,000 款(× 2 语 = 1 万条 URL),按 id 区间切,每片只按主键读这一段;
    原来 part=decoder 一次读全表 14.9 万行、拼 30 万条 URL,还不进边缘缓存。分片号 ?p= 由中间件规整成 0–99 再进缓存键。 */
-const SHARD = 5000;
+const SHARD = DECODER_SHARD;
 /* 分片 24 小时进边缘缓存(浏览器 1 小时);索引仍 1 小时 */
 const PART_CACHE = 'public, max-age=3600, s-maxage=86400';
 
+/* D1 没绑上时也要给出 200 的索引(只含不查库的营销页)。
+   搜索引擎看到 sitemap 500/503 会把整站判成不稳定。不按 UA 分支:Googlebot 与 bingbot 走同一条。 */
+function emptyDb(): D1Database {
+  const stmt: any = {
+    bind() { return stmt; },
+    all: async () => ({ results: [] }),
+    first: async () => null,
+  };
+  return { prepare: () => stmt, batch: async () => [] } as any;
+}
+
+async function hasRow(db: D1Database, sql: string): Promise<boolean> {
+  try { return !!(await db.prepare(sql).first()); } catch { return false; }
+}
+
+/** 只保留「这一片至少有一条可索引解读」的分片号。空片不进索引。 */
+async function liveDecoderShards(db: D1Database): Promise<number[]> {
+  try {
+    const maxId = Number((await db.prepare('SELECT MAX(id) AS m FROM market_products').first<{ m: number }>().catch(() => null))?.m ?? 0);
+    const n = Math.min(100, Math.max(0, Math.ceil((maxId + 1) / SHARD)));
+    if (!n) return [];
+    const probed = await db.batch(Array.from({ length: n }, (_, i) =>
+      db.prepare(`SELECT 1 AS ok FROM market_products WHERE id >= ? AND id < ? AND inci IS NOT NULL AND length(inci) > 30 LIMIT 1`)
+        .bind(i * SHARD, (i + 1) * SHARD)));
+    return occupiedShards((probed ?? []).map((r) => ((r as any).results?.length ?? 0) > 0));
+  } catch (e) {
+    console.error('[sitemap] decoder shards', e);
+    return [];
+  }
+}
+
 export const GET: APIRoute = async ({ url }) => {
-  const db = (env as any).DB as D1Database | undefined;
-  if (!db) return new Response('sitemap unavailable', { status: 503 });
+  try {
+    return await renderSitemap(url);
+  } catch (e) {
+    console.error('[sitemap]', e);
+    const part = url.searchParams.get('part');
+    const lang = (LANGS as string[]).includes(url.searchParams.get('lang') ?? '') ? url.searchParams.get('lang')! : DEFAULT_LANG;
+    /* 子图出错也不能回 500。至少给出一条首页 loc,避免抓取器记一次失败。 */
+    const xml = part && (PARTS as string[]).includes(part)
+      ? urlsetXml([urlEntry({ loc: `https://${url.hostname}/${lang}/`, priority: '1.0' })])
+      : indexXml(url.hostname, planIndex({
+        langs: LANGS, hasNews: false, hasFormulas: false, hasPackaging: false, hasIngredients: false, decoderShards: [],
+      }));
+    return new Response(xml, { status: 200, headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=300' } });
+  }
+};
+
+async function renderSitemap(url: URL): Promise<Response> {
+  const db = ((env as any).DB as D1Database | undefined) ?? emptyDb();
 
   const part = url.searchParams.get('part') as Part | null;
   const shard = Math.max(0, Math.min(99, parseInt(url.searchParams.get('p') ?? '', 10) || 0));   // 与 lib/canon.ts 的 p 规整同口径
-  /* 无参数 = 出索引 */
+  const reqLangRaw = url.searchParams.get('lang') ?? '';
+  const reqLang = (LANGS as string[]).includes(reqLangRaw) ? reqLangRaw : '';
+  /* 无参数 = 出索引。只列非空子图:空的解读分片、空的配方分片都不写进去。 */
   if (!part || !PARTS.includes(part)) {
-    const host = url.hostname;
-    const NL = '\n';
-    /* 解读库分片数按最大 id 算(主键取最大值,读 1 行) */
-    const maxId = Number((await db.prepare('SELECT MAX(id) AS m FROM market_products').first<{ m: number }>().catch(() => null))?.m ?? 0);
-    const decShards = Math.min(100, Math.max(1, Math.ceil((maxId + 1) / SHARD)));
-    const kids = PARTS
-      .flatMap((p) => (p === 'decoder' ? Array.from({ length: decShards }, (_, i) => `${p}&amp;p=${i}`) : [p]))
-      .map((p) => '  <sitemap><loc>https://' + host + '/sitemap.xml?part=' + p + '</loc></sitemap>')
-      .join(NL);
-    const xml = '<?xml version=\"1.0\" encoding=\"UTF-8\"?>' + NL
-      + '<sitemapindex xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">' + NL
-      + kids + NL + '</sitemapindex>';
+    const [hasNews, hasFormulas, hasPackaging, hasLegacy, hasFacts, decoderShards] = await Promise.all([
+      hasRow(db, `SELECT 1 AS ok FROM news WHERE is_published = 1 LIMIT 1`),
+      hasRow(db, `SELECT 1 AS ok FROM formulas WHERE status IN ('sample','active') LIMIT 1`),
+      hasRow(db, `SELECT 1 AS ok FROM packaging WHERE status IN ('sample','active') LIMIT 1`),
+      hasRow(db, `SELECT 1 AS ok FROM ingredients WHERE status = 'published' LIMIT 1`),
+      hasRow(db, `SELECT 1 AS ok FROM ingredient_facts LIMIT 1`),
+      liveDecoderShards(db),
+    ]);
+    const xml = indexXml(url.hostname, planIndex({
+      langs: LANGS,
+      hasNews, hasFormulas, hasPackaging,
+      hasIngredients: hasLegacy || hasFacts,
+      decoderShards,
+    }));
     return new Response(xml, { headers: {
       'content-type': 'application/xml; charset=utf-8',
       'cache-control': 'public, max-age=3600',
     } });
+  }
+  /* 营销页 / 资讯 / 目录按语种拆。不带 lang 的旧地址回到索引,避免再生成那份十几 MB 的合订本。
+     解读库一片里本来就是 zh-cn + en 两条,不按语种再拆(空片在下面直接 404)。 */
+  if (part !== 'decoder' && !reqLang) {
+    return new Response(null, { status: 302, headers: { Location: `https://${url.hostname}/sitemap.xml`, 'cache-control': 'no-store' } });
   }
 
   const override = url.searchParams.get('site');
@@ -93,9 +150,8 @@ export const GET: APIRoute = async ({ url }) => {
     /* 带 ? 的 slug 只是导航里的货架筛选入口(「④ 包装盒」),不是页面,不进 sitemap */
     if (p.slug.includes('?')) continue;
     const tail = p.slug ? `${p.slug}/` : '';
-    /* 每个语种各出一条 <loc>,与 news 详情页同一写法:
-       只写默认语种会让另外 18 个语种版本不被声明,搜索引擎只能靠 hreflang 自己发现 */
-    for (const lang of LANGS) {
+    /* 这一份只写请求的语种。其它语种在各自的 ?lang= 子图里,hreflang 仍互指全部存在的语言。 */
+    for (const lang of [reqLang]) {
       const loc = `${base}/${lang}/${tail}`;
       const alts = LANGS.map((l) =>
         `    <xhtml:link rel="alternate" hreflang="${hreflangOf(l)}" href="${esc(`${base}/${l}/${tail}`)}"/>`).join('\n');
@@ -125,7 +181,7 @@ export const GET: APIRoute = async ({ url }) => {
      新稿排不到前面,而资讯恰恰是更新最勤、最需要被及时抓走的那一批。 */
   const newsTails = (part === 'news' ? (news ?? []) : []).map((n) => ({ tail: `news/${n.slug}/`, mod: n.published_at }));
   for (const { tail, mod } of newsTails) {
-    for (const lang of LANGS) {
+    for (const lang of [reqLang]) {
       const loc = `${base}/${lang}/${tail}`;
       const alts = LANGS.map((l) =>
         `    <xhtml:link rel="alternate" hreflang="${hreflangOf(l)}" href="${esc(`${base}/${l}/${tail}`)}"/>`).join('\n');
@@ -152,13 +208,12 @@ export const GET: APIRoute = async ({ url }) => {
     : { results: [] as any[] };
   for (const p of (part === 'pages' ? (prods ?? []) : [])) {
     const tail = `product/${p.slug}/`;   /* 单数 —— 复数那条被根 [...path] 吃掉 */
-    /* 每个产品一条 URL(规范用 en),带全部语种 hreflang 备选。
-       原来对每个产品×18 语种各出一条、每条又带 18 个 alternates → 1166×18×18≈38 万行,
-       撑爆 Worker 内存(part=pages 503)。这是 sitemap 的标准写法,体积降 18 倍。2026-10-28 */
+    /* 每个语种一份子图,各写自己的 <loc>。hreflang 仍指向全部会 200 的语种(产品页按语种回退,不 404)。
+       2026-10-28 把 18 语 loc 收成只留 en,是为了不撑爆单文件;2026-11-04 改成按 lang 拆文件,loc 补回。 */
     const alts = LANGS.map((l) =>
       `    <xhtml:link rel="alternate" hreflang="${hreflangOf(l)}" href="${esc(`${base}/${l}/${tail}`)}"/>`).join('\n');
     parts.push(
-      `  <url>\n    <loc>${esc(`${base}/${DEFAULT_LANG}/${tail}`)}</loc>\n` +
+      `  <url>\n    <loc>${esc(`${base}/${reqLang}/${tail}`)}</loc>\n` +
       (p.updated_at ? `    <lastmod>${esc(String(p.updated_at).slice(0, 10))}</lastmod>\n` : '') +
       `    <priority>0.7</priority>\n${alts}\n` +
       `    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(`${base}/${DEFAULT_LANG}/${tail}`)}"/>\n  </url>`,
@@ -172,17 +227,18 @@ export const GET: APIRoute = async ({ url }) => {
      这两类才是采购真正会搜的长尾:「跨境卖家 私有品牌」「面膜代工 起订量」「屏障修护乳液 代工」。
      页面上线了却不在 sitemap 里,等于没做 —— 东西在,但没人知道它在。
      目录详情页的写法见下面那段注释 —— 与这里的营销页不同。 */
-  const push = (tail: string, priority: string, mod?: string) => {
-    /* 一页一条 URL(规范 en)+ 全语种 hreflang 备选。
-       原来 18 语种各自出一条、每条又带 18 个 alternates —— OEM 156 页就乘成 2808 条,
-       整份 part=pages 18MB、Worker 生成超时/503。2026-10-28 修。 */
-    const alts = LANGS.map((l) =>
+  const push = (tail: string, priority: string, mod?: string, langs: readonly string[] = LANGS) => {
+    /* 本文件只出 reqLang 这一条 loc;hreflang 指向 langs 里真正会 200 的语种。
+       18 语合在一份里会把 part=pages 撑到十几 MB(2026-10-28 因此只留了 en)。按 lang 拆开之后 loc 可以补全。 */
+    if (!langs.includes(reqLang)) return;
+    const alts = langs.map((l) =>
       `    <xhtml:link rel="alternate" hreflang="${hreflangOf(l)}" href="${esc(`${base}/${l}/${tail}`)}"/>`).join('\n');
+    const xDefault = langs.includes(DEFAULT_LANG) ? DEFAULT_LANG : langs[0];
     parts.push(
-      `  <url>\n    <loc>${esc(`${base}/${DEFAULT_LANG}/${tail}`)}</loc>\n` +
+      `  <url>\n    <loc>${esc(`${base}/${reqLang}/${tail}`)}</loc>\n` +
       (mod ? `    <lastmod>${esc(String(mod).slice(0, 10))}</lastmod>\n` : '') +
       `    <priority>${priority}</priority>\n${alts}\n` +
-      `    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(`${base}/${DEFAULT_LANG}/${tail}`)}"/>\n  </url>`,
+      `    <xhtml:link rel="alternate" hreflang="x-default" href="${esc(`${base}/${xDefault}/${tail}`)}"/>\n  </url>`,
     );
   };
 
@@ -248,10 +304,10 @@ export const GET: APIRoute = async ({ url }) => {
   if (part === 'pages') {
     const pushZh = (tail: string, priority: string) => {
       const zhs = LANGS.filter((l) => l.startsWith('zh'));
-      for (const lang of zhs) {
-        const alts = zhs.map((l) => `    <xhtml:link rel="alternate" hreflang="${hreflangOf(l)}" href="${esc(`${base}/${l}/${tail}`)}"/>`).join('\n');
-        parts.push(`  <url>\n    <loc>${esc(`${base}/${lang}/${tail}`)}</loc>\n    <priority>${priority}</priority>\n${alts}\n  </url>`);
-      }
+      /* 非中文语种这条路由是 404(classics/[id].astro、bases/[id].astro),不写 loc、hreflang 也不指向它们。 */
+      if (!zhs.includes(reqLang)) return;
+      const alts = zhs.map((l) => `    <xhtml:link rel="alternate" hreflang="${hreflangOf(l)}" href="${esc(`${base}/${l}/${tail}`)}"/>`).join('\n');
+      parts.push(`  <url>\n    <loc>${esc(`${base}/${reqLang}/${tail}`)}</loc>\n    <priority>${priority}</priority>\n${alts}\n  </url>`);
     };
     const { results: cl } = await db.prepare(`SELECT id FROM classics WHERE ok = 1 ORDER BY id`).all<any>().catch(() => ({ results: [] as any[] }));
     for (const r of (cl ?? []) as any[]) if (r.id) pushZh(`classics/${r.id}/`, '0.6');
@@ -300,8 +356,11 @@ export const GET: APIRoute = async ({ url }) => {
      另:三条查询原本无论请求哪个 part 都会执行,读的行白读。
      现在按需查 —— 这个站是被 D1 读额度打爆过两次的。 */
   const one = (tail: string, priority: string, mod?: string) => {
+    /* 目录详情不内联 18 条 hreflang(一款包材就会膨胀到几十 KB)。
+       每个语种单独一份子图,loc 用这一份的语种;页面 <head> 里的 alternate 已经互指。 */
+    if (!reqLang) return;
     parts.push(
-      `  <url>\n    <loc>${esc(`${base}/${DEFAULT_LANG}/${tail}`)}</loc>\n` +
+      `  <url>\n    <loc>${esc(`${base}/${reqLang}/${tail}`)}</loc>\n` +
       (mod ? `    <lastmod>${esc(String(mod).slice(0, 10))}</lastmod>\n` : '') +
       `    <priority>${priority}</priority>\n  </url>`);
   };
@@ -332,22 +391,17 @@ export const GET: APIRoute = async ({ url }) => {
       .catch(() => ({ results: [] as any[] }));
     for (const ig of results ?? []) one(`ingredients/${ig.slug}/`, '0.6', ig.updated_at);
     const legacy = new Set((results ?? []).map((ig) => ig.slug));   // T 审查:旧 149 条与 facts 同名(niacinamide)时 [slug].astro 走旧页,sitemap 别重复列同一 URL
-    /* 目录原料页 v2:ingredient_facts 全部 inci_key × zh-cn / en(创始人 09-17:「那么多这种资源库,都要抓回来,图文的方式展示」) */
+    /* 目录原料页:任一语种打开都是 200(没有译文就回退英文),所以每个语种子图各写一条 loc。
+       不在这里再内联 hreflang —— 原料行数 × 18 条 alternate 会把单文件重新撑过 10 MB。 */
     const { results: facts } = await db
       .prepare(`SELECT inci_key, updated_at FROM ingredient_facts ORDER BY inci_key`)
       .all<{ inci_key: string; updated_at: string }>()
       .catch(() => ({ results: [] as any[] }));
-    const two = ['zh-cn', 'en'];
     for (const f of facts ?? []) {
       if (String(f.inci_key).includes('/')) continue;   // 09-23:「A / B」复合脏键渲染时抛错,被 catch-all 变成 404(抽查 2/2 命中),不列
       const fs = ingredientSlug(f.inci_key); if (!fs || legacy.has(fs)) continue;   // 09-23:键全是符号时 slug 为空 → 「ingredients//」
       legacy.add(fs);   // 多个脏键撞同一 slug 时只列一次
-      const tail = `ingredients/${fs}/`;
-      const alts = two.map((l) => `    <xhtml:link rel="alternate" hreflang="${hreflangOf(l as any)}" href="${esc(`${base}/${l}/${tail}`)}"/>`).join('\n');
-      for (const l of two) parts.push(
-        `  <url>\n    <loc>${esc(`${base}/${l}/${tail}`)}</loc>\n` +
-        (f.updated_at ? `    <lastmod>${esc(String(f.updated_at).slice(0, 10))}</lastmod>\n` : '') +
-        `    <priority>0.6</priority>\n${alts}\n  </url>`);
+      one(`ingredients/${fs}/`, '0.6', f.updated_at);
     }
   }
 
@@ -368,6 +422,11 @@ export const GET: APIRoute = async ({ url }) => {
         (r.last_seen ? `    <lastmod>${esc(String(r.last_seen).slice(0, 10))}</lastmod>\n` : '') +
         `    <priority>0.6</priority>\n${alts}\n  </url>`);
     }
+  }
+
+  /* 空 urlset 不再以 200 交出去。索引没列这些地址;旧的空片(解读 p=3–14 等、空的 part=formulas)直接 404,抓取器会丢掉。 */
+  if (!parts.length) {
+    return new Response('no urls', { status: 404, headers: { 'cache-control': 'public, max-age=3600', 'content-type': 'text/plain; charset=utf-8' } });
   }
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
