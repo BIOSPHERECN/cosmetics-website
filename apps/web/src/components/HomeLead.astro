@@ -6,6 +6,7 @@
  * 主色只落在 Start RFQ 上。不写 No MOQ / 低 MOQ / Halal certified / 批准式宣称 / 普草。
  *
  * 右图用货架快照里已标实拍的真空瓶 /pack/AL-002-5（白底库图）。
+ * 右栏只做紧凑 4:5 裁切，最大 360×280，不用半屏白底卡，也不用 contain 把瓶子漂在大框里。
  * 不用 /media/bohui、/media/factory（渲染或占位车间），也不用首页 showcase 的 AI 产品图。
  * WhatsApp 号码只读 locals.contact，与 ChatWidget / 证据页同一来源；没有号码就不编 wa.me。
  */
@@ -53,8 +54,8 @@ const shotAlt = zh
       <img
         src="/pack/AL-002-5"
         alt={shotAlt}
-        width="1200"
-        height="1200"
+        width="224"
+        height="280"
         decoding="async"
         fetchpriority="high"
       />
@@ -66,13 +67,13 @@ const shotAlt = zh
   .bio-hero {
     background: var(--bio-bg);
     color: var(--bio-fg);
-    padding-block: clamp(1.75rem, 4vw, 3.5rem);
+    padding-block: clamp(1.25rem, 2.5vw, 2rem);
     overflow-x: clip;
   }
   .bio-hero-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-    gap: clamp(1.25rem, 3vw, 2.75rem);
+    grid-template-columns: minmax(0, 1.45fr) auto;
+    gap: 1.25rem;
     align-items: center;
   }
   .bio-hero-copy { min-width: 0; }
@@ -87,12 +88,12 @@ const shotAlt = zh
     text-wrap: balance;
   }
   .bio-hero-sub {
-    margin: 0.9rem 0 0;
+    margin: 0.55rem 0 0;
     max-width: 36em;
     color: var(--bio-muted);
     font-size: 1rem;
     font-weight: 400;
-    line-height: 1.65;
+    line-height: 1.55;
   }
   html[data-brand][data-editorial] .bio-hero a:not(.bio-hero-cta) {
     color: inherit;
@@ -105,8 +106,8 @@ const shotAlt = zh
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.9rem 1.25rem;
-    margin: 1.35rem 0 0;
+    gap: 0.65rem 1rem;
+    margin: 0.85rem 0 0;
   }
   html[data-brand][data-editorial] .bio-hero-cta {
     display: inline-flex;
@@ -140,20 +141,27 @@ const shotAlt = zh
   .bio-hero-shot {
     margin: 0;
     min-width: 0;
-    background: #f6f5f2;
-    border-radius: var(--bio-radius);
-    box-shadow: var(--bio-shadow);
+    justify-self: end;
+    width: min(224px, 100%);
+    max-width: 360px;
+    max-height: 280px;
+    aspect-ratio: 4 / 5;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
     overflow: hidden;
   }
+  .bio-hero-shot img,
   html[data-brand][data-editorial] .bio-hero-shot img {
     display: block;
     width: 100%;
-    height: auto;
+    height: 280px;
     max-width: 100%;
-    aspect-ratio: 1;
-    object-fit: contain;
-    object-position: center;
-    background: #f6f5f2;
+    max-height: 280px;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    object-position: center 40%;
+    background: transparent;
     filter: none;
     animation: bio-hero-in 200ms ease both;
   }
@@ -163,6 +171,16 @@ const shotAlt = zh
   }
   @media (max-width: 760px) {
     .bio-hero-grid { grid-template-columns: minmax(0, 1fr); }
+    .bio-hero-shot {
+      justify-self: start;
+      width: min(160px, 100%);
+      max-height: 200px;
+    }
+    .bio-hero-shot img,
+    html[data-brand][data-editorial] .bio-hero-shot img {
+      height: 200px;
+      max-height: 200px;
+    }
   }
   @media (prefers-reduced-motion: reduce) {
     .bio-hero-cta,

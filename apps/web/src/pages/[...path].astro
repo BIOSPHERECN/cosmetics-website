@@ -601,7 +601,7 @@ const SHOW_HOME_HOT_SHELF = false;
       </section>
     )}
 
-    {/* BIOSPHERE-AI 首页首屏:左文案 + 右真瓶。展会条与漏斗留在首屏之下。 */}
+    {/* BIOSPHERE-AI 首页首屏:左文案 + 右紧凑真瓶。漏斗降到成品展示之后，避免大白互动卡顶住首屏。 */}
     {site.id === 'biosphere-ai' && !slug && (
       <HomeLead locale={lang} whatsapp={contactWa} />
     )}
@@ -611,11 +611,8 @@ const SHOW_HOME_HOT_SHELF = false;
     {SHOW_HOME_COSMOPACK && site.id === 'biosphere-ai' && !slug && (
       <CosmopackInquiry lang={lang} siteId={site.id} />
     )}
-    {site.id === 'biosphere-ai' && !slug && (
-      <Funnel locale={lang} heading="h2" />
-    )}
 
-    {/* 首页产品展示区:漏斗下面紧接着展示成品,2行+更多方块 */}
+    {/* 首页产品展示区:首屏之下展示成品,2行+更多方块。漏斗再往后。 */}
     {showcaseData.items.length > 0 && !slug && (
       <section class="block alt">
         <div class="ck-wrap">
@@ -644,6 +641,11 @@ const SHOW_HOME_HOT_SHELF = false;
           )}
         </div>
       </section>
+    )}
+
+    {/* 三步漏斗降到成品展示之后（无展示时仍在展会条之下），不再作为首屏大白互动卡。 */}
+    {site.id === 'biosphere-ai' && !slug && (
+      <Funnel locale={lang} heading="h2" />
     )}
 
     {(collectionMode ? [] : bodyBlocks).map((b) => {
@@ -824,8 +826,9 @@ const SHOW_HOME_HOT_SHELF = false;
                         page={slug} pageTitle={pageSeo.title} pageDesc={pageSeo.description} />
             : <FactoryBlock type={b.type} data={d} lang={lang} db={db} siteName={site!.name} email={fxEmail} whatsapp={contactWa} wechat={contactWx} />;
         case 'funnel':
-          /* 首页 h1 已由 HomeLead 承担,这里降成 h2,避免两个 h1。 */
-          return <Funnel locale={lang} heading={site.id === 'biosphere-ai' && !slug ? 'h2' : 'h1'} />;
+          /* 首页漏斗已在成品展示之后单独渲染。CMS 再出一次就是第二张大白互动卡。 */
+          if (site.id === 'biosphere-ai' && !slug) return null;
+          return <Funnel locale={lang} heading="h1" />;
         case 'signup':
           return <Signup title={d.title ?? ''} body={d.body} placeholder={d.placeholder ?? 'Email'}
                          button={d.button ?? 'OK'} note={d.note} siteId={site!.id} tone={d.tone} />;
