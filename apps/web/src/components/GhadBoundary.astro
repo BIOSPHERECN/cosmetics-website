@@ -1,0 +1,26 @@
+---
+/**
+ * 沙特 GHAD 责任边界。调用方放在 RFQ（表单含 SA）或指向沙特的页面上。
+ */
+import { ghadBoundaryCopy } from '../lib/ghad-boundary';
+
+interface Props {
+  lang: string;
+}
+
+const { lang } = Astro.props;
+const C = ghadBoundaryCopy(lang);
+---
+
+<p class="ghad-boundary" id="ghad-boundary">{C.text}</p>
+
+<style>
+  .ghad-boundary {
+    margin: 0.75rem 0 0;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+    border-radius: 10px;
+    line-height: 1.65;
+    max-width: 52rem;
+  }
+</style>

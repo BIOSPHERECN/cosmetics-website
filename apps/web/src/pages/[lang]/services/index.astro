@@ -36,6 +36,7 @@ import { CHAIN_COUNTS } from '@cosmetic/core/content/chain.ts';
 import { ORG } from '@cosmetic/core/content/org.ts';
 import { pageShell } from '../../../lib/shell';
 import CosmopackInquiry from '../../../components/CosmopackInquiry.astro';
+import CertMatrix from '../../../components/CertMatrix.astro';
 
 export const prerender = false;
 
@@ -178,6 +179,7 @@ const ld = [
       <p class="sv-lede">{zh
         ? '按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。'
         : 'Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications.'}</p>
+      <CertMatrix lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
 
       <h2 id="sv-sample-h">{zh ? '打样逻辑' : 'Sampling logic'}</h2>
       <p class="sv-lede">{zh

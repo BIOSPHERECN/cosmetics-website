@@ -1,0 +1,65 @@
+---
+/**
+ * Beautyworld 2027 / Connect Dubai 状态条。
+ * 只说明主办方日程与询盘开放，外链不是我方展商身份。
+ */
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import {
+  BEAUTYWORLD_SCHEDULE, CONNECT_DUBAI_SCHEDULE,
+  gccFairCopy, gccFairRfqPath,
+} from '../lib/gcc-fair-status';
+
+interface Props {
+  lang: string;
+  /** 传入时仅 biosphere-ai 渲染；缺省再按域名判断，认不出域名则照常渲染（本地预览）。 */
+  siteId?: string | null;
+}
+
+const { lang, siteId = null } = Astro.props;
+const resolved = siteId ?? siteIdForHost(Astro.url.hostname);
+const show = !resolved || resolved === 'biosphere-ai';
+const C = gccFairCopy(lang);
+const rfq = gccFairRfqPath(lang);
+---
+
+{show && (
+  <section class="gcc-fair" id="gcc-fair-status" aria-labelledby="gcc-fair-h">
+    <h2 id="gcc-fair-h">{C.title}</h2>
+    <p class="gcc-line">{C.beautyworld}</p>
+    <p class="gcc-line">{C.connect}</p>
+    <p class="gcc-note">{C.identity}</p>
+    <p class="gcc-ref">
+      <a href={BEAUTYWORLD_SCHEDULE} rel="noopener noreferrer" target="_blank">{C.beautyworldLabel}</a>
+      <span aria-hidden="true"> · </span>
+      <a href={CONNECT_DUBAI_SCHEDULE} rel="noopener noreferrer" target="_blank">{C.connectLabel}</a>
+    </p>
+    <p class="gcc-cta"><a class="gcc-btn" href={rfq}>{C.cta}</a></p>
+  </section>
+)}
+
+<style>
+  .gcc-fair {
+    margin: 0 0 1.25rem;
+    padding: 0.9rem 1rem 1rem;
+    border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+    border-left: 3px solid var(--ck-accent, currentColor);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--ck-accent, currentColor) 7%, transparent);
+  }
+  .gcc-fair h2 { font-size: 1rem; margin: 0 0 0.45rem; line-height: 1.4; }
+  .gcc-line, .gcc-note, .gcc-ref { margin: 0.35rem 0 0; line-height: 1.6; max-width: 52rem; }
+  .gcc-line { font-weight: 650; }
+  .gcc-note, .gcc-ref { font-weight: 400; font-size: 0.9375rem; }
+  .gcc-ref a { color: inherit; }
+  .gcc-cta { margin: 0.75rem 0 0; }
+  .gcc-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+    background: var(--ck-accent, #222);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 650;
+  }
+</style>
