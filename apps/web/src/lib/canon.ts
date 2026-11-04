@@ -16,9 +16,9 @@ export type Norm = (v: string, sp: URLSearchParams) => string;
 export type Reg = { k?: Record<string, Norm>; u?: string[]; c?: string[] };
 
 const txt = (n: number): Norm => (v) => v.trim().slice(0, n);
-/* RFQ 勾选预填。只留 SEA / GCC / Other，顺序固定，便于缓存键稳定。非法值整段丢掉。 */
+/* RFQ 勾选预填。只留 SEA / GCC / EU / Other，顺序与 rfq-fields TARGET_MARKETS 一致。非法值整段丢掉。 */
 const targetMarket: Norm = (v) => {
-  const allow = ['SEA', 'GCC', 'Other'];
+  const allow = ['SEA', 'GCC', 'EU', 'Other'];
   const picked = new Set<string>();
   for (const part of v.split(',')) {
     const t = part.trim();
@@ -40,7 +40,7 @@ const orderBand: Norm = (v) => {
   return allow.includes(t) ? t : '';
 };
 const notifyCountries: Norm = (v) => {
-  const allow = ['ID', 'MY', 'TH', 'VN', 'AE', 'SA', 'Other'];
+  const allow = ['ID', 'MY', 'TH', 'VN', 'AE', 'SA', 'EU', 'Other'];
   const picked = new Set<string>();
   for (const part of v.split(',')) {
     const t = part.trim();

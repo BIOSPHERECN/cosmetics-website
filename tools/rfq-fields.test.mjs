@@ -87,11 +87,27 @@ assert.equal(bag.market, 'US');
 assert.deepEqual(rfqPrefill('ID'), { target_market: ['SEA'], notification_assist_country: ['ID'] });
 assert.deepEqual(rfqPrefill('AE'), { target_market: ['GCC'], notification_assist_country: ['AE'] });
 assert.deepEqual(rfqPrefill('SEA'), { target_market: ['SEA'], notification_assist_country: [] });
+assert.deepEqual(rfqPrefill('EU'), { target_market: ['EU'], notification_assist_country: ['EU'] });
 assert.deepEqual(rfqPrefill('Indonesia, Saudi Arabia'), { target_market: [], notification_assist_country: [] });
 assert.deepEqual(rfqQueryPrefill({ target_market: 'SEA' }), { target_market: ['SEA'], notification_assist_country: [] });
 assert.deepEqual(rfqQueryPrefill({ market: 'ID', target_market: 'GCC' }), { target_market: ['SEA', 'GCC'], notification_assist_country: ['ID'] });
 assert.deepEqual(rfqQueryPrefill({ market: 'Indonesia', target_market: 'booth' }), { target_market: [], notification_assist_country: [] });
 assert.deepEqual(rfqQueryPrefill({ target_market: 'sea,gcc,other' }), { target_market: ['SEA', 'GCC', 'Other'], notification_assist_country: [] });
+assert.deepEqual(rfqQueryPrefill({ target_market: 'eu,gcc' }), { target_market: ['GCC', 'EU'], notification_assist_country: [] });
+assert.deepEqual(rfqLinkPrefill({
+  target_market: 'EU',
+  halal_ready: 'no',
+  notification_assist_country: 'EU',
+  first_order_band: 'tbd',
+}), {
+  target_market: ['EU'],
+  notification_assist_country: ['EU'],
+  halal_ready: 'no',
+  first_order_band: 'tbd',
+  need_msds_coa: '',
+});
+assert.equal(normalizeRfqTicket({ target_market: 'EU', notification_assist_country: 'EU', halal_ready: 'no', first_order_band: 'tbd' }, false).fields.target_market, 'EU');
+assert.equal(normalizeRfqTicket({ target_market: 'EU', notification_assist_country: 'SA' }, false).fields.notification_assist_country, 'SA');
 assert.deepEqual(rfqLinkPrefill({
   target_market: 'SEA',
   halal_ready: 'yes',

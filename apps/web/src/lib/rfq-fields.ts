@@ -9,9 +9,9 @@
  */
 import { publicSample } from './comply-copy.ts';
 
-export const TARGET_MARKETS = ['SEA', 'GCC', 'Other'] as const;
+export const TARGET_MARKETS = ['SEA', 'GCC', 'EU', 'Other'] as const;
 export const HALAL_READY = ['yes', 'no', 'unsure'] as const;
-export const NOTIFY_COUNTRIES = ['ID', 'MY', 'TH', 'VN', 'AE', 'SA', 'Other'] as const;
+export const NOTIFY_COUNTRIES = ['ID', 'MY', 'TH', 'VN', 'AE', 'SA', 'EU', 'Other'] as const;
 export const ORDER_BANDS = ['sample', '<1k', '1k-5k', '5k-20k', '>20k', 'tbd'] as const;
 export const YES_NO = ['yes', 'no'] as const;
 
@@ -97,7 +97,7 @@ export function rfqFieldCopy(zh: boolean) {
   return zh
     ? {
         targetMarket: '目标市场',
-        targetMarketHint: '至少选一项。SEA 东南亚、GCC 海湾，或其他请写明。',
+        targetMarketHint: '至少选一项。SEA 东南亚、GCC 海湾、EU 欧盟，或其他请写明。',
         other: '其他',
         otherPh: '其他市场（可选）',
         country: '国家或城市',
@@ -131,14 +131,14 @@ export function rfqFieldCopy(zh: boolean) {
         spf: 'SPF / PA',
         texture: '肤感',
         skin: '肤质',
-        needMarket: '请至少选择一个目标市场（SEA、GCC 或其他）。',
+        needMarket: '请至少选择一个目标市场（SEA、GCC、EU 或其他）。',
         pleaseSpecifyMarket: '请写明目标市场',
         needBand: '请选择首单量区间',
         needNotify: '请写明备案协助国家',
       }
     : {
         targetMarket: 'Target market',
-        targetMarketHint: 'Select at least one: SEA, GCC, or Other.',
+        targetMarketHint: 'Select at least one: SEA, GCC, EU, or Other.',
         other: 'Other',
         otherPh: 'Other market (optional)',
         country: 'Country or city',
@@ -172,7 +172,7 @@ export function rfqFieldCopy(zh: boolean) {
         spf: 'SPF / PA',
         texture: 'Texture',
         skin: 'Skin type',
-        needMarket: 'Select at least one target market (SEA, GCC or Other).',
+        needMarket: 'Select at least one target market (SEA, GCC, EU or Other).',
         pleaseSpecifyMarket: 'Please specify market',
         needBand: 'Select estimated first order volume',
         needNotify: 'Please specify notification assist country',
@@ -184,15 +184,16 @@ export function rfqPrefill(market: string): { target_market: string[]; notificat
   const token = market.trim().toUpperCase();
   const target: string[] = [];
   const notify: string[] = [];
-  if (token === 'SEA' || token === 'GCC') target.push(token);
+  if (token === 'SEA' || token === 'GCC' || token === 'EU') target.push(token);
   else if (token === 'OTHER') target.push('Other');
   else if (SEA_CC.includes(token)) { target.push('SEA'); notify.push(token); }
   else if (GCC_CC.includes(token)) { target.push('GCC'); notify.push(token); }
+  if (token === 'EU') notify.push('EU');
   return { target_market: target, notification_assist_country: notify };
 }
 
 /**
- * ?target_market= 只预勾 SEA / GCC / Other，不写入国家或城市文本框。
+ * ?target_market= 只预勾 SEA / GCC / EU / Other，不写入国家或城市文本框。
  * 与 ?market= 合并；国家码带来的通告协助国仍只来自 market。
  */
 export function rfqQueryPrefill(input: { market?: string; target_market?: string }): { target_market: string[]; notification_assist_country: string[] } {
@@ -200,7 +201,7 @@ export function rfqQueryPrefill(input: { market?: string; target_market?: string
   const chosen = new Set(fromMarket.target_market);
   for (const part of asList(input.target_market)) {
     const token = part.trim().toUpperCase();
-    if (token === 'SEA' || token === 'GCC') chosen.add(token);
+    if (token === 'SEA' || token === 'GCC' || token === 'EU') chosen.add(token);
     else if (token === 'OTHER') chosen.add('Other');
   }
   return {
