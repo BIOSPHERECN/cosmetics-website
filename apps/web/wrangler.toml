@@ -83,6 +83,9 @@ MEDIA_DRIVER = "r2-s3"
 R2_BUCKET = "bohui-photo"
 # Turnstile 的 site key 是公开值(会渲染进登录页 HTML),放明文没问题;
 # 配了它登录页才出验证组件,secret 端的校验开关是 TURNSTILE_SECRET(wrangler secret)。
+# RFQ_E2E_BYPASS_TOKEN 不要写进 [vars]、也不要写进仓库。未设置时 /api/inquiry 仍强制 Turnstile。
+# 只在要跑验票的环境执行: wrangler secret put RFQ_E2E_BYPASS_TOKEN
+# 请求头 X-Bohui-E2E-Token 与该 secret 全等才跳过人机;生产验完执行 wrangler secret delete RFQ_E2E_BYPASS_TOKEN。
 TURNSTILE_SITE_KEY = "0x4AAAAAAEh9PTvpt4eaYV_q"
 # 费用熔断保险丝(2026-10-22,lib/fuse.ts + middleware 缓存 miss 处):
 # 当日「缓存 miss → 渲染」次数超过此值 → 非会员/非后台请求一律 429,不再渲染、不再查 D1、不再花钱。
