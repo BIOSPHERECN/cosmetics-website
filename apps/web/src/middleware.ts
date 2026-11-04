@@ -25,6 +25,7 @@ import { fuseCheck, fuseResponse } from './lib/fuse';
 /* lib/member 只依赖 auth 与 quota;lib/canon 没有任何依赖(09-24 C1) */
 import { memberSigned } from './lib/member';
 import { canonical, isPagePath, keyParams, uncacheable } from './lib/canon';
+import { pickRootLang } from './lib/root-locale';
 /* 简→繁:只带 cn2t 这一半词典(全量还含繁→简,我们用不到)。
    opencc-js 是纯 JS、无 Node 依赖,可以进 Worker;
    **它不是 @cosmetic/core**,不会把组件模块图拉进中间件。 */
@@ -364,12 +365,19 @@ const route = async (ctx: Parameters<Parameters<typeof defineMiddleware>[0]>[0],
     ? ((LOCALES as readonly string[]).includes(saved) ? (saved as L) : (ALIAS[saved] ?? null))
     : null;
 
-  // ② 浏览器语言 → ③ 国家码 → 兜底
+  /* ② 浏览器语言。搜索爬虫与「没有语言偏好」走 x-default(/en/),
+     不用国家码 —— 否则 Googlebot 与没带 Accept-Language 的请求会被 CF 国家码送到 /zh-cn/。
+     带了 zh-CN 的浏览器仍去 /zh-cn/。国家码只在「带了 Accept-Language、但没有一门是我们支持的」时才用。 */
   const country = (ctx.request as any).cf?.country as string | undefined;
-  const lang: L = savedL
-    ?? fromHeader(ctx.request.headers.get('accept-language'))
-    ?? (country ? BY_COUNTRY[country] : undefined)
-    ?? DEFAULT;
+  const acceptLanguage = ctx.request.headers.get('accept-language');
+  const lang: L = pickRootLang({
+    saved: savedL,
+    header: fromHeader(acceptLanguage),
+    country: country ? (BY_COUNTRY[country] ?? null) : null,
+    acceptLanguage,
+    ua: ctx.request.headers.get('user-agent') || '',
+    fallback: DEFAULT,
+  });
 
   const rest = pathname === '/' ? '' : pathname.replace(/^\//, '');
   return ctx.redirect(`/${lang}/${rest}${search}`, 302);

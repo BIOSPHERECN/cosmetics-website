@@ -26,6 +26,7 @@
 
 import { localePath } from '@cosmetic/core/i18n';
 import { ldJson } from '../content/ldjson.ts';
+import { funnelHero } from '../content/funnel-hero.ts';
 
 interface Props {
   /** 语言,如 'zh-cn' / 'en'(由 [...path].astro 传入) */
@@ -34,24 +35,26 @@ interface Props {
 
 const { locale } = Astro.props;
 const zhPage = String(locale).startsWith('zh');
+/* 首屏(h1 与三步)按 html 语言出。结果卡仍是中/英两套,点「生成」之后才出现。 */
+const H = funnelHero(String(locale));
 
 /** 漏斗选项的i18n(与 beauty2oem-UI重做/定稿方向.md 对齐) */
 const L = {
-  slogan: zhPage ? '先找到值得做的产品，再由我们把它做出来。' : 'Find a product worth making first. We make it real.',
-  subline: zhPage ? '15条自动化产线 · 13,000+成熟基底 · 43国合规前置' : '15 automated production lines · 13,000+ mature formula bases · 43-market compliance pre-check',
-  step1: zhPage ? '第1步：你现在的起点是？' : 'Step 1: Where are you starting from?',
-  step1opt1: zhPage ? '我看中了一款市面爆款，想做同款/升级款' : 'I found a hit product, want to make a similar/better version',
-  step1opt2: zhPage ? '我确定了要做哪个品类，想挑成熟配方基底' : 'I know the category, want to pick a mature formula base',
-  step1opt3: zhPage ? '我只有目标国家/渠道，想看最近什么好卖' : 'I only have a target market, want to see what sells',
-  step2: zhPage ? '第2步：产品打算卖到哪里？' : 'Step 2: Where will you sell?',
-  step3: zhPage ? '第3步：属于哪个大类？' : 'Step 3: Which category?',
-  generate: zhPage ? '立即生成我的代工与合规方案' : 'Generate my OEM & compliance plan',
-  fastTrack: zhPage ? '已有完整成分表或样品？点此直接传给工程师 →' : 'Already have a full INCI or sample? Send it straight to our engineers →',
-  cat护肤: zhPage ? '面部护肤' : 'Facial skincare',
-  cat洗护: zhPage ? '洗发护发' : 'Hair care',
-  cat身体: zhPage ? '身体防晒' : 'Body & suncare',
-  cat彩妆: zhPage ? '彩妆底妆' : 'Color cosmetics',
-  cat口腔: zhPage ? '口腔护理' : 'Oral care',
+  slogan: H.slogan,
+  subline: H.subline,
+  step1: H.step1,
+  step1opt1: H.step1opt1,
+  step1opt2: H.step1opt2,
+  step1opt3: H.step1opt3,
+  step2: H.step2,
+  step3: H.step3,
+  generate: H.generate,
+  fastTrack: H.fastTrack,
+  cat护肤: H.cat护肤,
+  cat洗护: H.cat洗护,
+  cat身体: H.cat身体,
+  cat彩妆: H.cat彩妆,
+  cat口腔: H.cat口腔,
   matchedBase: zhPage ? '为你匹配的在库基底' : 'Matched formula bases',
   compliance: zhPage ? '合规预警' : 'Compliance alert',
   packaging: zhPage ? '适配现货包材' : 'Matched stock packaging',
@@ -71,12 +74,12 @@ const L = {
   stepPackD: zhPage ? '选现货包材 / 同步办理目标国通报' : 'Select stock packaging, file target market registration',
   stepMass: zhPage ? '试产与大货' : 'Trial & mass production',
   stepMassD: zhPage ? '小批试产 / QC放行出货' : 'Pilot run, QC release, shipment',
-  mNA: zhPage ? '北美 (FDA)' : 'North America (FDA)',
-  mSEA: zhPage ? '东南亚 (BPOM/清真)' : 'Southeast Asia (BPOM/Halal)',
-  mEU: zhPage ? '欧洲 (CPNP)' : 'Europe (CPNP)',
-  mME: zhPage ? '中东 (SFDA)' : 'Middle East (SFDA)',
-  mLA: zhPage ? '拉美 (ANVISA)' : 'Latin America (ANVISA)',
-  mCN: zhPage ? '国内 / 其他' : 'China / Other',
+  mNA: H.mNA,
+  mSEA: H.mSEA,
+  mEU: H.mEU,
+  mME: H.mME,
+  mLA: H.mLA,
+  mCN: H.mCN,
 };
 
 // === 方案数据库(前端静态版,后续可接API) ===
