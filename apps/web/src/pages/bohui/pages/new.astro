@@ -8,11 +8,16 @@
  */
 import AdminShell from '../../../layouts/AdminShell.astro';
 import { pageGuard } from '../../../lib/guard';
-import { SITES } from '@cosmetic/core/registry';
 
 export const prerender = false;
 const c = await pageGuard(Astro.request);
 if (!c) return Astro.redirect('/bohui/login/');
+
+/* 下拉只列这个账号能管的站。绑定账号 options 里只有自己那一个,
+   不能在表单里改选成别的站再交给接口。 */
+const siteChoices = c.tenant.options.length
+  ? c.tenant.options
+  : (c.tenant.siteId ? [{ id: c.tenant.siteId, name: c.tenant.siteName || c.tenant.siteId }] : []);
 ---
 
 <AdminShell title="新建页面" active="pages" email={c.sess.email} tenant={c.tenant}>
@@ -24,7 +29,7 @@ if (!c) return Astro.redirect('/bohui/login/');
     <label>
       站点
       <select name="site_id" required>
-        {SITES.map((s) => <option value={s.id}>{s.name}</option>)}
+        {siteChoices.map((s) => <option value={s.id} selected={s.id === c.tenant.siteId}>{s.name}</option>)}
       </select>
     </label>
     <label>

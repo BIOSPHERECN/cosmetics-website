@@ -222,7 +222,7 @@ const href = (n: number) => `/media/${n}`;
         <div class="ds-models-grid" id="es-models"></div>
       </div>
 
-      <form id="es-form" class="ds-ai-form">
+      <form id="es-form" class="ds-ai-form" data-busy={T.aiBusy} data-empty={T.aiEmpty}>
         <input name="product" required minlength="2" maxlength="100" placeholder={T.aiPh} aria-label={T.aiTitle} />
         <select name="category" aria-label={T.aiCat}>
           <option value="">{T.aiCat}</option>
@@ -370,7 +370,9 @@ const href = (n: number) => `/media/${n}`;
     })();
   </script>
 
-  <script is:inline define:vars={{ MSG: { busy: T.aiBusy, empty: T.aiEmpty } }}>
+  <script>
+    import { appendGallery } from '../../lib/https-image';
+
     (function () {
       var form = document.getElementById('es-form');
       var out = document.getElementById('es-out');
@@ -384,7 +386,13 @@ const href = (n: number) => `/media/${n}`;
       if (modelsBox) {
         fetch('/api/ai/models').then(function (r) { return r.json(); }).then(function (d) {
           var list = (d && d.models) || [];
-          if (!list.length) { modelsBox.innerHTML = '<p class="ds-models-empty">暂无可用模型</p>'; return; }
+          if (!list.length) {
+            var empty = document.createElement('p');
+            empty.className = 'ds-models-empty';
+            empty.textContent = '暂无可用模型';
+            modelsBox.replaceChildren(empty);
+            return;
+          }
           modelsBox.textContent = '';
           list.forEach(function (m) {
             var cls = 'ds-model' + (m.ready ? '' : ' off') + (m.id === pickedModel ? ' on' : '');
@@ -408,7 +416,7 @@ const href = (n: number) => `/media/${n}`;
               x.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
           });
-        }).catch(function () { modelsBox.innerHTML = ''; });
+        }).catch(function () { modelsBox.replaceChildren(); });
       }
 
       form.addEventListener('submit', function (e) {
@@ -417,8 +425,8 @@ const href = (n: number) => `/media/${n}`;
         var payload = { product: fd.get('product'), category: fd.get('category') };
         if (pickedModel) payload.model = pickedModel;
         btn.disabled = true;
-        msg.textContent = MSG.busy;
-        out.innerHTML = '';
+        msg.textContent = form.getAttribute('data-busy') || '';
+        out.replaceChildren();
         fetch('/api/ai/ecom-set', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -429,17 +437,9 @@ const href = (n: number) => `/media/${n}`;
             var j = res.j || {};
             if (!j.ok) { msg.textContent = j.msg || '生成失败'; return; }
             msg.textContent = '';
-            var drawn = 0;
-            (j.images || []).forEach(function (im) {
-              var u = String((im && im.url) || '');
-              if (!/^https:\/\//.test(u)) return;
-              var fig = document.createElement('figure'); fig.className = 'ds-ai-item';
-              var img = document.createElement('img');
-              img.src = u; img.alt = String((im && im.label) || ''); img.loading = 'lazy';
-              var cap = document.createElement('figcaption'); cap.textContent = String((im && im.label) || '');
-              fig.appendChild(img); fig.appendChild(cap); out.appendChild(fig); drawn++;
-            });
-            if (!drawn) msg.textContent = MSG.empty;
+            /* src 只来自 https 校验;说明文字只进 textContent / alt,不拼 HTML。 */
+            var drawn = appendGallery(out, j.images || [], document);
+            if (!drawn) msg.textContent = form.getAttribute('data-empty') || '';
           })
           .catch(function () { msg.textContent = '网络错误，请重试'; })
           .then(function () { btn.disabled = false; });
