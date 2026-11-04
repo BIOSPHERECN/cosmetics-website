@@ -57,8 +57,8 @@ const L = {
   packaging: zhPage ? '适配现货包材' : 'Matched stock packaging',
   requestSample: zhPage ? '一键申请免费样品' : 'Request free samples',
   contactUs: zhPage ? '加微信聊细节' : 'Chat on WhatsApp',
-  moq: zhPage ? '现货包材代工：单品 1,000–3,000件起订' : 'Stock packaging OEM: MOQ 1,000–3,000 pcs per SKU',
-  sampleTime: zhPage ? '成熟基底打样周期：5–14个工作日' : 'Mature base sampling: 5–14 working days',
+  moq: zhPage ? '起订量按品类与包材议定，以书面确认为准' : 'MOQ by category and packaging, confirmed in writing',
+  sampleTime: zhPage ? '打样通常 5–14 天（样品指示，书面确认；非大货交期）' : 'Sampling typically 5–14 days (sample indication, confirmed in writing; not a production lead time)',
   whatWeDo: zhPage ? '我们能做什么' : 'What we can make',
   whyTrust: zhPage ? '凭什么相信我们' : 'Why trust us',
   threeSteps: zhPage ? '三步开始' : 'Three steps to start',
@@ -66,7 +66,7 @@ const L = {
   noReg: zhPage ? '不用注册，直接填写。' : 'No registration required.',
   send: zhPage ? '立即询盘' : 'Send inquiry',
   stepDefine: zhPage ? '定方案与寄样' : 'Define & sample',
-  stepDefineD: zhPage ? '拆成分 / 配基底 / 核法规，5–14天寄样' : 'Deconstruct formula, match base, check compliance. 5–14 day sampling.',
+  stepDefineD: zhPage ? '拆成分 / 配基底 / 核法规。打样通常 5–14 天（书面确认，非大货交期）' : 'Deconstruct formula, match base, check compliance. Sampling typically 5–14 days (confirmed in writing; not a production lead time).',
   stepPack: zhPage ? '定包装与备案' : 'Packaging & registration',
   stepPackD: zhPage ? '选现货包材 / 同步办理目标国通报' : 'Select stock packaging, file target market registration',
   stepMass: zhPage ? '试产与大货' : 'Trial & mass production',
@@ -87,7 +87,7 @@ const BASES: Record<string, Array<{code: string; name: string; actives: string}>
     { code: 'BH-S-089', name: zhPage ? '视黄醇抗老面霜基底' : 'Retinol anti-aging cream base', actives: zhPage ? '视黄醇 0.3%、角鲨烷' : 'Retinol 0.3%, Squalane' },
   ],
   body: [
-    { code: 'BH-B-007', name: zhPage ? '草本止痒防晒乳' : 'Herbal anti-itch suncare lotion', actives: zhPage ? '薄荷醇、氧化锌、甘草酸' : 'Menthol, Zinc Oxide, Glycyrrhizin' },
+    { code: 'BH-B-007', name: zhPage ? '草本舒缓防晒乳' : 'Herbal soothing suncare lotion', actives: zhPage ? '薄荷醇、氧化锌、甘草酸' : 'Menthol, Zinc Oxide, Glycyrrhizin' },
     { code: 'BH-B-012', name: zhPage ? '冰感修护防晒喷雾' : 'Cooling repair suncare spray', actives: zhPage ? '薄荷脑、透明质酸' : 'Menthol, Hyaluronic Acid' },
   ],
   haircare: [
@@ -115,26 +115,26 @@ const COMPLIANCE: Record<string, string> = {
 
 const PACKAGING: Record<string, string[]> = {
   skincare: [
-    zhPage ? '滴管玻璃瓶 30ml (现货,1,000支起)' : 'Dropper glass bottle 30ml (stock, MOQ 1,000)',
-    zhPage ? '真空泵瓶 50ml (现货,1,000支起)' : 'Airless pump bottle 50ml (stock, MOQ 1,000)',
-    zhPage ? '膏霜罐 30g (现货,3,000支起)' : 'Cream jar 30g (stock, MOQ 3,000)',
+    zhPage ? '滴管玻璃瓶 30ml（现货，起订书面确认）' : 'Dropper glass bottle 30ml (stock, MOQ confirmed in writing)',
+    zhPage ? '真空泵瓶 50ml（现货，起订书面确认）' : 'Airless pump bottle 50ml (stock, MOQ confirmed in writing)',
+    zhPage ? '膏霜罐 30g（现货，起订书面确认）' : 'Cream jar 30g (stock, MOQ confirmed in writing)',
   ],
   body: [
-    zhPage ? '防晒软管 100ml (现货,1,000支起)' : 'Suncare tube 100ml (stock, MOQ 1,000)',
-    zhPage ? '喷雾瓶 150ml (现货,3,000支起)' : 'Spray bottle 150ml (stock, MOQ 3,000)',
-    zhPage ? '泵头瓶 200ml (现货,1,000支起)' : 'Pump bottle 200ml (stock, MOQ 1,000)',
+    zhPage ? '防晒软管 100ml（现货，起订书面确认）' : 'Suncare tube 100ml (stock, MOQ confirmed in writing)',
+    zhPage ? '喷雾瓶 150ml（现货，起订书面确认）' : 'Spray bottle 150ml (stock, MOQ confirmed in writing)',
+    zhPage ? '泵头瓶 200ml（现货，起订书面确认）' : 'Pump bottle 200ml (stock, MOQ confirmed in writing)',
   ],
   haircare: [
-    zhPage ? '软管 300ml (现货,1,000支起)' : 'Tube 300ml (stock, MOQ 1,000)',
-    zhPage ? '滴管瓶 30ml (现货,1,000支起)' : 'Dropper bottle 30ml (stock, MOQ 1,000)',
+    zhPage ? '软管 300ml（现货，起订书面确认）' : 'Tube 300ml (stock, MOQ confirmed in writing)',
+    zhPage ? '滴管瓶 30ml（现货，起订书面确认）' : 'Dropper bottle 30ml (stock, MOQ confirmed in writing)',
   ],
   makeup: [
-    zhPage ? '粉底液瓶 30ml (现货,3,000支起)' : 'Foundation bottle 30ml (stock, MOQ 3,000)',
-    zhPage ? '唇釉管 5ml (现货,3,000支起)' : 'Lip tint tube 5ml (stock, MOQ 3,000)',
+    zhPage ? '粉底液瓶 30ml（现货，起订书面确认）' : 'Foundation bottle 30ml (stock, MOQ confirmed in writing)',
+    zhPage ? '唇釉管 5ml（现货，起订书面确认）' : 'Lip tint tube 5ml (stock, MOQ confirmed in writing)',
   ],
   oral: [
-    zhPage ? '牙膏管 100g (现货,3,000支起)' : 'Toothpaste tube 100g (stock, MOQ 3,000)',
-    zhPage ? '压片瓶 60粒 (现货,3,000支起)' : 'Tablet bottle 60ct (stock, MOQ 3,000)',
+    zhPage ? '牙膏管 100g（现货，起订书面确认）' : 'Toothpaste tube 100g (stock, MOQ confirmed in writing)',
+    zhPage ? '压片瓶 60粒（现货，起订书面确认）' : 'Tablet bottle 60ct (stock, MOQ confirmed in writing)',
   ],
 };
 

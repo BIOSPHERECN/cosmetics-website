@@ -96,7 +96,7 @@ export const TOOLS: ToolDef[] = [
     ctaHref: '/pack/',
     samples: [
       { media: 169, zh: '发膜包装', en: 'Hair mask packaging' },
-      { media: 170, zh: '祛痘精华包装', en: 'Acne serum packaging' },
+      { media: 170, zh: '油痘肌护理精华包装', en: 'Blemish-prone serum packaging' },
       { media: 171, zh: '草本防晒包装', en: 'Herbal sun care packaging' },
       { media: 172, zh: '草本漱口水包装', en: 'Herbal mouthwash packaging' },
     ],

@@ -118,12 +118,13 @@ export const GET: APIRoute = async ({ url }) => {
 | R&D specialists | > 30 |
 | Strategic upstream suppliers | > 300 |
 | Cleanroom class | Class 100,000 GMP |
-| Sampling lead time | usually ${SAMPLE_DAYS} days (brief confirmed to sample dispatched) |
+| Sampling indication | usually ${SAMPLE_DAYS} days (sample / communication only, confirmed in writing; not a production lead time) |
 
 ## Certifications
 
-GMPC · ISO 22716:2007 · HALAL — factory-level certifications.
-Also held: FDA facility registration · EU CPNP notifications · SGS third-party test reports. Certificate numbers and validity are provided against scanned originals on request.
+Factory certifications held: GMPC · ISO 22716:2007 · HALAL only.
+FDA facility registration and EU CPNP notification are filing assistance, not factory certifications.
+SGS reports are third-party tests and are not part of the held-certificate list. Certificate numbers and validity are provided against scanned originals on request.
 
 ## What they make
 

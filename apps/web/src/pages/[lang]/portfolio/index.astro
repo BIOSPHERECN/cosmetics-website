@@ -15,6 +15,7 @@ import { pageShell } from '../../../lib/shell';
 import { memo } from '../../../lib/memo';
 import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import InquiryFormLite from '@cosmetic/core/components/InquiryFormLite.astro';
+import { catalogLabel, claimNote, publicMoq, publicSample, softenClaims } from '../../../lib/comply-copy';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'zh-cn';
@@ -67,13 +68,13 @@ const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
 const B = `/${lang}`;
 const nTotal = items.length;
 const T = zh ? { eyebrow: '成品', title: nTotal ? `化妆品 OEM/ODM 成熟产品库 · ${nTotal} 款` : '化妆品 OEM/ODM 成熟产品库', lede: `化妆品 OEM/ODM 代工厂的成熟产品库:${nTotal} 款已量产成品,覆盖护肤、彩妆、洗护、口腔、防晒、香氛等品类,支持品牌定制与来样打样,起订量按品类与包材议定;每款标注品类、剂型、规格与卖点。`,
-                 empty: '首批成品正在拍摄整理,近期上线。想先看某个品类的成品样例,发询盘告诉我们品类与目标市场。', moq: '起订量按品类与包材议定（书面确认）', sample: '打样通常 5–14 天（书面确认）', sampleCta: '申请样品', more: '看详情', ask: '想做类似的?告诉我们品类与目标市场。', inq: '发起询盘', all: '全部',
+                 empty: '首批成品正在拍摄整理,近期上线。想先看某个品类的成品样例,发询盘告诉我们品类与目标市场。', moq: publicMoq(true), sample: publicSample(true), sampleCta: '申请样品', more: '看详情', ask: '想做类似的?告诉我们品类与目标市场。', inq: '发起询盘', all: '全部',
                  search: '搜索产品名称、品类…', found: '找到 {n} 款', noResults: '没有找到匹配的产品，换个关键词试试',
-                 profile: '广州化妆品 OEM/ODM 工厂:20,000 ㎡ 厂房、15 条自动化产线;面膜日产能 50 万片、膏霜日产能 30 万支;在册配方 13,000+;持有 GMPC、ISO 22716:2007 与 HALAL 认证;打样 5–14 天出样;以上成品均来自该产线的量产记录,可按品牌定制,打样与交期按品类与包材以书面确认。' }
+                 profile: '广州化妆品 OEM/ODM 工厂:20,000 ㎡ 厂房、15 条自动化产线;面膜日产能 50 万片、膏霜日产能 30 万支;在册配方 13,000+;持有 GMPC、ISO 22716:2007 与 HALAL 认证。打样通常 5–14 天，这是样品指示并须书面确认，不是大货交期。以上成品均来自该产线的量产记录，可按品牌定制。' }
              : { eyebrow: 'Finished products', title: nTotal ? `Cosmetics OEM/ODM product library · ${nTotal} items` : 'Cosmetics OEM/ODM product library', lede: `A ready-to-ship product library from a cosmetics OEM/ODM manufacturer: ${nTotal} mass-produced items across skincare, makeup, hair & body care, oral care, sunscreen and fragrance — private-label customization and sampling supported, MOQ agreed per category and packaging. Category, format, specs and selling points on every card.`,
-                 empty: 'The first batch is being photographed and will go live shortly. To see samples in a category now, send an inquiry with the category and target market.', moq: 'MOQ agreed per category and packaging (confirmed in writing)', sample: 'Sampling typically 5–14 days (confirmed in writing)', sampleCta: 'Request sample', more: 'Details', ask: 'Want something similar? Tell us the category and target market.', inq: 'Send an inquiry', all: 'All',
+                 empty: 'The first batch is being photographed and will go live shortly. To see samples in a category now, send an inquiry with the category and target market.', moq: publicMoq(false), sample: publicSample(false), sampleCta: 'Request sample', more: 'Details', ask: 'Want something similar? Tell us the category and target market.', inq: 'Send an inquiry', all: 'All',
                  search: 'Search by name, category…', found: '{n} found', noResults: 'No matching products. Try a different keyword',
-                 profile: 'Guangzhou cosmetics OEM/ODM factory: over 20,000 m² of manufacturing floor and 15 automated production lines; more than 13,000 formulations on file; GMPC, ISO 22716:2007 and HALAL certified. Every item here comes from that production line and can be customized under your brand; sampling and lead time are confirmed in writing per category and packaging.' };
+                 profile: 'Guangzhou cosmetics OEM/ODM factory: over 20,000 m² of manufacturing floor and 15 automated production lines; more than 13,000 formulations on file; GMPC, ISO 22716:2007 and HALAL certified. Sampling is typically 5–14 days as a sample indication, confirmed in writing — not a production lead time. Every item here comes from that production line and can be customized under your brand.' };
 
 /* ── SEO/GEO 结构化信号(2026-10-23 三份 SEO/GEO 审计共识) ──
    CollectionPage + ItemList(前 30 款 Product 摘要)+ FAQPage:
@@ -83,7 +84,7 @@ const listItems = items.slice(0, 30).map((p: any, i: number) => ({
   '@type': 'ListItem', position: i + 1,
   item: {
     '@type': 'Product',
-    name: p.name ?? p.slug,
+    name: catalogLabel(p.name ?? p.slug, zh).name,
     url: `${origin}${B}/product/${p.slug}/`,
     ...(p.cover_media ? { image: `${origin}/media/${p.cover_media}` } : {}),
     ...(p.category ? { category: catLabel(p.category) } : {}),
@@ -96,11 +97,11 @@ const lastMod = items.reduce((m: string, p: any) => {
 }, '');
 const faqs = zh
   ? [{ q: '这些产品能做我的品牌吗(贴牌/OEM)?', a: '可以。瓶型、料体、外盒设计均可按品牌定制,按品类与包材协商起订量。' },
-     { q: '起订量(MOQ)是多少?', a: '按品类与包材议定;每款卡片上标注了当前参考起订量。' },
+     { q: '起订量(MOQ)是多少?', a: '按品类与包材议定，以书面确认为准。卡片不标未核准的单一数字。' },
      { q: '可以先打样再下单吗?', a: '可以。打样周期按品类与包材备料情况确认,下单前可先拿样。' },
      { q: '工厂有什么资质认证?', a: '工厂产能、体系与认证信息见「服务能力 · 工厂质量」栏目。' }]
   : [{ q: 'Can I produce these under my own brand (OEM/ODM)?', a: 'Yes. Bottles, formula and packaging design can all be customized; MOQ is agreed by category and packaging.' },
-     { q: 'What is the MOQ?', a: 'It is set per category and packaging; the reference MOQ is shown on each product card.' },
+     { q: 'What is the MOQ?', a: 'MOQ is agreed per category and packaging and confirmed in writing. Cards do not show an unapproved single-number MOQ.' },
      { q: 'Can I get samples before ordering?', a: 'Yes. Sampling lead time depends on the category and packaging stock; order after sign-off samples.' },
      { q: 'What certifications does the plant hold?', a: 'Capacity, systems and certifications are listed under Services · Factory quality.' }];
 /* W5：product_id 必须是库内 id，缺则 slug，禁止 product_id= 空串。样品是真 <a href>，不靠无 JS 的 span。 */
@@ -116,7 +117,7 @@ const sampleHref = (p: { id?: unknown; slug?: unknown; name?: unknown; category?
   const ref = productRef(p);
   const q = [
     ref ? `product_id=${encodeURIComponent(ref)}` : '',
-    `about=${encodeURIComponent(String(p.name ?? p.slug ?? ''))}`,
+    `about=${encodeURIComponent(catalogLabel(String(p.name ?? p.slug ?? ''), zh).name)}`,
     `category=${encodeURIComponent(String(p.category ?? ''))}`,
   ].filter(Boolean).join('&');
   return `${B}/rfq/?${q}`;
@@ -191,9 +192,9 @@ const jsonLd = ldJson({
               {catItems.map((p: any, mi: number) => (
                 <article class="card mini" data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
                   <a class="mini-main" href={withPid(`${B}/product/${p.slug}/`, p)}>
-                    {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="450" loading={mi === 0 && c === catCounts[0] ? 'eager' : 'lazy'} decoding="async" /> : <div class="ph" />}
-                    <h3>{p.name ?? p.slug}</h3>
-                    <small class="meta">{p.moq ? `${zh ? '起订' : 'MOQ'} ${p.moq}` : T.moq} · {T.sample}</small>
+                    {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={catalogLabel(p.name ?? p.slug, zh).name} width="600" height="450" loading={mi === 0 && c === catCounts[0] ? 'eager' : 'lazy'} decoding="async" /> : <div class="ph" />}
+                    <h3>{catalogLabel(p.name ?? p.slug, zh).name}</h3>
+                    <small class="meta">{T.moq} · {T.sample}</small>
                   </a>
                   <a class="sample" href={sampleHref(p)}>{T.sampleCta}</a>
                 </article>
@@ -210,11 +211,11 @@ const jsonLd = ldJson({
         <li class="pg-item" data-idx={idx} data-id={String(p.id ?? '')} data-name={(p.name ?? p.slug).toLowerCase()} data-summary={(p.summary ?? '').toLowerCase()} data-category={(p.category ?? '').toLowerCase()} data-cat-label={catLabel(p.category).toLowerCase()}>
           <article class="card">
             <a class="card-main" href={withPid(`${B}/product/${p.slug}/`, p)}>
-              {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="600" loading={idx < 4 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" /> : <div class="ph" />}
-              <h2>{p.name ?? p.slug}</h2>
-              {p.summary && <p>{p.summary}</p>}
+              {p.cover_media ? <img src={`/media/${p.cover_media}`} alt={catalogLabel(p.name ?? p.slug, zh).name} width="600" height="600" loading={idx < 4 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" /> : <div class="ph" />}
+              <h2>{catalogLabel(p.name ?? p.slug, zh).name}</h2>
+              {p.summary && <p>{softenClaims(p.summary)}</p>}
             </a>
-            <p class="meta">{catLabel(p.category)} · {p.moq ? `${zh ? '起订量' : 'MOQ'}: ${p.moq}` : T.moq} · {T.sample}</p>
+            <p class="meta">{catLabel(p.category)} · {T.moq} · {T.sample}</p>
             <div class="cta-row">
               <a class="more" href={withPid(`${B}/product/${p.slug}/`, p)}>{T.more} →</a>
               <a class="sample" href={sampleHref(p)}>{T.sampleCta}</a>
@@ -235,6 +236,7 @@ const jsonLd = ldJson({
     {items.length > 60 && (
       <nav class="pager" id="pg-nav" aria-label={zh ? '翻页' : 'Pagination'}></nav>
     )}
+    {items.some((p) => catalogLabel(p.name ?? p.slug, zh).claim) && <p class="ask">{claimNote(zh)}</p>}
     <p class="ask">{T.ask} <a href="#inquiry">{T.inq}</a></p>
   </main>
   <InquiryFormLite lang={lang} email={shell.email} whatsapp={((Astro.locals as any)?.contact ?? {}).whatsapp ?? null} source="portfolio" />

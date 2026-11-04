@@ -20,6 +20,7 @@ import { pageShell } from '../../../lib/shell';
 import { memo } from '../../../lib/memo';
 import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { CAT_LABEL } from '../../../lib/catalog';
+import { catalogLabel, claimNote, publicMoq, publicSample, softenClaims } from '../../../lib/comply-copy';
 
 export const prerender = false;
 
@@ -85,19 +86,19 @@ const T = zh
       introH: `关于${catLabel}代工`,
       intro: [
         `这一页的 ${n} 款${catLabel}产品都来自自有产线的量产记录,不是渲染图或概念稿。每款标注品类、规格与卖点,点击可看到该款的完整资料、图片与询盘入口。`,
-        `工厂位于广州,20,000 ㎡ 厂房、15 条自动化产线,在册配方 13,000+;持有 GMPC、ISO 22716:2007 与 HALAL 认证。${catLabel}的配方调整、包材选型(瓶型/材质/印刷/外盒)、香型与标签语言均可按品牌需求组合。`,
+        `工厂位于广州,20,000 ㎡ 厂房、15 条自动化产线,在册配方 13,000+;持有 GMPC、ISO 22716:2007 与 HALAL 认证。${catLabel}的配方、包材、香型与标签语言可按项目确定。功效宣称受目标市场规则与第三方报告限制；没有报告就不能上标签。`,
         `采购流程:确认品类与目标市场 → 打样 → 样品签样 → 书面确认规格、起订量与交期 → 量产。具体起订量、样品费用与交期以书面确认为准。`,
       ],
       faqH: `${catLabel}采购常见问题`,
       faq: [
-        { q: `${catLabel}的代工起订量是多少?`, a: `按具体品类与包材议定,每款卡片标注了参考起订量。批量与包材方案确定后以书面确认。` },
+        { q: `${catLabel}的代工起订量是多少?`, a: `按品类与包材议定，以书面确认为准。卡片不标未核准的单一数字。` },
         { q: `${catLabel}可以打样吗?多久出样?`, a: `可以打样。打样周期按品类与包材备料确认,以书面告知为准;样品签样后进入量产排程。` },
-        { q: `${catLabel}支持哪些定制?`, a: `配方调整、功效宣称、包材选型、香型、质地、容量与标签语言均可按品牌需求组合,支持 OEM 与 ODM 两种合作方式。` },
+        { q: `${catLabel}支持哪些定制?`, a: `配方、包材、香型、质地、容量与标签语言可按项目确定，支持 OEM 与 ODM。功效宣称受目标市场规则与第三方报告限制；没有报告就不能上标签。` },
         { q: `出口${catLabel}需要哪些合规文件?`, a: `工厂持有 GMPC、ISO 22716 与 HALAL 认证;出口可配合 FDA 注册、CPNP 通报及东南亚市场备案,具体适用文件按目标市场确认。` },
       ],
       otherH: '其他品类', ask: '没找到合适的款?告诉我们品类、目标市场与数量。', inq: '发起询盘',
       empty: '该品类暂未上架成品。',
-      moq: '起订量按品类与包材议定（书面确认）', sample: '打样通常 5–14 天（书面确认）', sampleCta: '申请样品', more: '看详情',
+      moq: publicMoq(true), sample: publicSample(true), sampleCta: '申请样品', more: '看详情',
   }
   : {
       crumbAll: 'All products', eyebrow: 'Collection',
@@ -106,26 +107,26 @@ const T = zh
       introH: `About ${catLabel} manufacturing`,
       intro: [
         `All ${n} ${catLabel.toLowerCase()} items on this page come from real production runs on our own lines — not renders or concept sketches. Each card lists category, specs and selling points, and links to the full product page with images and an inquiry form.`,
-        `The factory is in Guangzhou: over 20,000 m² of manufacturing floor, 15 automated production lines and more than 13,000 formulations on file, certified to GMPC, ISO 22716:2007 and HALAL. For ${catLabel.toLowerCase()}, formula adjustments, packaging selection (bottle, material, print, carton), fragrance and label language can all be combined to your brand requirements.`,
+        `The factory is in Guangzhou: over 20,000 m² of manufacturing floor, 15 automated production lines and more than 13,000 formulations on file, certified to GMPC, ISO 22716:2007 and HALAL. For ${catLabel.toLowerCase()}, formula, packaging, fragrance and label language are scoped per project. Claims are limited by target-market rules and third-party reports; no report, no label claim.`,
         `Process: confirm category and target market → sampling → sample sign-off → written confirmation of specs, MOQ and lead time → mass production. MOQ, sample fees and lead time are confirmed in writing.`,
       ],
       faqH: `${catLabel} buying FAQ`,
       faq: [
-        { q: `What is the MOQ for ${catLabel.toLowerCase()}?`, a: `MOQ is agreed per category and packaging; each card shows a reference MOQ. It is confirmed in writing once quantity and packaging are set.` },
+        { q: `What is the MOQ for ${catLabel.toLowerCase()}?`, a: `MOQ is agreed per category and packaging and confirmed in writing. Cards do not show an unapproved single-number MOQ.` },
         { q: `Can I get ${catLabel.toLowerCase()} samples, and how long does sampling take?`, a: `Yes. Sampling lead time depends on category and packaging availability and is confirmed in writing; mass production is scheduled after sample sign-off.` },
-        { q: `What can be customized for ${catLabel.toLowerCase()}?`, a: `Formula adjustments, efficacy claims, packaging selection, fragrance, texture, volume and label language can be combined to your brand requirements, under either OEM or ODM.` },
+        { q: `What can be customized for ${catLabel.toLowerCase()}?`, a: `Formula, packaging, fragrance, texture, volume and label language are scoped per project, under OEM or ODM. Claims are limited by target-market rules and third-party reports; no report, no label claim.` },
         { q: `Which compliance documents are available for exporting ${catLabel.toLowerCase()}?`, a: `The factory holds GMPC, ISO 22716 and HALAL certifications, and supports FDA registration, CPNP notification and Southeast Asian market filings. Applicable documents are confirmed per target market.` },
       ],
       otherH: 'Other categories', ask: 'Nothing quite right? Tell us the category, target market and quantity.', inq: 'Send an inquiry',
       empty: 'No products in this category yet.',
-      moq: 'MOQ agreed per category and packaging (confirmed in writing)', sample: 'Sampling typically 5–14 days (confirmed in writing)', sampleCta: 'Request sample', more: 'Details',
+      moq: publicMoq(false), sample: publicSample(false), sampleCta: 'Request sample', more: 'Details',
   };
 
 const listItems = items.map((p: any, i: number) => ({
   '@type': 'ListItem', position: i + 1,
   item: {
     '@type': 'Product',
-    name: p.name ?? p.slug,
+    name: catalogLabel(p.name ?? p.slug, zh).name,
     url: `${origin}${B}/product/${p.slug}/`,
     ...(p.cover_media ? { image: `${origin}/media/${p.cover_media}` } : {}),
     category: catLabel,
@@ -187,15 +188,15 @@ const jsonLd = ldJson({
           <article class="card">
             <a class="card-main" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>
               {p.cover_media
-                ? <img src={`/media/${p.cover_media}`} alt={p.name ?? p.slug} width="600" height="600" loading={idx < 6 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" />
+                ? <img src={`/media/${p.cover_media}`} alt={catalogLabel(p.name ?? p.slug, zh).name} width="600" height="600" loading={idx < 6 ? 'eager' : 'lazy'} fetchpriority={idx < 4 ? 'high' : undefined} decoding="async" />
                 : <div class="ph" />}
-              <h2>{p.name ?? p.slug}</h2>
-              {p.summary && <p>{p.summary}</p>}
+              <h2>{catalogLabel(p.name ?? p.slug, zh).name}</h2>
+              {p.summary && <p>{softenClaims(p.summary)}</p>}
             </a>
-            <p class="meta">{catLabel} · {p.moq ? `${T.moq}: ${p.moq}` : T.moq} · {T.sample}</p>
+            <p class="meta">{catLabel} · {T.moq} · {T.sample}</p>
             <div class="cta-row">
               <a class="more" href={`${B}/product/${p.slug}/?product_id=${p.id ?? ''}`}>{T.more} →</a>
-              <a class="sample" href={`${B}/rfq/?product_id=${encodeURIComponent(String(p.id ?? ''))}&about=${encodeURIComponent(String(p.name ?? p.slug))}&category=${encodeURIComponent(cat)}`}>{T.sampleCta}</a>
+              <a class="sample" href={`${B}/rfq/?product_id=${encodeURIComponent(String(p.id ?? ''))}&about=${encodeURIComponent(catalogLabel(String(p.name ?? p.slug), zh).name)}&category=${encodeURIComponent(cat)}`}>{T.sampleCta}</a>
             </div>
           </article>
         </li>
@@ -212,6 +213,7 @@ const jsonLd = ldJson({
       ))}
     </section>
 
+    {items.some((p) => catalogLabel(p.name ?? p.slug, zh).claim) && <p class="ask">{claimNote(zh)}</p>}
     <p class="ask">{T.ask} <a href={`${B}/contact/?about=${encodeURIComponent(catLabel)}&type=inquiry`}>{T.inq}</a></p>
   </main>
   <button id="to-top" class="to-top" aria-label={zh ? '返回顶部' : 'Back to top'} title={zh ? '返回顶部' : 'Back to top'}>↑</button>

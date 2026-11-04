@@ -57,7 +57,7 @@ const T = zh ? {
           q: 'OEM 和 ODM 到底有什么区别?',
           a: 'OEM 是用工厂现成的配方贴你的品牌,ODM 是工厂按你的需求重新调配方。',
           d: [
-            'OEM:你不出配方,从工厂在册的 13,000 多支里挑,省时省钱,最快 3–7 天打样。',
+            'OEM:你不出配方,从工厂在册的 13,000 多支里挑。打样通常 5–14 天,这是样品指示,须书面确认,不是大货交期。',
             'ODM:你有明确诉求,工厂按方向调配方,需要重新做稳定性验证,周期 2–4 周。',
             'OBM:工厂从配方一直做到品牌全包,适合从零起盘、没有供应链资源的一方。',
             '怎么选:跨境电商首批、测款 → OEM;想做差异化大单品 → ODM;从零起盘 → OBM。',
@@ -66,12 +66,12 @@ const T = zh ? {
         },
         {
           q: '化妆品代工起订量一般多少?',
-          a: '常规剂型 3,000–5,000 件起;用现货包材能压到更低,开模包材通常 1 万件起。',
+          a: '起订量按品类与包材给出区间，并以书面确认为准。页面不标未核准的单一低起订量。',
           d: [
-            '为什么是这个数:一条产线换线一次要停机清洗,量太少摊不动;活性物采购也有最小批。',
-            '包材是另一本账:现货款起订量低,开模款要摊模具费,所以 1 万起。',
-            '压低起订量的办法:选现货包材 + 选常规剂型,两样都选就能谈到最低档。',
-            `我们的柔性:13,000 多支在册配方 + ${CHAIN_COUNTS.packaging.toLocaleString('en-US')} 款现货包材库,首批 3,000 件可接。`,
+            '一条产线换线一次要停机清洗，量级太小摊不动；活性物采购也有最小批。具体区间书面确认。',
+            '包材是另一本账:现货款与开模款不是同一个区间，开模要摊模具费。',
+            '选现货包材还是开模，决定的是区间而不是一个对外口号。',
+            `在册配方 13,000 多支，现货包材 ${CHAIN_COUNTS.packaging.toLocaleString('en-US')} 款。起订量仍按品类与包材书面确认。`,
           ],
         },
         {
@@ -87,11 +87,11 @@ const T = zh ? {
         },
         {
           q: '打样要多久?打样费怎么算?',
-          a: '现有配方 3–7 天出样;需要重新调配方的,按复杂度 2–4 周。',
+          a: '打样通常 5–14 天。这是样品与沟通的指示，须书面确认，不是大货交期承诺。重新调配方的周期另计，以书面确认为准。',
           d: [
-            '3–7 天指的是从在册配方里挑一支、灌进你选的包材、贴上你的标 —— 这一段没有研发工作量。',
-            '重新调配方要走小试、稳定性观察,时间花在等结果上,压不动。',
-            '打样费在正式下单后通常可以抵扣,具体按订单量谈。',
+            '5–14 天指的是样品寄出的常见区间，从在册配方灌进选定包材、贴上标签。不是大货交期。',
+            '重新调配方要走小试、稳定性观察，时间花在等结果上，压不动，以书面确认为准。',
+            '打样费在正式下单后通常可以抵扣，具体按订单量谈。',
           ],
         },
       ],
@@ -101,9 +101,9 @@ const T = zh ? {
       items: [
         {
           q: '你们有哪些认证?能不能看原件?',
-          a: 'GMPC、ISO 22716:2007、HALAL、FDA 工厂注册、EU CPNP、SGS。证书编号与有效期凭原件提供。',
+          a: '工厂持有认证仅列：GMPC、ISO 22716:2007、HALAL（范围以证书原件为准）。FDA 工厂注册与 EU CPNP 是备案或通报协助，不是工厂认证。SGS 为第三方检测，不列入持证清单。编号与有效期凭原件提供。',
           d: [
-            '这些是工厂级资质,不是单个产品的检测报告 —— 两者不能互相替代。',
+            '工厂认证与备案协助不是同一件事，不能互相替代。',
             '证书编号不在网页上公开:公开编号会被拿去做无关的背书,而真正要核验的采购会直接要原件。',
             '看证书要看三件:编号能不能查、有效期在不在、发证机构对不对。挂一张图不算。',
           ],
@@ -126,7 +126,7 @@ const T = zh ? {
         },
         {
           q: '产品功效可以怎么宣称?',
-          a: '以目的地市场法规与第三方检测报告为准。我们站上引用的古方研究是配方设计的输入,不是功效宣称。',
+          a: '功效宣称受目标市场规则与第三方检测报告限制：没有对应报告，就不能上标签宣称。古方研究是配方设计的输入，不是功效宣称。',
           d: [
             '同一句宣称在不同市场的口径不一样:国内按化妆品监管条例,欧盟按 CPNP 与宣称通用准则。',
             '要做功效宣称,先定市场,再定检测项目 —— 顺序反了就会花冤枉钱。',
@@ -235,10 +235,10 @@ const T = zh ? {
         },
         {
           q: '最小起订能压到多低?',
-          a: '选现货包材 + 常规剂型,首批 3,000 件可接。',
+          a: '没有对外承诺的单一最低起订量。现货或开模、品类与规格不同，区间以书面确认为准。',
           d: [
-            '再往下压不是不能谈,而是单价会失去意义 —— 摊到每支上的固定成本会超过料体本身。',
-            '测款阶段的建议是:少量多款,把不同配方各下最低批,用市场数据决定放大哪一支。',
+            '量级太小，摊到每支上的固定成本会超过料体本身，所以不把一个未核准数字写成口号。',
+            '测款可以多款并行，每一款的起订量仍按品类与包材书面确认。',
           ],
         },
         {
@@ -272,7 +272,7 @@ const T = zh ? {
           q: 'What is the difference between OEM and ODM?',
           a: 'OEM puts your brand on an existing factory formula. ODM means the factory reworks a formula to your brief.',
           d: [
-            'OEM: you pick from 13,000+ formulas on file. Fastest route — samples in 3–7 days.',
+            'OEM: you pick from 13,000+ formulas on file. Sampling is typically 5–14 days — a sample indication, confirmed in writing, not a production lead time.',
             'ODM: you have a specific brief; the formula is adjusted and re-validated for stability. 2–4 weeks.',
             'OBM: the factory takes it from formula through to finished brand — for teams starting from zero.',
             'Same line, same quality system. The only difference is how many steps you hand over.',
@@ -280,11 +280,11 @@ const T = zh ? {
         },
         {
           q: 'What is the minimum order quantity?',
-          a: 'Typically 3,000–5,000 units for standard formats. Stock packaging goes lower; tooled packaging usually starts at 10,000.',
+          a: 'MOQ is a range by category and packaging, confirmed in writing. This page does not publish an unapproved single low MOQ.',
           d: [
-            'A line changeover means a full clean-down, so very small runs cannot absorb the cost.',
-            'Packaging is a separate account: stock components have a low minimum, tooled ones must amortise the mould.',
-            `Our flexibility: 13,000+ formulas on file and ${CHAIN_COUNTS.packaging.toLocaleString('en-US')} stock packaging items. First runs from 3,000.`,
+            'A line changeover means a full clean-down, so very small runs cannot absorb the cost. The range is confirmed in writing.',
+            'Packaging is a separate account: stock components and tooled components are not the same range, because tooling has to amortise the mould.',
+            `13,000+ formulas are on file, with ${CHAIN_COUNTS.packaging.toLocaleString('en-US')} stock packaging items. MOQ is still confirmed in writing per category and packaging.`,
           ],
         },
         {
@@ -300,10 +300,10 @@ const T = zh ? {
         },
         {
           q: 'How long do samples take?',
-          a: '3–7 days from an existing formula. 2–4 weeks if the formula has to be reworked.',
+          a: 'Sampling is typically 5–14 days. That is a sample and communication indication, confirmed in writing — not a production lead-time promise. A reworked formula is timed separately, in writing.',
           d: [
-            'The 3–7 days covers filling an on-file formula into your chosen packaging with your label — no R&D time.',
-            'A reworked formula waits on stability observation. That wait cannot be compressed.',
+            'The 5–14 day span is the usual window to fill an on-file formula into chosen packaging with your label and send the sample. It is not a bulk lead time.',
+            'A reworked formula waits on stability observation. That wait cannot be compressed and is confirmed in writing.',
             'Sample fees are normally credited against the production order.',
           ],
         },
@@ -314,9 +314,9 @@ const T = zh ? {
       items: [
         {
           q: 'Which certifications do you hold?',
-          a: 'GMPC, ISO 22716:2007, HALAL, FDA facility registration, EU CPNP and SGS. Numbers and validity are shared from the originals.',
+          a: 'Factory certifications held: GMPC, ISO 22716:2007 and HALAL only (scope as stated on each certificate). FDA facility registration and EU CPNP are filing or notification assistance, not factory certifications. SGS reports are third-party tests and are not part of the held-certificate list. Numbers and validity are shared from the originals.',
           d: [
-            'These are facility-level credentials, not product test reports — the two are not interchangeable.',
+            'A factory certificate and a filing-assistance route are not interchangeable.',
             'Certificate numbers are not published: a buyer who genuinely verifies will ask for the original anyway.',
           ],
         },
@@ -337,7 +337,7 @@ const T = zh ? {
         },
         {
           q: 'What claims can we make?',
-          a: 'Destination-market regulation and third-party testing decide. Classical-formula research informs design; it is not a claim.',
+          a: 'Claims are limited by target-market rules and third-party reports. No report, no label claim. Classical-formula research informs design; it is not a claim.',
           d: [
             'The same sentence is judged differently in different markets. Fix the market first, then the test plan.',
           ],
@@ -439,10 +439,10 @@ const T = zh ? {
         },
         {
           q: 'How low can the minimum go?',
-          a: 'Stock packaging plus a standard format: first runs from 3,000 units.',
+          a: 'There is no published single-number minimum. Stock versus tooling, category and spec each have their own range, confirmed in writing.',
           d: [
-            'Below that the unit price stops being meaningful — fixed cost per unit exceeds the bulk itself.',
-            'For testing, run several formulas at the minimum and let the market decide which one scales.',
+            'Below a workable range the unit price stops being meaningful — fixed cost per unit exceeds the bulk itself — so an unapproved low number is not a slogan.',
+            'Test runs can cover several formulas. Each one still has its MOQ confirmed in writing by category and packaging.',
           ],
         },
         {
