@@ -4,9 +4,9 @@
  *
  * 首波三卡：价带只是零售观察区间，不是报价。spf_pa 只留字段，无第三方报告不写防晒数字。
  * 爆品卡的 Product JSON-LD 都走修正后形状：无 offers / InStock，@id 为 canonical#product，image 为包材示意（不是成品实拍）。
- * 首波与第三波每卡在 5 条通用问之后加 2 条市场问；第二波每卡 3 条。页内 FAQ 与 FAQPage 同一份数组。
+ * 首波每卡在 5 条通用问之后加 2 条市场问；第二波每卡 3 条。第三波马来西亚与阿联酋卡 2 条；印尼防晒凝胶 3 条（多一条说明路径段是历史 product_id 路由残留）。页内 FAQ 与 FAQPage 同一份数组。
  * 第二波两卡（精华）：不写死价，不写功效百分比。
- * 第三波三卡：马来西亚货架试样、印尼防晒凝胶、阿联酋屏障保湿精华。印尼卡的货号保留原样；正文、规格和 JSON-LD 的名称与描述不写防晒数字。
+ * 第三波三卡：马来西亚货架试样、印尼防晒凝胶、阿联酋屏障保湿精华。印尼卡的货号保留原样；正文、规格和 JSON-LD 的名称与描述不写防晒数字。路径问可以点名货号里的历史词，并写明那不是已验证的防晒数字。
  * Halal 只讨论 ready / 评估，不写本品已有证书。通告是 document assist，不是获批保证。
  * 欧盟责任人由客户担任，帛卉不担任 RP。
  */
@@ -511,12 +511,18 @@ export const WAVE_CARDS: WaveCard[] = [
         qZh: '为什么这款凝胶不写防晒数字？',
         aZh: 'spf_band 保持为待第三方报告。没有第三方报告之前，本页不写防晒数字。',
       },
+      {
+        qEn: 'Why does the URL contain “spf45” if there is no SPF number on the page?',
+        aEn: 'The path segment is a historical product_id residue for routing only. It is not a verified SPF45 claim. spf_band stays at Pending third-party report; this page states no sun-protection number until a third-party report exists.',
+        qZh: '为什么网址里有 spf45，但页内不写防晒数字？',
+        aZh: '路径段是历史 product_id 路由残留，不等于已验证 SPF45。spf_band 保持为待第三方报告；没有第三方报告之前，本页不写防晒数字。',
+      },
     ],
     en: langBlock({
       name: 'HydraSoothe sunscreen gel (Indonesia)',
       summary: 'Sunscreen gel direction for Indonesia: humid climate, acne-friendly care. This page states no price and is not a quote. spf_band stays at Pending third-party report, so no sun-protection number is shown. Halal-ready is not requested.',
       description: 'OEM/ODM brief for Indonesia: a sunscreen gel for a humid climate, discussed as acne-friendly care. Pack talk is a tube or pump, fill confirmed in writing. This page states no price and is not a quote. The spf_band field stays at Pending third-party report. No sun-protection number is shown, because there is no third-party report on this page. Halal-ready is not requested for this item. Indonesia notification assist, if requested, is document assist only. It is not an approval and does not replace the local notifier. MOQ and lead time are confirmed in writing. The RFQ first-order band is 1k-5k: a quantity band, not a price.',
-      footnote: 'No price on this page (not a quote). No sun-protection number without a third-party report.',
+      footnote: 'No price on this page (not a quote). No sun-protection number without a third-party report. URL id may contain legacy tokens; not a verified SPF figure.',
       imageCaption: 'Pump-bottle format reference only. The brief is a tube or pump, confirmed in writing. Not a finished-goods photo.',
       assure: 'Factory certificates listed: GMPC, ISO 22716, HALAL (scope as on the certificate). Halal-ready is not requested for this item. It does not say this item already has a halal certificate.',
       certAnswer: 'Factory certifications held are GMPC, ISO 22716 and HALAL only, scope as on the certificate. Halal-ready for this item is no. This page does not say the item already has a halal certificate. Sun-protection numbers wait for a third-party report. Indonesia notification assist is document assist only, not an approval.',
@@ -538,7 +544,7 @@ export const WAVE_CARDS: WaveCard[] = [
       name: '水润舒缓防晒凝胶（印尼）',
       summary: '面向印尼的防晒凝胶方向：湿热气候，油痘肌以护理向讨论（acne-friendly）。本页不写价格，不是报价。spf_band 保持为待第三方报告，所以不写防晒数字。不需要 Halal-ready。',
       description: '这是面向印尼的 OEM/ODM 方向：防晒凝胶，适合湿热气候，油痘肌以护理向讨论（acne-friendly）。包材按软管或泵头讨论，容量书面确认。本页不写价格，不是报价。spf_band 只留字段，值为待第三方报告。本页没有第三方报告，所以不写防晒数字。本品不需要 Halal-ready。印尼通告协助若提出，只做 document assist，只协助准备工厂侧资料，不是获批，也不替代当地通知主体。起订量与交期以书面确认为准。询盘首单量预填为 1k-5k，这是数量带，不是价格。',
-      footnote: '本页不写价格，不是报价。没有第三方报告，所以不写防晒数字。',
+      footnote: '本页不写价格，不是报价。没有第三方报告，所以不写防晒数字。网址 id 可能含历史词，不是已验证的防晒数字。',
       imageCaption: '泵头瓶包材示意。本品按软管或泵头讨论，以书面确认为准。不是成品实拍。',
       assure: '工厂持证只列 GMPC、ISO 22716、HALAL（范围以证书为准）。本品不需要 Halal-ready。不表示本品已有清真证书。',
       certAnswer: '工厂已持有认证只列 GMPC、ISO 22716、HALAL，范围以证书为准。本品 Halal-ready 为 no，不表示本品已有清真证书。防晒数字须等第三方报告。印尼通告协助只做 document assist，不是获批。',

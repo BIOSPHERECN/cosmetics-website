@@ -278,6 +278,6 @@ assert.match(page, /id="lead_time_window_note"/);
 assert.match(api, /prefixFormulaPath\(message, f\.formula_path\)/);
 assert.doesNotMatch(api, /INSERT INTO inquiries \([^)]*formula_path/);
 const cache = readFileSync(new URL('../apps/web/src/middleware.ts', import.meta.url), 'utf8');
-assert.match(cache, /const CACHE_V = 'v143'/);
+assert.match(cache, /const CACHE_V = 'v144'/);
 
 console.log('rfq-fields.test.mjs:全部通过');

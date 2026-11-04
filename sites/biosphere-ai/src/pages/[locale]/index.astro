@@ -97,7 +97,7 @@ const L = {
   requestSample: zhPage ? '一键申请免费样品' : 'Request free samples',
   contactUs: zhPage ? '加微信聊细节' : 'Chat on WhatsApp',
   // 门槛锚点
-  moq: zhPage ? '现货包材代工：单品 1,000–3,000件起订' : 'Stock packaging OEM: MOQ 1,000–3,000 pcs per SKU',
+  moq: zhPage ? '现货包材代工：起订量书面确认' : 'Stock packaging OEM: MOQ confirmed in writing',
   sampleTime: zhPage ? '成熟基底打样周期：5–14个工作日' : 'Mature base sampling: 5–14 working days',
   // 下面的屏
   whatWeDo: zhPage ? '我们能做什么' : 'What we can make',
@@ -433,13 +433,13 @@ const L = {
     var BASES = {
       skincare: [
         { code: 'BH-S-001', name: zh ? '草本舒缓精华基底' : 'Herbal soothing serum base', actives: zh ? '积雪草、泛醇、神经酰胺' : 'Centella, Panthenol, Ceramide' },
-        { code: 'BH-S-042', name: zh ? '烟酰胺亮肤精华基底' : 'Niacinamide brightening serum base', actives: zh ? '烟酰胺 3%、熊果苷' : 'Niacinamide 3%, Arbutin' },
-        { code: 'BH-S-089', name: zh ? '视黄醇抗老面霜基底' : 'Retinol anti-aging cream base', actives: zh ? '视黄醇 0.3%、角鲨烷' : 'Retinol 0.3%, Squalane' },
+        { code: 'BH-S-042', name: zh ? '烟酰胺亮肤精华基底' : 'Niacinamide brightening serum base', actives: zh ? '烟酰胺、熊果苷——用量按项目设定，书面确认' : 'Niacinamide, Arbutin — level set per project; confirm in writing' },
+        { code: 'BH-S-089', name: zh ? '视黄醇抗老面霜基底' : 'Retinol anti-aging cream base', actives: zh ? '视黄醇、角鲨烷——用量按项目设定，书面确认' : 'Retinol, Squalane — level set per project; confirm in writing' },
       ],
       body: [
         { code: 'BH-B-007', name: zh ? '草本止痒防晒乳' : 'Herbal anti-itch suncare lotion', actives: zh ? '薄荷醇、氧化锌、甘草酸' : 'Menthol, Zinc Oxide, Glycyrrhizin' },
         { code: 'BH-B-012', name: zh ? '冰感修护防晒喷雾' : 'Cooling repair suncare spray', actives: zh ? '薄荷脑、透明质酸' : 'Menthol, Hyaluronic Acid' },
-        { code: 'BH-B-023', name: zh ? '果酸身体乳基底' : 'AHA body lotion base', actives: zh ? '乳酸 5%、乳木果油' : 'Lactic Acid 5%, Shea Butter' },
+        { code: 'BH-B-023', name: zh ? '果酸身体乳基底' : 'AHA body lotion base', actives: zh ? '乳酸、乳木果油——用量按项目设定，书面确认' : 'Lactic Acid, Shea Butter — level set per project; confirm in writing' },
       ],
       haircare: [
         { code: 'BH-H-005', name: zh ? '氨基酸洗发基底' : 'Amino acid shampoo base', actives: zh ? '氨基酸表活、生物素' : 'Amino acid surfactant, Biotin' },
@@ -457,35 +457,35 @@ const L = {
 
     var COMPLIANCE = {
       na: zh ? 'FDA: 需完成MoCRA注册(化妆品设施注册+产品列示；注册≠批准、不发证书)；OTC防晒需OTC药案' : 'FDA: MoCRA registration required (facility + product listing; registration is not approval, and no certificate is issued); OTC suncare needs OTC drug filing',
-      sea: zh ? '印尼BPOM Notifkos通报；防晒剂需符合东盟ACD限用表；可配HALAL清真认证' : 'Indonesia BPOM Notifkos; UV filters must meet ASEAN ACD limits; HALAL certification available',
+      sea: zh ? '印尼 BPOM Notifkos 通报；防晒剂需符合东盟 ACD 限用表；可讨论 Halal-ready 配方与工厂持证范围协助（document assist only）——不是本品清真证书，不保证获批。' : 'Indonesia BPOM Notifkos; UV filters must meet ASEAN ACD limits; Halal-ready formulation and plant-held HALAL scope can be discussed as document assist only — not a product Halal certificate and not guaranteed approval.',
       eu: zh ? 'CPNP通报必需；PIF产品信息文件需备；防晒剂需符合EC No 1223/2009' : 'CPNP notification required; PIF file needed; UV filters per EC No 1223/2009',
-      me: zh ? 'SFDA注册；需HALAL认证；阿拉伯语标签' : 'SFDA registration; HALAL required; Arabic labeling',
+      me: zh ? 'SFDA 注册；目标市场常要求 Halal——我方仅协助 Halal-ready / 卷宗路径，不保证本品获证；需阿拉伯语标签。' : 'SFDA registration; target-market rules often require Halal — we assist Halal-ready / dossier pathway only, not a guaranteed certificate for your SKU; Arabic labeling.',
       la: zh ? '巴西ANVISA通报；西班牙语标签；防晒SPF测试报告' : 'Brazil ANVISA notification; Spanish labels; SPF test report',
       cn: zh ? '国产非特殊用途备案 / 特殊用途审批(防晒、美白)；全成分标注' : 'China non-special filing / special-use approval (suncare, whitening); full INCI labeling',
     };
 
     var PACKAGING = {
       skincare: [
-        zh ? '滴管玻璃瓶 30ml (现货,1,000支起)' : 'Dropper glass bottle 30ml (stock, MOQ 1,000)',
-        zh ? '真空泵瓶 50ml (现货,1,000支起)' : 'Airless pump bottle 50ml (stock, MOQ 1,000)',
-        zh ? '膏霜罐 30g (现货,3,000支起)' : 'Cream jar 30g (stock, MOQ 3,000)',
+        zh ? '滴管玻璃瓶 30ml（现货，起订量书面确认）' : 'Dropper glass bottle 30ml (stock, MOQ confirmed in writing)',
+        zh ? '真空泵瓶 50ml（现货，起订量书面确认）' : 'Airless pump bottle 50ml (stock, MOQ confirmed in writing)',
+        zh ? '膏霜罐 30g（现货，起订量书面确认）' : 'Cream jar 30g (stock, MOQ confirmed in writing)',
       ],
       body: [
-        zh ? '防晒软管 100ml (现货,1,000支起)' : 'Suncare tube 100ml (stock, MOQ 1,000)',
-        zh ? '喷雾瓶 150ml (现货,3,000支起)' : 'Spray bottle 150ml (stock, MOQ 3,000)',
-        zh ? '泵头瓶 200ml (现货,1,000支起)' : 'Pump bottle 200ml (stock, MOQ 1,000)',
+        zh ? '防晒软管 100ml（现货，起订量书面确认）' : 'Suncare tube 100ml (stock, MOQ confirmed in writing)',
+        zh ? '喷雾瓶 150ml（现货，起订量书面确认）' : 'Spray bottle 150ml (stock, MOQ confirmed in writing)',
+        zh ? '泵头瓶 200ml（现货，起订量书面确认）' : 'Pump bottle 200ml (stock, MOQ confirmed in writing)',
       ],
       haircare: [
-        zh ? '软管 300ml (现货,1,000支起)' : 'Tube 300ml (stock, MOQ 1,000)',
-        zh ? '滴管瓶 30ml (现货,1,000支起)' : 'Dropper bottle 30ml (stock, MOQ 1,000)',
+        zh ? '软管 300ml（现货，起订量书面确认）' : 'Tube 300ml (stock, MOQ confirmed in writing)',
+        zh ? '滴管瓶 30ml（现货，起订量书面确认）' : 'Dropper bottle 30ml (stock, MOQ confirmed in writing)',
       ],
       makeup: [
-        zh ? '粉底液瓶 30ml (现货,3,000支起)' : 'Foundation bottle 30ml (stock, MOQ 3,000)',
-        zh ? '唇釉管 5ml (现货,3,000支起)' : 'Lip tint tube 5ml (stock, MOQ 3,000)',
+        zh ? '粉底液瓶 30ml（现货，起订量书面确认）' : 'Foundation bottle 30ml (stock, MOQ confirmed in writing)',
+        zh ? '唇釉管 5ml（现货，起订量书面确认）' : 'Lip tint tube 5ml (stock, MOQ confirmed in writing)',
       ],
       oral: [
-        zh ? '牙膏管 100g (现货,3,000支起)' : 'Toothpaste tube 100g (stock, MOQ 3,000)',
-        zh ? '压片瓶 60粒 (现货,3,000支起)' : 'Tablet bottle 60ct (stock, MOQ 3,000)',
+        zh ? '牙膏管 100g（现货，起订量书面确认）' : 'Toothpaste tube 100g (stock, MOQ confirmed in writing)',
+        zh ? '压片瓶 60粒（现货，起订量书面确认）' : 'Tablet bottle 60ct (stock, MOQ confirmed in writing)',
       ],
     };
 
