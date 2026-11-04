@@ -16,7 +16,8 @@
     "./generated/*": "./src/generated/*",
     "./auth": "./src/auth.ts",
     "./robots": "./src/robots.ts",
-    "./blocks": "./src/blocks.ts"
+    "./blocks": "./src/blocks.ts",
+    "./home-showcase": "./src/home-showcase.ts"
   },
   "peerDependencies": {
     "astro": "^7.0.0"

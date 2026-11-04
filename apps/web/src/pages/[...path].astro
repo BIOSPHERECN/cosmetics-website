@@ -61,6 +61,7 @@ import { readSession, readCookie, COOKIE as ADMIN_COOKIE } from '../lib/auth';
 import { siteJsonLd, breadcrumbJsonLd, faqJsonLd, productJsonLd, itemListJsonLd } from '../lib/jsonld';
 import { isLocale, t as uiT, isLocale as _l } from '@cosmetic/core/i18n';
 import { getVariant, getSite as getStaticSite } from '@cosmetic/core/registry';
+import { SHOW_HOME_PRODUCT_SHOWCASE } from '@cosmetic/core/home-showcase';
 // Astro v6 起 Astro.locals.runtime.env 已移除,绑定改从 cloudflare:workers 取
 import { env } from 'cloudflare:workers';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
@@ -329,8 +330,9 @@ const catCounts = db && site
       return [...m.entries()].map(([category, n]) => ({ category, n })).sort((a, b) => b.n - a.n);
     })
   : [];
-/* 首页产品展示:跨品类轮取+去重(同一基础产品只取1款),避免单调;查60个JS端去重后取14+判断 */
-const showcaseData = (!slug && db && site && site.id === 'biosphere-ai')
+/* 首页产品展示:跨品类轮取+去重(同一基础产品只取1款),避免单调;查60个JS端去重后取14+判断。
+   SHOW_HOME_PRODUCT_SHOWCASE 关掉时不查 D1，各语种同一条。 */
+const showcaseData = (SHOW_HOME_PRODUCT_SHOWCASE && !slug && db && site && site.id === 'biosphere-ai')
   ? await memo(`showcase10:${site.id}:${lang}`, 3600, async () => {
       const raw = ((await db.prepare(
         `SELECT id, slug, cover_media, category, name, rn FROM (
@@ -606,8 +608,8 @@ const ogImage = (() => {
       <Funnel locale={lang} heading="h2" />
     )}
 
-    {/* 首页产品展示区:漏斗下面紧接着展示成品,2行+更多方块 */}
-    {showcaseData.items.length > 0 && !slug && (
+    {/* 首页产品展示区:漏斗下面的成品卡片栅格。开关关掉则整块不渲染，markup 保留。 */}
+    {SHOW_HOME_PRODUCT_SHOWCASE && showcaseData.items.length > 0 && !slug && (
       <section class="block alt">
         <div class="ck-wrap">
           <h2>{({ 'zh-cn': '成品展示', 'zh-tw': '成品展示', jp: '製品', kr: '제품', id: 'Produk', ar: 'المنتجات' } as Record<string, string>)[lang] ?? 'Product showcase'}</h2>

@@ -29,6 +29,7 @@ import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { LOCALES, type Locale, localePath, t } from '@cosmetic/core/i18n';
 import { getSite, getVariant, SITES } from '@cosmetic/core/registry';
 import { SOLUTIONS, EMAIL } from '@cosmetic/core/content';
+import { SHOW_HOME_PRODUCT_SHOWCASE } from '@cosmetic/core/home-showcase';
 import { env } from 'cloudflare:workers';
 import '../../styles/brand.css';
 
@@ -54,10 +55,10 @@ const featuredSolutions = [
   'product-development', 'cross-border-seller', 'factory-quality',
 ].map(slug => SOLUTIONS.find(s => s.slug === slug)).filter(Boolean);
 
-/** 首页产品展示：从 D1 查 is_showcase=1 的产品，取前 12 款 */
+/** 首页产品展示：从 D1 查 is_showcase=1 的产品，取前 12 款。开关关掉时不查。 */
 const db = (env as any).DB as D1Database | undefined;
 let showcaseProducts: any[] = [];
-if (db) {
+if (SHOW_HOME_PRODUCT_SHOWCASE && db) {
   try {
     showcaseProducts = ((await db.prepare(
       `SELECT p.slug, p.category, p.cover_media, i.name, i.summary
@@ -220,8 +221,8 @@ const L = {
       </div>
     </section>
 
-    {/* ①.5 成熟产品展示 */}
-    {showcaseProducts.length > 0 && (
+    {/* ①.5 成熟产品展示。SHOW_HOME_PRODUCT_SHOWCASE 关掉整块（标题+卡片栅格），各 locale 同一模板。 */}
+    {SHOW_HOME_PRODUCT_SHOWCASE && showcaseProducts.length > 0 && (
       <section class="block alt">
         <div class="ck-wrap">
           <h2>{showCaseTitle}</h2>
