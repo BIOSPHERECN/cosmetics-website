@@ -25,6 +25,7 @@ import { orgJsonLd, breadcrumbJsonLd, faqJsonLd } from '../../../lib/jsonld';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { readSession, readCookie, COOKIE } from '../../../lib/auth';
 import { catalogLabel, softenClaims } from '../../../lib/comply-copy';
+import { rfqProductHooks } from '../../../lib/rfq-fields';
 
 export const prerender = false;
 
@@ -105,8 +106,22 @@ const displayName = shown.name;
 const displaySummary = product.summary ? softenClaims(String(product.summary)) : '';
 /* W5：详情页三个行动都进 RFQ，product_id 用库内 id，缺则 slug，禁止空串，也不再送到 /contact/。 */
 const productRef = String(product.id ?? '').trim() || String(product.slug || pslug).trim();
-const rfqFor = (intent: string) =>
-  `/${lang}/rfq/?product_id=${encodeURIComponent(productRef)}&about=${encodeURIComponent(displayName)}&category=${encodeURIComponent(String(product.category ?? ''))}&intent=${encodeURIComponent(intent)}`;
+const productHooks = rfqProductHooks({
+  hasContext: true,
+  specsJson: typeof product.specs_json === 'string' ? product.specs_json : JSON.stringify(product.specs_json ?? ''),
+  hideCjk: lang !== 'zh-cn',
+});
+const rfqFor = (intent: string) => {
+  const qs = new URLSearchParams();
+  qs.set('product_id', productRef);
+  qs.set('about', displayName);
+  qs.set('category', String(product.category ?? ''));
+  qs.set('intent', intent);
+  if (productHooks.spf_pa) qs.set('spf_pa', productHooks.spf_pa);
+  if (productHooks.texture) qs.set('texture', productHooks.texture);
+  if (productHooks.skin_type) qs.set('skin_type', productHooks.skin_type);
+  return `/${lang}/rfq/?${qs.toString()}`;
+};
 const T = lang === 'zh-cn'
   ? { back: '返回产品列表', moq: '起订量', inquiry: '就这款发起询盘', more: '同品类还有', desc: '产品说明',
       tech: '产品特点', specs: '产品规格', position: '产品定位', posMarket: '目标市场', posAudience: '目标客户',
@@ -266,7 +281,7 @@ const jsonLd = [
             )}
           </div>
           <ul class="assure">
-            <li>{zh ? 'GMPC · ISO 22716 · HALAL 认证工厂' : 'GMPC · ISO 22716 · HALAL certified'}</li>
+            <li>{zh ? 'GMPC · ISO 22716 · HALAL（持证，范围以证书为准）' : 'GMPC · ISO 22716 · HALAL (held; scope as on the certificate)'}</li>
             <li>{zh ? '支持 OEM / ODM 打样' : 'OEM / ODM sampling supported'}</li>
             <li>{zh ? '打样周期按品类与包材备料确认 · 以书面告知为准' : 'Sampling lead time confirmed with category & packaging'}</li>
           </ul>
