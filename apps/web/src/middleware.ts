@@ -21,7 +21,8 @@ import { readSession, readCookie, COOKIE } from './lib/auth';
 /* lib/quota 只依赖 ai-ip(纯数据),同样可以进中间件 */
 import { answerBot } from './lib/quota';
 /* lib/fuse:费用熔断保险丝(只依赖 D1,与 quota 同一约束,可进中间件) */
-import { fuseCheck, fuseResponse } from './lib/fuse';
+import { fuseApplies, fuseCheck, fuseResponse } from './lib/fuse';
+import { cacheKeyRequest, cachePutResponse, restoreBrowserCacheControl } from './lib/edge-cache';
 /* lib/member 只依赖 auth 与 quota;lib/canon 没有任何依赖(09-24 C1) */
 import { memberSigned } from './lib/member';
 import { canonical, isPagePath, keyParams, uncacheable } from './lib/canon';
@@ -568,7 +569,10 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     for (const [k, v] of keep) u.searchParams.append(k, v);
     if (gateKey) u.searchParams.set('__gate', gateKey);   // 必须在 u.search = '' 之后(平台 09-22 踩过:放前面被清掉,Googlebot 命中真人那份)
     u.searchParams.set('__cv', CACHE_V);
-    return new Request(u.toString(), { method: 'GET', headers: r.headers });
+    /* 不复制原请求头。Cache API 的 match 会看 Range / If-None-Match / If-Modified-Since,
+       爬虫和 max-age=0 的浏览器用这些头复访时,命中会变成 304/206 或直接 miss,再次吃熔断。
+       键只认上面规范化后的 URL(含 __cv / __gate)。会员、后台、探针不进这条路径。 */
+    return cacheKeyRequest(u.toString());
   };
   /* 备份副本:每次成功渲染都另存一份,存七天,只在渲染失败时才拿出来用。
      它和上面那个新鲜副本是两回事 —— 新鲜副本十分钟就过期,过期之后
@@ -584,7 +588,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     if (gateKey) u.searchParams.set('__gate', gateKey);   // 陈旧备份也分开:5xx 兜底时不能把爬虫那份全文端给未登录的人
     u.searchParams.set('__cv', CACHE_V);
     u.searchParams.set('__stale', '1');
-    return new Request(u.toString(), { method: 'GET', headers: r.headers });
+    return cacheKeyRequest(u.toString());
   };
   /* ── 访问打点 ────────────────────────────────────────────────────
      一条请求一个数据点,给后台的分析罗盘用。
@@ -655,6 +659,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     const hit = await cache.match(keyFor(req));
     if (hit) {
       const r = new Response(hit.body, hit);
+      restoreBrowserCacheControl(r.headers);
       r.headers.set('x-bh-cache', 'hit');
       return r;
     }
@@ -664,17 +669,12 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
      命中缓存的请求直接返回,不查 D1、不计数、不受影响。
      当日渲染量触顶(fuse_daily.fired=1)后,非会员 / 非后台 / 非探针请求一律 429,不再渲染、不再花钱;
      会员与后台照常(付费主与运营不能误伤)。熔断按北京时间日界,次日零点自动解除。
-     阈值 env.FUSE_RENDER_CAP,默认 30 万渲染/天 ≈ 3000 万行读/天,仅为免费额度(250 亿/月)的 3.6%。 */
-  /* 2026-10-23 豁免廉价静态文件:robots.txt / llms.txt / sitemap*.xml / favicon。
-     robots.txt 是本项目里明说「不查 D1」的纯静态输出,却被 AI 爬虫整天轮询 ——
-     它们既不花钱也不该被 429:爬虫拿不到 robots.txt 会重试得更凶(实测熔断日
-     AI 爬虫把渲染计数器刷到 30 万天花板,其中大量是这几个文件)。
-     豁免之后:熔断日爬虫也能拿到准信,页面流量该拦照拦。 */
-  const cheapStatic =
-    /^\/(?:robots\.txt|llms(?:-full)?\.txt|favicon\.ico)$/.test(url0.pathname)
-    || /^\/[\w-]+\/(?:robots\.txt|llms(?:-full)?\.txt)$/.test(url0.pathname)
-    || /\/sitemap(?:-[^/]*)?\.xml$/.test(url0.pathname);
-  if (cacheable && !staff && !member && !probe && !cheapStatic) {
+     阈值 env.FUSE_RENDER_CAP。wrangler 现钉 500000(与现网 ops 对齐);变量缺失时 fuse.ts 内置缺省仍是 30 万。 */
+  /* 2026-10-23 起豁免廉价静态:robots / llms / sitemap / favicon,以及不查 D1 的构建产物、
+     public 静态图、/asset 实文件。名单在 lib/fuse.ts isCheapStatic。
+     爬虫拿不到 robots 会重试得更凶;熔断日这些路径仍走原路由出 200,页面流量该拦照拦。
+     x-bohui-probe 只在上面 probe 密钥对上时豁免,不是公网验收口径。 */
+  if (fuseApplies({ cacheable, staff, member, probe, pathname: url0.pathname })) {
     const fuseCap = Number((cfEnv as any)?.FUSE_RENDER_CAP ?? 0);
     const fuse = await fuseCheck({ db: (cfEnv as any)?.DB as D1Database | undefined, cap: fuseCap || undefined });
     if (fuse.fired) {
@@ -739,8 +739,10 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       res.headers.set('x-bh-cache', 'miss');
       /* 本想用 waitUntil 后台写入,但这个适配器里取不到 runtime.ctx,
          try/catch 会把失败悄悄吞掉 —— 表现就是每次都 miss(2026-09-04 实测)。
-         直接 await 写入:多几毫秒,但确实能缓存,这比"看起来有缓存"重要。 */
-      try { await cache.put(keyFor(req), res.clone()); }
+         直接 await 写入:多几毫秒,但确实能缓存,这比"看起来有缓存"重要。
+         cachePutResponse 只改副本:max-age=0 配 s-maxage 时,Cache API 会拒存或立刻当过期,
+         浏览器那份仍是 max-age=0,命中时再改回去。 */
+      try { await cache.put(keyFor(req), cachePutResponse(res)); }
       catch { /* 写缓存失败不影响出页 */ }
       /* 同一份内容再存一份长效备份,专供数据层挂掉时救急 */
       try {
