@@ -18,6 +18,7 @@ import { getSiteByHost, getSiteById, DEFAULT_LANG } from '../../lib/db';
 import { getCounts } from '../../lib/counts';
 import { citableTable } from '../../lib/llms-facts';
 import { SAMPLE_DAYS } from '../../lib/terms';
+import { llmsKind } from '../../lib/llms-kind';
 
 export const prerender = false;
 
@@ -54,10 +55,12 @@ export const GET: APIRoute = async ({ url, params }) => {
   const counts: any = (await getCounts(db)) ?? {};
   const fillN = (q: string) => q.replace(/\{(\w+)\}/g, (_, k) => (counts[k] ? Number(counts[k]).toLocaleString('en-US') : '全部'));
 
-  /* 非中文语种没必要各维护一份 —— 指回英文正本,避免十几份译文各自漂移 */
-  if (!lang.startsWith('zh')) {
-    return new Response(`See ${base}/llms.txt for the English facts sheet.\n`, {
-      headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=3600' },
+  /* 非中文不各维护一份。以前是约 67 字节的英文指针;改成 301 到全文 /llms.txt。
+     zh-cn 与 zh-tw 仍走下面的中文事实卡。 */
+  if (llmsKind(lang) === 'redirect') {
+    return new Response(null, {
+      status: 301,
+      headers: { Location: `${base}/llms.txt`, 'cache-control': 'public, max-age=3600' },
     });
   }
 

@@ -62,6 +62,7 @@ import { env } from 'cloudflare:workers';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { memo } from '../lib/memo';
 import { catalogLabel, claimNote, isCertWall, publicMoq, rewriteHeldCertAnswer, softenClaims } from '../lib/comply-copy';
+import { homeSeo } from '../lib/home-seo';
 
 export const prerender = false;
 
@@ -409,8 +410,14 @@ const faqItems = (bundle?.blocks ?? [])
     return [...own, ...more];
   });
 
+/* 首页 title/description:CMS 里已经写明工厂/代工的语种保持原句。
+   仍是「AI platform」的译文换成与 /llms.txt、Organization 同一口径的 OEM 句。 */
+const pageSeo = (site?.id === 'biosphere-ai' && !slug && bundle)
+  ? homeSeo(lang, bundle.page.title, bundle.page.seo_desc)
+  : { title: bundle?.page.title ?? '', description: bundle?.page.seo_desc ?? '' };
+
 const jsonLd = [
-  orgJsonLd(base0, site?.name ?? 'BIOSPHERE', lang, bundle?.page.seo_desc ?? site?.tagline ?? ''),
+  orgJsonLd(base0, site?.name ?? 'BIOSPHERE', lang, pageSeo.description || site?.tagline || ''),
   siteJsonLd(base0, site?.name ?? 'BIOSPHERE'),
   breadcrumbJsonLd(base0, lang, path, uiT(lang as any)('nav.home'), trail),
   faqJsonLd(faqItems),
@@ -488,8 +495,8 @@ const ogImage = (() => {
   siteName={site!.name}
   siteUrl={`https://${site!.domain}`}
   path={path}
-  title={bundle!.page.title}
-  description={bundle!.page.seo_desc ?? ''}
+  title={pageSeo.title}
+  description={pageSeo.description}
   indexable={site!.is_live === 1}
   ogImage={ogImage}
   jsonLd={jsonLd}
@@ -556,17 +563,18 @@ const ogImage = (() => {
     {/* banner 与 hero 一样自带 <h1>(BigBanner 第 66 行),所以两者任一存在都不再出页头带。
         漏掉 banner 的后果是双重的:首页同时有两个 h1(搜索引擎不知道该信哪个),
         版式上还多出一条 400px 的标题带把首屏大图整个压到折叠线以下 —— 大图看不见就白做了。 */}
-    {(collectionMode
+    {/* BIOSPHERE 首页的 h1 是漏斗 slogan,不再叠一条 CMS 标题(旧译文会露英文 AI platform)。 */}
+    {!(site.id === 'biosphere-ai' && !slug) && (collectionMode
       || (!bodyBlocks.some((b) => ['hero', 'banner', 'slideshow', 'bandimg', 'storehero', 'fx_hero'].includes(b.type))
           /* BEAUTY2OEM 内页的标题 + 主视觉由 B2oBlock 自己出,这里不再叠一条纯文字页头 */
           && !(cnOnly && bodyBlocks.some((b) => b.type.startsWith('fx_'))))) && (
       <section class="ck-section pagehead">
         <div class="ck-wrap">
           {/* 产品集模式:h1 就是品类名,访客一眼确认「我进对地方了」 */}
-          <h1>{collectionMode ? `${catLabel(catFilter)} · ${pick(CATALOG_TEXT, lang).title}` : bundle!.page.title}</h1>
+          <h1>{collectionMode ? `${catLabel(catFilter)} · ${pick(CATALOG_TEXT, lang).title}` : pageSeo.title}</h1>
           {collectionMode
             ? <p class="ph-lead">{pick(CATALOG_TEXT, lang).intro}</p>
-            : bundle!.page.seo_desc && <p class="ph-lead">{bundle!.page.seo_desc}</p>}
+            : pageSeo.description && <p class="ph-lead">{pageSeo.description}</p>}
         </div>
       </section>
     )}
@@ -580,7 +588,7 @@ const ogImage = (() => {
     {showcaseData.items.length > 0 && !slug && (
       <section class="block alt">
         <div class="ck-wrap">
-          <h2>{lang === 'zh-cn' ? '成品展示' : 'Product showcase'}</h2>
+          <h2>{({ 'zh-cn': '成品展示', 'zh-tw': '成品展示', jp: '製品', kr: '제품', id: 'Produk', ar: 'المنتجات' } as Record<string, string>)[lang] ?? 'Product showcase'}</h2>
           <ul class="showcase-grid">
             {showcaseData.items.slice(0, 14).map((p: any) => {
               const shown = catalogLabel(p.name ?? p.slug, zhPage);
@@ -595,7 +603,7 @@ const ogImage = (() => {
               <li><a class="showcase-card showcase-more" href={`/${lang}/portfolio/`}>
                 <div class="showcase-more-body">
                   <span class="more-arrow">→</span>
-                  <h3>{lang === 'zh-cn' ? '查看全部' : 'See all'}</h3>
+                  <h3>{({ 'zh-cn': '查看全部', 'zh-tw': '查看全部', jp: 'すべて見る', kr: '전체 보기', id: 'Lihat semua', ar: 'عرض الكل' } as Record<string, string>)[lang] ?? 'See all'}</h3>
                 </div>
               </a></li>
             )}
@@ -609,8 +617,8 @@ const ogImage = (() => {
 
     {(collectionMode ? [] : bodyBlocks).map((b) => {
       const d = b.data as any;
-      /* 首页已渲染漏斗,跳过 CMS 里的 fx_hero(避免两个 hero 重复) */
-      if (b.type === 'fx_hero' && site.id === 'biosphere-ai' && !slug) return null;
+      /* 首页已渲染漏斗。CMS 的 hero / banner 自带 h1,留着会把未翻译的英文标题露在 id / ar / jp / kr 上。 */
+      if ((b.type === 'fx_hero' || b.type === 'hero' || b.type === 'banner') && site.id === 'biosphere-ai' && !slug) return null;
       /* 10-22 创始人:「看到一个产品就交给工厂做」先隐藏 */
       if (b.type === 'fx_latest' && site.id === 'biosphere-ai' && !slug) return null;
       switch (b.type) {
@@ -629,7 +637,7 @@ const ogImage = (() => {
                  (2026-09-09 创始人在种植基地页截图指出)。 */
               hero={{
                 ...d,
-                title: (d.title ?? '').trim() || bundle!.page.title,
+                title: (d.title ?? '').trim() || pageSeo.title,
                 lead: d.lead ?? d.body ?? '',
                 ctaPrimary: d.ctaPrimary ?? d.ctaText ?? '',
               }}
@@ -780,7 +788,7 @@ const ogImage = (() => {
           /* BEAUTY2OEM 走图文版(B2oBlock,版式与配图);工厂站等其它站照旧 FactoryBlock */
           return cnOnly
             ? <B2oBlock type={b.type} data={d} lang={lang} db={db} siteName={site!.name} email={fxEmail} whatsapp={contactWa} wechat={contactWx}
-                        page={slug} pageTitle={bundle!.page.title} pageDesc={bundle!.page.seo_desc} />
+                        page={slug} pageTitle={pageSeo.title} pageDesc={pageSeo.description} />
             : <FactoryBlock type={b.type} data={d} lang={lang} db={db} siteName={site!.name} email={fxEmail} whatsapp={contactWa} wechat={contactWx} />;
         case 'funnel':
           /* 漏斗首页(3步交互式漏斗)—— 替换首页默认 hero,让访客 30 秒内进入方案生成流程 */
