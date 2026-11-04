@@ -3,38 +3,60 @@
  * Mobile bottom bar dual CTA: WhatsApp + Request sample (架构 §5 P1-3).
  *
  * - Mobile viewport only (max-width: 52rem); desktop display:none.
- * - Sample → /${locale}/rfq/ (optional ?product_id= from URL, W5 pattern; never empty product_id).
- * - WA: locals.contact.whatsapp digits → wa.me; fallback 8613600050502 (待确认).
+ * - Sample → /${locale}/rfq/ or /${locale}/rfq/?product_id=… (never empty product_id).
+ *   Detail pages pass the slug; see mobile-dual-cta.mjs. WA fallback is 待确认.
  * - Skip beauty2oem (brand === 'beauty2oem'). No 普草 entry.
  * - On mobile hide #bh-wa-fab to avoid overlap with this bar.
+ * - Body padding and the back-to-top / cart lift apply only while this bar is in the DOM,
+ *   so beauty2oem's own dock is not padded by a bar that was not rendered.
  */
+import { sampleHref, whatsappHref } from './mobile-dual-cta.mjs';
+
 interface Props { locale: string; brand?: string }
 const { locale, brand } = Astro.props;
+const zhTw = locale === 'zh-tw';
 const zh = String(locale).startsWith('zh');
 const b2o = brand === 'beauty2oem';
 
-const _wa = String(((Astro.locals as any)?.contact ?? {}).whatsapp ?? '').replace(/\D/g, '');
-/* 待确认: ops-owned WA; fallback placeholder until sites.contact_whatsapp is set */
-const waHref = `https://wa.me/${_wa || '8613600050502'}`;
+const waHref = whatsappHref(((Astro.locals as any)?.contact ?? {}).whatsapp);
+const href = sampleHref({
+  locale,
+  pathname: Astro.url.pathname,
+  search: Astro.url.search,
+});
 
-const pidRaw = String(Astro.url.searchParams.get('product_id') ?? '').trim();
-const sampleHref = pidRaw
-  ? `/${locale}/rfq/?product_id=${encodeURIComponent(pidRaw)}`
-  : `/${locale}/rfq/`;
-
-const sampleLabel = zh ? '申请样品' : 'Request sample';
+const sampleLabel = zhTw ? '申請樣品' : zh ? '申请样品' : 'Request sample';
+const navLabel = zhTw ? '快捷聯繫' : zh ? '快捷联系' : 'Quick contact';
+const waLabel = zhTw ? 'WhatsApp（開新視窗）' : zh ? 'WhatsApp（新窗口）' : 'WhatsApp, opens in a new tab';
 ---
 {!b2o && (
-  <nav class="mobile-dual-cta" aria-label={zh ? '快捷联系' : 'Quick contact'}>
-    <a class="wa-btn" href={waHref} target="_blank" rel="noopener" aria-label="WhatsApp">WhatsApp</a>
-    <a class="sample-btn" href={sampleHref} aria-label={sampleLabel}>{sampleLabel}</a>
+  <>
+  <nav class="mobile-dual-cta" aria-label={navLabel}>
+    <a class="wa-btn" href={waHref} target="_blank" rel="noopener noreferrer" aria-label={waLabel}>WhatsApp</a>
+    <a class="sample-btn" href={href} aria-label={sampleLabel}>{sampleLabel}</a>
   </nav>
+  <script is:inline>
+    (() => {
+      if (window.__bhDualCta) return;
+      window.__bhDualCta = 1;
+      const TEXT = 'textarea, select, input[type="text"], input[type="email"], input[type="tel"], input[type="url"], input[type="search"], input[type="number"], input[type="password"], input:not([type])';
+      const root = document.documentElement;
+      const sync = () => {
+        const el = document.activeElement;
+        root.classList.toggle('bh-dual-cta-typing', !!(el && el.matches && el.matches(TEXT)));
+      };
+      document.addEventListener('focusin', sync);
+      document.addEventListener('focusout', () => setTimeout(sync, 0));
+    })();
+  </script>
+  </>
 )}
 
 <style>
   .mobile-dual-cta {
     position: fixed; left: 0; right: 0; bottom: 0;
-    z-index: 64;
+    /* Below the sticky header (z-index 50) so the mobile nav panel is not covered. */
+    z-index: 49;
     display: none;
     gap: 0.5rem;
     padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
@@ -45,21 +67,32 @@ const sampleLabel = zh ? '申请样品' : 'Request sample';
   .mobile-dual-cta .wa-btn,
   .mobile-dual-cta .sample-btn {
     flex: 1;
+    min-width: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     min-height: 2.75rem;
     padding: 0.5rem 0.75rem;
     border-radius: 999px;
-    font-size: var(--ck-small);
+    font-size: max(0.875rem, 14px);
     font-weight: 600;
+    line-height: 1.2;
     text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+  .mobile-dual-cta .wa-btn:focus-visible,
+  .mobile-dual-cta .sample-btn:focus-visible {
+    outline: 2px solid var(--ck-ink, #111);
+    outline-offset: 2px;
+  }
+  /* #0d7a42 on white is about 5.4:1. #25D366 is about 2:1 and fails body text. */
   .mobile-dual-cta .wa-btn {
-    background: #25D366;
+    background: #0d7a42;
     color: #fff;
   }
-  .mobile-dual-cta .wa-btn:hover { background: #1ebe5b; }
+  .mobile-dual-cta .wa-btn:hover { background: #0a6334; }
   .mobile-dual-cta .sample-btn {
     background: var(--ck-accent, #333);
     color: var(--ck-on-accent, #fff);
@@ -68,7 +101,29 @@ const sampleLabel = zh ? '申请样品' : 'Request sample';
 
   @media (max-width: 52rem) {
     .mobile-dual-cta { display: flex; }
-    :global(#bh-wa-fab) { display: none !important; }
-    :global(body) { padding-bottom: 4.5rem; }
+    :global(body:has(.mobile-dual-cta) #bh-wa-fab) { display: none !important; }
+    :global(body:has(.mobile-dual-cta)) {
+      --bh-dual-cta-lift: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+      padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    }
+    :global(html.bh-dual-cta-typing) .mobile-dual-cta { display: none; }
+    :global(html.bh-dual-cta-typing body:has(.mobile-dual-cta)) {
+      --bh-dual-cta-lift: 1.5rem;
+      padding-bottom: 0;
+    }
+    :global(body:has(.mobile-dual-cta) .ck-top),
+    :global(body:has(.mobile-dual-cta) .float-bar) {
+      bottom: var(--bh-dual-cta-lift, 1.5rem);
+    }
+    :global(html.bh-dual-cta-typing body:has(.mobile-dual-cta) .ck-top),
+    :global(html.bh-dual-cta-typing body:has(.mobile-dual-cta) .float-bar) {
+      bottom: 1.5rem;
+    }
+    :global(body:has(.mobile-dual-cta) .cart-fab) {
+      bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+    }
+    :global(html.bh-dual-cta-typing body:has(.mobile-dual-cta) .cart-fab) {
+      bottom: 5.75rem;
+    }
   }
 </style>
