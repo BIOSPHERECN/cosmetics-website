@@ -1,0 +1,166 @@
+---
+/**
+ * 莱诺鸟 P0-3 产品卡：上图 + 品名一行 + 剂型徽记 + Sample/RFQ 主链。
+ * 图框类名全页只有 pf-aspect-1x1（锁 1:1）。无真图用 gen-placeholder，不用证书章或车间图。
+ */
+import { PORTFOLIO_ASPECT_CLASS } from '../lib/portfolio-card';
+
+interface Props {
+  name: string;
+  formatLabel: string;
+  sampleHref: string | null;
+  sampleLabel: string;
+  detailHref: string;
+  imageSrc: string | null;
+  imageAlt: string;
+  eager?: boolean;
+  priority?: boolean;
+}
+
+const {
+  name, formatLabel, sampleHref, sampleLabel, detailHref, imageSrc, imageAlt,
+  eager = false, priority = false,
+} = Astro.props;
+
+const samplePath = String(sampleHref ?? '').split('?')[0];
+const sampleOk = !!sampleHref
+  && sampleHref.startsWith('/')
+  && !sampleHref.includes('//')
+  && !/www\./i.test(samplePath)
+  && /(?:\?|&)product_id=[^&]+/.test(sampleHref)
+  && !/[?&]product_id=(?:&|$)/.test(sampleHref);
+const sampleLink = sampleOk ? String(sampleHref) : '';
+---
+
+<article class="pf-card">
+  <a class:list={['pf-shot', PORTFOLIO_ASPECT_CLASS]} href={detailHref}>
+    {imageSrc ? (
+      <img
+        src={imageSrc}
+        alt={imageAlt}
+        width="600"
+        height="600"
+        loading={eager ? 'eager' : 'lazy'}
+        fetchpriority={priority ? 'high' : undefined}
+        decoding="async"
+      />
+    ) : (
+      <span class="gen-placeholder" aria-hidden="true"></span>
+    )}
+  </a>
+  <p class="pf-name"><a href={detailHref}>{name}</a></p>
+  {formatLabel && <p class="pf-fmt"><span class="pf-badge">{formatLabel}</span></p>}
+  {sampleLink && <a class="pf-sample" href={sampleLink}>{sampleLabel}</a>}
+</article>
+
+<style>
+  /* 静置阴影用 --bio-shadow；悬停只抬 2px，阴影不换档。 */
+  .pf-card {
+    display: grid;
+    align-content: start;
+    gap: 0.5rem;
+    min-width: 0;
+    height: 100%;
+    padding: 0.75rem;
+    background: var(--bio-bg, #fff);
+    color: var(--bio-fg, #1c1b19);
+    border-radius: var(--bio-radius);
+    box-shadow: var(--bio-shadow);
+    transition: transform 180ms ease;
+  }
+  .pf-card:hover { transform: translateY(-2px); box-shadow: var(--bio-shadow); }
+  .pf-shot {
+    display: block;
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+  }
+  /* 整页唯一比例。安全区是中心约 80%（四边各让 10%），contain 保住瓶口。 */
+  .pf-aspect-1x1 {
+    aspect-ratio: 1 / 1;
+    background: #f6f5f2;
+  }
+  .pf-aspect-1x1 > img,
+  .pf-aspect-1x1 > .gen-placeholder {
+    position: absolute;
+    inset: 10%;
+    width: 80%;
+    height: 80%;
+    max-width: 80%;
+    max-height: 80%;
+    object-fit: contain;
+    object-position: center;
+  }
+  html[data-brand] .pf-aspect-1x1 > img {
+    position: absolute;
+    inset: 10%;
+    width: 80%;
+    height: 80%;
+    max-width: 80%;
+    max-height: 80%;
+    object-fit: contain;
+    object-position: center;
+    filter: none;
+    background: transparent;
+  }
+  .gen-placeholder {
+    display: block;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect x='30' y='8' width='20' height='12' rx='2' fill='none' stroke='%231c1b19' stroke-opacity='0.4' stroke-width='2'/%3E%3Crect x='22' y='22' width='36' height='48' rx='8' fill='none' stroke='%231c1b19' stroke-opacity='0.45' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+  .pf-name {
+    margin: 0;
+    min-width: 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  .pf-name a {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: inherit;
+    text-decoration: none;
+  }
+  .pf-fmt { margin: 0; min-width: 0; }
+  .pf-badge {
+    display: inline-block;
+    max-width: 100%;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    background: #f6f5f2;
+    color: var(--bio-muted, #5e5a53);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: top;
+  }
+  .pf-sample {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--bio-fg, #1c1b19);
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+  }
+  .pf-card a:focus-visible {
+    outline: 2px solid var(--bio-primary, #3b4a8c);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pf-card,
+    .pf-card:hover {
+      transform: none;
+      transition: none;
+    }
+  }
+</style>

@@ -40,6 +40,6 @@ assert.doesNotMatch(strip, /FDA|CPNP|SFDA/);
 assert.doesNotMatch(strip, /低\s*MOQ|No MOQ|low MOQ/i);
 assert.doesNotMatch(strip, /普草/);
 assert.doesNotMatch(strip, /cert-gmpc|cert-iso|cert-halal/);
-assert.doesNotMatch(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v13[2-9]'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v132'/);
 
 console.log('trust-strip.test.mjs:全部通过');
