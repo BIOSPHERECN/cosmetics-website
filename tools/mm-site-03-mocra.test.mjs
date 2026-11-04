@@ -78,6 +78,6 @@ for (const key of ['name="market"', 'name="category"', 'name="volume"', 'name="t
 }
 assert.doesNotMatch(rfq, /mocra/i);
 
-assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v133'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v135'/);
 
 console.log('mm-site-03-mocra.test.mjs: US 七品类协助句与共用旁注通过');
