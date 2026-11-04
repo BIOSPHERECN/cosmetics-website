@@ -8,6 +8,7 @@ const {
   WAVE_CARDS,
   WAVE_SLUGS,
   productPageFaqs,
+  waveBreadcrumbTrail,
   waveBySlug,
   waveCopy,
   waveCorrectedProductLd,
@@ -32,8 +33,11 @@ assert.deepEqual([...WAVE_SLUGS], [
   'zerocast-spf50-ae',
   'niacinamide-txa-serum-sa',
   'peptide-barrier-serum-eu',
+  'halal-ready-shelf-demo-my',
+  'hydrasoothe-gel-spf45',
+  'gulf-barrier-serum-ae',
 ]);
-assert.equal(WAVE_CARDS.length, 5);
+assert.equal(WAVE_CARDS.length, 8);
 assert.equal(waveBySlug('TH-spray'), null);
 assert.equal(waveBySlug('spf-stick-eu'), null);
 assert.equal(WAVE_SLUGS.includes('spf-stick-eu'), false);
@@ -41,11 +45,14 @@ assert.doesNotMatch(read('apps/web/src/lib/wave-products.ts'), /spf-stick-eu/);
 assert.equal(WAVE_CARDS.some((c) => /spray|喷雾|thailand|\bth\b/i.test(c.slug)), false);
 
 const expectRfq = {
-  'spf50-acne-gel-id': { target_market: 'SEA', halal_ready: 'yes', notification_assist_country: 'ID', need_msds_coa: '', category: 'suncare' },
-  'serum-spf50-my': { target_market: 'SEA', halal_ready: 'yes', notification_assist_country: 'MY', need_msds_coa: '', category: 'suncare' },
-  'zerocast-spf50-ae': { target_market: 'GCC', halal_ready: 'unsure', notification_assist_country: 'AE', need_msds_coa: 'yes', category: 'suncare' },
-  'niacinamide-txa-serum-sa': { target_market: 'GCC', halal_ready: 'unsure', notification_assist_country: 'SA', need_msds_coa: '', category: 'serum' },
-  'peptide-barrier-serum-eu': { target_market: 'EU', halal_ready: 'no', notification_assist_country: 'EU', need_msds_coa: '', category: 'serum' },
+  'spf50-acne-gel-id': { target_market: 'SEA', halal_ready: 'yes', notification_assist_country: 'ID', need_msds_coa: '', category: 'suncare', first_order_band: 'tbd' },
+  'serum-spf50-my': { target_market: 'SEA', halal_ready: 'yes', notification_assist_country: 'MY', need_msds_coa: '', category: 'suncare', first_order_band: 'tbd' },
+  'zerocast-spf50-ae': { target_market: 'GCC', halal_ready: 'unsure', notification_assist_country: 'AE', need_msds_coa: 'yes', category: 'suncare', first_order_band: 'tbd' },
+  'niacinamide-txa-serum-sa': { target_market: 'GCC', halal_ready: 'unsure', notification_assist_country: 'SA', need_msds_coa: '', category: 'serum', first_order_band: 'tbd' },
+  'peptide-barrier-serum-eu': { target_market: 'EU', halal_ready: 'no', notification_assist_country: 'EU', need_msds_coa: '', category: 'serum', first_order_band: 'tbd' },
+  'halal-ready-shelf-demo-my': { target_market: 'SEA', halal_ready: 'yes', notification_assist_country: 'MY', need_msds_coa: '', category: 'skincare', first_order_band: 'sample' },
+  'hydrasoothe-gel-spf45': { target_market: 'SEA', halal_ready: 'no', notification_assist_country: 'ID', need_msds_coa: '', category: 'suncare', first_order_band: '1k-5k' },
+  'gulf-barrier-serum-ae': { target_market: 'GCC', halal_ready: 'unsure', notification_assist_country: 'AE', need_msds_coa: '', category: 'serum', first_order_band: 'tbd' },
 };
 
 const BANNED = [
@@ -86,13 +93,18 @@ for (const card of WAVE_CARDS) {
   assert.match(blob, /pack/);
   assert.match(blob, /moq_note/);
   assert.doesNotMatch(blob, /自动报价/);
-  assert.equal(card.rfq.first_order_band, 'tbd');
   assert.equal(card.ld, 'corrected');
   assert.ok(card.image && card.image.startsWith('/media/shots/'));
   assert.equal(existsSync(new URL(`../apps/web/public${card.image}`, import.meta.url)), true, card.image);
   const want = expectRfq[card.slug];
+  assert.equal(card.rfq.first_order_band, want.first_order_band);
   if (want.category === 'suncare') {
-    assert.match(blob, /spf_pa/);
+    if (card.slug === 'hydrasoothe-gel-spf45') {
+      assert.match(blob, /spf_band/);
+      assert.equal(blob.includes('spf_pa'), false);
+    } else {
+      assert.match(blob, /spf_pa/);
+    }
     assert.match(blob, /lead_time_window_note/);
   } else {
     assert.doesNotMatch(blob, /spf_pa/);
@@ -105,7 +117,7 @@ for (const card of WAVE_CARDS) {
   assert.deepEqual(filled.target_market, [want.target_market]);
   assert.deepEqual(filled.notification_assist_country, [want.notification_assist_country]);
   assert.equal(filled.halal_ready, want.halal_ready);
-  assert.equal(filled.first_order_band, 'tbd');
+  assert.equal(filled.first_order_band, want.first_order_band);
   assert.equal(filled.need_msds_coa, want.need_msds_coa);
 
   for (const lang of ['en', 'zh-cn']) {
@@ -116,7 +128,7 @@ for (const card of WAVE_CARDS) {
     assert.equal(u.searchParams.get('target_market'), want.target_market);
     assert.equal(u.searchParams.get('halal_ready'), want.halal_ready);
     assert.equal(u.searchParams.get('notification_assist_country'), want.notification_assist_country);
-    assert.equal(u.searchParams.get('first_order_band'), 'tbd');
+    assert.equal(u.searchParams.get('first_order_band'), want.first_order_band);
     assert.equal(u.searchParams.get('category'), want.category);
     assert.ok(u.searchParams.get('about'));
     assert.equal(u.searchParams.get('spf_pa'), null, '深链不挂防晒数字');
@@ -129,7 +141,13 @@ for (const card of WAVE_CARDS) {
     assert.ok(copy.specs.some((s) => s.label === 'pack' && s.value));
     assert.ok(copy.specs.some((s) => s.label === 'moq_note' && s.value));
     if (want.category === 'suncare') {
-      assert.ok(copy.specs.some((s) => s.label === 'spf_pa' && s.value && !/\d/.test(s.value)));
+      if (card.slug === 'hydrasoothe-gel-spf45') {
+        const band = copy.specs.find((s) => s.label === 'spf_band');
+        assert.ok(band && band.value && !/\d/.test(band.value));
+        assert.equal(copy.specs.some((s) => s.label === 'spf_pa'), false);
+      } else {
+        assert.ok(copy.specs.some((s) => s.label === 'spf_pa' && s.value && !/\d/.test(s.value)));
+      }
     } else {
       assert.equal(copy.specs.some((s) => s.label === 'spf_pa'), false);
       assert.ok(copy.specs.some((s) => s.label === 'lead' && s.value));
@@ -293,6 +311,110 @@ for (const slug of FIRST_WAVE) {
   }
 }
 
+const THIRD_WAVE = ['halal-ready-shelf-demo-my', 'hydrasoothe-gel-spf45', 'gulf-barrier-serum-ae'];
+const THIRD_BANNED = [
+  /halal[-\s]?certified/i,
+  /jakim\s+certified/i,
+  /approved\s+halal/i,
+  /reef[-\s]?safe/i,
+  /medical\s+grade/i,
+  /clinically\s+proven/i,
+  /barrier\s+repair/i,
+  /\bFDA\b/,
+  /\bNMPA\b/,
+  /\bSFDA\b/,
+  /EU\s+approved/i,
+  /普草/,
+  /SPF\s*\d/i,
+  /SPF\d/i,
+  /PA\+{2,}/,
+  /treat\s+acne/i,
+  /cure\s+acne/i,
+];
+for (const slug of THIRD_WAVE) {
+  const card = waveBySlug(slug);
+  assert.equal(card.ld, 'corrected', slug);
+  assert.equal(card.crumb, 'short', slug);
+  assert.equal((card.marketFaqs ?? []).length, 2, slug);
+  const blob = wavePublicText(card);
+  for (const re of THIRD_BANNED) assert.doesNotMatch(blob, re, `${slug} ${re}`);
+  for (const lang of ['en', 'zh-cn']) {
+    const copy = waveCopy(card, lang);
+    const origin = 'https://biosphere-ai.com';
+    const path = `/${lang}/product/${card.slug}/`;
+    const href = waveRfqPath(lang, card.slug);
+    assert.match(href, new RegExp(`^/${lang}/rfq/\\?product_id=${card.slug}(&|$)`));
+    const ld = waveCorrectedProductLd({
+      origin,
+      path,
+      name: copy.name,
+      description: copy.description,
+      category: card.category,
+      sku: card.slug,
+      image: card.image,
+      specs: copy.specs,
+    });
+    assert.equal(ld['@type'], 'Product');
+    assert.equal(ld.sku, card.slug);
+    assert.equal(ld['@id'], `${origin}${path}#product`);
+    assert.ok(String(ld['@id']).endsWith('#product'));
+    assert.equal(ld.image, `${origin}${card.image}`);
+    assert.equal(Object.hasOwn(ld, 'offers'), false);
+    const raw = JSON.stringify(ld);
+    assert.doesNotMatch(raw, /InStock/);
+    assert.doesNotMatch(raw, /"offers"/);
+    assert.doesNotMatch(raw, /"price"/);
+    const claim = [ld.name, ld.description, ld.category, ...ld.additionalProperty.flatMap((p) => [p.name, p.value])].join('\n');
+    for (const re of THIRD_BANNED) assert.doesNotMatch(claim, re, `${slug} ${lang} ld ${re}`);
+    const market = waveMarketFaqs(card, lang);
+    assert.equal(market.length, 2);
+    const faqs = productPageFaqs({
+      zh: lang === 'zh-cn',
+      name: copy.name,
+      certAnswer: copy.certAnswer,
+      market,
+    });
+    assert.equal(faqs.length, 7);
+    assert.deepEqual(faqs.slice(5), market);
+    const trail = waveBreadcrumbTrail(card, lang, copy.name);
+    assert.deepEqual(trail.map((t) => t.label), [lang === 'zh-cn' ? '产品' : 'Products', copy.name]);
+    assert.equal(trail[0].href, `/${lang}/portfolio/`);
+    assert.equal(trail[1].href, path);
+    assert.equal(waveBreadcrumbTrail(waveBySlug('spf50-acne-gel-id'), lang, 'x'), null);
+  }
+}
+const my = waveBySlug('halal-ready-shelf-demo-my');
+const idGel = waveBySlug('hydrasoothe-gel-spf45');
+const ae = waveBySlug('gulf-barrier-serum-ae');
+assert.match(wavePublicText(my), /Halal-ready/);
+assert.match(wavePublicText(my), /EN \+ MY\/ms/);
+assert.match(wavePublicText(my), /document assist/i);
+assert.match(wavePublicText(my), /Muslim-friendly/);
+assert.doesNotMatch(wavePublicText(my), /halal[-\s]?certified/i);
+assert.equal(my.rfq.halal_ready, 'yes');
+assert.match(wavePublicText(idGel), /sunscreen gel|防晒凝胶/);
+assert.match(wavePublicText(idGel), /acne-friendly/);
+assert.match(wavePublicText(idGel), /Pending third-party report/);
+assert.match(wavePublicText(idGel), /待第三方报告/);
+assert.doesNotMatch(wavePublicText(idGel), /spf\s*\d/i);
+assert.doesNotMatch(wavePublicText(idGel), /spf\d/i);
+assert.doesNotMatch(wavePublicText(idGel), /reef[-\s]?safe/i);
+assert.equal(idGel.rfq.halal_ready, 'no');
+assert.doesNotMatch(wavePublicText(idGel), /halal[-_\s]?ready\s*[:=]\s*yes/i);
+assert.equal(idGel.en.specs.some((s) => s.label === 'spf_pa' || s.label === 'spf'), false);
+assert.match(wavePublicText(ae), /ceramide/);
+assert.match(wavePublicText(ae), /cica/);
+assert.match(wavePublicText(ae), /ectoin/);
+assert.match(wavePublicText(ae), /MSDS/);
+assert.match(wavePublicText(ae), /COA/);
+assert.match(wavePublicText(ae), /Arabic label assist|阿拉伯语标签协助/);
+assert.doesNotMatch(wavePublicText(ae), /medical\s+grade/i);
+assert.doesNotMatch(wavePublicText(ae), /clinically\s+proven/i);
+assert.doesNotMatch(wavePublicText(ae), /spf_pa|spf_band/i);
+assert.equal(ae.en.specs.some((s) => /spf/i.test(s.label)), false);
+assert.equal(ae.rfq.halal_ready, 'unsure');
+assert.match(read('apps/web/src/lib/rfq-fields.ts'), /export const ORDER_BANDS = \['sample', '<1k', '1k-5k', '5k-20k', '>20k', 'tbd'\]/);
+
 const overridden = waveFormPrefill('spf50-acne-gel-id', { ...EMPTY, halal_ready: 'no', target_market: ['GCC'] });
 assert.equal(overridden.halal_ready, 'no');
 assert.deepEqual(overridden.target_market, ['GCC']);
@@ -305,6 +427,7 @@ assert.match(page, /waveMarketFaqs\(waveCard, lang\)/);
 assert.match(page, /faqJsonLd\(faqs\)/);
 assert.match(page, /faqs\.map\(\(f\)/);
 assert.match(page, /breadcrumbJsonLd\(/);
+assert.match(page, /waveBreadcrumbTrail\(/);
 assert.match(page, /waveCard\?\.ld === 'corrected'/);
 assert.match(page, /waveCorrectedProductLd\(/);
 assert.match(page, /legacyProductLd/);
@@ -317,7 +440,7 @@ assert.match(rfq, /product_id: productId/);
 assert.match(rfq, /waveSummary/);
 assert.doesNotMatch(rfq, /halal certified/i);
 const middleware = read('apps/web/src/middleware.ts');
-assert.match(middleware, /const CACHE_V = 'v137'/);
+assert.match(middleware, /const CACHE_V = 'v138'/);
 assert.doesNotMatch(read('apps/web/src/lib/gcc-fair-status.ts'), /wave-products/);
 assert.doesNotMatch(read('apps/web/src/lib/cosmopack-inquiry.ts'), /wave-products/);
 assert.doesNotMatch(read('apps/web/src/lib/cert-matrix.ts'), /wave-products/);

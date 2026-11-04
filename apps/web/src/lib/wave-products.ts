@@ -3,10 +3,11 @@
  * 无库时也能开页；库里若已有同 slug，公开文案仍以这里为准，product_id 用 slug 不用数字 id。
  *
  * 首波三卡：价带只是零售观察区间，不是报价。spf_pa 只留字段，无第三方报告不写防晒数字。
- * 五张卡的 Product JSON-LD 都走修正后形状：无 offers / InStock，@id 为 canonical#product，image 为包材示意（不是成品实拍）。
- * 首波每卡在 5 条通用问之后加 2 条市场问；第二波每卡 3 条。页内 FAQ 与 FAQPage 同一份数组。
+ * 爆品卡的 Product JSON-LD 都走修正后形状：无 offers / InStock，@id 为 canonical#product，image 为包材示意（不是成品实拍）。
+ * 首波与第三波每卡在 5 条通用问之后加 2 条市场问；第二波每卡 3 条。页内 FAQ 与 FAQPage 同一份数组。
  * 第二波两卡（精华）：不写死价，不写功效百分比。
- * Halal 只讨论 ready / 评估，不写本品已有证书。通告是协助，不是获批保证。
+ * 第三波三卡：马来西亚货架试样、印尼防晒凝胶、阿联酋屏障保湿精华。印尼卡的货号保留原样；正文、规格和 JSON-LD 的名称与描述不写防晒数字。
+ * Halal 只讨论 ready / 评估，不写本品已有证书。通告是 document assist，不是获批保证。
  * 欧盟责任人由客户担任，帛卉不担任 RP。
  */
 export const WAVE_SLUGS = [
@@ -15,6 +16,9 @@ export const WAVE_SLUGS = [
   'zerocast-spf50-ae',
   'niacinamide-txa-serum-sa',
   'peptide-barrier-serum-eu',
+  'halal-ready-shelf-demo-my',
+  'hydrasoothe-gel-spf45',
+  'gulf-barrier-serum-ae',
 ] as const;
 
 export type WaveSlug = (typeof WAVE_SLUGS)[number];
@@ -47,16 +51,19 @@ export interface WaveRfq {
   target_market: 'SEA' | 'GCC' | 'EU';
   halal_ready: 'yes' | 'no' | 'unsure';
   notification_assist_country: 'ID' | 'MY' | 'AE' | 'SA' | 'EU';
-  first_order_band: 'tbd';
+  /** 只用 rfq-fields 已有的 ORDER_BANDS，不新增枚举。 */
+  first_order_band: 'sample' | '<1k' | '1k-5k' | '5k-20k' | '>20k' | 'tbd';
   need_msds_coa?: 'yes';
 }
 
 export interface WaveCard {
   slug: WaveSlug;
-  category: 'suncare' | 'serum';
+  category: 'suncare' | 'serum' | 'skincare';
   source: string;
   /** corrected：Product JSON-LD 无 offers / InStock，@id 为 canonical#product。 */
   ld?: 'corrected';
+  /** short：面包屑只要 Products → 卡名。Home 由页面另加。 */
+  crumb?: 'short';
   /** 无库图时的包材示意路径。不是成品实拍。 */
   image?: string;
   marketFaqs?: WaveMarketFaq[];
@@ -410,6 +417,216 @@ export const WAVE_CARDS: WaveCard[] = [
       ],
     }),
   },
+  {
+    slug: 'halal-ready-shelf-demo-my',
+    category: 'skincare',
+    source: '',
+    ld: 'corrected',
+    crumb: 'short',
+    image: PUMP_FORMAT_IMAGE,
+    rfq: {
+      target_market: 'SEA',
+      halal_ready: 'yes',
+      notification_assist_country: 'MY',
+      first_order_band: 'sample',
+    },
+    marketFaqs: [
+      {
+        qEn: 'What does Malaysia notification assist cover for this shelf demo?',
+        aEn: 'Document assist only. Malaysia notification assist, if requested, is not an approval and does not replace the local notifier.',
+        qZh: '这款货架试样的马来西亚通告协助包含什么？',
+        aZh: '只做 document assist：只协助准备工厂侧资料。不是获批，也不替代当地通知主体。',
+      },
+      {
+        qEn: 'Is Halal-ready a certificate on this shelf demo?',
+        aEn: 'No. Halal-ready can be discussed for this Muslim-friendly shelf and trial project. This page does not say the item already has a halal certificate, and it does not name JAKIM or an approval.',
+        qZh: 'Halal-ready 是不是这款货架试样的清真证书？',
+        aZh: '不是。Muslim-friendly 的货架与试样项目可以讨论 Halal-ready。本页不表示本品已有清真证书，也不点名 JAKIM 或获批结果。',
+      },
+    ],
+    en: langBlock({
+      name: 'Halal-ready shelf demo (Malaysia)',
+      summary: 'Shelf and trial direction for Malaysia: Muslim-friendly, with pack print and line-ready as discussion points confirmed in writing. Labels in English and Malay (EN + MY/ms). This page states no price and is not a quote. Halal-ready can be discussed. It does not say this item already has a halal certificate.',
+      description: 'OEM/ODM brief for Malaysia: a shelf and trial direction that is Muslim-friendly. Pack print and line-ready are discussion points, confirmed in writing. Labels are prepared in English and Malay (EN + MY/ms). This page states no price and is not a quote. Halal-ready can be discussed for the project. This page does not say the item already has a halal certificate, and it does not name JAKIM or an approval. Malaysia notification assist, if requested, is document assist only. It is not an approval and does not replace the local notifier. MOQ and lead time are confirmed in writing. The RFQ first-order band is sample: a quantity band, not a price.',
+      footnote: 'No price on this page (not a quote).',
+      imageCaption: 'Pump-bottle format reference only. Pack print and line-ready are confirmed in writing. Not a finished-goods photo.',
+      certAnswer: 'Factory certifications held are GMPC, ISO 22716 and HALAL only, scope as on the certificate. Halal-ready on this item is a project question. This page does not say the item already has a halal certificate, and it does not name JAKIM or an approval. Malaysia notification assist is document assist only, not an approval.',
+      specs: [
+        { label: 'texture', value: 'shelf trial' },
+        { label: 'claim', value: 'Muslim-friendly; shelf and trial' },
+        { label: 'pack', value: 'pack print; line-ready (confirmed in writing)' },
+        { label: 'label_lang', value: 'EN + MY/ms' },
+        { label: 'moq_note', value: MOQ_EN },
+        { label: 'lead', value: LEAD_EN },
+        { label: 'target_market', value: 'SEA' },
+        { label: 'halal_ready', value: 'yes (project question; not a certificate on this item)' },
+        { label: 'notification', value: 'MY document assist only. Not an approval. Does not replace the local notifier.' },
+        { label: 'first_order_band', value: 'sample (quantity band, not a price and not a quote)' },
+      ],
+    }),
+    zh: langBlock({
+      name: 'Halal-ready 货架试样（马来西亚）',
+      summary: '面向马来西亚的货架与试样方向：Muslim-friendly。包装印刷与产线就绪都是讨论项，以书面确认为准。标签为英文与马来文（EN + MY/ms）。本页不写价格，不是报价。项目可以讨论 Halal-ready。本页不表示本品已有清真证书。',
+      description: '这是面向马来西亚的 OEM/ODM 方向：货架与试样，Muslim-friendly。包装印刷与产线就绪都是讨论项，以书面确认为准。标签按英文与马来文准备（EN + MY/ms）。本页不写价格，不是报价。Halal-ready 可以按项目讨论。本页不表示本品已有清真证书，也不点名 JAKIM 或获批结果。马来西亚通告协助若提出，只做 document assist，只协助准备工厂侧资料，不是获批，也不替代当地通知主体。起订量与交期以书面确认为准。询盘首单量预填为 sample，这是数量带，不是价格。',
+      footnote: '本页不写价格，不是报价。',
+      imageCaption: '泵头瓶包材示意。包装印刷与产线就绪以书面确认为准。不是成品实拍。',
+      certAnswer: '工厂已持有认证只列 GMPC、ISO 22716、HALAL，范围以证书为准。本品只把清真当作 Halal-ready 需求来讨论，不表示本品已有清真证书，也不点名 JAKIM 或获批结果。马来西亚通告协助只做 document assist，不是获批。',
+      specs: [
+        { label: 'texture', value: '货架试样' },
+        { label: 'claim', value: 'Muslim-friendly；货架与试样' },
+        { label: 'pack', value: '包装印刷；产线就绪（书面确认）' },
+        { label: 'label_lang', value: 'EN + MY/ms' },
+        { label: 'moq_note', value: MOQ_ZH },
+        { label: 'lead', value: LEAD_ZH },
+        { label: 'target_market', value: 'SEA' },
+        { label: 'halal_ready', value: 'yes（项目问题；不表示本品已有清真证书）' },
+        { label: 'notification', value: 'MY document assist only。不是获批，也不替代当地通知主体。' },
+        { label: 'first_order_band', value: 'sample（数量带，不是价格，也不是报价）' },
+      ],
+    }),
+  },
+  {
+    slug: 'hydrasoothe-gel-spf45',
+    category: 'suncare',
+    source: '',
+    ld: 'corrected',
+    crumb: 'short',
+    image: PUMP_FORMAT_IMAGE,
+    rfq: {
+      target_market: 'SEA',
+      halal_ready: 'no',
+      notification_assist_country: 'ID',
+      first_order_band: '1k-5k',
+    },
+    marketFaqs: [
+      {
+        qEn: 'What does Indonesia notification assist cover for this sunscreen gel?',
+        aEn: 'Document assist only. Indonesia notification assist, if requested, is not an approval and does not replace the local notifier.',
+        qZh: '这款防晒凝胶的印尼通告协助包含什么？',
+        aZh: '只做 document assist：只协助准备工厂侧资料。不是获批，也不替代当地通知主体。',
+      },
+      {
+        qEn: 'Why is there no sun-protection number on this gel?',
+        aEn: 'spf_band stays at Pending third-party report. This page does not state a sun-protection number until a third-party report exists.',
+        qZh: '为什么这款凝胶不写防晒数字？',
+        aZh: 'spf_band 保持为待第三方报告。没有第三方报告之前，本页不写防晒数字。',
+      },
+    ],
+    en: langBlock({
+      name: 'HydraSoothe sunscreen gel (Indonesia)',
+      summary: 'Sunscreen gel direction for Indonesia: humid climate, acne-friendly care. This page states no price and is not a quote. spf_band stays at Pending third-party report, so no sun-protection number is shown. Halal-ready is not requested.',
+      description: 'OEM/ODM brief for Indonesia: a sunscreen gel for a humid climate, discussed as acne-friendly care. Pack talk is a tube or pump, fill confirmed in writing. This page states no price and is not a quote. The spf_band field stays at Pending third-party report. No sun-protection number is shown, because there is no third-party report on this page. Halal-ready is not requested for this item. Indonesia notification assist, if requested, is document assist only. It is not an approval and does not replace the local notifier. MOQ and lead time are confirmed in writing. The RFQ first-order band is 1k-5k: a quantity band, not a price.',
+      footnote: 'No price on this page (not a quote). No sun-protection number without a third-party report.',
+      imageCaption: 'Pump-bottle format reference only. The brief is a tube or pump, confirmed in writing. Not a finished-goods photo.',
+      assure: 'Factory certificates listed: GMPC, ISO 22716, HALAL (scope as on the certificate). Halal-ready is not requested for this item. It does not say this item already has a halal certificate.',
+      certAnswer: 'Factory certifications held are GMPC, ISO 22716 and HALAL only, scope as on the certificate. Halal-ready for this item is no. This page does not say the item already has a halal certificate. Sun-protection numbers wait for a third-party report. Indonesia notification assist is document assist only, not an approval.',
+      specs: [
+        { label: 'spf_band', value: SPF_FIELD },
+        { label: 'texture', value: 'gel' },
+        { label: 'skin_type', value: 'humid/acne-friendly' },
+        { label: 'claim', value: 'sunscreen gel; humid-climate care; acne-friendly' },
+        { label: 'pack', value: 'tube or pump, fill confirmed in writing' },
+        { label: 'moq_note', value: MOQ_EN },
+        { label: 'lead_time_window_note', value: LEAD_EN },
+        { label: 'target_market', value: 'SEA' },
+        { label: 'halal_ready', value: 'no (not requested for this item)' },
+        { label: 'notification', value: 'ID document assist only. Not an approval. Does not replace the local notifier.' },
+        { label: 'first_order_band', value: '1k-5k (quantity band, not a price and not a quote)' },
+      ],
+    }),
+    zh: langBlock({
+      name: '水润舒缓防晒凝胶（印尼）',
+      summary: '面向印尼的防晒凝胶方向：湿热气候，油痘肌以护理向讨论（acne-friendly）。本页不写价格，不是报价。spf_band 保持为待第三方报告，所以不写防晒数字。不需要 Halal-ready。',
+      description: '这是面向印尼的 OEM/ODM 方向：防晒凝胶，适合湿热气候，油痘肌以护理向讨论（acne-friendly）。包材按软管或泵头讨论，容量书面确认。本页不写价格，不是报价。spf_band 只留字段，值为待第三方报告。本页没有第三方报告，所以不写防晒数字。本品不需要 Halal-ready。印尼通告协助若提出，只做 document assist，只协助准备工厂侧资料，不是获批，也不替代当地通知主体。起订量与交期以书面确认为准。询盘首单量预填为 1k-5k，这是数量带，不是价格。',
+      footnote: '本页不写价格，不是报价。没有第三方报告，所以不写防晒数字。',
+      imageCaption: '泵头瓶包材示意。本品按软管或泵头讨论，以书面确认为准。不是成品实拍。',
+      assure: '工厂持证只列 GMPC、ISO 22716、HALAL（范围以证书为准）。本品不需要 Halal-ready。不表示本品已有清真证书。',
+      certAnswer: '工厂已持有认证只列 GMPC、ISO 22716、HALAL，范围以证书为准。本品 Halal-ready 为 no，不表示本品已有清真证书。防晒数字须等第三方报告。印尼通告协助只做 document assist，不是获批。',
+      specs: [
+        { label: 'spf_band', value: '待第三方报告' },
+        { label: 'texture', value: 'gel' },
+        { label: 'skin_type', value: 'humid/acne-friendly' },
+        { label: 'claim', value: '防晒凝胶；湿热气候护理；acne-friendly' },
+        { label: 'pack', value: '软管或泵头，容量书面确认' },
+        { label: 'moq_note', value: MOQ_ZH },
+        { label: 'lead_time_window_note', value: LEAD_ZH },
+        { label: 'target_market', value: 'SEA' },
+        { label: 'halal_ready', value: 'no（本品不需要）' },
+        { label: 'notification', value: 'ID document assist only。不是获批，也不替代当地通知主体。' },
+        { label: 'first_order_band', value: '1k-5k（数量带，不是价格，也不是报价）' },
+      ],
+    }),
+  },
+  {
+    slug: 'gulf-barrier-serum-ae',
+    category: 'serum',
+    source: '',
+    ld: 'corrected',
+    crumb: 'short',
+    image: SERUM_FORMAT_IMAGE,
+    rfq: {
+      target_market: 'GCC',
+      halal_ready: 'unsure',
+      notification_assist_country: 'AE',
+      first_order_band: 'tbd',
+    },
+    marketFaqs: [
+      {
+        qEn: 'What does Arabic label assist cover for this UAE serum?',
+        aEn: 'Document help only. Arabic label assist is not an approval and does not replace the in-market notifier.',
+        qZh: '这款阿联酋精华的阿拉伯语标签协助包含什么？',
+        aZh: '只协助资料。阿拉伯语标签协助不是获批，也不替代当地通知主体。',
+      },
+      {
+        qEn: 'Can an MSDS and COA pack be requested, and is Halal-ready decided?',
+        aEn: 'An MSDS/COA file pack can be requested on the RFQ. Halal-ready stays unsure until the project scope is discussed. This page does not say the item already has a halal certificate.',
+        qZh: '能否索取 MSDS 与 COA？Halal-ready 是否已定？',
+        aZh: 'MSDS/COA 文件包可在询盘里提出需要。Halal-ready 先标为还不确定，等项目范围再讨论。本页不表示本品已有清真证书。',
+      },
+    ],
+    en: langBlock({
+      name: 'Gulf-climate barrier hydrate serum (UAE)',
+      summary: 'Serum direction for a Gulf climate: barrier-support and hydrate. Ceramide, cica and ectoin are directions only — no percentage, and no third-party efficacy report is attached. This is not sun care. This page states no price and is not a quote. Halal-ready stays unsure.',
+      description: 'OEM/ODM brief for the UAE: a serum for a Gulf climate, positioned as barrier-support and hydrate. Ceramide, cica and ectoin are ingredient directions only. No percentage is stated, because there is no third-party efficacy report on this page. This direction is a serum, not sun care. Pack talk is a dropper or pump, confirmed in writing. This page states no price and is not a quote. Halal-ready is marked unsure until the project scope is discussed. Arabic label assist is document help only, not an approval. An MSDS/COA file pack can be requested on the RFQ. MOQ and lead time are confirmed in writing. The RFQ first-order band is tbd.',
+      footnote: 'No price on this page (not a quote). No percentage without a third-party efficacy report.',
+      imageCaption: 'Serum-bottle format reference only. The brief is a dropper or pump, confirmed in writing. Not a finished-goods photo.',
+      certAnswer: 'Factory certifications held are GMPC, ISO 22716 and HALAL only, scope as on the certificate. Halal-ready on this item stays unsure. This page does not say the item already has a halal certificate. Arabic label assist and an MSDS/COA file pack are document help only, not an approval.',
+      specs: [
+        { label: 'texture', value: 'serum' },
+        { label: 'claim', value: 'barrier-support; hydrate; Gulf climate' },
+        { label: 'actives', value: 'ceramide · cica · ectoin (no percentage; no third-party efficacy report)' },
+        { label: 'pack', value: 'dropper or pump, confirmed in writing' },
+        { label: 'moq_note', value: MOQ_EN },
+        { label: 'lead', value: LEAD_EN },
+        { label: 'target_market', value: 'GCC' },
+        { label: 'halal_ready', value: 'unsure (not a certificate on this item)' },
+        { label: 'label_ar_assist', value: 'Arabic label assist (documents only, not an approval)' },
+        { label: 'docs', value: 'MSDS and COA can be requested (documents only)' },
+        { label: 'first_order_band', value: 'tbd (confirmed on the RFQ, not a quote)' },
+      ],
+    }),
+    zh: langBlock({
+      name: '海湾气候屏障保湿精华（阿联酋）',
+      summary: '面向海湾气候的精华方向：屏障护理与保湿。神经酰胺、积雪草与依克多因只作为方向讨论，不写百分比，本页也没有第三方功效报告。这不是防晒。本页不写价格，不是报价。Halal-ready 先标为还不确定。',
+      description: '这是面向阿联酋的 OEM/ODM 方向：精华，面向海湾气候，定位是屏障护理与保湿。神经酰胺、积雪草与依克多因只作为成分方向。本页没有第三方功效报告，所以不写百分比。本品是精华，不是防晒。包材按滴管或泵头讨论，书面确认。本页不写价格，不是报价。Halal-ready 先标为还不确定，等项目范围再讨论。阿拉伯语标签协助只协助资料，不是获批。MSDS/COA 文件包可在询盘里提出需要。起订量与交期以书面确认为准。询盘首单量预填为 tbd。',
+      footnote: '本页不写价格，不是报价。没有第三方功效报告，所以不写百分比。',
+      imageCaption: '精华瓶包材示意。本品按滴管或泵头讨论，以书面确认为准。不是成品实拍。',
+      certAnswer: '工厂已持有认证只列 GMPC、ISO 22716、HALAL，范围以证书为准。本品 Halal-ready 先标为还不确定，不表示本品已有清真证书。阿拉伯语标签协助与 MSDS/COA 文件包都只协助资料，不是获批。',
+      specs: [
+        { label: 'texture', value: '精华' },
+        { label: 'claim', value: '屏障护理；保湿；海湾气候' },
+        { label: 'actives', value: '神经酰胺 · 积雪草 · 依克多因（不写百分比；无第三方功效报告）' },
+        { label: 'pack', value: '滴管或泵头，书面确认' },
+        { label: 'moq_note', value: MOQ_ZH },
+        { label: 'lead', value: LEAD_ZH },
+        { label: 'target_market', value: 'GCC' },
+        { label: 'halal_ready', value: '还不确定（不表示本品已有清真证书）' },
+        { label: 'label_ar_assist', value: '阿拉伯语标签协助（只协助资料，不保证获批）' },
+        { label: 'docs', value: '可按询盘索取 MSDS 与 COA（只协助资料）' },
+        { label: 'first_order_band', value: 'tbd（询盘确认，不是报价）' },
+      ],
+    }),
+  },
 ];
 
 export function waveSiblings(slug: string, lang: string): { slug: string; name: string }[] {
@@ -424,6 +641,16 @@ export function waveBySlug(slug: string): WaveCard | null {
 
 export function waveCopy(card: WaveCard, lang: string): WaveLang {
   return lang === 'zh-cn' || lang === 'zh' ? card.zh : card.en;
+}
+
+/** 第三波面包屑只要 Home 之后的两级。Home 由 breadcrumbJsonLd 另加。非 short 返回 null。 */
+export function waveBreadcrumbTrail(card: WaveCard, lang: string, name: string): { label: string; href: string }[] | null {
+  if (card.crumb !== 'short') return null;
+  const zh = lang === 'zh-cn' || lang === 'zh';
+  return [
+    { label: zh ? '产品' : 'Products', href: `/${lang}/portfolio/` },
+    { label: name, href: `/${lang}/product/${card.slug}/` },
+  ];
 }
 
 export interface WaveFormState {

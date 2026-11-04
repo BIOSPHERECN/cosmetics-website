@@ -28,7 +28,7 @@ import { catalogLabel, softenClaims } from '../../../lib/comply-copy';
 import { gateProductRfqHref, productDetailRfqHref, productDosageLine } from '../../../lib/product-cta';
 import { portfolioCoverSrc } from '../../../lib/portfolio-card';
 import { rfqProductHooks } from '../../../lib/rfq-fields';
-import { productPageFaqs, waveBySlug, waveCopy, waveCorrectedProductLd, waveMarketFaqs, waveRfqPath, waveSiblings } from '../../../lib/wave-products';
+import { productPageFaqs, waveBreadcrumbTrail, waveBySlug, waveCopy, waveCorrectedProductLd, waveMarketFaqs, waveRfqPath, waveSiblings } from '../../../lib/wave-products';
 
 export const prerender = false;
 
@@ -229,7 +229,7 @@ const metaDesc = descStub
   : softenClaims(descRaw).slice(0, 158);
 /* 产品 FAQ 只定义一次:同时进 FAQPage schema 与可见 HTML。
    2026-10-28 调研结论:AI 只读可见正文,藏在 JSON-LD 里的问答等于没写。
-   市场问接在 5 条通用问之后，页内与 FAQPage 仍是同一份数组。首波每卡 2 条，第二波每卡 3 条。
+   市场问接在 5 条通用问之后，页内与 FAQPage 仍是同一份数组。首波与第三波每卡 2 条，第二波每卡 3 条。
    非爆品卡的认证答沿用 FDA 口径：注册≠批准、不发证书。 */
 const faqs = productPageFaqs({
   zh,
@@ -272,8 +272,9 @@ const productLd = waveCard?.ld === 'corrected'
       specs: specList,
     })
   : legacyProductLd;
+const shortCrumb = waveCard ? waveBreadcrumbTrail(waveCard, lang, displayName) : null;
 const jsonLd = [
-  breadcrumbJsonLd(base, lang, path, lang === 'zh-cn' ? '首页' : 'Home', [
+  breadcrumbJsonLd(base, lang, path, lang === 'zh-cn' ? '首页' : 'Home', shortCrumb ?? [
     { label: lang === 'zh-cn' ? '产品列表' : 'Products', href: `/${lang}/portfolio/` },
     { label: catLabel, href: `/${lang}/collections/${product.category}/` },
     { label: displayName, href: path },
@@ -306,7 +307,17 @@ const jsonLd = [
 
   <main id="main" class="pd">
     <div class="ck-wrap">
-      <p class="crumb"><a href={`/${lang}/portfolio/`}>← {T.back}</a> / <a href={`/${lang}/collections/${product.category}/`}>{catLabel}</a></p>
+      {shortCrumb ? (
+        <p class="crumb">
+          <a href={`/${lang}/`}>{zh ? '首页' : 'Home'}</a>
+          {' / '}
+          <a href={shortCrumb[0].href}>{shortCrumb[0].label}</a>
+          {' / '}
+          <span>{shortCrumb[1].label}</span>
+        </p>
+      ) : (
+        <p class="crumb"><a href={`/${lang}/portfolio/`}>← {T.back}</a> / <a href={`/${lang}/collections/${product.category}/`}>{catLabel}</a></p>
+      )}
 
       <div class="top">
         <div class="gallery" data-gallery data-autoplay="off">
