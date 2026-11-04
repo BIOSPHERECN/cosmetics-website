@@ -26,6 +26,8 @@ const db = (env as any).DB as D1Database | undefined;
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const B = `/${lang}`;
 const path = `${B}/services/factory-quality/`;
+const _wa = String(((Astro.locals as any)?.contact ?? {}).whatsapp ?? '').replace(/\D/g, '');
+const waHref = _wa ? `https://wa.me/${_wa}?text=${encodeURIComponent(zh ? '你好，我在看工厂质量/产品开发证据页，想了解代工。' : 'Hi, I am on the factory evidence page and would like to discuss OEM.')}` : '';
 const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
 const hub = `${B}/services/`;
 const sol = findSolution('factory-quality');
@@ -107,6 +109,11 @@ const ld = [
       </ol>
     </section>
 
+    <p class="cta">
+      <a class="btn" href={`${B}/rfq/?intent=oem-evidence`}>{zh ? '发起询盘' : 'Start RFQ'}</a>
+      {waHref && <a class="btn ghost" href={waHref}>WhatsApp</a>}
+    </p>
+
     <section>
       <h2>{zh ? '先能核对的' : 'What you can check first'}</h2>
       <ul class="proof">
@@ -116,6 +123,7 @@ const ld = [
         ? '起订量与交期按品类与包材书面确认。本页不写未核准的低起订量。'
         : 'MOQ and lead time are confirmed in writing per category and packaging. This page does not state an unapproved low MOQ.'}</p>
     </section>
+
 
     <section class="faq">
       <h2>{zh ? '常见问题' : 'FAQ'}</h2>
@@ -127,11 +135,7 @@ const ld = [
       ))}
     </section>
 
-    <p class="cta">
-      <a class="btn" href={`${B}/rfq/`}>{zh ? '提交 RFQ / 申请样品' : 'Submit RFQ / request sample'}</a>
-      <a class="btn ghost" href={hub}>{zh ? '服务总页' : 'Services hub'}</a>
-    </p>
-  </main>
+    </main>
   <SiteFooter locale={lang} path={path}
               site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
               siblings={[]} email={shell.email} nav={shell.nav} />
