@@ -49,6 +49,7 @@ import Motion from '../components/Motion.astro';
 // BrandEcosystem 已下线:「先删除集团,只是帛卉」(2026-08-31)
 import ProductGrid from '../components/ProductGrid.astro';
 import CertSplit from '../components/CertSplit.astro';
+import CertMatrix from '../components/CertMatrix.astro';
 import InquiryCart from '../components/InquiryCart.astro';
 import B2oBlock from '../components/B2oBlock.astro';
 import '../styles/b2o.css';   // 09-24 图文版:全部规则挂在 html[data-brand="beauty2oem"] 下,别的站不命中
@@ -576,6 +577,15 @@ const ogImage = (() => {
           {collectionMode
             ? <p class="ph-lead">{pick(CATALOG_TEXT, lang).intro}</p>
             : pageSeo.description && <p class="ph-lead">{pageSeo.description}</p>}
+        </div>
+      </section>
+    )}
+
+    {/* 质量页：认证三列表。组件内只在 biosphere-ai（或认不出域名的本地预览）渲染。 */}
+    {(slug === 'quality' || slug.startsWith('quality/')) && (
+      <section class="ck-section">
+        <div class="ck-wrap">
+          <CertMatrix lang={lang} siteId={site?.id ?? null} />
         </div>
       </section>
     )}

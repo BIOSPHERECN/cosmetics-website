@@ -10,6 +10,8 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
 import CosmopackInquiry from '../../../components/CosmopackInquiry.astro';
+import GccFairStatus from '../../../components/GccFairStatus.astro';
+import CertMatrix from '../../../components/CertMatrix.astro';
 import { oemIndexCrumbs, oemPageTitle } from '../../../lib/oem-index-seo';
 
 export const prerender = false;
@@ -62,6 +64,7 @@ const ld = [
       </ol>
     </nav>
     <header class="hd"><h1>{T.h1}</h1><p class="lede">{T.lede}</p></header>
+    <GccFairStatus lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
     <CosmopackInquiry lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
     <table class="mx">
       <thead><tr><th>{T.market} \ {T.cat}</th>{OEM_CATEGORIES.map((c) => <th>{cap(cName(c))}</th>)}</tr></thead>
@@ -92,6 +95,7 @@ const ld = [
       <ul class="certs">
         {OEM_CERTS.map((c) => <li><a href={`${B}/oem/cert/${c.id}/`}>{c.name}</a></li>)}
       </ul>
+      <CertMatrix lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
     </section>
 
     <section class="evidence" id="oem-sample" aria-labelledby="oem-sample-h">

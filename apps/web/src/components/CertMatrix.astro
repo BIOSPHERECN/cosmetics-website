@@ -1,0 +1,60 @@
+---
+/**
+ * 认证三列表。纯文字，不放徽章图。
+ */
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { certMatrixCopy } from '../lib/cert-matrix';
+
+interface Props {
+  lang: string;
+  siteId?: string | null;
+}
+
+const { lang, siteId = null } = Astro.props;
+const resolved = siteId ?? siteIdForHost(Astro.url.hostname);
+const show = !resolved || resolved === 'biosphere-ai';
+const C = certMatrixCopy(lang);
+---
+
+{show && (
+  <section class="cert-mx" id="cert-matrix" aria-labelledby="cert-mx-h">
+    <h2 id="cert-mx-h">{C.title}</h2>
+    <p class="lede">{C.lede}</p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{C.colMarket}</th>
+            <th scope="col">{C.colItem}</th>
+            <th scope="col">{C.colRfq}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {C.rows.map((row) => (
+            <tr>
+              <th scope="row">{row.market}</th>
+              <td>{row.item}</td>
+              <td>{row.rfq}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+)}
+
+<style>
+  .cert-mx { margin: 1.25rem 0 0; max-width: 64rem; }
+  .cert-mx h2 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+  .lede { margin: 0 0 0.85rem; line-height: 1.65; max-width: 52rem; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; min-width: 40rem; }
+  th, td {
+    border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+    padding: 0.55rem 0.7rem;
+    text-align: start;
+    vertical-align: top;
+    line-height: 1.55;
+  }
+  thead th { font-weight: 650; }
+</style>

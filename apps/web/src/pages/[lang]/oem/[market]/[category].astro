@@ -18,6 +18,9 @@ import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../../lib/shell';
 import InquiryFormLite from '@cosmetic/core/components/InquiryFormLite.astro';
 import { ORG } from '@cosmetic/core/content/org.ts';
+import GccFairStatus from '../../../../components/GccFairStatus.astro';
+import GhadBoundary from '../../../../components/GhadBoundary.astro';
+import { isGccOemMarket } from '../../../../lib/gcc-fair-status';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'zh-cn';
@@ -142,6 +145,8 @@ const ld = [
   <main id="main">
     <p class="back"><a href={`${B}/oem/`}>{T.back}</a></p>
     <header class="hd"><p class="eyebrow">{T.eyebrow} · {marketName}</p><h1>{h1}</h1><p class="answer">{lead}</p><p class="note">{T.note}</p></header>
+    {isGccOemMarket(M.id) && <GccFairStatus lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />}
+    {M.id === 'sa' && <GhadBoundary lang={lang} />}
 
     <section class="capsule" aria-labelledby="cap-h"><h2 id="cap-h">{capQ}</h2><p>{capA}</p>
       <p class="certs">{T.certH}: {OEM_CERTS.map((c, i) => (<>{i > 0 && ' · '}<a href={`${B}/oem/cert/${c.id}/`}>{c.name}</a></>))}</p></section>

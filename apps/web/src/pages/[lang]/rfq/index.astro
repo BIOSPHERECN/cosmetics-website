@@ -23,6 +23,7 @@ import {
   NOTIFY_COUNTRIES, ORDER_BANDS, TARGET_MARKETS,
   leadTimeWindowNote, rfqFieldCopy, rfqQueryPrefill, rfqProductHooks,
 } from '../../../lib/rfq-fields';
+import GhadBoundary from '../../../components/GhadBoundary.astro';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'en';
@@ -283,6 +284,7 @@ const T = zh
             <span id="err-notify-other" class="field-err" hidden></span>
           </label>
         </fieldset>
+        <GhadBoundary lang={lang} />
       </section>
 
       <section class="mkt-block" aria-labelledby="mkt-halal">
