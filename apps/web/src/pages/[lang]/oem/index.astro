@@ -15,6 +15,7 @@ import GccFairStatus from '../../../components/GccFairStatus.astro';
 import CertMatrix from '../../../components/CertMatrix.astro';
 import EvidenceFlow from '../../../components/EvidenceFlow.astro';
 import { oemIndexCrumbs, oemPageTitle } from '../../../lib/oem-index-seo';
+import { certWallCopy } from '../../../lib/comply-copy';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'zh-cn';
@@ -95,9 +96,7 @@ const ld = [
       waHref={waHref}
       ctaLabel={zh ? '发起询盘' : 'Start RFQ'}
       evidenceTitle={zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}
-      evidenceBody={zh
-        ? '按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。注册≠批准、不发证书。'
-        : 'Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications. Registration is not approval, and no certificate is issued.'}
+      evidenceBody={certWallCopy(zh).lede}
       certs={certs}
       evidenceLinks={[{ href: `${B}/services/factory-quality/`, label: zh ? '工厂质量与认证证据' : 'Factory quality and certificates on file' }]}
       painsTitle={zh ? '下单前通常卡在这几件事上' : 'What usually blocks an order'}

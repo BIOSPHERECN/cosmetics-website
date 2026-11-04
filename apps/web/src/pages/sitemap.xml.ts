@@ -24,6 +24,7 @@ import { getCounts } from '../lib/counts';
 import { memo } from '../lib/memo';
 import { indexXml, occupiedShards, planIndex, urlEntry, urlsetXml, DECODER_SHARD } from '../lib/sitemap-plan';
 import { WAVE_SLUGS } from '../lib/wave-products';
+import { MOCRA_SITEMAP_LANGS, MOCRA_SLUG } from '../lib/mocra-assistance';
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -280,6 +281,8 @@ async function renderSitemap(url: URL): Promise<Response> {
      旧地址仍在,但已改成 301 —— 301 的目标才该进 sitemap,把跳转源也列进来
      等于让搜索引擎每次抓十一次跳转,是给自己的抓取预算添堵。 */
   if (part === 'pages') push('services/', '0.9');
+  /* MoCRA 协助落地页：只收 en / zh-cn 两条已写正文的地址。hreflang 在这两条之间互指，x-default 走 en。 */
+  if (part === 'pages') push(MOCRA_SLUG, '0.8', undefined, MOCRA_SITEMAP_LANGS);
   /* 2026-09-08:外部 GEO 诊断的第一条 P0 —— FAQ 集中入口。
      AI 引用的是「一页」不是「一句」,所以这一页的优先级给到与 services 同档。 */
   if (part === 'pages') push('faq/', '0.9');

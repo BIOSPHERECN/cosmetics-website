@@ -1,0 +1,147 @@
+---
+/**
+ * /{lang}/services/mocra-assistance/
+ *
+ * 美国买家的 MoCRA 协助落地页。静态路由比 [slug] 更具体，
+ * 不会被服务总页的空壳 301 收走。canonical 就是本页。
+ * 不报死价，不改 RFQ 五键，也不把欧盟资料旁注放到这一页。
+ */
+import { env } from 'cloudflare:workers';
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import {
+  mocraCopy,
+  mocraRfqPath,
+  mocraStructuredData,
+  mocraUsCategoryPath,
+} from '../../../lib/mocra-assistance';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'en';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const B = `/${lang}`;
+const path = `${B}/services/mocra-assistance/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const copy = mocraCopy(lang);
+const siteName = shell.site?.name ?? '帛卉';
+const rfqHref = mocraRfqPath(lang);
+const usHref = mocraUsCategoryPath(lang, 'skincare');
+const ld = mocraStructuredData({ lang, origin, path, siteName });
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={copy.title} description={copy.description}
+  siteName={siteName} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
+  jsonLd={ld}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={siteName}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main" class="sq">
+    <p class="crumb">
+      <a href={`${B}/`}>{copy.homeLabel}</a>
+      <span aria-hidden="true"> / </span>
+      <a href={`${B}/services/`}>{copy.servicesLabel}</a>
+      <span aria-hidden="true"> / </span>
+      <span aria-current="page">{copy.crumb}</span>
+    </p>
+
+    <header class="hd">
+      <h1>{copy.h1}</h1>
+      <p class="lede">{copy.leadText}</p>
+      <p class="boundary">{copy.boundary}</p>
+      {copy.boundaryEn !== copy.boundary && <p class="boundary" lang="en">{copy.boundaryEn}</p>}
+      <p class="note">{copy.note}</p>
+    </header>
+
+    <div class="cols">
+      <section>
+        <h2>{copy.doTitle}</h2>
+        <ul>
+          {copy.doItems.map((item) => <li>{item}</li>)}
+        </ul>
+      </section>
+      <section>
+        <h2>{copy.dontTitle}</h2>
+        <ul>
+          {copy.dontItems.map((item) => <li>{item}</li>)}
+        </ul>
+      </section>
+    </div>
+
+    <p class="cta">
+      <a class="btn pri" href={rfqHref}>{copy.primaryCta}</a>
+      <a class="btn" href={usHref}>{copy.secondaryCta}</a>
+    </p>
+    <p class="note">{copy.ctaNote}</p>
+
+    <section class="rel">
+      <h2>{copy.relatedTitle}</h2>
+      <ul>
+        {copy.links.map((link) => (
+          <li><a href={`${B}/${link.tail}`}>{link.label}</a></li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="faq">
+      <h2>{copy.faqTitle}</h2>
+      {copy.faq.map(([q, a]) => (
+        <details>
+          <summary>{q}</summary>
+          <p>{a}</p>
+        </details>
+      ))}
+    </section>
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: siteName } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  .sq { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1rem 3rem; min-width: 0; }
+  .sq > .hd,
+  .sq > .cols,
+  .sq > .rel,
+  .sq > .faq { margin-top: var(--bio-space, 1.75rem); }
+  .crumb { margin: 0; font-size: .875rem; }
+  .crumb a, .rel a, .faq a { color: inherit; }
+  h1 { font-size: clamp(1.5rem, 2.4vw, 2rem); line-height: 1.25; margin: 0 0 .75rem; }
+  .lede, .boundary, .note, .sq p { margin: 0; line-height: 1.7; }
+  .boundary { margin-top: .75rem; font-weight: 650; }
+  .note { margin-top: .75rem; color: var(--ck-ink-soft, var(--bio-muted, inherit)); font-size: .9375rem; }
+  h2 { font-size: 1.125rem; margin: 0 0 .75rem; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .cols section {
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, var(--ck-ink, var(--bio-fg, #111)) 12%, transparent);
+    border-radius: 12px;
+  }
+  .cols ul, .rel ul { margin: 0; padding-left: 1.2rem; display: grid; gap: .6rem; line-height: 1.6; }
+  .cta { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1.25rem 0 0; }
+  .btn {
+    text-decoration: none; border-radius: 980px; padding: .75rem 1.5rem; min-height: 44px;
+    display: inline-flex; align-items: center; font-size: .9375rem; font-weight: 650;
+    border: 1px solid var(--dtc-line, rgb(0 0 0 / .16)); color: var(--ck-ink, inherit);
+    background: transparent;
+  }
+  .btn.pri { background: var(--ck-accent, #111); border-color: var(--ck-accent, #111); color: var(--ck-on-accent, #fff); }
+  .faq details { border-top: 1px solid color-mix(in srgb, var(--ck-ink, var(--bio-fg, #111)) 12%, transparent); padding: .75rem 0; }
+  .faq summary { cursor: pointer; font-weight: 650; }
+  .faq p { margin: .5rem 0 0; line-height: 1.65; }
+  @media (max-width: 640px) {
+    .cols { grid-template-columns: 1fr; }
+  }
+</style>

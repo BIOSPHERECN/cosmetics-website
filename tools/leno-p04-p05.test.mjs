@@ -15,7 +15,7 @@ const page = read('apps/web/src/pages/[lang]/product/[pslug].astro');
 const rfq = read('apps/web/src/pages/[lang]/rfq/index.astro');
 const middleware = read('apps/web/src/middleware.ts');
 
-assert.match(middleware, /const CACHE_V = 'v136'/);
+assert.match(middleware, /const CACHE_V = 'v137'/);
 assert.doesNotMatch(page, /setInterval/);
 assert.match(page, /data-autoplay="off"/);
 assert.match(page, /images = images\.slice\(0,\s*3\)/);

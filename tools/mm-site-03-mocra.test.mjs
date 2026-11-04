@@ -1,4 +1,4 @@
-// MM-SITE-03 A：US 七品类协助句 + services/oem 共用旁注。不建 /services/mocra-assistance/。
+// MM-SITE-03：US 七品类协助句 + MoCRA 协助独立落地页。
 // node tools/mm-site-03-mocra.test.mjs
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
@@ -43,8 +43,8 @@ assert.deepEqual(OEM_CATEGORIES.map((c) => c.id), [
 const cat = read('apps/web/src/pages/[lang]/oem/[market]/[category].astro');
 assert.match(cat, /M\.id === 'us' \? certWallCopy\(zh\)\.mocra/);
 assert.match(cat, /class="mocra"/);
-assert.equal(existsSync(new URL('../apps/web/src/pages/[lang]/services/mocra-assistance.astro', import.meta.url)), false);
-assert.equal(existsSync(new URL('../apps/web/src/pages/[lang]/services/mocra-assistance', import.meta.url)), false);
+assert.match(cat, /mocraDetail && <a class="more" href=\{mocraPagePath\(lang\)\}/);
+assert.match(cat, /MOCRA_DETAIL_CATS/);
 
 for (const file of [
   'apps/web/src/pages/[lang]/services/index.astro',
@@ -78,6 +78,88 @@ for (const key of ['name="market"', 'name="category"', 'name="volume"', 'name="t
 }
 assert.doesNotMatch(rfq, /mocra/i);
 
-assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v136'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v137'/);
 
-console.log('mm-site-03-mocra.test.mjs: US 七品类协助句与共用旁注通过');
+const {
+  MOCRA_BOUNDARY_EN, MOCRA_DETAIL_CATS, MOCRA_DETAIL_LINK, MOCRA_SITEMAP_LANGS, MOCRA_SLUG,
+  mocraCopy, mocraCopyProblems, mocraPagePath, mocraRfqPath, mocraStructuredData, mocraUsCategoryPath,
+} = await import(new URL('../apps/web/src/lib/mocra-assistance.ts', import.meta.url));
+const { canonical } = await import(new URL('../apps/web/src/lib/canon.ts', import.meta.url));
+
+assert.deepEqual([...MOCRA_DETAIL_CATS], ['skincare', 'sun-care']);
+assert.equal(MOCRA_DETAIL_LINK.zh, '详见 MoCRA assistance');
+assert.equal(MOCRA_DETAIL_LINK.en, 'See MoCRA assistance');
+assert.equal(mocraPagePath('en'), '/en/services/mocra-assistance/');
+assert.equal(mocraPagePath('zh-cn'), '/zh-cn/services/mocra-assistance/');
+assert.equal(mocraUsCategoryPath('en'), '/en/oem/us/skincare/');
+assert.equal(mocraUsCategoryPath('zh-cn', 'sun-care'), '/zh-cn/oem/us/sun-care/');
+/* US 不在通告国枚举里，这个参数会被规范成空并 301。落地页改走能留下的 market=US。 */
+assert.equal(canonical('/en/rfq/', '?notification_assist_country=US'), '/en/rfq/');
+assert.equal(canonical('/en/rfq/', '?market=US'), null);
+assert.equal(mocraRfqPath('en'), '/en/rfq/?market=US');
+assert.equal(mocraRfqPath('zh-cn'), '/zh-cn/rfq/?market=US');
+
+const page = read('apps/web/src/pages/[lang]/services/mocra-assistance.astro');
+assert.equal(existsSync(new URL('../apps/web/src/pages/[lang]/services/mocra-assistance.astro', import.meta.url)), true);
+assert.doesNotMatch(page, /Astro\.redirect/);
+assert.match(page, /path = `\$\{B\}\/services\/mocra-assistance\/`/);
+assert.match(page, /mocraStructuredData/);
+assert.match(page, /copy\.faq\.map/);
+assert.match(page, /copy\.boundary/);
+assert.match(page, /mocraRfqPath/);
+assert.doesNotMatch(page, /GhadBoundary|过敏原|allergen|普草|offers/i);
+
+for (const lang of ['en', 'zh-cn', 'fr']) {
+  const copy = mocraCopy(lang);
+  assert.deepEqual(mocraCopyProblems(copy), [], lang);
+  assert.equal(copy.boundaryEn, MOCRA_BOUNDARY_EN);
+  assert.equal(copy.doItems.length, 3);
+  assert.equal(copy.dontItems.length, 3);
+  assert.ok(copy.links.some((l) => l.tail === 'services/factory-quality/'));
+  assert.ok(copy.links.some((l) => l.tail === 'services/product-development/'));
+  assert.ok(copy.links.some((l) => l.tail.startsWith('oem/us/')));
+  const ld = mocraStructuredData({
+    lang, origin: 'https://biosphere-ai.com', path: mocraPagePath(lang), siteName: 'BIOSPHERE-AI',
+  });
+  const raw = JSON.stringify(ld);
+  assert.equal(raw.includes('"@type":"Product"'), false, lang);
+  assert.equal(raw.includes('"offers"'), false, lang);
+  const faqLd = ld.find((b) => b['@type'] === 'FAQPage');
+  assert.deepEqual(
+    faqLd.mainEntity.map((q) => [q.name, q.acceptedAnswer.text]),
+    copy.faq.map(([q, a]) => [q, a]),
+  );
+  const crumbs = ld.find((b) => b['@type'] === 'BreadcrumbList').itemListElement;
+  assert.deepEqual(crumbs.map((c) => c.name), [copy.homeLabel, copy.servicesLabel, copy.crumb]);
+  assert.equal(crumbs[2].item, `https://biosphere-ai.com${mocraPagePath(lang)}`);
+  const service = ld.find((b) => b['@type'] === 'Service');
+  assert.match(service.name, /assistance|协助/);
+  assert.doesNotMatch(service.name, /approved/i);
+}
+
+const enPage = mocraCopy('en');
+const zhPage = mocraCopy('zh-cn');
+assert.equal(enPage.h1, 'MoCRA assistance for U.S. cosmetic OEM / private label');
+assert.equal(zhPage.h1, 'MoCRA / 美国上市资料协助');
+assert.equal(enPage.boundary, MOCRA_BOUNDARY_EN);
+assert.ok(enPage.leadText.includes('facility registration'));
+assert.ok(enPage.leadText.includes('product listing'));
+assert.ok(enPage.leadText.includes('assistance'));
+assert.ok(zhPage.leadText.includes('设施注册'));
+assert.ok(zhPage.leadText.includes('产品列名'));
+assert.ok(zhPage.leadText.includes('协助'));
+assert.ok(enPage.title.length >= 50 && enPage.title.length <= 65, String(enPage.title.length));
+assert.ok([...zhPage.title].length >= 24 && [...zhPage.title].length <= 36, String([...zhPage.title].length));
+assert.match(enPage.description, /MoCRA/);
+assert.match(enPage.description, /assistance/);
+assert.match(zhPage.description, /MoCRA/);
+assert.match(zhPage.description, /协助/);
+assert.equal(zhPage.boundaryEn !== zhPage.boundary, true);
+
+assert.deepEqual([...MOCRA_SITEMAP_LANGS], ['en', 'zh-cn']);
+assert.equal(MOCRA_SLUG, 'services/mocra-assistance/');
+const sitemap = read('apps/web/src/pages/sitemap.xml.ts');
+assert.match(sitemap, /push\(MOCRA_SLUG, '0\.8', undefined, MOCRA_SITEMAP_LANGS\)/);
+assert.match(sitemap, /hreflang="x-default"/);
+
+console.log('mm-site-03-mocra.test.mjs: 协助句、落地页与 v137 通过');
