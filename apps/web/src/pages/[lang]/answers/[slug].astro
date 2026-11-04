@@ -17,6 +17,7 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
+import { answerArticleJsonLd, DEFAULT_OG_PATH } from '../../../lib/answer-article';
 
 export const prerender = false;
 
@@ -76,12 +77,14 @@ const ld = [
       })),
     ],
   },
-  {
-    '@context': 'https://schema.org', '@type': 'Article',
-    headline: q, description: lead, dateModified: String(row.updated_at || ''),
-    author: { '@type': 'Organization', name: shell.site?.name ?? 'BIOSPHERE' },
-    mainEntityOfPage: origin + path,
-  },
+  /* GEO-012: datePublished、publisher @id、image。author 用同一 @id，不嵌 Organization。 */
+  answerArticleJsonLd({
+    origin,
+    path,
+    headline: q,
+    description: lead,
+    updatedAt: String(row.updated_at || ''),
+  }),
 ];
 ---
 
@@ -92,6 +95,7 @@ const ld = [
   siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
   indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color}
   theme={shell.site?.theme ?? 'noir'}
+  ogImage={DEFAULT_OG_PATH}
 >
   <a class="ck-skip-link" href="#main">{tSkip}</a>
   <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
