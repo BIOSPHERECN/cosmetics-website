@@ -9,6 +9,7 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { pageShell } from '../../../lib/shell';
+import { oemIndexCrumbs, oemPageTitle } from '../../../lib/oem-index-seo';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'zh-cn';
@@ -18,8 +19,8 @@ const db = (env as any).DB as D1Database | undefined;
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const B = `/${lang}`; const path = `${B}/oem/`;
 const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
-let T = zh ? { title: 'OEM / 贴牌代工 · 按市场与品类 | BIOSPHERE', h1: '找化妆品代工厂:按目标市场与品类选', lede: '8 个市场 × 6 个品类,每一格一页:该市场的上市路径、责任人与标签要求,库内该品类的配方与包材数,以及买手常问的问题。商务条款按项目书面报价。', market: '市场', cat: '品类' }
-  : { title: 'OEM / private label cosmetics manufacturer by market and category | BIOSPHERE', h1: 'Find a cosmetics contract manufacturer by target market and category', lede: '8 markets × 6 categories, one page each: the market\'s entry route, responsible-person rule and label requirements, live counts of formulations and packaging on file for the category, and the questions buyers ask. Commercial terms are quoted per project in writing.', market: 'Market', cat: 'Category' };
+let T = zh ? { title: 'OEM / 贴牌代工 · 按市场与品类', h1: '找化妆品代工厂:按目标市场与品类选', lede: '8 个市场 × 6 个品类,每一格一页:该市场的上市路径、责任人与标签要求,库内该品类的配方与包材数,以及买手常问的问题。商务条款按项目书面报价。', market: '市场', cat: '品类' }
+  : { title: 'OEM / private label cosmetics manufacturer by market and category', h1: 'Find a cosmetics contract manufacturer by target market and category', lede: '8 markets × 6 categories, one page each: the market\'s entry route, responsible-person rule and label requirements, live counts of formulations and packaging on file for the category, and the questions buyers ask. Commercial terms are quoted per project in writing.', market: 'Market', cat: 'Category' };
 if (!zh && lang !== 'en' && db) {
   const { results } = await db.prepare(`SELECT key, text FROM ui_i18n WHERE ns='oem-index' AND lang=?`).bind(lang).all<any>().catch(() => ({ results: [] as any[] }));
   if (results?.length) T = { ...T, ...Object.fromEntries(results.map((r: any) => [r.key, r.text])) } as any;
@@ -33,15 +34,32 @@ if (!zh && lang !== 'en' && db) {
 const mName = (m: any) => zh ? m.zh : (NAMES[`market.${m.id}`] || m.en);
 const cName = (c: any) => zh ? c.zh : (NAMES[`cat.${c.id}`] || c.en);
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const ld = { '@context': 'https://schema.org', '@type': 'ItemList', itemListElement: OEM_MARKETS.flatMap((m, i) => OEM_CATEGORIES.map((c, j) => ({ '@type': 'ListItem', position: i * OEM_CATEGORIES.length + j + 1, url: `${origin}${B}/oem/${m.id}/${c.id}/` }))) };
+/* 品牌后缀只留 BaseLayout 按站点名补的那一次。译文里若仍带着 `| BIOSPHERE` 也剥掉。 */
+const pageTitle = oemPageTitle(T.title);
+const crumbs = oemIndexCrumbs({ lang, homeLabel: uiT(lang as any)('nav.home'), nav: shell.nav });
+const ld = [
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: `${origin}${c.path}` })) },
+  { '@context': 'https://schema.org', '@type': 'ItemList', itemListElement: OEM_MARKETS.flatMap((m, i) => OEM_CATEGORIES.map((c, j) => ({ '@type': 'ListItem', position: i * OEM_CATEGORIES.length + j + 1, url: `${origin}${B}/oem/${m.id}/${c.id}/` }))) },
+];
 ---
 <BaseLayout locale={lang as any} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
-  title={T.title} description={T.lede} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  title={pageTitle} description={T.lede} siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
   indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}>
   <a class="ck-skip-link" href="#main">{tSkip}</a>
   <script type="application/ld+json" set:html={ldJson(ld)} is:inline />
   <SiteHeader locale={lang as any} path={path} siteName={shell.site?.name ?? '帛卉'} siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
   <main id="main">
+    <nav class="crumb" aria-label="breadcrumb">
+      <ol>
+        {crumbs.map((c, i) => (
+          <li>
+            {i < crumbs.length - 1
+              ? <a href={c.path}>{c.name}</a>
+              : <span aria-current="page">{c.name}</span>}
+          </li>
+        ))}
+      </ol>
+    </nav>
     <header class="hd"><h1>{T.h1}</h1><p class="lede">{T.lede}</p></header>
     <table class="mx">
       <thead><tr><th>{T.market} \ {T.cat}</th>{OEM_CATEGORIES.map((c) => <th>{cap(cName(c))}</th>)}</tr></thead>
@@ -90,6 +108,7 @@ const ld = { '@context': 'https://schema.org', '@type': 'ItemList', itemListElem
 
 <style>
   main{max-width:64rem;margin:0 auto;padding:2rem 1rem 4rem} h1{font-size:clamp(1.5rem,3vw,2.25rem);margin:0 0 .75rem} .lede{line-height:1.7;margin:0 0 1.5rem;max-width:52rem}
+  .crumb{margin:0 0 1rem;font-size:.875rem} .crumb ol{display:flex;flex-wrap:wrap;gap:.35rem .15rem;list-style:none;margin:0;padding:0} .crumb li:not(:last-child)::after{content:"/";margin-inline:.4rem;opacity:.55} .crumb a{color:inherit}
   .mx{width:100%;border-collapse:collapse;font-size:.9375rem} .mx th,.mx td{border:1px solid rgba(127,127,127,.3);padding:.5rem .75rem;text-align:left;vertical-align:top} .mx thead th{font-weight:600}
   .by-cert{margin-top:1.25rem} .by-cert a{text-decoration:underline;text-underline-offset:.15em}
   .mx a{text-decoration:underline;text-underline-offset:.15em}
