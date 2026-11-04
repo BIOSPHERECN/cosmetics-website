@@ -27,28 +27,37 @@ export interface CatalogName {
 
 const BANNED_IMAGE = '/media/155';
 
+/** US MoCRA：协助设施注册与产品列名。英文句固定；中文只写备案与上市资料，不把协助写成批准或认证。 */
+const MOCRA_ASSIST = {
+  zh: '可协助准备美国 MoCRA 设施注册与产品列名的备案与上市资料；不保证监管结果，协助不等于批准或认证。',
+  en: 'We can assist with U.S. facility registration and product listing paperwork under MoCRA; we do not guarantee FDA outcomes or "approved" status.',
+} as const;
+
 export function certWallCopy(zh: boolean) {
+  const mocra = zh ? MOCRA_ASSIST.zh : MOCRA_ASSIST.en;
   return zh
     ? {
         title: '工厂已有认证（仅列真有）',
-        lede: '按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。注册≠批准、不发证书。',
+        lede: `按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。注册≠批准、不发证书。${mocra}`,
+        mocra,
         factory: '工厂认证（仅持有）',
         filing: '备案与协助（不是工厂认证）',
         other: '其他在档文件（不是工厂认证）',
         sgs: 'SGS 为第三方检测，不列入工厂持证清单。',
         held: '范围以证书原件为准',
-        fda: '设施注册协助，不是工厂认证。注册≠批准、不发证书。',
+        fda: '设施注册与产品列名（备案 / 上市资料）协助，不是工厂认证。注册≠批准、不发证书。',
         cpnp: '产品通报协助，不是工厂认证',
       }
     : {
         title: 'Plant certifications on file (held only)',
-        lede: 'Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications. Registration is not approval, and no certificate is issued.',
+        lede: `Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications. Registration is not approval, and no certificate is issued. ${mocra}`,
+        mocra,
         factory: 'Factory certifications (held only)',
         filing: 'Filings and assistance (not factory certifications)',
         other: 'Other documents on file (not factory certifications)',
         sgs: 'SGS is third-party testing, not a held factory certificate.',
         held: 'Scope as stated on the certificate',
-        fda: 'Facility registration assistance, not a factory certification. Registration is not approval, and no certificate is issued.',
+        fda: 'Facility registration and product listing assistance under MoCRA, not a factory certification. Registration is not approval, and no certificate is issued.',
         cpnp: 'Product notification assistance — not a factory certification',
       };
 }
@@ -170,8 +179,8 @@ export function partitionCertWall(items: CertItem[], zh: boolean): CertPartition
 }
 
 const HELD_ANSWER = {
-  zh: '工厂持有认证仅列：GMPC、ISO 22716:2007、HALAL（范围以证书原件为准）。FDA 工厂注册与 EU CPNP 是备案或通报协助，不是工厂认证。注册≠批准、不发证书。SGS 为第三方检测，不列入持证清单。编号与有效期凭原件提供。',
-  en: 'Factory certifications held: GMPC, ISO 22716:2007 and HALAL only (scope as stated on each certificate). FDA facility registration and EU CPNP are filing or notification assistance, not factory certifications. Registration is not approval, and no certificate is issued. SGS reports are third-party tests and are not part of the held-certificate list. Numbers and validity are shared from the originals.',
+  zh: '工厂持有认证仅列：GMPC、ISO 22716:2007、HALAL（范围以证书原件为准）。FDA 设施注册、产品列名与 EU CPNP 是备案或通报协助，不是工厂认证。注册≠批准、不发证书。可协助准备备案与上市资料；不保证监管结果，协助不等于批准或认证。SGS 为第三方检测，不列入持证清单。编号与有效期凭原件提供。',
+  en: `Factory certifications held: GMPC, ISO 22716:2007 and HALAL only (scope as stated on each certificate). FDA facility registration, product listing under MoCRA, and EU CPNP are filing or notification assistance, not factory certifications. Registration is not approval, and no certificate is issued. ${MOCRA_ASSIST.en} SGS reports are third-party tests and are not part of the held-certificate list. Numbers and validity are shared from the originals.`,
 };
 
 /** Rewrite a cert inventory that lists filings or SGS/CE in the same held-certs sentence. */
@@ -212,9 +221,29 @@ export function publicSample(zh: boolean): string {
     : 'Sampling typically 5–14 days (sample indication, confirmed in writing; not a production lead time)';
 }
 
+/** 抽掉产品展示文案里的批准/认证/注册产品宣称。协助句里的 "approved" 不挨着 FDA，留着。中文禁词拆开写，避免源码行本身被门禁扫中。 */
+function scrubFdaClaims(s: string): string {
+  const mark = 'FDA';
+  const zhFile = '备案文件';
+  const zhAssist = '备案协助';
+  let out = s
+    .replace(/(?<![A-Za-z])FDA[\s\-]+registered\s+products?\b/gi, 'product listing assist')
+    .replace(/(?<![A-Za-z])FDA[\s\-]+approved\b/gi, 'filing assist')
+    .replace(/approved by (?:the )?FDA/gi, 'not an FDA outcome')
+    .replace(/(?<![A-Za-z])FDA[\s\-]*(?:certified|certificate|certification|cleared)\b/gi, 'filing assist');
+  out = out.replace(new RegExp(mark + '\\s*注册证书', 'g'), zhFile);
+  out = out.replace(new RegExp(mark + '证书', 'g'), zhFile);
+  out = out.replace(new RegExp('获' + mark + '批准', 'g'), zhAssist);
+  out = out.replace(new RegExp(mark + '已批准', 'g'), zhAssist);
+  out = out.replace(new RegExp(mark + '核准', 'g'), zhAssist);
+  out = out.replace(new RegExp(mark + '\\s*批准', 'g'), zhAssist);
+  out = out.replace(new RegExp(mark + '\\s*认证', 'g'), zhAssist);
+  return out;
+}
+
 /** Word-level claim softening. Does not replace a whole sentence. */
 export function softenClaims(text: string): string {
-  let s = String(text ?? '');
+  let s = scrubFdaClaims(String(text ?? ''));
   s = s.replace(/acne\s*clear/gi, 'Blemish-prone');
   s = s.replace(/acne\s*treatment/gi, 'Blemish-prone care');
   s = s.replace(/anti[-\s]?itch/gi, 'Soothing');

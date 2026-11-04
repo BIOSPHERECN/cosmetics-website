@@ -13,6 +13,7 @@ import CosmopackInquiry from '../../../components/CosmopackInquiry.astro';
 import GccFairStatus from '../../../components/GccFairStatus.astro';
 import CertMatrix from '../../../components/CertMatrix.astro';
 import { oemIndexCrumbs, oemPageTitle } from '../../../lib/oem-index-seo';
+import { certWallCopy } from '../../../lib/comply-copy';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'zh-cn';
@@ -39,6 +40,7 @@ const cName = (c: any) => zh ? c.zh : (NAMES[`cat.${c.id}`] || c.en);
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /* 品牌后缀只留 BaseLayout 按站点名补的那一次。译文里若仍带着 `| BIOSPHERE` 也剥掉。 */
 const pageTitle = oemPageTitle(T.title);
+const certLede = certWallCopy(zh).lede;
 const crumbs = oemIndexCrumbs({ lang, homeLabel: uiT(lang as any)('nav.home'), nav: shell.nav });
 const ld = [
   { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: `${origin}${c.path}` })) },
@@ -89,9 +91,7 @@ const ld = [
 
     <section class="evidence" id="oem-certs" aria-labelledby="oem-certs-h">
       <h2 id="oem-certs-h">{zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}</h2>
-      <p class="lede">{zh
-        ? '按工厂口径仅列出：GMPC、ISO 22716:2007、HALAL。FDA / CPNP 等为注册或通报路径，不作「认证」口号。注册≠批准、不发证书。'
-        : 'Per factory terms we list only: GMPC, ISO 22716:2007, and HALAL. FDA / CPNP are registration or notification routes — never marketed as plant certifications. Registration is not approval, and no certificate is issued.'}</p>
+      <p class="lede">{certLede}</p>
       <ul class="certs">
         {OEM_CERTS.map((c) => <li><a href={`${B}/oem/cert/${c.id}/`}>{c.name}</a></li>)}
       </ul>
