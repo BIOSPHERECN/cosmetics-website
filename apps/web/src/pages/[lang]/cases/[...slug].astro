@@ -21,7 +21,7 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { CASES_ZH, type CaseItem } from '@cosmetic/core/content/cases.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
-import { orgJsonLd, faqJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
+import { faqJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
 import { pageShell } from '../../../lib/shell';
 
 export const prerender = false;
@@ -79,7 +79,6 @@ const articleLd = item
   : null;
 
 const jsonLd = [
-  orgJsonLd(origin, site?.name ?? 'BIOSPHERE', lang, L.lede),
   articleLd,
   item ? null : faqJsonLd(CASES_ZH.map((c) => ({ q: c.who, a: c.verdict }))),
   crumbs,

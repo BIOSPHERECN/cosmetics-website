@@ -21,7 +21,7 @@ import InquiryFormLite from '@cosmetic/core/components/InquiryFormLite.astro';
 import { env } from 'cloudflare:workers';
 import { pageShell } from '../../../lib/shell';
 import { isLang, DEFAULT_LANG, type Lang } from '../../../lib/db';
-import { orgJsonLd, breadcrumbJsonLd, faqJsonLd } from '../../../lib/jsonld';
+import { breadcrumbJsonLd, faqJsonLd } from '../../../lib/jsonld';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { readSession, readCookie, COOKIE } from '../../../lib/auth';
 import { catalogLabel, softenClaims } from '../../../lib/comply-copy';
@@ -183,7 +183,6 @@ const faqs = [
          : `Formula, packaging, fragrance, texture, volume and label language are scoped per project. Claims are limited by target-market rules and third-party reports: no report, no label claim.` },
 ];
 const jsonLd = [
-  orgJsonLd(base, shell.site?.name ?? 'BIOSPHERE', lang, displaySummary || ''),
   breadcrumbJsonLd(base, lang, path, lang === 'zh-cn' ? '首页' : 'Home', [
     { label: lang === 'zh-cn' ? '产品列表' : 'Products', href: `/${lang}/portfolio/` },
     { label: catLabel, href: `/${lang}/collections/${product.category}/` },

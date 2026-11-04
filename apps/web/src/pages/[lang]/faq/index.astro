@@ -27,7 +27,7 @@ import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { CHAIN_COUNTS } from '@cosmetic/core/content/chain.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
-import { orgJsonLd, faqJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
+import { faqJsonLd, breadcrumbJsonLd } from '../../../lib/jsonld';
 import { pageShell } from '../../../lib/shell';
 
 export const prerender = false;
@@ -470,8 +470,8 @@ const faqLd = faqJsonLd(flat.map((x) => ({ q: x.q, a: [x.a, ...x.d].join(' ') })
 const crumbs = breadcrumbJsonLd(origin, lang, path, uiT(lang as any)('nav.home'), [
   { label: T.eyebrow, href: path },
 ]);
-const orgLd = orgJsonLd(origin, site?.name ?? 'BIOSPHERE', lang, T.lede);
-const jsonLd = [orgLd, faqLd, crumbs].filter(Boolean);
+/* Organization 只由 BaseLayout 发。FAQPage / 面包屑留在本页,不改问答结构。 */
+const jsonLd = [faqLd, crumbs].filter(Boolean);
 
 const title = zh
   ? '化妆品代工常见问题 —— 起订量、价格构成、认证、打样周期'

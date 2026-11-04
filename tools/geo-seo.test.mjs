@@ -1,6 +1,8 @@
-// SEO-003 根路径语言 + GEO-007/008/009。node tools/geo-seo.test.mjs
+// SEO-003 根路径语言 + GEO-007/008/009 + SEO-004 Organization 只发一份。node tools/geo-seo.test.mjs
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const root = new URL('../', import.meta.url);
 const { pickRootLang, isSearchCrawler } = await import(new URL('apps/web/src/lib/root-locale.ts', root));
@@ -72,5 +74,37 @@ assert.equal(llmsKind('id'), 'redirect');
 assert.equal(llmsKind('ar'), 'redirect');
 assert.equal(llmsKind('zh-cn'), 'zh');
 assert.equal(llmsKind('zh-tw'), 'zh');
+
+/* SEO-004: Organization JSON-LD 只从 BaseLayout 发出。
+   页面再调一次会和布局里那份撞同一个 @id。 */
+function walkSources(dir, acc = []) {
+  for (const name of readdirSync(dir)) {
+    if (name === 'node_modules' || name === 'dist' || name === '.git') continue;
+    const p = join(dir, name);
+    const st = statSync(p);
+    if (st.isDirectory()) walkSources(p, acc);
+    else if (/\.(astro|ts|mjs|js)$/.test(name)) acc.push(p);
+  }
+  return acc;
+}
+const rootDir = fileURLToPath(root);
+const orgCalls = [];
+for (const file of walkSources(rootDir)) {
+  const text = readFileSync(file, 'utf8');
+  const n = text.match(/orgJsonLd\s*\(/g)?.length ?? 0;
+  if (n) orgCalls.push({ file: file.slice(rootDir.length).replaceAll('\\', '/'), n });
+}
+orgCalls.sort((a, b) => a.file.localeCompare(b.file));
+assert.deepEqual(orgCalls, [
+  { file: 'packages/core/src/content/org.ts', n: 1 },
+  { file: 'packages/core/src/layouts/BaseLayout.astro', n: 1 },
+]);
+assert.equal((layout.match(/orgJsonLd\s*\(/g) ?? []).length, 1);
+const faqPage = readFileSync(new URL('apps/web/src/pages/[lang]/faq/index.astro', root), 'utf8');
+assert.match(faqPage, /faqJsonLd\(/);
+assert.equal(/orgJsonLd\s*\(/.test(faqPage), false);
+const home = readFileSync(new URL('apps/web/src/pages/[...path].astro', root), 'utf8');
+assert.match(home, /siteJsonLd\(/);
+assert.equal(/orgJsonLd\s*\(/.test(home), false);
 
 console.log('geo-seo ok');

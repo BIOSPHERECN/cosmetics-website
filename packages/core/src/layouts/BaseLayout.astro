@@ -183,9 +183,9 @@ const tsKey = String((cfEnv as any)?.TURNSTILE_SITE_KEY ?? '').trim();
     {/* 09-24 W1:撤掉 Google Fonts(beauty2oem 铁令:国内可访问,不引 Google 服务)。
         dtc 标题字栈回落到本机阿里普惠体 / 苹方 / 雅黑;要统一字形再自托管(@fontsource)。 */}
     <slot name="head" />
-    {/* Organization —— 每一页都带。2026-09-07 之前它只在 CMS 页与资讯页出现,
-      而 AI 答案引擎最常落到的恰恰是单品详情页与服务页,那些页一点公司信息都没有。
-      @id 全站一致,同一页重复出现也会被消费方合并,所以不必去删各页里已有的那份。 */}
+    {/* Organization —— 全站只在这里发一份。2026-09-07 起每一页都带,
+        这样单品详情和服务页被 AI 答案引擎落到时也知道是哪家公司。
+        页面不要再把 orgJsonLd 塞进自己的 jsonLd:同一个 @id 出现两次就是重复块(SEO-004)。 */}
   <script type="application/ld+json" set:html={ldJson(orgJsonLd(base, siteName, locale, description, (Astro.locals as any)?.contact))} is:inline />
 </head>
   <body>
