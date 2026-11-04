@@ -25,7 +25,7 @@ import { env } from 'cloudflare:workers';
 import { overQuota, recordUse, tooMany, clientId, sweep } from '../../lib/ratelimit';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { gradeAndNotify } from '../../lib/inquiry-ai';
-import { humanGate } from '../../lib/human';
+import { humanGateUnlessE2e } from '../../lib/human';
 import { assignInquiryField, normalizeRfqTicket, rfqTicketLines, type RfqTicket } from '../../lib/rfq-fields';
 
 export const prerender = false;
@@ -129,8 +129,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
     ticket = parsed.fields;
   }
 
-  /* Turnstile:蜜罐只挡最笨的脚本。09-24 W1b 起配了 secret 就缺令牌一律拒收(原来不带令牌直接放行),规则见 lib/human.ts */
-  const human = await humanGate(env, String((f as any)['cf-turnstile-response'] ?? ''), isForm,
+  /* Turnstile:蜜罐只挡最笨的脚本。09-24 W1b 起配了 secret 就缺令牌一律拒收(原来不带令牌直接放行),规则见 lib/human.ts。
+     E2E 只认请求头 X-Bohui-E2E-Token,且须与 RFQ_E2E_BYPASS_TOKEN 全等;未设 secret 时这里与现网相同。不读 body。 */
+  const human = await humanGateUnlessE2e(env, String((f as any)['cf-turnstile-response'] ?? ''), request.headers.get('x-bohui-e2e-token'), isForm,
     new URL(request.url).hostname.endsWith('beauty2oem.com'));   // beauty2oem 只出中文
   if (human) return human;
 
