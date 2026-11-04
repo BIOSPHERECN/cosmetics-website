@@ -65,6 +65,25 @@ if (db) {
   } catch { /* 库抖动:该段按空处理 */ }
 }
 const oppDate = String(opps?.date || opps?.updated_at || '').slice(0, 10);
+/* SEO-005: last-updated / stale — keep real pulse date; never invent freshness */
+const oppStamp = String(opps?.date || opps?.updated_at || '').trim();
+const oppMs = oppStamp ? Date.parse(oppStamp.length === 10 ? `${oppStamp}T00:00:00Z` : oppStamp) : NaN;
+const staleAgeHours = Number.isFinite(oppMs) ? Math.max(0, Math.floor((Date.now() - oppMs) / 36e5)) : -1;
+const isStale = !oppDate || staleAgeHours > 48;
+const scrubDaily = (t: any) => {
+  let s0 = String(t ?? '');
+  if (!isStale && !/每日|今天|daily|today/i.test(s0)) return s0;
+  return s0
+    .replace(/每日生成/g, '最近一次生成')
+    .replace(/Generated daily/gi, 'Last generated')
+    .replace(/每天生成/g, '最近一次生成')
+    .replace(/今天,/g, '')
+    .replace(/今天的/g, '')
+    .replace(/\btoday'?s\b/gi, '')
+    .replace(/\btoday\b/gi, '')
+    .replace(/更新 \{/g, '最近更新 {')
+    .replace(/· updated /gi, '· last updated ');
+};
 const VARS: Record<string, string> = {
   products: fmt(N('products')), summaries: fmt(N('summaries')), formulas: ORG.formulas.value, classics: fmt(N('classics')), packaging: fmt(N('packaging')),
   regs: String(N('regs')), inci: fmt(N('inci')), lines: String(lines), certs: ORG.certs.join(' / '), certs3: ORG.certs.slice(0, 3).join(' / '),
@@ -162,7 +181,7 @@ const evLabel = (ev: any) => String(ev ?? '').split(/,\s*/).map((kv) => { const 
 
 {type === 'fx_opps' && (
   <section class="fx fx-opps" id="opps">
-    <header class="sh"><h2>{fill(d.title)}</h2><p>{cards.length ? fill(d.intro) : fill(d.empty)}</p></header>
+    <header class="sh"><h2>{fill(scrubDaily(d.title))}</h2><p>{cards.length ? fill(scrubDaily(d.intro)) : fill(scrubDaily(d.empty))}{isStale && oppDate ? <span class="hint"> · 数据超过 48 小时，按最近成功时间展示</span> : null}</p></header>
     {cards.length > 0 && (
       <ul class="opps">{cards.map((c) => {
         const sc: number[] = Array.isArray(c.scores) ? c.scores : [3, 3, 3, 3];
