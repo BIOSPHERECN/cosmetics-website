@@ -1,6 +1,7 @@
 // sitemap 索引只列非空子图,解读分片按真实有行的 id 区间,语种 loc 拆开。
 // node tools/sitemap-plan.test.mjs
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 const lib = new URL('../apps/web/src/lib/sitemap-plan.ts', import.meta.url);
 const s = await import(lib);
@@ -78,5 +79,19 @@ assert.equal(entry.includes('hreflang="zh-CN"'), false);
 const set = s.urlsetXml([entry]);
 assert.match(set, /<url>/);
 assert.match(set, /<loc>/);
+
+// C3：RFQ 不在 pages 表，必须由 pages 子图显式列出。默认语种表含 en 与 zh-cn，不写 lastmod。
+const pageSrc = readFileSync(new URL('../apps/web/src/pages/sitemap.xml.ts', import.meta.url), 'utf8');
+assert.equal(pageSrc.includes("p.slug === 'rfq'"), true);
+assert.equal(pageSrc.includes("push('rfq/', '0.9')"), true);
+assert.equal(pageSrc.includes("push('rfq/', '0.9',"), false);
+assert.equal(pageSrc.includes('https://${url.hostname}/en/rfq/'), true);
+assert.equal(pageSrc.includes('https://${url.hostname}/zh-cn/rfq/'), true);
+const robotsSrc = readFileSync(new URL('../apps/web/src/pages/robots.txt.ts', import.meta.url), 'utf8');
+assert.match(robotsSrc, /Allow: \//);
+assert.match(robotsSrc, /ai-input=yes/);
+assert.match(robotsSrc, /Sitemap: \$\{base\}\/sitemap\.xml/);
+assert.equal(robotsSrc.includes('Disallow: /en/rfq'), false);
+assert.equal(robotsSrc.includes('Disallow: /zh-cn/rfq'), false);
 
 console.log('sitemap-plan ok', plan.length, 'children', dec.length, 'decoder shards');

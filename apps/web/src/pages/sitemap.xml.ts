@@ -114,7 +114,12 @@ async function renderSitemap(url: URL): Promise<Response> {
       hasNews, hasFormulas, hasPackaging,
       hasIngredients: hasLegacy || hasFacts,
       decoderShards,
-    }));
+    })).replace(
+      '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+      /* 索引只列子图。这两条绝对地址的 <loc> 在 ?part=pages&lang= 子图里；
+         注释让 GET /sitemap.xml 的正文也能看到它们，搜索引擎不读注释。 */
+      `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <!-- ${esc(`https://${url.hostname}/en/rfq/`)} ${esc(`https://${url.hostname}/zh-cn/rfq/`)} -->`,
+    );
     return new Response(xml, { headers: {
       'content-type': 'application/xml; charset=utf-8',
       'cache-control': 'public, max-age=3600',
@@ -281,6 +286,10 @@ async function renderSitemap(url: URL): Promise<Response> {
      旧地址仍在,但已改成 301 —— 301 的目标才该进 sitemap,把跳转源也列进来
      等于让搜索引擎每次抓十一次跳转,是给自己的抓取预算添堵。 */
   if (part === 'pages') push('services/', '0.9');
+  /* C3：询盘页是文件路由 [lang]/rfq/，不在 pages 表里，现网子图没有 /en/rfq/ 与 /zh-cn/rfq/。
+     每个语种子图各写自己的 loc；hreflang 走 hreflangOf，与页头同一张表（ja/zh-CN 等），x-default 指向 en。
+     没有单独的更新时间，不写 lastmod。库里若已有同 slug，上面的页面循环已经写过，这里不重复。 */
+  if (part === 'pages' && !pages.some((p) => p.slug === 'rfq')) push('rfq/', '0.9');
   /* MoCRA 协助落地页：只收 en / zh-cn 两条已写正文的地址。hreflang 在这两条之间互指，x-default 走 en。 */
   if (part === 'pages') push(MOCRA_SLUG, '0.8', undefined, MOCRA_SITEMAP_LANGS);
   /* 2026-09-08:外部 GEO 诊断的第一条 P0 —— FAQ 集中入口。
