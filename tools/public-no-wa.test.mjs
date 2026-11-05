@@ -49,7 +49,7 @@ for (const file of files) {
 assert.deepEqual(hits, [], `公网源仍含外链或号码:\n${hits.join('\n')}`);
 assert.match(
   readFileSync(new URL('../apps/web/src/middleware.ts', import.meta.url), 'utf8'),
-  /const CACHE_V = 'v149'/,
+  /const CACHE_V = 'v150'/,
 );
 assert.match(
   readFileSync(new URL('../apps/web/src/pages/[lang]/rfq/index.astro', import.meta.url), 'utf8'),
