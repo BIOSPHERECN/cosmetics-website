@@ -30,6 +30,7 @@ export const POST: APIRoute = async ({ request }) => {
     let name = '', country: string | null = null, website: string | null = null, type: string | null = null, channel = '', note = '', dealName = '', contact: any = null, extraContacts: string[] = [];
     if (from === 'inquiry') {
       const r = await db.prepare(`SELECT * FROM inquiries WHERE id=? AND site_id=?`).bind(id, c.tenant.siteId).first<any>(); if (!r) return json({ ok: false, msg: '询盘不存在' }, 404);   // site-scoped like the inquiry list
+      if (Number(r.is_test) === 1) return json({ ok: false, msg: '测试线索不入有效客户' }, 409);
       name = r.company || r.name; country = r.country; type = '品牌方'; channel = '官网表单';
       note = `询盘 #${r.id}(${r.lang})${r.ai_summary ? ' · ' + r.ai_summary : ''}`; dealName = `${r.category || '询盘需求'}${r.volume ? ' · ' + r.volume : ''}`;
       contact = { name: r.name, email: r.email, lang: r.lang, whatsapp: r.whatsapp || null };
