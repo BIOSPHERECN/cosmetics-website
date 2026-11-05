@@ -61,6 +61,10 @@ assert.equal(unc('/zh-cn/decoder/?mk=jp'), false);
 assert.equal(unc('/zh-cn/search/?q=abc'), false);                           // 站内 AI 检索页的 q 只给前端读
 assert.equal(unc('/zh-cn/contact/?formula=x'), false);
 assert.equal(unc('/zh-cn/login/?next=/zh-cn/'), true);
+assert.equal(unc('/en/verify/?code=BH-TEST-001'), true);                     // 验真次数会变，不能进边缘缓存
+assert.deepEqual(kp('/en/verify/?code=BH-TEST-001'), []);
+assert.equal(can('/en/verify?code=BH-TEST-001'), '/en/verify/?code=BH-TEST-001');
+assert.equal(unc('/zh-cn/about/?code=abc'), false);                          // 其它页的 code 仍是前端参数
 assert.equal(unc('/media/12?x=1'), true);
 assert.equal(unc('/zh-cn/decoder/?constructor=1'), true);
 // sitemap:分片名只认名单,p 夹 0–99;非法值与没带参数共用一个键(路由按同一口径解析,内容一致)

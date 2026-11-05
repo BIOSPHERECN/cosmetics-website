@@ -1,0 +1,126 @@
+---
+/**
+ * 产品真伪验证。/{lang}/verify/ 输入或带 ?code= 打开（包装上的二维码指向这个地址）。
+ * 首查文案「正品·首次查询」，复查「已被查询 N 次」。英文页用对应英文。
+ * 结果随查询次数变，带 code 的地址在 lib/canon.ts 里登记为不缓存。
+ * 这一页不提交询盘。
+ */
+import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { t as uiT } from '@cosmetic/core/i18n';
+import { env } from 'cloudflare:workers';
+import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
+import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
+import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
+import { pageShell } from '../../../lib/shell';
+import { hashesFromRequest, normalizeCode, verifyProductCode, verifyUnavailable, type VerifyBody } from '../../../lib/verify-code';
+
+export const prerender = false;
+
+const lang = Astro.params.lang ?? 'en';
+const zh = lang.startsWith('zh');
+const tSkip = uiT(lang as any)('a11y.skip');
+const db = (env as any).DB as D1Database | undefined;
+const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const path = `/${lang}/verify/`;
+const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
+const raw = Astro.url.searchParams.get('code');
+const shown = raw == null ? '' : (normalizeCode(raw) || raw.trim().slice(0, 64));
+
+let result: VerifyBody | null = null;
+if (raw !== null) {
+  Astro.response.headers.set('Cache-Control', 'private, no-store');
+  if (!db) {
+    result = verifyUnavailable(lang).body;
+    Astro.response.headers.set('x-bh-degraded', '1');
+  } else {
+    const hashes = await hashesFromRequest(Astro.request);
+    const out = await verifyProductCode(db, { code: raw, lang, ipHash: hashes.ipHash, uaHash: hashes.uaHash });
+    if (out.status >= 500) Astro.response.headers.set('x-bh-degraded', '1');
+    result = out.body;
+  }
+}
+
+const T = zh ? {
+  eyebrow: '一码一物',
+  title: '产品真伪验证',
+  lede: '扫码打开本页，或在下面输入包装上的防伪码。第一次查询确认为正品；再次查询会显示已被查询的次数。',
+  note: '这一页只核对防伪码，不提交订单或询盘。',
+  code: '防伪码',
+  submit: '查询',
+  sku: '货号',
+  batch: '批次',
+} : {
+  eyebrow: 'One code, one unit',
+  title: 'Product authenticity check',
+  lede: 'Open this page from the code on the pack, or type the code below. The first check confirms a genuine unit. A later check shows how many times the code has been queried.',
+  note: 'This page only checks the code. It does not submit an order or an inquiry.',
+  code: 'Code',
+  submit: 'Check',
+  sku: 'SKU',
+  batch: 'Batch',
+};
+const tone = !result ? '' : result.genuine ? (result.firstScan ? 'ok' : 'warn') : 'bad';
+---
+
+<BaseLayout
+  locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
+  brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
+  title={T.title} description={T.lede}
+  siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
+  indexable={shell.site?.is_live === 1 && raw === null} brandColor={shell.site?.brand_color}
+  theme={shell.site?.theme ?? 'noir'}
+>
+  <a class="ck-skip-link" href="#main">{tSkip}</a>
+  <SiteHeader locale={lang} path={path} siteName={shell.site?.name ?? '帛卉'}
+              siteNameZh={shell.site?.tagline ?? ''} nav={shell.nav} />
+  <main id="main">
+    <p class="eyebrow">{T.eyebrow}</p>
+    <h1>{T.title}</h1>
+    <p class="lede">{T.lede}</p>
+    <p class="note">{T.note}</p>
+    <form method="get" action={path}>
+      <label for="verify-code">{T.code}</label>
+      <input id="verify-code" name="code" type="text" required maxlength="64" autocomplete="off"
+             autocapitalize="characters" spellcheck="false" value={shown} />
+      <button type="submit">{T.submit}</button>
+    </form>
+    {result && (
+      <div class:list={['result', tone]} role="status">
+        <p class="msg">{result.message}</p>
+        {result.genuine && (result.sku || result.batch) && (
+          <dl>
+            {result.sku && <><dt>{T.sku}</dt><dd>{result.sku}</dd></>}
+            {result.batch && <><dt>{T.batch}</dt><dd>{result.batch}</dd></>}
+          </dl>
+        )}
+      </div>
+    )}
+  </main>
+  <SiteFooter locale={lang} path={path}
+              site={{ ...(shell.staticSite ?? {}), name: shell.site?.name ?? '帛卉' } as any}
+              siblings={[]} email={shell.email} nav={shell.nav} />
+</BaseLayout>
+
+<style>
+  main { max-width: 36rem; margin: 0 auto; padding: 2.5rem var(--ck-gutter, 1.25rem) 4rem; }
+  .eyebrow { font-size: .8125rem; letter-spacing: .12em; text-transform: uppercase; opacity: .6; margin: 0 0 .5rem; }
+  h1 { font-size: clamp(1.625rem, 3vw, 2.25rem); line-height: 1.24; margin: 0 0 .75rem; text-wrap: balance; }
+  .lede { font-size: 1rem; line-height: 1.7; margin: 0 0 .75rem; }
+  .note { font-size: .875rem; line-height: 1.6; opacity: .7; margin: 0; }
+  form { display: grid; gap: .625rem; margin-top: 1.25rem; }
+  label { font-size: .8125rem; opacity: .75; }
+  input[type=text] { min-height: 2.75rem; padding: 0 .875rem; font-size: 1rem; letter-spacing: .04em;
+                     border: 1px solid var(--dtc-line, rgb(0 0 0 / .2)); border-radius: 10px;
+                     background: transparent; color: inherit; }
+  button { justify-self: start; min-height: 2.75rem; padding: 0 1.375rem; border: 0; border-radius: 980px;
+           cursor: pointer; font: inherit; font-size: .875rem; font-weight: 600;
+           background: var(--ck-accent); color: var(--ck-on-accent); }
+  .result { margin-top: 1.25rem; padding: .25rem 0 .25rem .875rem; border-left: 3px solid currentColor; }
+  .msg { font-size: 1.0625rem; line-height: 1.5; margin: 0; }
+  .ok { color: #1f7a45; }
+  .warn { color: #8a5a00; }
+  .bad { color: #b3261e; }
+  dl { display: grid; grid-template-columns: 5.5rem 1fr; gap: .35rem .75rem; margin: .75rem 0 0; font-size: .9375rem; }
+  dt { opacity: .7; }
+  dd { margin: 0; }
+</style>
