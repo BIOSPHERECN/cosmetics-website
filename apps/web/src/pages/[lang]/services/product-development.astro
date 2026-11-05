@@ -30,8 +30,6 @@ const db = (env as any).DB as D1Database | undefined;
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const B = `/${lang}`;
 const path = `${B}/services/product-development/`;
-const _wa = String(((Astro.locals as any)?.contact ?? {}).whatsapp ?? '').replace(/\D/g, '');
-const waHref = _wa ? `https://wa.me/${_wa}?text=${encodeURIComponent(zh ? '你好，我在看工厂质量/产品开发证据页，想了解代工。' : 'Hi, I am on the factory evidence page and would like to discuss OEM.')}` : '';
 const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
 const hub = `${B}/services/`;
 const sol = findSolution('product-development');
@@ -92,7 +90,6 @@ const ld = [
 
     <EvidenceFlow
       lang={lang}
-      waHref={waHref}
       ctaLabel={zh ? '发起询盘' : 'Start RFQ'}
       evidenceTitle={zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}
       evidenceBody={`${certWallCopy(zh).lede}${zh ? '以证书原件为准。' : ' Original certificates prevail.'}`}

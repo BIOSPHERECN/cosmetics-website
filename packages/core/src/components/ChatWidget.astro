@@ -3,8 +3,7 @@
  * AI 客服气泡 ——「先机器人、后人工」的第一道接待(创始人对标 GitHub 支持机器人)。
  *
  * 位置在**右侧垂直居中**(2026-10-23 创始人:「放到页面的中间,这样就不会被回到顶端的按钮挡住了」;
- * 原右下角与返回顶部按钮重叠)。右下角浮层从下往上:询盘车 → 返回顶部;
- * WhatsApp 留右下(回到顶部之上),互不遮挡。
+ * 原右下角与返回顶部按钮重叠)。右下角浮层从下往上:询盘车 → 返回顶部。
  * 面板层级压过吸顶导航(50)与询盘车球(60),低于购物抽屉(80)。
  * 「转人工询盘」常驻面板底部 —— 机器人是接待,不是墙,
  * 人工入口永远一步可达;交接时对话摘要经 sessionStorage 预填进询盘表单。
@@ -13,11 +12,8 @@
 interface Props { locale: string; site: string }
 const { locale, site } = Astro.props;
 const zh = locale === 'zh-cn' || locale === 'zh-tw';
-/* 09-21 获客:WhatsApp 直达号码来自 middleware 注入的 locals.contact(与页脚同源);没有号码就不渲染 */
-const _wa = String(((Astro.locals as any)?.contact ?? {}).whatsapp ?? '').replace(/\D/g, '');
-/* 09-24 BEAUTY2OEM(国内站):不出 WhatsApp 浮钮;开场白用本站名,推荐问题不碰起订量、价格、交期 */
+/* 09-24 BEAUTY2OEM(国内站):开场白用本站名,推荐问题不碰起订量、价格、交期 */
 const b2o = site === 'beauty2oem';
-const waHref = _wa && !b2o ? `https://wa.me/${_wa}?text=${encodeURIComponent(zh ? '你好,我在看 BIOSPHERE 的网站,想了解代工。' : 'Hi, I am looking at the BIOSPHERE site and would like to discuss OEM/ODM.')}` : '';
 const T = zh ? {
   open: 'AI 客服', title: 'AI 客服', sub: '即时答疑 · 随时可转人工',
   hello: '您好!我是 BIOSPHERE-AI 的 AI 客服,可以即时回答品类、起订、打样流程等问题。涉及报价会为您转人工专员。',
@@ -57,7 +53,6 @@ if (b2o) Object.assign(T, {
   </form>
   <a id="bh-chat-human" href={`/${locale}/contact/`}>{T.human} →</a>
 </section>
-{waHref && <a id="bh-wa-fab" href={waHref} target="_blank" rel="noopener" aria-label="WhatsApp"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.5l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 12 12 0 0 0 4.6 4.1c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3z"/></svg><span>WhatsApp</span></a>}
 
 <script is:inline define:vars={{ locale, site, busyMsg: T.busy, handoffLead: T.handoffLead }}>
 (() => {
@@ -138,10 +133,6 @@ if (b2o) Object.assign(T, {
 </script>
 
 <style>
-  /* 09-21 获客:WhatsApp 直达按钮,放在 AI 客服左边;号码来自 middleware 注入的 locals.contact */
-  #bh-wa-fab { position: fixed; inset-inline-end: 1.25rem; bottom: 4.5rem; z-index: 64; display: inline-flex; align-items: center; gap: .375rem; padding: .5rem .875rem; border-radius: 999px; background: #25D366; color: #fff; text-decoration: none; font: inherit; font-size: var(--ck-small); font-weight: 600; box-shadow: 0 10px 26px -12px rgb(0 0 0 / .45); }
-  #bh-wa-fab:hover { background: #1ebe5b; }
-  #bh-chat-panel:not([hidden]) ~ #bh-wa-fab { display: none; }
   #bh-chat-fab {
     position: fixed; inset-inline-end: 1.25rem; top: 50%; transform: translateY(-50%); z-index: 64;
     display: inline-flex; align-items: center; gap: 0.4375rem;

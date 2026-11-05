@@ -357,9 +357,6 @@ const jsonLd = [
             {/* 主 CTA 只一颗实心。样品是描边。开发同款是文字链。三枚都进 RFQ，且 href 过 product_id 门闩。 */}
             {inquiryHref && <a class="cta primary" href={inquiryHref}>{T.inquiry}</a>}
             {sampleHref && <a class="sample-btn" href={sampleHref}>{T.sample}</a>}
-            {contactWa && (
-              <a class="wa" href={`https://wa.me/${contactWa.replace(/[^0-9]/g, '')}?text=${encodeURIComponent((zh ? '我对这款产品感兴趣: ' : 'I am interested in this product: ') + displayName + ' | ' + Astro.url.href)}`} target="_blank" rel="noopener">💬 WhatsApp</a>
-            )}
           </div>
           {developHref && <p class="develop-row"><a class="develop-link" href={developHref}>{T.develop}</a></p>}
           <ul class="assure">

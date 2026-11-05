@@ -107,7 +107,7 @@ const T = zh ? {
   empty: '还没选', pick: '挑一个', drop: '换一个', more: '去库里慢慢挑',
   narrow: (n: number, why: string) => `按${why}筛过,${n.toLocaleString()} 款可选`,
   all: (n: number) => `${n.toLocaleString()} 款可选`,
-  send: '提交 RFQ', wa: 'WhatsApp',
+  send: '提交 RFQ',
   ready: '把这张清单提交为 RFQ。销售按编码书面回复,这里不自动报价。',
   hint: '每填一格,后面的可选范围就窄一截。填了配方,包材按剂型筛;填了包材,配方按它能装的剂型筛。',
 } : {
@@ -119,7 +119,7 @@ const T = zh ? {
   empty: 'Empty', pick: 'Pick one', drop: 'Change', more: 'Browse the library',
   narrow: (n: number, why: string) => `${n.toLocaleString()} left after filtering by ${why}`,
   all: (n: number) => `${n.toLocaleString()} available`,
-  send: 'Submit RFQ', wa: 'WhatsApp',
+  send: 'Submit RFQ',
   ready: 'Submit this sheet as an RFQ. Sales replies in writing by code. Nothing here is auto-quoted.',
   hint: 'Each slot you fill narrows the next. Pick a formula and containers filter by its format; pick a container and formulas filter by what it can hold.',
 };
@@ -224,7 +224,6 @@ const rfqHref = `${B}/rfq/?${rfqQs.toString()}`;
         <p>{T.ready}</p>
         <p class="acts">
           <a class="btn pri" href={rfqHref}>{T.send}</a>
-          <a class="btn" href="/zh-cn/contact/" rel="noopener">💬 {T.wa}</a>
           {/* WeChat 号不翻译,18 语种统一写「WeChat」 */}
           <span class="btn wx">💬 WeChat</span>
         </p>
