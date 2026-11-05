@@ -8,5 +8,5 @@ const mw = read('apps/web/src/middleware.ts');
 assert.match(page, /const SHOW_HOME_SHOWCASE = false/);
 assert.match(page, /showHome\.SHOWCASE && showcaseData\.items\.length > 0/);
 assert.match(page, /showcase-grid/);
-assert.match(mw, /const CACHE_V = 'v146'/);
+assert.match(mw, /const CACHE_V = 'v147'/);
 console.log('home-showcase-hide.test.mjs:全部通过');

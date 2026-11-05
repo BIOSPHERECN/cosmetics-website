@@ -11,20 +11,11 @@
  *   - Detail pages are /{lang}/product/{slug}/. Canon strips ?product_id= on that
  *     path, so the slug is the W5 fallback. RFQ lookup matches p.id OR p.slug.
  *
- * WhatsApp: digits from locals.contact.whatsapp, else the ops placeholder.
- * 待确认 — do not change WA_FALLBACK_DIGITS until sites.contact_whatsapp is set.
+ * 公网页底栏只留「申请样品」,不生成外链、不回落站点号码。
  */
-
-/** 待确认: ops-owned WA until sites.contact_whatsapp is filled. */
-export const WA_FALLBACK_DIGITS = '8613600050502';
 
 /** Matches rfq-context SAFE_ID: 1–40 chars, no spaces, no empty string. */
 export const SAFE_PRODUCT_ID = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,39}$/;
-
-export function whatsappHref(raw) {
-  const digits = String(raw ?? '').replace(/\D/g, '');
-  return `https://wa.me/${digits || WA_FALLBACK_DIGITS}`;
-}
 
 function safeId(value) {
   const v = String(value ?? '').trim();

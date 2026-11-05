@@ -575,7 +575,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       homeFlagEtag = '10001';
     }
   }
-  const CACHE_V = 'v146';   // 2026-11-05: D+E 信任带打开；基线含 #55/b5078efe/v145。Hero→信任带→funnel。首页块开关走 __hf，禁止为藏块再抬这个常量。
+  const CACHE_V = 'v147';   // 2026-11-05: 公网去掉 WhatsApp 外链与号码展示（悬浮钮、页脚、询盘页硬链）。库内 contact_whatsapp 保留。首页块开关走 __hf，禁止为藏块再抬这个常量。
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。

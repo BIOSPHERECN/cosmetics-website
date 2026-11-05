@@ -130,7 +130,6 @@ const hookCards = [
   hooks.skin_type ? { k: 'skin_type', label: F.skin, v: hooks.skin_type } : null,
 ].filter((x): x is { k: string; label: string; v: string } => !!x);
 const siteKey = (import.meta.env.TURNSTILE_SITE_KEY as string | undefined) ?? '0x4AAAAAAEh9PTvpt4eaYV_q';
-const waNum = String(((Astro.locals as any)?.contact ?? {}).whatsapp ?? '').replace(/\D/g, '');
 const cats = Object.entries(PRODUCT_CAT);
 
 const T = zh
@@ -411,7 +410,6 @@ const T = zh
     <p class="links">
       <a href={`${B}/products/`}>{T.portfolio}</a>
       · <a href={`${B}/oem/`}>{T.oem}</a>
-      {waNum && <> · <a href={`https://wa.me/${waNum}`} target="_blank" rel="noopener">WhatsApp</a></>}
       · <a href={`mailto:${shell.email}`}>{shell.email}</a>
     </p>
   </main>
@@ -663,7 +661,7 @@ const T = zh
     .g2 { grid-template-columns: 1fr; }
     .btn { width: 100%; justify-self: stretch; }
     .links a { font-weight: 500; }
-    /* Submit 是页内唯一实心主色；WhatsApp 仍是 .links 里的文字链 */
+    /* Submit 是页内唯一实心主色 */
     /* 右下角悬浮客服会盖住右缘,窄屏给摘要和多选留出位置 */
     .rfq { padding-right: 4.75rem; }
     .sum { padding-right: 0; }

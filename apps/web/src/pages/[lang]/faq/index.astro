@@ -256,7 +256,6 @@ const T = zh ? {
   ctaTitle: '把需求发给我们',
   ctaBody: '品类、目标市场、首批量级 —— 三句话就够,剩下的我们来问。',
   ctaBtn: '发起询盘',
-  wa: '不想等邮件?直接 WhatsApp',
 } : {
   eyebrow: 'FAQ',
   title: 'The 20 questions buyers ask most',
@@ -460,7 +459,6 @@ const T = zh ? {
   ctaTitle: 'Send us the brief',
   ctaBody: 'Category, destination market, first-run volume. Three lines is enough.',
   ctaBtn: 'Send an enquiry',
-  wa: 'Rather not wait for email? WhatsApp us',
 };
 
 const flat = T.groups.flatMap((g) => g.items);
@@ -520,7 +518,6 @@ const desc = zh
       <p>{T.ctaBody}</p>
       <p class="btns">
         <a class="btn" href={`${B}/contact/`}>{T.ctaBtn}</a>
-        <a class="wa" href="/zh-cn/contact/">{T.wa}</a>
       </p>
     </section>
   </main>
@@ -565,5 +562,4 @@ const desc = zh
   .btns { margin-top: 1.25rem !important; display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
   .btn { display: inline-flex; padding: 0.6875rem 1.5rem; border-radius: 999px;
          background: var(--ck-accent); color: #fff; text-decoration: none; font-weight: 600; font-size: 0.9375rem; }
-  .wa { font-size: 0.875rem; color: var(--ck-ink-soft); }
 </style>

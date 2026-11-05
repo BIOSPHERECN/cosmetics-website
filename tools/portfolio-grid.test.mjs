@@ -92,7 +92,7 @@ assert.match(page, /id="pg-empty"/);
 assert.match(page, /id="pg-clear"/);
 assert.match(page, /id="pg-empty-rfq"/);
 assert.match(page, /main\.is-search-empty \.pg-trust/);
-assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v146'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v147'/);
 
 const strip = read('apps/web/src/components/BioTrustStrip.astro');
 const home = read('apps/web/src/pages/[...path].astro');
