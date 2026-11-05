@@ -47,6 +47,6 @@ assert.ok(showAt >= 0 && funnelAt > showAt, '漏斗必须排在成品展示之�
 assert.match(funnel, /padding-block:\s*clamp\(0\.75rem,\s*2vw,\s*1\.25rem\)/);
 assert.doesNotMatch(funnel, /padding-block:\s*clamp\(1\.5rem,\s*4vw,\s*3\.5rem\)/);
 
-assert.match(middleware, /const CACHE_V = 'v140'/);
+assert.match(middleware, /const CACHE_V = 'v141'/);
 
 console.log('hero-compact.test.mjs:全部通过');
