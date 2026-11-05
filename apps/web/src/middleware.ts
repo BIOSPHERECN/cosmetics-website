@@ -575,7 +575,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       homeFlagEtag = '00001';
     }
   }
-  const CACHE_V = 'v142';   // 2026-11-05: Funnel 归位到 showcase 上方。首页块开关走 __hf，禁止为藏块再抬这个常量。
+  const CACHE_V = 'v143';   // 2026-11-05: EN Funnel Step3 类目英文化。首页块开关走 __hf，禁止为藏块再抬这个常量。
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。
