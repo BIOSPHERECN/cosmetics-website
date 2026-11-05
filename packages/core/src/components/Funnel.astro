@@ -91,8 +91,8 @@ const L = {
 const BASES: Record<string, Array<{code: string; name: string; actives: string}>> = {
   skincare: [
     { code: 'BH-S-001', name: zhPage ? '草本舒缓精华基底' : 'Herbal soothing serum base', actives: zhPage ? '积雪草、泛醇、神经酰胺' : 'Centella, Panthenol, Ceramide' },
-    { code: 'BH-S-042', name: zhPage ? '烟酰胺亮肤精华基底' : 'Niacinamide brightening serum base', actives: zhPage ? '烟酰胺 3%、熊果苷' : 'Niacinamide 3%, Arbutin' },
-    { code: 'BH-S-089', name: zhPage ? '视黄醇抗老面霜基底' : 'Retinol anti-aging cream base', actives: zhPage ? '视黄醇 0.3%、角鲨烷' : 'Retinol 0.3%, Squalane' },
+    { code: 'BH-S-042', name: zhPage ? '烟酰胺亮肤精华基底' : 'Niacinamide brightening serum base', actives: zhPage ? '烟酰胺、熊果苷——用量按项目设定，书面确认' : 'Niacinamide, Arbutin — level set per project; confirm in writing' },
+    { code: 'BH-S-089', name: zhPage ? '视黄醇抗老面霜基底' : 'Retinol anti-aging cream base', actives: zhPage ? '视黄醇、角鲨烷——用量按项目设定，书面确认' : 'Retinol, Squalane — level set per project; confirm in writing' },
   ],
   body: [
     { code: 'BH-B-007', name: zhPage ? '草本舒缓防晒乳' : 'Herbal soothing suncare lotion', actives: zhPage ? '薄荷醇、氧化锌、甘草酸' : 'Menthol, Zinc Oxide, Glycyrrhizin' },
@@ -114,9 +114,9 @@ const BASES: Record<string, Array<{code: string; name: string; actives: string}>
 
 const COMPLIANCE: Record<string, string> = {
   na: zhPage ? 'FDA: 需完成MoCRA注册(化妆品设施注册+产品列示；注册≠批准、不发证书)；OTC防晒需OTC药案' : 'FDA: MoCRA registration required (facility + product listing; registration is not approval, and no certificate is issued); OTC suncare needs OTC drug filing',
-  sea: zhPage ? '印尼BPOM Notifkos通报；防晒剂需符合东盟ACD限用表；可配HALAL清真认证' : 'Indonesia BPOM Notifkos; UV filters must meet ASEAN ACD limits; HALAL certification available',
+  sea: zhPage ? '印尼 BPOM Notifkos 通报；防晒剂需符合东盟 ACD 限用表；可讨论 Halal-ready 配方与工厂持证范围协助（document assist only）——不是本品清真证书，不保证获批。' : 'Indonesia BPOM Notifkos; UV filters must meet ASEAN ACD limits; Halal-ready formulation and plant-held HALAL scope can be discussed as document assist only — not a product Halal certificate and not guaranteed approval.',
   eu: zhPage ? 'CPNP通报必需；PIF产品信息文件需备；防晒剂需符合EC No 1223/2009' : 'CPNP notification required; PIF file needed; UV filters per EC No 1223/2009',
-  me: zhPage ? 'SFDA注册；需HALAL认证；阿拉伯语标签' : 'SFDA registration; HALAL required; Arabic labeling',
+  me: zhPage ? 'SFDA 注册；目标市场常要求 Halal——我方仅协助 Halal-ready / 卷宗路径，不保证本品获证；需阿拉伯语标签。' : 'SFDA registration; target-market rules often require Halal — we assist Halal-ready / dossier pathway only, not a guaranteed certificate for your SKU; Arabic labeling.',
   la: zhPage ? '巴西ANVISA通报；西班牙语标签；防晒SPF测试报告' : 'Brazil ANVISA notification; Spanish labels; SPF test report',
   cn: zhPage ? '国产非特殊用途备案 / 特殊用途审批(防晒、美白)；全成分标注' : 'China non-special filing / special-use approval (suncare, whitening); full INCI labeling',
 };

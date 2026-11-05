@@ -86,7 +86,9 @@ const BANNED = [
 
 for (const card of WAVE_CARDS) {
   const blob = wavePublicText(card);
-  for (const re of BANNED) assert.doesNotMatch(blob, re, `${card.slug} ${re}`);
+  // FC-SPF-01：印尼凝胶路径问可以点名历史词 spf45，并写明不是已验证防晒数字。其它卡与本卡其余文案仍禁 SPF+数字。
+  const claimBlob = card.slug === 'hydrasoothe-gel-spf45' ? blob.replace(/spf\s*45/gi, 'SPF-legacy-token') : blob;
+  for (const re of BANNED) assert.doesNotMatch(claimBlob, re, `${card.slug} ${re}`);
   assert.match(blob, /不是报价/);
   assert.match(blob, /not a quote/i);
   assert.match(blob, /texture/);
@@ -335,9 +337,12 @@ for (const slug of THIRD_WAVE) {
   const card = waveBySlug(slug);
   assert.equal(card.ld, 'corrected', slug);
   assert.equal(card.crumb, 'short', slug);
-  assert.equal((card.marketFaqs ?? []).length, 2, slug);
+  const faqCount = slug === 'hydrasoothe-gel-spf45' ? 3 : 2;
+  assert.equal((card.marketFaqs ?? []).length, faqCount, slug);
   const blob = wavePublicText(card);
-  for (const re of THIRD_BANNED) assert.doesNotMatch(blob, re, `${slug} ${re}`);
+  // FC-SPF-01：路径问只允许点名一次历史词 spf45，用来否定「已验证 SPF45」。其余公开文案仍禁防晒数字。
+  const claimBlob = slug === 'hydrasoothe-gel-spf45' ? blob.replace(/spf\s*45/gi, 'SPF-legacy-token') : blob;
+  for (const re of THIRD_BANNED) assert.doesNotMatch(claimBlob, re, `${slug} ${re}`);
   for (const lang of ['en', 'zh-cn']) {
     const copy = waveCopy(card, lang);
     const origin = 'https://biosphere-ai.com';
@@ -367,14 +372,15 @@ for (const slug of THIRD_WAVE) {
     const claim = [ld.name, ld.description, ld.category, ...ld.additionalProperty.flatMap((p) => [p.name, p.value])].join('\n');
     for (const re of THIRD_BANNED) assert.doesNotMatch(claim, re, `${slug} ${lang} ld ${re}`);
     const market = waveMarketFaqs(card, lang);
-    assert.equal(market.length, 2);
+    const expectMarket = slug === 'hydrasoothe-gel-spf45' ? 3 : 2;
+    assert.equal(market.length, expectMarket);
     const faqs = productPageFaqs({
       zh: lang === 'zh-cn',
       name: copy.name,
       certAnswer: copy.certAnswer,
       market,
     });
-    assert.equal(faqs.length, 7);
+    assert.equal(faqs.length, 5 + expectMarket);
     assert.deepEqual(faqs.slice(5), market);
     const trail = waveBreadcrumbTrail(card, lang, copy.name);
     assert.deepEqual(trail.map((t) => t.label), [lang === 'zh-cn' ? '产品' : 'Products', copy.name]);
@@ -396,8 +402,19 @@ assert.match(wavePublicText(idGel), /sunscreen gel|防晒凝胶/);
 assert.match(wavePublicText(idGel), /acne-friendly/);
 assert.match(wavePublicText(idGel), /Pending third-party report/);
 assert.match(wavePublicText(idGel), /待第三方报告/);
-assert.doesNotMatch(wavePublicText(idGel), /spf\s*\d/i);
-assert.doesNotMatch(wavePublicText(idGel), /spf\d/i);
+assert.match(wavePublicText(idGel), /historical product_id residue/);
+assert.match(wavePublicText(idGel), /路由残留/);
+assert.equal(idGel.slug, 'hydrasoothe-gel-spf45');
+const idGelClaim = [
+  idGel.en.name, idGel.zh.name,
+  idGel.en.summary, idGel.zh.summary,
+  idGel.en.description, idGel.zh.description,
+].join('\n');
+assert.doesNotMatch(idGelClaim, /spf\s*\d/i);
+assert.doesNotMatch(idGelClaim, /spf\d/i);
+const idGelPublic = wavePublicText(idGel).replace(/spf\s*45/gi, 'SPF-legacy-token');
+assert.doesNotMatch(idGelPublic, /spf\s*\d/i);
+assert.doesNotMatch(idGelPublic, /spf\d/i);
 assert.doesNotMatch(wavePublicText(idGel), /reef[-\s]?safe/i);
 assert.equal(idGel.rfq.halal_ready, 'no');
 assert.doesNotMatch(wavePublicText(idGel), /halal[-_\s]?ready\s*[:=]\s*yes/i);
@@ -440,7 +457,7 @@ assert.match(rfq, /product_id: productId/);
 assert.match(rfq, /waveSummary/);
 assert.doesNotMatch(rfq, /halal certified/i);
 const middleware = read('apps/web/src/middleware.ts');
-assert.match(middleware, /const CACHE_V = 'v143'/);
+assert.match(middleware, /const CACHE_V = 'v144'/);
 assert.doesNotMatch(read('apps/web/src/lib/gcc-fair-status.ts'), /wave-products/);
 assert.doesNotMatch(read('apps/web/src/lib/cosmopack-inquiry.ts'), /wave-products/);
 assert.doesNotMatch(read('apps/web/src/lib/cert-matrix.ts'), /wave-products/);

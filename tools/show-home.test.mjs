@@ -101,7 +101,7 @@ assert.match(page, /!showHome\.HOT_SHELF/);
 assert.match(hero, /showShot && \(/);
 assert.match(hero, /class="bio-hero-shot"/);
 assert.match(hero, /bio-hero--copy/);
-assert.match(mw, /const CACHE_V = 'v143'/);
+assert.match(mw, /const CACHE_V = 'v144'/);
 assert.match(mw, /首页块开关走 __hf/);
 assert.match(mw, /u\.searchParams\.set\('__hf', homeFlagEtag\)/);
 assert.match(mw, /s-maxage=21600/);

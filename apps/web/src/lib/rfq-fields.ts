@@ -3,7 +3,7 @@
  * rfq/index.astro 与 /api/inquiry 共用，tools/rfq-fields.test.mjs 直接 import。
  *
  * 只问需求，不写死价、不写死交期、不自动报价。
- * Halal 只问是否需要 ready；禁止展示「Halal certified」。
+ * Halal 只问是否需要 ready；禁止展示本品已获清真认证。
  * 通告国家是 filing / notification assist，不是代办承诺，也不是获批保证。
  * 持证只列 GMPC / ISO 22716 / HALAL；备案与通告另栏。
  */

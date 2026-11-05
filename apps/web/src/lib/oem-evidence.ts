@@ -23,7 +23,7 @@ export function oemEvidenceCertPath(lang: string, id: string): string {
   return `/${loc}/oem/cert/${id}/`;
 }
 
-/** 链上文字：ISO 写到 2007 版；GMPC / HALAL 用原名。不写 Halal certified。 */
+/** 链上文字：ISO 写到 2007 版；GMPC / HALAL 用原名。不写本品已获清真认证。 */
 export function oemEvidenceCertLabel(id: string, name: string): string {
   return id === 'iso-22716' ? 'ISO 22716:2007' : name;
 }
