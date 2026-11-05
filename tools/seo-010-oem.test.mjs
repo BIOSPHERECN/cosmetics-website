@@ -63,6 +63,6 @@ assert.equal(/orgJsonLd\s*\(/.test(page), false);
 assert.equal(page.includes('| BIOSPHERE\''), false);
 
 const cache = readFileSync(new URL('../apps/web/src/middleware.ts', import.meta.url), 'utf8');
-assert.match(cache, /const CACHE_V = 'v148'/);
+assert.match(cache, /const CACHE_V = 'v149'/);
 
 console.log('seo-010 oem ok');

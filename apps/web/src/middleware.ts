@@ -575,7 +575,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       homeFlagEtag = '10001';
     }
   }
-  const CACHE_V = 'v148';   // 2026-11-05: 询盘入库改传 sourcePath，修公网 RFQ 提交 500。首页块开关走 __hf，禁止为藏块再抬这个常量。
+  const CACHE_V = 'v149';   // 2026-11-05: 询盘漏斗事件可按线索号查询（来源、市场、产品、意图、按钮、入库、负责人、跟进）。首页块开关走 __hf，禁止为藏块再抬这个常量。
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。

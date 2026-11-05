@@ -28,6 +28,7 @@ import { gradeAndNotify } from '../../lib/inquiry-ai';
 import { humanGateUnlessE2e } from '../../lib/human';
 import { assignInquiryField, normalizeRfqTicket, prefixFormulaPath, rfqTicketLines, type RfqTicket } from '../../lib/rfq-fields';
 import { INQUIRY_OK_MSG, absorbDuplicate, insertInquiryRow, planInquiryLoop, stampInquiryLoop } from '../../lib/rfq-loop';
+import { funnelFromSubmission, recordInquiryDedupe, recordInquiryIngest } from '../../lib/inquiry-events.ts';
 
 export const prerender = false;
 
@@ -203,6 +204,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (plan) {
     const dupId = await absorbDuplicate(db, site, plan.dedupeKey).catch(() => null);
     if (dupId) {
+      await recordInquiryDedupe(db, dupId, site).catch(() => {});
       return (isForm && !wantsJson)
         ? backTo(request, 'ok')
         : json({ ok: true, ticket_id: dupId, deduped: true, msg: INQUIRY_OK_MSG });
@@ -236,6 +238,20 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return json({ ok: false, msg: `提交失败:${e instanceof Error ? e.message.slice(0, 120) : ''}` }, 500);
   }
   if (plan && newId) await stampInquiryLoop(db, newId, plan).catch(() => {});
+  /* 漏斗事件是旁路。表还没迁移、或这一下没写成，都不能把已经入库的线索变成 500。 */
+  if (newId && source !== 'newsletter') {
+    const funnel = funnelFromSubmission({
+      source,
+      sourcePath: srcPath,
+      market,
+      productId,
+      cta: f.cta,
+      intent: f.intent,
+      message: storedMessage,
+      referer: request.headers.get('referer'),
+    });
+    await recordInquiryIngest(db, { inquiryId: newId, siteId: site, funnel }).catch(() => {});
+  }
 
   await recordUse(db, 'inquiry', who);
   if (Math.random() < 0.05) await sweep(db);

@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import { apiGuard, json, logRevision } from '../../../lib/guard';
 import { canSend, sendMail } from '../../../lib/mail';
 import { acceptInquiry, assignInquiry, listPendingAccept, migrationHint, readInquiryLoop } from '../../../lib/rfq-loop';
+import { followupDedupeKey, readInquiryEvents, trackInquiryMilestone } from '../../../lib/inquiry-events.ts';
 
 export const prerender = false;
 
@@ -37,6 +38,26 @@ export const GET: APIRoute = async ({ request }) => {
       const rows = await listPendingAccept(c.db, c.tenant.siteId, url.searchParams.get('test') === '1');
       return json({ ok: true, pending: rows });
     }
+    /* 漏斗事件。ticket_id 与 id 都是线索号。必须先过 apiGuard，不登录没有来源、负责人、跟进。 */
+    if (url.searchParams.get('events') === '1') {
+      const id = Number(url.searchParams.get('ticket_id') || url.searchParams.get('id'));
+      if (!id) return json({ ok: false, msg: '缺少 ticket_id' }, 400);
+      try {
+        const view = await readInquiryEvents(c.db, id, c.tenant.siteId, {
+          from: url.searchParams.get('from') ?? '',
+          to: url.searchParams.get('to') ?? '',
+        });
+        if (!view) return json({ ok: false, msg: '询盘不存在' }, 404);
+        return json(view);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e ?? '');
+        if (msg.includes('时间窗')) return json({ ok: false, msg }, 400);
+        if (/no such table/i.test(msg) && /inquiry_events/.test(msg)) {
+          return json({ ok: false, msg: '事件表还没迁移。请在 D1 执行 db/migrations/0131_inquiry_events.sql' }, 503);
+        }
+        return fail(e, '读取失败');
+      }
+    }
     const id = Number(url.searchParams.get('id'));
     if (!id) return json({ ok: false, msg: '缺少 id' }, 400);
     const loop = await readInquiryLoop(c.db, id, c.tenant.siteId);
@@ -62,6 +83,13 @@ export const PATCH: APIRoute = async ({ request }) => {
     `INSERT INTO inquiry_notes (inquiry_id, user_id, kind, text) VALUES (?,?,'status',?)`
   ).bind(id, c.sess.uid, `${before.status}→${status}`).run();
   await logRevision(c.db, 'inquiries', id, null, before, { status }, c.sess.uid);
+  await trackInquiryMilestone(c.db, {
+    inquiryId: id,
+    siteId: c.tenant.siteId,
+    event: 'status',
+    dedupeKey: `status:${before.status}->${status}`,
+    followupStatus: status,
+  });
   return json({ ok: true });
 };
 
@@ -103,5 +131,11 @@ export const POST: APIRoute = async ({ request }) => {
   const r = await c.db.prepare(
     `INSERT INTO inquiry_notes (inquiry_id, user_id, kind, text) VALUES (?,?,'note',?) RETURNING id, created_at`
   ).bind(id, c.sess.uid, body).first<{ id: number; created_at: string }>();
+  await trackInquiryMilestone(c.db, {
+    inquiryId: Number(id),
+    siteId: c.tenant.siteId,
+    event: 'followup',
+    dedupeKey: followupDedupeKey(body),
+  });
   return json({ ok: true, id: r?.id, created_at: r?.created_at });
 };
