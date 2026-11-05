@@ -41,12 +41,12 @@ assert.match(shotRule, /max-height:\s*280px/);
 assert.doesNotMatch(shotRule, /background:\s*#/);
 assert.match(shotRule, /box-shadow:\s*none/);
 
-const showAt = page.indexOf('showcase-grid');
+const showAt = page.indexOf('class="showcase-grid"');
 const funnelAt = page.indexOf('<Funnel locale={lang} heading="h2" />');
-assert.ok(showAt >= 0 && funnelAt > showAt, '漏斗必须排在成品展示之后');
+assert.ok(showAt >= 0 && funnelAt >= 0 && funnelAt < showAt, '漏斗在成品展示之上');
 assert.match(funnel, /padding-block:\s*clamp\(0\.75rem,\s*2vw,\s*1\.25rem\)/);
 assert.doesNotMatch(funnel, /padding-block:\s*clamp\(1\.5rem,\s*4vw,\s*3\.5rem\)/);
 
-assert.match(middleware, /const CACHE_V = 'v141'/);
+assert.match(middleware, /const CACHE_V = 'v142'/);
 
 console.log('hero-compact.test.mjs:全部通过');

@@ -602,7 +602,7 @@ const SHOW_HOME_SHOWCASE = false;  /* Product showcase / .showcase-grid */
       </section>
     )}
 
-    {/* BIOSPHERE-AI 首页首屏:左文案 + 右紧凑真瓶。漏斗降到成品展示之后，避免大白互动卡顶住首屏。 */}
+    {/* BIOSPHERE-AI 首页首屏:左文案 + 右紧凑真瓶。顺序 Trust→Cosmopack→Funnel→Showcase；漏斗在成品展示之上。 */}
     {site.id === 'biosphere-ai' && !slug && (
       <HomeLead locale={lang} whatsapp={contactWa} />
     )}
@@ -613,7 +613,12 @@ const SHOW_HOME_SHOWCASE = false;  /* Product showcase / .showcase-grid */
       <CosmopackInquiry lang={lang} siteId={site.id} />
     )}
 
-    {/* 首页产品展示区:首屏之下展示成品,2行+更多方块。漏斗再往后。可回开 SHOW_HOME_SHOWCASE。 */}
+    {/* 顺序 Trust→Cosmopack→Funnel→Showcase；漏斗在成品展示之上。 */}
+    {site.id === 'biosphere-ai' && !slug && (
+      <Funnel locale={lang} heading="h2" />
+    )}
+
+    {/* 首页产品展示区:首屏之下展示成品,2行+更多方块。可回开 SHOW_HOME_SHOWCASE。 */}
     {SHOW_HOME_SHOWCASE && showcaseData.items.length > 0 && !slug && (
       <section class="block alt">
         <div class="ck-wrap">
@@ -642,11 +647,6 @@ const SHOW_HOME_SHOWCASE = false;  /* Product showcase / .showcase-grid */
           )}
         </div>
       </section>
-    )}
-
-    {/* 三步漏斗降到成品展示之后（无展示时仍在展会条之下），不再作为首屏大白互动卡。 */}
-    {site.id === 'biosphere-ai' && !slug && (
-      <Funnel locale={lang} heading="h2" />
     )}
 
     {(collectionMode ? [] : bodyBlocks).map((b) => {
