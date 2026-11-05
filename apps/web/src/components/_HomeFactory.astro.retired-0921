@@ -63,15 +63,14 @@ const oppHref = (c: any) => {
   return fc ? `${B}/formulas/?c=${fc}` : `${B}/formulas/`;
 };
 const stars = (n: number) => '★'.repeat(Math.max(0, Math.min(5, n))) + '☆'.repeat(5 - Math.max(0, Math.min(5, n)));
-const wa = String(whatsapp ?? '').replace(/\D/g, '');
-const waHref = wa ? `https://wa.me/${wa}?text=${encodeURIComponent(zh ? `你好,我在看 ${siteName} 的网站,想了解代工。` : `Hi, I am looking at the ${siteName} site and would like to discuss OEM/ODM.`)}` : '';
+const inquiryHref = `${B}/rfq/`;
 
 const T = zh ? {
   eyebrow: `广州化妆品 OEM / ODM 工厂 · ${lines} 条自动化产线 · ${certs}`,
   h1: ['先找到值得做的产品,', '再由我们把它做出来。'],
   lead: `从一个产品想法,到一批可以卖到目标市场的成品。找同款、拆全成分、匹配在库配方基底、寄样、合规资料、包装、试产、大货,由 ${siteName} 的工厂团队完成;你的品牌与客户始终是你的。`,
   searchPh: '例:玻尿酸精华、SPF50 轻薄防晒、氨基酸洁面、烟酰胺身体乳', searchBtn: '找同款',
-  paths: [[`#opps`, '找产品机会', '不知道下一款做什么?看今天的机会卡'], [`${B}/formulas/`, '我有产品想法', '在库配方基底按品类 / 剂型 / 功效筛'], [waHref || `${B}/contact/`, '已有产品要代工', '发全成分表或样品,工厂直接出方案']],
+  paths: [[`#opps`, '找产品机会', '不知道下一款做什么?看今天的机会卡'], [`${B}/formulas/`, '我有产品想法', '在库配方基底按品类 / 剂型 / 功效筛'], [inquiryHref, '已有产品要代工', '发全成分表或样品,工厂直接出方案']],
   pathHint: '你只说目标。找同款、配方、包材、法规、打样、生产由工厂负责。',
   s0: '不是口号:六项能力,每项都有证据', s0lead: '预判落到生产:帛卉自有产线和成熟配方,加上公开市场与法规数据。',
   six: [
@@ -90,7 +89,7 @@ const T = zh ? {
   s5all: '看全部', s5count: (n: number) => `${n} 条基底`,
   s4: '从需求到交付,一个项目里完成', s4lead: '你不需要自己找配方师、包材厂、检测机构、报关行;每一步在同一个项目里,由同一个对接人跟到底。',
   steps: [['需求', '品类 / 目标市场 / 首批数量 / 参考产品或全成分表'], ['匹配基底', '从在库基底里选 2–3 条,定活性物与肤感方向'], ['寄样', '通常 5–14 天;评估后修改再寄'], ['合规资料', '目标市场备案 / 通报路径与责任方,标签与宣称核对'], ['包装', '现货包材选型或定制,包装稿逐字核对'], ['试产', '小批量走一遍产线,确认稳定性与灌装'], ['大货与放行', '按 QC 项目检测,放行报告随货']],
-  s6: '开始一个项目', s6lead: `把你的全成分表、目标市场、首批数量发给我们,工厂两个工作日内回方案与寄样安排。`, s6wa: 'WhatsApp 直接聊', s6mail: '发邮件',
+  s6: '开始一个项目', s6lead: `把你的全成分表、目标市场、首批数量发给我们,工厂两个工作日内回方案与寄样安排。`, s6wa: '发起询盘', s6mail: '发邮件',
   s7: '实拍与证书:欢迎验厂', s7lead: '车间、产线、检测与证书原件,验厂时都能看到;下面是现场实拍与证书扫描件。', s7certs: '证书',
   s8: '我们做过的样品', s8lead: '按客户需求从在库基底改出的样品与效果图;你的产品也从这里开始。', s8more: '看全部产品',
 } : {
@@ -98,7 +97,7 @@ const T = zh ? {
   h1: ['Find the product worth making.', 'Then let our factory make it.'],
   lead: `From a product idea to finished goods that can sell in your target market. Lookalike search, ingredient decoding, matching an in-house formulation base, sampling, compliance dossier, packaging, pilot run and bulk production, done by the ${siteName} factory team; your brand and your customers stay yours.`,
   searchPh: 'e.g. hyaluronic serum, SPF50 lightweight sunscreen, amino-acid cleanser, niacinamide body lotion', searchBtn: 'Find lookalikes',
-  paths: [[`#opps`, 'Find a product opportunity', 'Not sure what to make next? See today’s cards'], [`${B}/formulas/`, 'I have a product idea', 'Browse in-house bases by category, format and claim'], [waHref || `${B}/contact/`, 'I have a product to manufacture', 'Send the INCI list or a sample; the factory replies with a plan']],
+  paths: [[`#opps`, 'Find a product opportunity', 'Not sure what to make next? See today’s cards'], [`${B}/formulas/`, 'I have a product idea', 'Browse in-house bases by category, format and claim'], [inquiryHref, 'I have a product to manufacture', 'Send the INCI list or a sample; the factory replies with a plan']],
   pathHint: 'You state the goal. Lookalikes, formula, packaging, regulations, sampling and production are on the factory.',
   s0: 'Not slogans: six capabilities, each with evidence', s0lead: 'Before you hand a project to a factory, see why it can deliver. Every number below is read from this site’s database and can be checked item by item.',
   six: [
@@ -117,7 +116,7 @@ const T = zh ? {
   s5all: 'See all', s5count: (n: number) => `${n} bases`,
   s4: 'From brief to delivery, inside one project', s4lead: 'You never source a formulator, a packaging supplier, a test lab or a broker yourself; every step sits in one project with one contact who follows it through.',
   steps: [['Brief', 'Category / target market / first-run quantity / reference product or INCI list'], ['Match a base', 'Pick 2–3 in-house bases, set the actives and skin-feel direction'], ['Sample', 'Usually 5–14 days; revise and resend after evaluation'], ['Compliance dossier', 'Notification path and responsible party for the market, label and claim check'], ['Packaging', 'Stock selection or custom, artwork proofread line by line'], ['Pilot run', 'A small batch through the line to confirm stability and filling'], ['Bulk and release', 'Tested against the QC items, release report ships with the goods']],
-  s6: 'Start a project', s6lead: 'Send your INCI list, target market and first-run quantity; the factory replies with a plan and sampling schedule within two working days.', s6wa: 'Chat on WhatsApp', s6mail: 'Email us',
+  s6: 'Start a project', s6lead: 'Send your INCI list, target market and first-run quantity; the factory replies with a plan and sampling schedule within two working days.', s6wa: 'Start RFQ', s6mail: 'Email us',
   s7: 'On the floor, and on paper: audits welcome', s7lead: 'Workshops, lines, testing and the original certificates are all open during an audit; below are floor photos and certificate scans.', s7certs: 'Certificates',
   s8: 'Samples we have made', s8lead: 'Samples and renders adjusted from in-house bases to client briefs; your product starts the same way.', s8more: 'See all products',
 };
@@ -173,7 +172,7 @@ const oppDate = String(opps?.date || opps?.updated_at || '').slice(0, 10);
         })}
       </ul>
     )}
-    <p class="more"><a href={waHref || `${B}/contact/`}>{T.s2more} →</a></p>
+    <p class="more"><a href={inquiryHref}>{T.s2more} →</a></p>
   </section>
 
   <section class="s3">
@@ -218,7 +217,7 @@ const oppDate = String(opps?.date || opps?.updated_at || '').slice(0, 10);
   <section class="s6">
     <header class="sh"><h2>{T.s6}</h2><p>{T.s6lead}</p></header>
     <p class="more">
-      {waHref && <a class="btn" href={waHref} target="_blank" rel="noopener">{T.s6wa} →</a>}
+      <a class="btn" href={inquiryHref}>{T.s6wa} →</a>
       <a class="btn ghost" href={`mailto:${email}`}>{T.s6mail}: {email}</a>
     </p>
   </section>

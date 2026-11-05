@@ -3,10 +3,9 @@
  * 询盘表单(CMS 页面用)—— 全站唯一真正能收到线索的入口。
  *
  * 2026-10-23 双层化(创始人最高原则:降低询盘门槛,把客户留住):
- *   第一层「快速询盘」:产品/品类 + 目标国家 + WhatsApp/邮箱 + 预计数量(可选)——30 秒可提交;
+ *   第一层「快速询盘」:产品/品类 + 目标国家 + 电话/邮箱 + 预计数量(可选)——30 秒可提交;
  *   第二层「深度商机」:品牌与渠道 / 包装 / 合规 / 上市时间 / 预算 / 目标人群 —— 折叠 details,可选展开。
  * 提交时 JS 把两层所有非空字段拼成 message 文本发给 /api/inquiry(后端接口不变)。
- * WhatsApp deeplink 自动带产品名+来源页面,让海外采购一键发起对话。
  *
  * 原设计取舍(保留):
  *   · 零 JS 也能提交:原生 POST /api/inquiry,303 回本页带 ?sent=1;
@@ -20,11 +19,10 @@ export interface Props {
   whatsapp?: string | null;
   product?: string;   /* 详情页传入本品名称/编码,预填「想做什么产品」,减少一次输入 */
 }
-const { lang, email, source = 'contact', whatsapp = '', product = '' } = Astro.props;
+const { lang, email, source = 'contact', product = '' } = Astro.props;
 const siteKey = (import.meta.env.TURNSTILE_SITE_KEY as string | undefined)
   ?? '0x4AAAAAAEh9PTvpt4eaYV_q';
 const zh = String(lang).startsWith('zh');
-const waNum = String(whatsapp || '').replace(/[^0-9]/g, '');
 const T = zh
   ? { h: '发起询盘', p: '填完基本信息就能提交,我们一个工作日内回复。想聊更细的?展开下面的深度选项。',
       fast: '快速询盘（30 秒）', deep: '深度商机（可选）', deepHint: '展开填写,帮我们更快给方案。',
@@ -38,7 +36,7 @@ const T = zh
       timeline: '计划上市时间', timelinePh: '例：2027 Q1',
       budget: '预算区间（选填）', budgetPh: '例：中高价位 / 大众价位',
       audience: '目标人群与卖点', audiencePh: '例：25-35 岁女性 / 敏感肌 / 天然成分',
-      submit: '发送询盘', waDirect: '不想等邮件?直接 WhatsApp', or: '或直接邮件联系:',
+      submit: '发送询盘', or: '或直接邮件联系:',
       privacy: '仅用于回复你的询盘,不做他用,不外发。',
       sent: '已收到,我们会在一个工作日内回复。',
       sending: '提交中…', fail: '提交失败,请改用下面的邮箱联系我们。', netErr: '网络异常,请稍后重试。',
@@ -55,7 +53,7 @@ const T = zh
       timeline: 'Planned launch', timelinePh: 'e.g. 2027 Q1',
       budget: 'Budget range (optional)', budgetPh: 'e.g. premium / mass-market',
       audience: 'Target customer & key claims', audiencePh: 'e.g. women 25-35 / sensitive skin / natural',
-      submit: 'Send inquiry', waDirect: 'Rather not wait? WhatsApp us', or: 'Or email us directly:',
+      submit: 'Send inquiry', or: 'Or email us directly:',
       privacy: 'Used only to answer your inquiry. Not shared.',
       sent: 'Received. We reply within one business day.',
       sending: 'Sending…', fail: 'Could not send — please use the email below.', netErr: 'Network error, please retry.',
@@ -107,11 +105,6 @@ const T = zh
       <p class="act">
         {siteKey && <div class="cf-turnstile" data-sitekey={siteKey} data-size="flexible"></div>}
         <button class="btn" type="submit">{T.submit}</button>
-        {waNum && (
-          <a class="wa" id="iqwa" href={`https://wa.me/${waNum}`} target="_blank" rel="noopener">
-            <span aria-hidden="true">💬</span> {T.waDirect}
-          </a>
-        )}
         <span class="fb" id="iqfb" role="status" aria-live="polite"></span>
       </p>
       <p class="pv">{T.privacy}</p>
@@ -123,10 +116,6 @@ const T = zh
 </section>
 
 <style>
-  .wa { display: inline-flex; align-items: center; gap: .375rem; font-size: .875rem;
-        text-decoration: none; color: var(--ck-ink-soft); margin-left: .75rem;
-        padding: .625rem 1rem; border: 1px solid var(--ck-line); border-radius: 980px; }
-  .wa:hover { color: var(--ck-accent); border-color: var(--ck-accent); }
   .cf-turnstile { margin: .5rem 0; }
   .iq { padding: clamp(2.5rem, 5vw, 4rem) 0; background: var(--dtc-sand, var(--ck-surface-alt, #f5f5f7));
         border-top: 1px solid var(--dtc-line, rgb(0 0 0/.08)); }
@@ -175,7 +164,6 @@ const T = zh
     var email = f.elements.email;
     var whatsapp = f.elements.whatsapp;
     var msg = document.getElementById('iqmsg');
-    var waLink = document.getElementById('iqwa');
 
     /* URL 参数自动填字段(?about=?formula=?pack=?market=?claim=?type=) */
     try {
@@ -203,11 +191,6 @@ const T = zh
       var h = sessionStorage.getItem('bh-chat-handoff');
       if (h && f.iq_audience) f.iq_audience.value += (f.iq_audience.value ? ' | ' : '') + h;
       sessionStorage.removeItem('bh-chat-handoff');
-      /* WhatsApp deeplink 预填:产品名+来源页面 */
-      if (waLink && prod) {
-        var waText = encodeURIComponent((zh ? '我对这款产品感兴趣: ' : 'I am interested in this product: ') + prod + ' | ' + location.href);
-        waLink.href = waLink.href.split('?')[0] + '?text=' + waText;
-      }
       if (q.get('sent') === '1' && fb) {
         fb.className = 'fb ok';
         fb.textContent = T.sent;

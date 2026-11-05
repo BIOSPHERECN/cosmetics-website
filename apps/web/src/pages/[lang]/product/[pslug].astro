@@ -357,9 +357,6 @@ const jsonLd = [
             {/* 主 CTA 只一颗实心。样品是描边。开发同款是文字链。三枚都进 RFQ，且 href 过 product_id 门闩。 */}
             {inquiryHref && <a class="cta primary" href={inquiryHref}>{T.inquiry}</a>}
             {sampleHref && <a class="sample-btn" href={sampleHref}>{T.sample}</a>}
-            {contactWa && (
-              <a class="wa" href={`https://wa.me/${contactWa.replace(/[^0-9]/g, '')}?text=${encodeURIComponent((zh ? '我对这款产品感兴趣: ' : 'I am interested in this product: ') + displayName + ' | ' + Astro.url.href)}`} target="_blank" rel="noopener">💬 WhatsApp</a>
-            )}
           </div>
           {developHref && <p class="develop-row"><a class="develop-link" href={developHref}>{T.develop}</a></p>}
           <ul class="assure">
@@ -564,11 +561,8 @@ const jsonLd = [
   .develop-row { margin: 0.25rem 0 0; }
   .develop-link { display: inline-flex; align-items: center; min-height: 44px; background: none; border: 0; padding: 0;
          color: var(--ck-ink-soft, var(--bio-muted, #5e5a53)); font-size: 0.875rem; text-decoration: underline; text-underline-offset: 0.18em; }
-  .wa { display: inline-flex; align-items: center; gap: .375rem; font-size: var(--ck-small); font-weight: 600;
-        text-decoration: none; color: #25D366; padding: .8125rem 1.25rem; border: 2px solid #25D366; border-radius: var(--bio-radius, 14px); background: transparent; min-height: 44px; }
-  .wa:hover { background: transparent; color: #25D366; }
   .acts { display: flex; gap: .625rem; flex-wrap: wrap; align-items: center; }
-  .cta.primary:focus-visible, .sample-btn:focus-visible, .develop-link:focus-visible, .wa:focus-visible {
+  .cta.primary:focus-visible, .sample-btn:focus-visible, .develop-link:focus-visible {
     outline: 2px solid var(--bio-primary, #3b4a8c); outline-offset: 2px;
   }
 

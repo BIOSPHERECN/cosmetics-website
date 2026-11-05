@@ -3,7 +3,7 @@
  * 莱诺鸟 P0-6：证据页四段壳。
  * 固定顺序 A 证据 → B 卡点 → C 怎么走 → D Start RFQ。
  * 主 CTA 只这一颗实心，颜色用 --bio-primary，链到 oem-evidence，查询串只有 intent。
- * WhatsApp 与其它次链只做 ghost。不放车间图。
+ * 次链只做 ghost（证书、产品库等）。不放 WhatsApp。不放车间图。
  */
 import {
   oemEvidenceCertPath,
@@ -17,7 +17,6 @@ interface LinkItem {
 
 interface Props {
   lang: string;
-  waHref?: string;
   ctaLabel: string;
   evidenceTitle: string;
   evidenceBody: string;
@@ -34,7 +33,6 @@ interface Props {
 
 const {
   lang,
-  waHref = '',
   ctaLabel,
   evidenceTitle,
   evidenceBody,
@@ -91,7 +89,6 @@ const rfq = oemEvidenceRfqPath(lang);
 
   <div class="ev-cta">
     <a class="ev-btn" href={rfq}>{ctaLabel}</a>
-    {waHref && <a class="ev-btn ghost" href={waHref}>WhatsApp</a>}
     {secondaryLinks.map((l) => <a class="ev-btn ghost" href={l.href}>{l.label}</a>)}
   </div>
 </div>

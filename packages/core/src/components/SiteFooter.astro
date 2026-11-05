@@ -43,9 +43,8 @@ const items = nav?.length
   ? [{ slug: '', label: tr('nav.home') }, ...nav]
   : [{ slug: '', label: tr('nav.home') }, { slug: 'contact', label: tr('nav.contact') }];
 /* (行业资讯已作为 pages 行进了导航树,这里不再手动追加 —— 追加过一次,页脚出现双份) */
-/* 联络方式:页面可显式传 whatsapp/wechat,否则读 middleware 注入的 locals.contact;wa 只留数字(wa.me 要求不带 + 和空格) */
+/* 联络方式:页面可显式传 wechat,否则读 middleware 注入的 locals.contact。公网页脚不放 WhatsApp。 */
 const _contact = ((Astro.locals as any)?.contact ?? {}) as { whatsapp?: string | null; wechat?: string | null };
-const wa = String((Astro.props as any).whatsapp ?? _contact.whatsapp ?? '').replace(/\D/g, '');
 const wx = String((Astro.props as any).wechat ?? _contact.wechat ?? '').trim();
 ---
 
@@ -72,22 +71,6 @@ const wx = String((Astro.props as any).wechat ?? _contact.wechat ?? '').trim();
         {cnOnly && <li><a href={L('/brief/')}>提交店铺，拿简报 →</a></li>}
         {cnOnly && wx && <li class="plain wx">微信:{wx}</li>}
         {!cnOnly && email && <li><a href={`mailto:${email}`}>{email}</a></li>}
-        {/* WhatsApp:海外采购最常用的联络方式,而站上一直一个入口都没有。
-            wa.me 是官方短链,点开直接进对话,不需要对方先存号码 ——
-            这一步的摩擦少一点,询盘就多一分。
-            号码同时进 Organization 结构化数据(见 BaseLayout),
-            让搜索引擎与 AI 答案引擎知道「这家工厂怎么联系」。 */}
-        {/* 号码从后台「站点总览」的设置来(middleware 注入 Astro.locals.contact);没填就退回「填表单我们联系你」。
-            wa.me 是官方短链,点开直接进对话,不需要对方先存号码。 */}
-        {cnOnly ? null : wa ? (
-          <li><a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer" class="wa">
-            <span aria-hidden="true">💬</span> WhatsApp +{wa}
-          </a></li>
-        ) : (
-          <li><a href={`/${locale}/contact/`} rel="noopener" class="wa">
-            <span aria-hidden="true">💬</span> WhatsApp / WeChat:填询盘表单后我们联系你
-          </a></li>
-        )}
         {/* WeChat:统一用英文写法「WeChat」,18 个语种都不翻译 ——
             创始人 2026-09-10 04:40:「统一 WeChat,这样翻译也不会乱」。
             微信号本身是标识符,翻译或本地化它只会让客户搜不到人。 */}

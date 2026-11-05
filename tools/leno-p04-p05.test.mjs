@@ -49,7 +49,7 @@ assert.match(sampleCss[0], /background:\s*transparent/);
 assert.doesNotMatch(sampleCss[0], /background:\s*var\(--bio-primary/);
 assert.match(developCss[0], /text-decoration:\s*underline/);
 assert.doesNotMatch(developCss[0], /background:\s*var\(--bio-primary/);
-assert.match(page, /\.wa\s*\{[^}]*background:\s*transparent/);
+assert.doesNotMatch(page, /wa\.me|class="wa"/);
 
 const built = {
   '.cta.primary': gateProductRfqHref(waveRfqPath('en', 'spf50-acne-gel-id', 'inquiry', 'Oil-control gel sunscreen (Indonesia)')),

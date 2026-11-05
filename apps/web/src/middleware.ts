@@ -575,7 +575,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       homeFlagEtag = '00001';
     }
   }
-  const CACHE_V = 'v144';   // 2026-11-05 事实三刀 FC-SPF-01/HAL-04/FORM-03（承接原 #50@v140，现抬 v144；勿混去WA/来厂核对/MM）。首页块开关走 __hf，禁止为藏块再抬这个常量。
+  const CACHE_V = 'v145';   // 2026-11-05 去块+去公网WA；接 #50/992b6d1b/v144 抬 v145。首页块开关走 __hf。
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。

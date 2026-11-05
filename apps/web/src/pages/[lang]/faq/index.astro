@@ -247,7 +247,7 @@ const T = zh ? {
           d: [
             '有这三件,我们就能判断走 OEM 还是 ODM、包材用现货还是开模、要备哪些合规文件。',
             '不想写字就直接发编码:看中的包材编码、想对标的剂型,比一段描述有效得多。',
-            `联系方式:WhatsApp / WeChat(填表后我们联系你),或在${' '}联系页填表,我们两个工作日内书面回复。`,
+            `联系方式:WeChat(填表后我们联系你),或在${' '}联系页填表,我们两个工作日内书面回复。`,
           ],
         },
       ],
@@ -256,7 +256,6 @@ const T = zh ? {
   ctaTitle: '把需求发给我们',
   ctaBody: '品类、目标市场、首批量级 —— 三句话就够,剩下的我们来问。',
   ctaBtn: '发起询盘',
-  wa: '不想等邮件?直接 WhatsApp',
 } : {
   eyebrow: 'FAQ',
   title: 'The 20 questions buyers ask most',
@@ -451,7 +450,7 @@ const T = zh ? {
           d: [
             'With those three we can tell you OEM or ODM, stock or tooled packaging, and which documents you will need.',
             'Or just send codes — the packaging code you like and the format you are benchmarking beats a paragraph.',
-            'WhatsApp / WeChat (we reach out after you submit the form), or use the contact form. Written reply within two business days.',
+            'WeChat (we reach out after you submit the form), or use the contact form. Written reply within two business days.',
           ],
         },
       ],
@@ -460,7 +459,6 @@ const T = zh ? {
   ctaTitle: 'Send us the brief',
   ctaBody: 'Category, destination market, first-run volume. Three lines is enough.',
   ctaBtn: 'Send an enquiry',
-  wa: 'Rather not wait for email? WhatsApp us',
 };
 
 const flat = T.groups.flatMap((g) => g.items);
@@ -520,7 +518,6 @@ const desc = zh
       <p>{T.ctaBody}</p>
       <p class="btns">
         <a class="btn" href={`${B}/contact/`}>{T.ctaBtn}</a>
-        <a class="wa" href="/zh-cn/contact/">{T.wa}</a>
       </p>
     </section>
   </main>
@@ -565,5 +562,4 @@ const desc = zh
   .btns { margin-top: 1.25rem !important; display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
   .btn { display: inline-flex; padding: 0.6875rem 1.5rem; border-radius: 999px;
          background: var(--ck-accent); color: #fff; text-decoration: none; font-weight: 600; font-size: 0.9375rem; }
-  .wa { font-size: 0.875rem; color: var(--ck-ink-soft); }
 </style>

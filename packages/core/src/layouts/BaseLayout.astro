@@ -273,19 +273,5 @@ const tsKey = String((cfEnv as any)?.TURNSTILE_SITE_KEY ?? '').trim();
     <script is:inline>
       try { if (!location.pathname.startsWith('/bohui')) { const u = '/api/pulse?p=' + encodeURIComponent(location.pathname.slice(0, 96)); (navigator.sendBeacon && navigator.sendBeacon(u)) || fetch(u, { method: 'POST', keepalive: true }); } } catch (e) {}
     </script>
-    {/* WhatsApp 点击埋点(2026-10-28,创始人批准):点任何 wa.me 链接都记一笔 wa:click。
-        与 human:js 同一张 AE 表,只换 blob1 —— 查「每天点 WhatsApp 的人数/来源页」就是它。 */}
-    <script is:inline>
-      try {
-        if (!location.pathname.startsWith('/bohui')) {
-          document.addEventListener('click', function (e) {
-            const a = e.target && e.target.closest ? e.target.closest('a[href*="wa.me"]') : null;
-            if (!a) return;
-            const u = '/api/pulse?p=' + encodeURIComponent(location.pathname.slice(0, 96)) + '&wa=1';
-            (navigator.sendBeacon && navigator.sendBeacon(u)) || fetch(u, { method: 'POST', keepalive: true });
-          }, true);
-        }
-      } catch (e) {}
-    </script>
   </body>
 </html>
