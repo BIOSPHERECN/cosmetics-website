@@ -59,7 +59,7 @@ const KEY_PAGES = [
   { t: 'FAQ', p: 'faq/',
     q: 'the 20 questions buyers ask most — OEM vs ODM, MOQ, how pricing works, certification, lead times, packaging choice, cross-border compliance; each entry answers in its first sentence' },
   { t: 'Contact / RFQ', p: 'contact/',
-    q: 'how to reach us — enquiry form, email, and WeChat (via the enquiry form)' },
+    q: 'how to reach us — enquiry form, email, WhatsApp and WeChat (via the enquiry form)' },
 ];
 
 /* 2026-11-03 GEO(P0):市场入口层 —— 印尼(第一优先市场)与阿拉伯语(沙特)买家

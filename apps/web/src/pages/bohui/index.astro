@@ -249,7 +249,7 @@ if (notLive > 0) todos.push({ level: 'warn', text: `${notLive} 个站未开放�
               <input class="cmail" data-site={r.id} data-k="email" type="email" value={r.contact_email ?? ''}
                      placeholder={`inquiry@${def?.domain ?? ''}`} spellcheck="false"
                      style="width:100%;font-size:.8125rem;font-family:ui-monospace,monospace" />
-              {/* 微信号仍进页脚。WhatsApp 号码不再生成公网链接或 schema。 */}
+              {/* WhatsApp / 微信:填了页脚就出 wa.me 链接和微信号,Organization schema 同步带 telephone(2026-09-16) */}
               <input class="cmail" data-site={r.id} data-k="whatsapp" type="tel" value={r.contact_whatsapp ?? ''}
                      placeholder="WhatsApp 带国家码,如 +60 12 345 6789" spellcheck="false"
                      style="width:100%;font-size:.8125rem;font-family:ui-monospace,monospace;margin-top:.25rem" />

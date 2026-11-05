@@ -234,9 +234,10 @@ const inqPrefill = zhPage
     </section>
   </main>
 
-  {/* 悬浮条:回到顶部;选了产品后动态浮出询盘车 */}
+  {/* 第四刀:统一悬浮条——默认只显示WhatsApp+回到顶部,选了产品后动态浮出询盘车 */}
   <div class="float-bar" id="floatBar">
     <button class="float-btn" id="floatTop" type="button" aria-label={zhPage ? '回到顶部' : 'Back to top'} title={zhPage ? '回到顶部' : 'Back to top'}>↑</button>
+    <a class="float-btn wa" href={`https://wa.me/${email.includes('@') ? '' : ''}`} target="_blank" rel="noopener" aria-label="WhatsApp">💬</a>
     <button class="float-btn cart hidden" id="floatCart" type="button" aria-label={zhPage ? '询盘车' : 'Inquiry cart'}>
       <span class="cart-icon">📋</span>
       <span class="cart-badge" id="cartBadge">0</span>

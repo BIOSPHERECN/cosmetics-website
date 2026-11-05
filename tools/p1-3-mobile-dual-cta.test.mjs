@@ -1,8 +1,8 @@
-﻿// P1-3: Mobile bottom bar keeps Request sample → RFQ. WhatsApp entry is gone.
+﻿// P1-3: Mobile bottom bar dual CTA (WhatsApp + Request sample)
 // node tools/p1-3-mobile-dual-cta.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { sampleHref } from '../packages/core/src/components/mobile-dual-cta.mjs';
+import { sampleHref, whatsappHref, WA_FALLBACK_DIGITS } from '../packages/core/src/components/mobile-dual-cta.mjs';
 
 const mobileDualCta = readFileSync(
   new URL('../packages/core/src/components/MobileDualCta.astro', import.meta.url),
@@ -21,18 +21,21 @@ const middleware = readFileSync(
   'utf8',
 );
 
-assert.doesNotMatch(logic, /wa\.me/);
-assert.doesNotMatch(logic, /8613600050502/);
-assert.doesNotMatch(mobileDualCta, /wa\.me|8613600050502|>WhatsApp</);
+assert.match(logic, /wa\.me/, 'must contain wa.me');
 assert.match(logic, /\/rfq\/\?product_id=|\/rfq\/`/, 'must link /rfq/');
 assert.match(mobileDualCta, /max-width:\s*52rem/, 'mobile media query');
 assert.match(mobileDualCta, /beauty2oem/, 'beauty2oem skip');
+assert.equal(WA_FALLBACK_DIGITS, '8613600050502', 'WA placeholder digits unchanged');
+assert.match(logic, /8613600050502/, 'WA placeholder');
+assert.match(logic, /待确认/, 'placeholder marked 待确认');
 assert.equal(/href=["'][^"']*普草/.test(mobileDualCta + logic), false, 'no 普草 href');
 assert.match(middleware, /const CACHE_V = 'v\d+'/, 'CACHE_V present; do not assert exact bump here beyond existence');
 assert.match(baseLayout, /import MobileDualCta from/, 'BaseLayout imports MobileDualCta');
 assert.match(baseLayout, /<MobileDualCta\s+locale=\{locale\}\s+brand=\{brand\}\s*\/>/, 'BaseLayout mounts MobileDualCta');
 assert.match(baseLayout, /<\/style>/, 'BaseLayout style tag closed');
 assert.match(mobileDualCta, /display:\s*none/, 'hidden on desktop by default');
+assert.match(mobileDualCta, /:global\(body:has\(\.mobile-dual-cta\) #bh-wa-fab\)/, 'hides conflicting WA FAB on mobile only when the bar is rendered');
+assert.match(mobileDualCta, /whatsappHref\(/, 'WA href comes from the helper');
 assert.match(mobileDualCta, /sampleHref\(/, 'sample href comes from the helper');
 assert.match(mobileDualCta, /body:has\(\.mobile-dual-cta\)/, 'body padding only when the bar is rendered');
 assert.equal(/:global\(body\)\s*\{[^}]*padding-bottom/.test(mobileDualCta), false, 'do not pad body when beauty2oem skips the bar');
@@ -40,14 +43,18 @@ assert.match(mobileDualCta, /env\(safe-area-inset-bottom/, 'clear the home indic
 assert.match(mobileDualCta, /z-index:\s*49/, 'stay under the sticky header (z-index 50)');
 assert.match(mobileDualCta, /\.ck-top/, 'lift back-to-top above the bar');
 assert.match(mobileDualCta, /bh-dual-cta-typing/, 'hide the bar while a text field is focused');
-assert.match(mobileDualCta, /申请样品/);
-assert.match(mobileDualCta, /Request sample/);
+assert.match(mobileDualCta, /#0d7a42/, 'WhatsApp green passes contrast on white');
 
 const noneAt = mobileDualCta.search(/\.mobile-dual-cta \{[^}]*display:\s*none/s);
 const mediaAt = mobileDualCta.indexOf('@media (max-width: 52rem)');
 const flexAt = mobileDualCta.indexOf('.mobile-dual-cta { display: flex; }');
 assert.ok(noneAt !== -1 && noneAt < mediaAt, 'desktop hide is the default, before the mobile query');
 assert.ok(flexAt > mediaAt, 'flex only inside the mobile query');
+
+assert.equal(whatsappHref(''), 'https://wa.me/8613600050502');
+assert.equal(whatsappHref(null), 'https://wa.me/8613600050502');
+assert.equal(whatsappHref('+86 136-0005-0502'), 'https://wa.me/8613600050502');
+assert.equal(whatsappHref('86 136 0005 0503'), 'https://wa.me/8613600050503');
 
 assert.equal(sampleHref({ locale: 'en', pathname: '/en/', search: '' }), '/en/rfq/');
 assert.equal(sampleHref({ locale: 'zh-cn', pathname: '/zh-cn/about/', search: '' }), '/zh-cn/rfq/');

@@ -92,9 +92,7 @@ const admin = read('apps/web/src/pages/bohui/home-flags.astro');
 const fuse = read('apps/web/src/lib/fuse.ts');
 
 assert.match(page, /readShowHome/);
-assert.doesNotMatch(page, /<HomeLead/);
-assert.doesNotMatch(page, /可来厂核对的化妆品代工/);
-assert.doesNotMatch(page, /bio-hero/);
+assert.doesNotMatch(page, /<HomeLead|可来厂核对的化妆品代工|bio-hero/);
 assert.match(page, /showHome\.TRUST && site\.id === 'biosphere-ai'/);
 assert.match(page, /showHome\.COSMOPACK && site\.id === 'biosphere-ai'/);
 assert.match(page, /showHome\.SHOWCASE && showcaseData\.items\.length > 0/);

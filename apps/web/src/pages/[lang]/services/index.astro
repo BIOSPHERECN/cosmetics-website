@@ -277,6 +277,11 @@ const ld = [
       <p class="btns">
         <a class="btn pri" href={`${B}/selector/`}>{T.ctaBtn}</a>
         <a class="btn" href={`${B}/contact/`}>{T.ctaAlt}</a>
+        {/* WhatsApp 放在决策位置。海外采购读完十种情形之后,
+            最不想做的事就是填表等回复 —— 给一个能立刻说上话的入口。 */}
+        <a class="btn wa" href="/zh-cn/contact/" rel="noopener">
+          <span aria-hidden="true">💬</span> WhatsApp
+        </a>
       </p>
     </section>
   </main>
@@ -407,6 +412,8 @@ const ld = [
            background: transparent; }
     .btn.pri { background: var(--ck-accent); border-color: var(--ck-accent);
                color: var(--ck-on-accent); }
+    .btn.wa { gap: .4375rem; }
+    .btn.wa:hover { border-color: var(--ck-accent); color: var(--ck-accent); }
 
     @media (max-width: 60rem) {
       h1 { font-size: clamp(1.5rem, 1.2rem + 2vw, 1.875rem); }

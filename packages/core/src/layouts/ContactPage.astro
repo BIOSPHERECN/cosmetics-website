@@ -182,8 +182,13 @@ const mailto = `mailto:${email}?subject=${encodeURIComponent(`[${site.name}] ${c
               <dt>{c.emailLabel}</dt>
               <dd><a class="mail" href={`mailto:${email}`}>{email}</a></dd>
             </div>
-            {/* 即时联络放在邮箱下面。微信号不翻译:标识符翻译了就搜不到人
+            {/* 即时联络放在邮箱下面 —— 海外采购普遍先加 WhatsApp / WeChat 再谈,
+                邮件是留痕用的。两个号都不翻译:标识符翻译了就搜不到人
                 (创始人 2026-09-10:「统一 WeChat,这样翻译也不会乱」)。 */}
+            <div>
+              <dt>WhatsApp</dt>
+              <dd>填表后我们主动联系</dd>
+            </div>
             <div>
               <dt>WeChat</dt>
               <dd>填表后我们主动加你</dd>

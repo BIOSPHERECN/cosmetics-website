@@ -274,7 +274,7 @@ export const BLOCKS: BlockDef[] = [
 
   /* ── 工厂版首页(2026-09-21 创始人:「首页每一行都是一个模块可以添加删除,可以自行替换图片」)──
      渲染器 FactoryBlock.astro。文案里可写占位符,渲染时从库填数:{products} {summaries} {formulas} {classics} {packaging}
-     {regs} {inci} {lines} {certs} {certs3} {markets} {cats} {marketNames} {site} {date};链接写 whatsapp 会改走到本站询盘，不再外链。 */
+     {regs} {inci} {lines} {certs} {certs3} {markets} {cats} {marketNames} {site} {date};链接写 whatsapp 会换成本站 WhatsApp。 */
   {
     id: 'fx_hero', name: '巨大主张 + 找同款', family: 'factory', renderer: 'FactoryBlock/fx_hero', once: true,
     note: '首屏:一句主张、一句导语、找同款搜索框、三条入口、一张整幅横幅(可换)。',
@@ -287,7 +287,7 @@ export const BLOCKS: BlockDef[] = [
       items: [
         { label: '找产品机会', note: '不知道下一款做什么?看机会卡', href: '#opps' },
         { label: '我有产品想法', note: '在库配方基底按品类 / 剂型 / 功效筛', href: '/formulas/' },
-        { label: '已有产品要代工', note: '发全成分表或样品,工厂直接出方案', href: '/rfq/' },
+        { label: '已有产品要代工', note: '发全成分表或样品,工厂直接出方案', href: 'whatsapp' },
       ],
       hint: '你只说目标。找同款、配方、包材、法规、打样、生产由工厂负责。',
       image: '', imageAlt: '',
@@ -321,7 +321,7 @@ export const BLOCKS: BlockDef[] = [
       intro: '按跨境爆款榜、同类产品库与目标市场法规整理 · 最近更新 {date} · 星级是相对定性,不是测算数字。',
       empty: '机会卡按最近一次成功生成展示;先看配方库或直接说你的处境。',
       axes: ['市场需求', '竞争程度', '价格空间', '供应链可行性'], submit: '让工厂给方案',
-      moreText: '没有你要的?发一句话说你的处境,工厂按目标市场给方向', moreHref: '/rfq/',
+      moreText: '没有你要的?发一句话说你的处境,工厂按目标市场给方向', moreHref: 'whatsapp',
     },
     labels: { axes: '四个维度名', empty: '无卡片时的导语', submit: '卡片按钮文字', moreText: '底部链接文字', moreHref: '底部链接地址' },
   },
@@ -367,11 +367,11 @@ export const BLOCKS: BlockDef[] = [
     },
   },
   {
-    id: 'fx_contact', name: '开始一个项目(询盘 + 邮箱)', family: 'factory', renderer: 'FactoryBlock/fx_contact', once: true,
-    note: '收口:发起询盘 + 邮箱按钮。',
+    id: 'fx_contact', name: '开始一个项目(WhatsApp + 邮箱)', family: 'factory', renderer: 'FactoryBlock/fx_contact', once: true,
+    note: '收口:WhatsApp 按钮(号码读站点设置)+ 邮箱按钮。',
     sketch: '▬',
-    defaults: { title: '开始一个项目', intro: '把你的全成分表、目标市场、首批数量发给我们,工厂两个工作日内回方案与寄样安排。', submit: '发起询盘', mailText: '发邮件' },
-    labels: { submit: '询盘按钮文字', mailText: '邮件按钮文字' },
+    defaults: { title: '开始一个项目', intro: '把你的全成分表、目标市场、首批数量发给我们,工厂两个工作日内回方案与寄样安排。', submit: 'WhatsApp 直接聊', mailText: '发邮件' },
+    labels: { submit: 'WhatsApp 按钮文字', mailText: '邮件按钮文字' },
   },
 
   /* ── BEAUTY2OEM 跨境卖家共创(2026-09-23 A7)── 渲染器同为 FactoryBlock.astro;数据读 b2o_* 三张表(db/migrations/0105_b2o.sql) */

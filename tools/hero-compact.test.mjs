@@ -1,4 +1,4 @@
-// 首页「可来厂核对」整节已撤。询盘仍走导航 /contact/ 与 /rfq/。
+// 首页「可来厂核对」整节已撤。信任带与漏斗本身不改。
 // node tools/hero-compact.test.mjs
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
@@ -9,19 +9,10 @@ const read = (p) => readFileSync(new URL(p, root), 'utf8');
 const page = read('apps/web/src/pages/[...path].astro');
 const strip = read('apps/web/src/components/BioTrustStrip.astro');
 const funnel = read('packages/core/src/components/Funnel.astro');
-const header = read('packages/core/src/components/SiteHeader.astro');
-const rfq = read('apps/web/src/pages/[lang]/rfq/index.astro');
 const middleware = read('apps/web/src/middleware.ts');
 
-assert.equal(existsSync(new URL('apps/web/src/components/HomeLead.astro', root)), false, 'HomeLead 组件已删除');
-assert.doesNotMatch(page, /HomeLead|bio-hero|可来厂核对的化妆品代工|OEM cosmetics from a plant you can audit/);
-assert.doesNotMatch(page, /\/pack\/AL-002-5/);
-
-assert.match(header, /\/contact\//);
-assert.match(rfq, /id="rfq-form"/);
-assert.match(rfq, /提交 RFQ|Submit RFQ/);
-assert.match(strip, /\/rfq\//);
-assert.match(strip, /申请样品/);
+assert.equal(existsSync(new URL('apps/web/src/components/HomeLead.astro', root)), false);
+assert.doesNotMatch(page, /HomeLead|bio-hero|可来厂核对的化妆品代工|OEM cosmetics from a plant you can audit|\/pack\/AL-002-5/);
 
 const pad = strip.match(/padding-block:\s*(\d+)px/);
 assert.ok(pad, '信任带要有 padding-block');

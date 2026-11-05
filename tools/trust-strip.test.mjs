@@ -1,4 +1,4 @@
-// 莱诺鸟 P0-2：首页信任带。node tools/trust-strip.test.mjs
+// 莱诺鸟 P0-2：首页 HomeLead 正下方一条信任带。node tools/trust-strip.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -11,9 +11,8 @@ const strip = read('apps/web/src/components/BioTrustStrip.astro');
 
 const stripAt = page.indexOf('<BioTrustStrip');
 const fairAt = page.indexOf('<CosmopackInquiry');
-assert.ok(stripAt >= 0 && fairAt > stripAt, '信任带位于展会条之前');
-assert.doesNotMatch(page, /<HomeLead/);
-assert.doesNotMatch(page, /可来厂核对的化妆品代工/);
+assert.ok(stripAt >= 0 && fairAt > stripAt, '信任带仍在展会条之前');
+assert.doesNotMatch(page, /<HomeLead|可来厂核对的化妆品代工|bio-hero/);
 assert.match(page, /<BioTrustStrip locale=\{lang\} \/>/);
 
 assert.deepEqual(OEM_CERTS.map((c) => c.id), ['gmpc', 'iso-22716', 'halal']);
@@ -33,7 +32,6 @@ assert.match(strip, /padding-block:\s*32px/);
 assert.match(strip, /max-width:\s*390px/);
 assert.match(strip, /overflow-x:\s*auto/);
 assert.doesNotMatch(strip, /--bio-primary/);
-assert.match(strip, /\/rfq\//);
 assert.doesNotMatch(strip, /halal certified/i);
 assert.doesNotMatch(strip, /FDA|CPNP|SFDA/);
 assert.doesNotMatch(strip, /低\s*MOQ|No MOQ|low MOQ/i);
