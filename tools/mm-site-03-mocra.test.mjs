@@ -78,7 +78,7 @@ for (const key of ['name="market"', 'name="category"', 'name="volume"', 'name="t
 }
 assert.doesNotMatch(rfq, /mocra/i);
 
-assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v140'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v141'/);
 
 const {
   MOCRA_BOUNDARY_EN, MOCRA_DETAIL_CATS, MOCRA_DETAIL_LINK, MOCRA_SITEMAP_LANGS, MOCRA_SLUG,

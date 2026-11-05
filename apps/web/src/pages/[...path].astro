@@ -455,6 +455,7 @@ const ogImage = (() => {
 const SHOW_HOME_TRUST_STRIP = false;
 const SHOW_HOME_COSMOPACK = false;
 const SHOW_HOME_HOT_SHELF = false;
+const SHOW_HOME_SHOWCASE = false;  /* Product showcase / .showcase-grid */
 ---
 
 {dbError ? (
@@ -612,8 +613,8 @@ const SHOW_HOME_HOT_SHELF = false;
       <CosmopackInquiry lang={lang} siteId={site.id} />
     )}
 
-    {/* 首页产品展示区:首屏之下展示成品,2行+更多方块。漏斗再往后。 */}
-    {showcaseData.items.length > 0 && !slug && (
+    {/* 首页产品展示区:首屏之下展示成品,2行+更多方块。漏斗再往后。可回开 SHOW_HOME_SHOWCASE。 */}
+    {SHOW_HOME_SHOWCASE && showcaseData.items.length > 0 && !slug && (
       <section class="block alt">
         <div class="ck-wrap">
           <h2>{({ 'zh-cn': '成品展示', 'zh-tw': '成品展示', jp: '製品', kr: '제품', id: 'Produk', ar: 'المنتجات' } as Record<string, string>)[lang] ?? 'Product showcase'}</h2>

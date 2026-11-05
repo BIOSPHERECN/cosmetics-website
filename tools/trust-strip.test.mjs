@@ -40,6 +40,15 @@ assert.doesNotMatch(strip, /FDA|CPNP|SFDA/);
 assert.doesNotMatch(strip, /低\s*MOQ|No MOQ|low MOQ/i);
 assert.doesNotMatch(strip, /普草/);
 assert.doesNotMatch(strip, /cert-gmpc|cert-iso|cert-halal/);
-assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v140'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v141'/);
+
+assert.match(page, /const SHOW_HOME_TRUST_STRIP = false/);
+assert.match(page, /const SHOW_HOME_COSMOPACK = false/);
+assert.match(page, /const SHOW_HOME_HOT_SHELF = false/);
+assert.match(page, /const SHOW_HOME_SHOWCASE = false/);
+assert.match(page, /SHOW_HOME_TRUST_STRIP && site\.id === 'biosphere-ai'/);
+assert.match(page, /SHOW_HOME_COSMOPACK && site\.id === 'biosphere-ai'/);
+assert.match(page, /SHOW_HOME_SHOWCASE && showcaseData\.items\.length > 0/);
+assert.match(page, /b\.type === 'shelf' && site\.id === 'biosphere-ai' && !slug && !SHOW_HOME_HOT_SHELF/);
 
 console.log('trust-strip.test.mjs:全部通过');
