@@ -1,10 +1,24 @@
-// 公网渲染源不得出现外链主机或站点号码。后台 / API 不在这次扫描里。
+// 公网触点应能生成 wa.me。站点号码只来自后台，不写死。询盘表单仍让客户自填。
 // node tools/public-no-wa.test.mjs
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { oemWaText, waMeHref, waOrContact } from '../packages/core/src/content/wa-link.mjs';
 
 const root = new URL('..', import.meta.url);
+const read = (rel) => readFileSync(new URL(rel, root), 'utf8');
+
+const zh = waMeHref({ whatsapp: '+86 136-0005-0502', lang: 'zh-cn', siteName: 'BIOSPHERE' });
+assert.equal(zh.startsWith('https://wa.me/8613600050502?text='), true);
+assert.match(decodeURIComponent(zh.slice(zh.indexOf('text=') + 5)), /你好,我在看 BIOSPHERE 的网站,想了解代工。/);
+const en = waOrContact({ whatsapp: '86 136 0005 0502', lang: 'en', siteName: 'BIOSPHERE' });
+assert.match(decodeURIComponent(en), /Hi, I am looking at the BIOSPHERE site and would like to discuss OEM\/ODM\./);
+assert.equal(waOrContact({ whatsapp: '', lang: 'zh-cn' }), '/zh-cn/contact/');
+assert.equal(waOrContact({ whatsapp: 'abc', lang: 'en' }), '/en/contact/');
+assert.equal(waMeHref({ whatsapp: null, lang: 'en' }), '');
+assert.match(oemWaText('zh-tw', '帛卉'), /想了解代工/);
+assert.equal(waOrContact({ whatsapp: '+1 (415) 555-0100', lang: 'ja' }).startsWith('https://wa.me/14155550100?text='), true);
+
 const roots = [
   'apps/web/src/components',
   'apps/web/src/pages',
@@ -37,24 +51,42 @@ for (const rel of roots) {
   else files.push(path);
 }
 
-const needles = ['wa.me', '8613600050502'];
+const banned = '8613600050502';
 const hits = [];
 for (const file of files) {
   const text = readFileSync(file, 'utf8');
-  for (const n of needles) {
-    if (text.includes(n)) hits.push(`${file.slice(root.pathname.length)}: ${n}`);
-  }
+  if (text.includes(banned)) hits.push(file.slice(root.pathname.length));
+}
+assert.deepEqual(hits, [], `公网源写死了站点号码:\n${hits.join('\n')}`);
+
+const link = read('packages/core/src/content/wa-link.mjs');
+assert.match(link, /https:\/\/wa\.me\/\$\{wa\}\?text=/);
+
+for (const rel of [
+  'apps/web/src/components/FactoryBlock.astro',
+  'packages/core/src/components/SiteFooter.astro',
+  'packages/core/src/components/ChatWidget.astro',
+  'packages/core/src/components/MobileDualCta.astro',
+  'packages/core/src/components/mobile-dual-cta.mjs',
+  'packages/core/src/layouts/BaseLayout.astro',
+]) {
+  assert.match(read(rel), /waOrContact|waMeHref|whatsappHref|wa\.me/, rel);
 }
 
-assert.deepEqual(hits, [], `公网源仍含外链或号码:\n${hits.join('\n')}`);
+assert.match(read('apps/web/src/components/FactoryBlock.astro'), /waOrContact/);
+assert.doesNotMatch(read('apps/web/src/components/FactoryBlock.astro'), /可来厂核对的化妆品代工/);
+assert.match(read('apps/web/src/components/FactoryBlock.astro'), /fill\(d\.submit\) \|\| 'WhatsApp'/);
+assert.match(read('packages/core/src/components/ChatWidget.astro'), /id="bh-wa-fab"/);
+assert.match(read('packages/core/src/components/SiteFooter.astro'), /WhatsApp \+\{wa\}/);
+assert.match(read('packages/core/src/components/MobileDualCta.astro'), /class="wa-btn"/);
 assert.match(
-  readFileSync(new URL('../apps/web/src/middleware.ts', import.meta.url), 'utf8'),
-  /const CACHE_V = 'v150'/,
-);
-assert.match(
-  readFileSync(new URL('../apps/web/src/pages/[lang]/rfq/index.astro', import.meta.url), 'utf8'),
+  read('apps/web/src/pages/[lang]/rfq/index.astro'),
   /name="whatsapp"/,
   '询盘表单仍保留客户填写的联系方式',
 );
+assert.match(
+  read('apps/web/src/middleware.ts'),
+  /const CACHE_V = 'v151'/,
+);
 
-console.log(`public-no-wa ok (${files.length} files)`);
+console.log(`public wa touchpoints ok (${files.length} files scanned)`);

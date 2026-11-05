@@ -85,6 +85,6 @@ assert.match(rfq, /name="market"[^>]*value=\{marketQ\}/);
 assert.doesNotMatch(rfq, /value=\{targetQ\}/);
 
 const cache = read('apps/web/src/middleware.ts');
-assert.match(cache, /CACHE_V = 'v150'/);
+assert.match(cache, /CACHE_V = 'v151'/);
 
 console.log('cosmopack-inquiry.test.mjs:全部通过');

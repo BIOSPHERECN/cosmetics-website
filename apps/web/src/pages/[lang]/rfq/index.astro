@@ -11,6 +11,7 @@
  * 配方路径 radio 仅 UI（name=formula_path，非必填，不进五键）。落库只作 notes 前缀。
  * intent=sample|quote|docs 只预填或高亮既有字段，不新增必填键。
  */
+import { waMeHref } from '@cosmetic/core/content/wa-link.mjs';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
 import { env } from 'cloudflare:workers';
@@ -34,6 +35,7 @@ const zh = lang.startsWith('zh');
 const tSkip = uiT(lang as any)('a11y.skip');
 const db = (env as any).DB as D1Database | undefined;
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
+const rfqWa = waMeHref({ whatsapp: ((Astro.locals as any)?.contact ?? {}).whatsapp, lang, siteName: shell.site?.name });
 const siteId = shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai';
 const B = `/${lang}`;
 const path = `${B}/rfq/`;
@@ -410,6 +412,7 @@ const T = zh
     <p class="links">
       <a href={`${B}/products/`}>{T.portfolio}</a>
       · <a href={`${B}/oem/`}>{T.oem}</a>
+      {rfqWa && <> · <a href={rfqWa} target="_blank" rel="noopener">WhatsApp</a></>}
       · <a href={`mailto:${shell.email}`}>{shell.email}</a>
     </p>
   </main>

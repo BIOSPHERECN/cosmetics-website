@@ -1,8 +1,8 @@
-﻿// P1-3: Mobile bottom bar keeps Request sample and does not emit a public chat link.
+﻿// P1-3: Mobile bottom bar is WhatsApp + Request sample.
 // node tools/p1-3-mobile-dual-cta.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { sampleHref } from '../packages/core/src/components/mobile-dual-cta.mjs';
+import { sampleHref, whatsappHref } from '../packages/core/src/components/mobile-dual-cta.mjs';
 
 const mobileDualCta = readFileSync(
   new URL('../packages/core/src/components/MobileDualCta.astro', import.meta.url),
@@ -21,18 +21,19 @@ const middleware = readFileSync(
   'utf8',
 );
 
-assert.equal(/wa\.me/.test(logic + mobileDualCta + baseLayout), false, 'public bar and layout must not emit wa.me');
+assert.match(logic + baseLayout, /wa\.me/, 'public bar helper and layout must be able to emit wa.me');
 assert.equal(/8613600050502/.test(logic + mobileDualCta + baseLayout), false, 'public bar must not embed the site number');
 assert.match(logic, /\/rfq\/\?product_id=|\/rfq\/`/, 'must link /rfq/');
 assert.match(mobileDualCta, /max-width:\s*52rem/, 'mobile media query');
 assert.match(mobileDualCta, /beauty2oem/, 'beauty2oem skip');
 assert.equal(/href=["'][^"']*普草/.test(mobileDualCta + logic), false, 'no 普草 href');
-assert.match(middleware, /const CACHE_V = 'v150'/, 'CACHE_V is v150 for this public-entry removal');
+assert.match(middleware, /const CACHE_V = 'v151'/, 'CACHE_V is v151 after restoring public WhatsApp');
 assert.match(baseLayout, /import MobileDualCta from/, 'BaseLayout imports MobileDualCta');
 assert.match(baseLayout, /<MobileDualCta\s+locale=\{locale\}\s+brand=\{brand\}\s*\/>/, 'BaseLayout mounts MobileDualCta');
 assert.match(baseLayout, /<\/style>/, 'BaseLayout style tag closed');
 assert.match(mobileDualCta, /display:\s*none/, 'hidden on desktop by default');
-assert.equal(/class="wa-btn"/.test(mobileDualCta), false, 'no outbound chat button');
+assert.match(mobileDualCta, /class="wa-btn"/, 'WhatsApp button sits beside Request sample');
+assert.match(mobileDualCta, /whatsappHref\(/);
 assert.match(mobileDualCta, /sampleHref\(/, 'sample href comes from the helper');
 assert.match(mobileDualCta, /body:has\(\.mobile-dual-cta\)/, 'body padding only when the bar is rendered');
 assert.equal(/:global\(body\)\s*\{[^}]*padding-bottom/.test(mobileDualCta), false, 'do not pad body when beauty2oem skips the bar');
@@ -73,5 +74,14 @@ assert.equal(sampleHref({ locale: '/evil.com', pathname: '/en/', search: '' }), 
 assert.equal(sampleHref({ locale: 'en', pathname: `/en/product/${'a'.repeat(41)}/`, search: '' }), '/en/rfq/', 'over-long slug is not a safe id');
 assert.equal(/product_id=$/.test(sampleHref({ locale: 'en', pathname: '/en/', search: '?product_id=' })), false);
 assert.equal(/product_id=&/.test(sampleHref({ locale: 'zh-tw', pathname: '/zh-tw/', search: '' })), false);
+
+const zhWa = whatsappHref('+86 136-0005-0502', 'zh-cn', 'BIOSPHERE');
+assert.equal(zhWa.startsWith('https://wa.me/8613600050502?text='), true);
+assert.match(decodeURIComponent(zhWa), /想了解代工/);
+const enWa = whatsappHref('8613600050502', 'en', 'BIOSPHERE');
+assert.match(decodeURIComponent(enWa), /OEM\/ODM/);
+assert.equal(whatsappHref('', 'en'), '/en/contact/');
+assert.equal(whatsappHref(null, 'zh-tw'), '/zh-tw/contact/');
+assert.equal(whatsappHref('not-a-number', 'ja'), '/ja/contact/');
 
 console.log('p1-3 mobile dual CTA test ok');

@@ -1,4 +1,5 @@
 ---
+import { waDigits, waOrContact } from '@cosmetic/core/content/wa-link.mjs';
 import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
@@ -49,6 +50,9 @@ const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const path = `/${lang}/services/`;
 const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
 const B = `/${lang}`;
+const svcWaRaw = ((Astro.locals as any)?.contact ?? {}).whatsapp;
+const svcWa = waDigits(svcWaRaw);
+const svcWaHref = waOrContact({ whatsapp: svcWaRaw, lang, siteName: shell.site?.name });
 
 const T = zh ? {
   eyebrow: '个性化 OEM / ODM 服务',
@@ -277,6 +281,9 @@ const ld = [
       <p class="btns">
         <a class="btn pri" href={`${B}/selector/`}>{T.ctaBtn}</a>
         <a class="btn" href={`${B}/contact/`}>{T.ctaAlt}</a>
+        <a class="btn wa" href={svcWaHref} target={svcWa ? '_blank' : undefined} rel={svcWa ? 'noopener noreferrer' : undefined}>
+          <span aria-hidden="true">💬</span> WhatsApp
+        </a>
       </p>
     </section>
   </main>

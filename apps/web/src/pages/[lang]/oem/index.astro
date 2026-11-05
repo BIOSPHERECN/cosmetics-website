@@ -1,4 +1,5 @@
 ---
+import { waMeHref } from '@cosmetic/core/content/wa-link.mjs';
 import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { t as uiT } from '@cosmetic/core/i18n';
@@ -24,6 +25,7 @@ const tSkip = uiT(lang as any)('a11y.skip');
 const db = (env as any).DB as D1Database | undefined;
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const B = `/${lang}`; const path = `${B}/oem/`;
+const waHref = waMeHref({ whatsapp: ((Astro.locals as any)?.contact ?? {}).whatsapp, lang, siteName: shell.site?.name });
 const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
 const certs = OEM_CERTS.map((c) => ({ id: c.id, label: oemEvidenceCertLabel(c.id, c.name) }));
 const pains: [string, string][] = zh ? [
@@ -91,6 +93,7 @@ const ld = [
     <header class="hd"><h1>{T.h1}</h1><p class="lede">{T.lede}</p></header>
     <EvidenceFlow
       lang={lang}
+      waHref={waHref}
       ctaLabel={zh ? '发起询盘' : 'Start RFQ'}
       evidenceTitle={zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}
       evidenceBody={certWallCopy(zh).lede}

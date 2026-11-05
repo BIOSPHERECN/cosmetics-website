@@ -534,8 +534,8 @@ assert.equal(insertSql.slice(insertAt, insertAt + 280).includes('inquiry_events'
 assert.match(rfq, /intent: intentToken/);
 assert.match(rfq, /cta: intentToken/);
 assert.match(rfq, /intent === 'sample' \|\| intent === 'quote' \|\| intent === 'docs'/);
-assert.match(middleware, /const CACHE_V = 'v150'/);
+assert.match(middleware, /const CACHE_V = 'v151'/);
 assert.equal(read('apps/web/src/pages/bohui/inquiries.astro').includes('inquiry_events'), false);
 
-console.log(JSON.stringify({ cache_v: 'v150', scenarios: evidence }, null, 2));
+console.log(JSON.stringify({ cache_v: 'v151', scenarios: evidence }, null, 2));
 console.log('inquiry-events.test.mjs: 三条线索的来源、市场、产品、意图、按钮、入库、负责人、跟进可查，且重复写入不另起一行');

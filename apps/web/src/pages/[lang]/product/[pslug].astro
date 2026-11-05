@@ -14,6 +14,7 @@
  * 语种回退与全站一致(目标语 → en → zh-cn)。
  * description 是公开文案;internal_note **不查**(合规提醒只属于后台)。
  */
+import { waMeHref } from '@cosmetic/core/content/wa-link.mjs';
 import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
@@ -40,6 +41,7 @@ const pslug = String(Astro.params.pslug ?? '').toLowerCase();
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const siteId = shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai';
 const contactWa: string | null = ((Astro.locals as any)?.contact ?? {}).whatsapp ?? null;
+const productWa = waMeHref({ whatsapp: contactWa, lang, siteName: shell.site?.name });
 
 /* 语种回退与全站同一套:目标语 → en → zh-cn */
 const PRI = `CASE i.lang WHEN ? THEN 0 WHEN 'en' THEN 1 WHEN 'zh-cn' THEN 2 ELSE 3 END`;
@@ -357,6 +359,9 @@ const jsonLd = [
             {/* 主 CTA 只一颗实心。样品是描边。开发同款是文字链。三枚都进 RFQ，且 href 过 product_id 门闩。 */}
             {inquiryHref && <a class="cta primary" href={inquiryHref}>{T.inquiry}</a>}
             {sampleHref && <a class="sample-btn" href={sampleHref}>{T.sample}</a>}
+            {productWa && (
+              <a class="wa" href={productWa} target="_blank" rel="noopener">💬 WhatsApp</a>
+            )}
           </div>
           {developHref && <p class="develop-row"><a class="develop-link" href={developHref}>{T.develop}</a></p>}
           <ul class="assure">

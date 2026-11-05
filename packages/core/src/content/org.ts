@@ -9,6 +9,7 @@
  * 页面不要再自己调用 orgJsonLd:同一页两块相同 @id 的 Organization
  * 是重复结构化数据(SEO-004),不会被当成「合并后只算一份」。
  */
+import { waDigits, waMeHref } from './wa-link.mjs';
 
 /** 公司主体 —— 来自《帛卉公司介绍_2026》 */
 export const ORG = {
@@ -74,8 +75,10 @@ export const ORG = {
  * LocalBusiness 是给「有营业时间、顾客上门」的场所用的,
  * 代工厂不属于那一类,用错类型比不用更糟。
  */
-export function orgJsonLd(base: string, siteName: string, locale: string, description: string, _contact?: { whatsapp?: string | null; wechat?: string | null }) {
+export function orgJsonLd(base: string, siteName: string, locale: string, description: string, contact?: { whatsapp?: string | null; wechat?: string | null }) {
   const zh = locale.startsWith('zh');
+  const wa = waDigits(contact?.whatsapp);
+  const waUrl = waMeHref({ whatsapp: contact?.whatsapp, lang: locale, siteName });
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -87,7 +90,8 @@ export function orgJsonLd(base: string, siteName: string, locale: string, descri
        多个来源的同一主体,官网↔阿里国际站店铺互指能提升被引用的置信度。
        口径纪律:店铺上的产能/认证数字须与官网一致,不一致会反噬。 */
     sameAs: ['https://biospherecosmetics.en.alibaba.com/'],
-    /* 联络方式进结构化数据 —— 只给询盘页,不写站点号码、不写外链。
+    /* 联络方式进结构化数据 —— AI 答案引擎回答「这家工厂怎么联系」时,
+       抓的是这里,而不是页面上那行字。WhatsApp 对海外采购是最低摩擦的入口。
        contactType 用 sales 而不是 customer support:我们要的是询盘,不是售后。 */
     /* 2026-09-07 外部诊断指出缺这两项 E-E-A-T 强信号。
        numberOfEmployees 的数字 llms.txt 里本来就写着「研发人员 30 人以上」,
@@ -114,7 +118,8 @@ export function orgJsonLd(base: string, siteName: string, locale: string, descri
       name: zh ? '销售咨询' : 'Sales inquiries',
       availableLanguage: ['zh-Hans', 'en'],
       areaServed: ['CN', 'US', 'EU', 'SEA', 'MENA'],
-      url: `${base}/en/contact/`,
+      /* 有号码才写 telephone 与 wa.me;空的 wa.me/ 是无效链接。无号则回本语种联系页。 */
+      ...(waUrl ? { telephone: `+${wa}`, url: waUrl } : { url: `${base}/${locale}/contact/` }),
     }],
     logo: `${base}/media/57`,
     image: `${base}/media/57`,
