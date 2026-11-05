@@ -67,6 +67,7 @@ import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { memo } from '../lib/memo';
 import { catalogLabel, claimNote, isCertWall, publicMoq, rewriteHeldCertAnswer, softenClaims } from '../lib/comply-copy';
 import { homeSeo } from '../lib/home-seo';
+import { readShowHome, resolveHomeFlagsKv, homeFlagsAllowMemory } from '../lib/show-home';
 
 export const prerender = false;
 
@@ -447,15 +448,31 @@ const ogImage = (() => {
   return '/media/57';
 })();
 
-/* 首页三块临时下线，改 true 即恢复。组件文件保留，其它页照旧挂载。
-   ① BioTrustStrip（.bio-trust-strip）
-   ② CosmopackInquiry（#cosmopack-asia-inquiry / .cpk）只关首页这一处
-   ③ Shelf（.dtc-sec.shelf，CMS 标题「爆款产品」）只关首页
-   HomeLead、漏斗 Funnel、页头页脚、全站询盘与 WhatsApp 入口不动。 */
+/* 读 KV 失败时的垫底，与种子一致：四块关，紧凑瓶图开。
+   线上以 show_home:biosphere-ai 为准（lib/show-home.ts）。JSON 缺键缺省 true。
+   整键还不存在时按种子渲染，避免合入后四块闪回来。漏斗 Funnel 不在这五键里。 */
 const SHOW_HOME_TRUST_STRIP = false;
 const SHOW_HOME_COSMOPACK = false;
 const SHOW_HOME_HOT_SHELF = false;
 const SHOW_HOME_SHOWCASE = false;  /* Product showcase / .showcase-grid */
+const SHOW_HOME_HERO_CARD = true;
+let showHome = {
+  TRUST: SHOW_HOME_TRUST_STRIP,
+  COSMOPACK: SHOW_HOME_COSMOPACK,
+  HOT_SHELF: SHOW_HOME_HOT_SHELF,
+  SHOWCASE: SHOW_HOME_SHOWCASE,
+  HERO_CARD: SHOW_HOME_HERO_CARD,
+};
+if (site?.id === 'biosphere-ai' && !slug) {
+  const fromMw = (Astro.locals as any).showHome?.flags;
+  if (fromMw) showHome = fromMw;
+  else {
+    try {
+      const kv = resolveHomeFlagsKv(env as any, homeFlagsAllowMemory(hostname, env as any));
+      showHome = (await readShowHome(kv, { absentAsSeed: true })).flags;
+    } catch { /* 垫底用上面的硬编码 */ }
+  }
+}
 ---
 
 {dbError ? (
@@ -604,22 +621,22 @@ const SHOW_HOME_SHOWCASE = false;  /* Product showcase / .showcase-grid */
 
     {/* BIOSPHERE-AI 首页首屏:左文案 + 右紧凑真瓶。顺序 Trust→Cosmopack→Funnel→Showcase；漏斗在成品展示之上。 */}
     {site.id === 'biosphere-ai' && !slug && (
-      <HomeLead locale={lang} whatsapp={contactWa} />
+      <HomeLead locale={lang} whatsapp={contactWa} showShot={showHome.HERO_CARD} />
     )}
-    {SHOW_HOME_TRUST_STRIP && site.id === 'biosphere-ai' && !slug && (
+    {showHome.TRUST && site.id === 'biosphere-ai' && !slug && (
       <BioTrustStrip locale={lang} />
     )}
-    {SHOW_HOME_COSMOPACK && site.id === 'biosphere-ai' && !slug && (
+    {showHome.COSMOPACK && site.id === 'biosphere-ai' && !slug && (
       <CosmopackInquiry lang={lang} siteId={site.id} />
     )}
 
-    {/* 顺序 Trust→Cosmopack→Funnel→Showcase；漏斗在成品展示之上。 */}
+    {/* 顺序 Trust→Cosmopack→Funnel→Showcase；漏斗在成品展示之上（Funnel 不进五键）。 */}
     {site.id === 'biosphere-ai' && !slug && (
       <Funnel locale={lang} heading="h2" />
     )}
 
-    {/* 首页产品展示区:首屏之下展示成品,2行+更多方块。可回开 SHOW_HOME_SHOWCASE。 */}
-    {SHOW_HOME_SHOWCASE && showcaseData.items.length > 0 && !slug && (
+    {/* 首页产品展示区:首屏之下展示成品,2行+更多方块。开关在 KV SHOWCASE。 */}
+    {showHome.SHOWCASE && showcaseData.items.length > 0 && !slug && (
       <section class="block alt">
         <div class="ck-wrap">
           <h2>{({ 'zh-cn': '成品展示', 'zh-tw': '成品展示', jp: '製品', kr: '제품', id: 'Produk', ar: 'المنتجات' } as Record<string, string>)[lang] ?? 'Product showcase'}</h2>
@@ -655,8 +672,8 @@ const SHOW_HOME_SHOWCASE = false;  /* Product showcase / .showcase-grid */
       if ((b.type === 'fx_hero' || b.type === 'hero' || b.type === 'banner') && site.id === 'biosphere-ai' && !slug) return null;
       /* 10-22 创始人:「看到一个产品就交给工厂做」先隐藏 */
       if (b.type === 'fx_latest' && site.id === 'biosphere-ai' && !slug) return null;
-      /* 首页爆款货架整块下线（可回开）。类名 dtc-sec shelf，用户可见标题来自 CMS，现网为「爆款产品」。 */
-      if (b.type === 'shelf' && site.id === 'biosphere-ai' && !slug && !SHOW_HOME_HOT_SHELF) return null;
+      /* 首页爆款货架。KV 键 HOT_SHELF 为 false 时整块不下。类名 dtc-sec shelf，标题来自 CMS，现网为「爆款产品」。 */
+      if (b.type === 'shelf' && site.id === 'biosphere-ai' && !slug && !showHome.HOT_SHELF) return null;
       switch (b.type) {
         case 'hero':
           // demo 阶段:每站取一张占位实拍图证明图片管线通;真图入库后由 d.image 覆盖

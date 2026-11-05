@@ -14,9 +14,11 @@ interface Props {
   locale: string;
   /** 站点设置里的 WhatsApp，可空 */
   whatsapp?: string | null;
+  /** SHOW_HOME_HERO_CARD。false 时收起右栏 .bio-hero-shot，左侧文案保留。 */
+  showShot?: boolean;
 }
 
-const { locale, whatsapp = null } = Astro.props;
+const { locale, whatsapp = null, showShot = true } = Astro.props;
 const zh = String(locale).startsWith('zh');
 const base = `/${locale}`;
 const digits = String(whatsapp ?? '').replace(/\D/g, '');
@@ -30,7 +32,7 @@ const shotAlt = zh
   : 'Airless bottle from the packaging library, code AL-002-5, white-background photograph';
 ---
 
-<section class="bio-hero" aria-labelledby="bio-hero-title">
+<section class:list={['bio-hero', !showShot && 'bio-hero--copy']} aria-labelledby="bio-hero-title">
   <div class="ck-wrap bio-hero-grid">
     <div class="bio-hero-copy">
       <h1 id="bio-hero-title">{h1}</h1>
@@ -50,6 +52,7 @@ const shotAlt = zh
         >WhatsApp</a>
       </p>
     </div>
+    {showShot && (
     <figure class="bio-hero-shot">
       <img
         src="/pack/AL-002-5"
@@ -60,6 +63,7 @@ const shotAlt = zh
         fetchpriority="high"
       />
     </figure>
+    )}
   </div>
 </section>
 
@@ -75,6 +79,9 @@ const shotAlt = zh
     grid-template-columns: minmax(0, 1.45fr) auto;
     gap: 1.25rem;
     align-items: center;
+  }
+  .bio-hero--copy .bio-hero-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
   .bio-hero-copy { min-width: 0; }
   html[data-brand][data-editorial] .bio-hero h1 {

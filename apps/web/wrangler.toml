@@ -51,6 +51,18 @@ id = "a461419944d4422cb81e374a391632ce"
 binding = "CAPBANK"
 id = "cf5cc6d044e748d684181e20a411f6a7"
 
+# 首页五块开关（lib/show-home.ts，键 show_home:biosphere-ai）。
+# 改 KV 即可藏/开，不必再发藏块 PR，也不许为此抬 CACHE_V。
+# ops：npx wrangler kv namespace create HOME_FLAGS
+#      把返回的 id / preview_id 填上下面两行，去掉这四行行首的 # 再部署。
+# 未填真实 id 前整段保持注释，避免占位 id 让下一次 ship 部署失败。
+# 绑定缺失时首页按种子出页（TRUST/COSMOPACK/HOT_SHELF/SHOWCASE 关，HERO_CARD 开）。
+# 本地没绑定时后台用进程内 mock。
+# [[kv_namespaces]]
+# binding = "HOME_FLAGS"
+# id = "REPLACE_WITH_HOME_FLAGS_NAMESPACE_ID"
+# preview_id = "REPLACE_WITH_HOME_FLAGS_PREVIEW_ID"
+
 # ── 发信(2026-09-18 邮件中心)────────────────────────────────────
 # Cloudflare Email Sending(Beta,账号级「电子邮件服务 → 电子邮件发送」,Workers Paid;每月含 3,000 封,之后 $0.35/千封)。
 # 绑定本身不校验域名,可先部署;创始人在面板「接入域名 biosphere-ai.com」(自动加 DKIM/SPF/DMARC)后 send() 才成功,

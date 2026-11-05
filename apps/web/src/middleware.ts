@@ -23,6 +23,8 @@ import { answerBot } from './lib/quota';
 /* lib/fuse:费用熔断保险丝(只依赖 D1,与 quota 同一约束,可进中间件) */
 import { fuseApplies, fuseCheck, fuseResponse } from './lib/fuse';
 import { cacheKeyRequest, cachePutResponse, restoreBrowserCacheControl } from './lib/edge-cache';
+/* 首页块开关的 etag。纯数据，不拉组件。只给 BIOSPHERE 语言首页的缓存键加 __hf。 */
+import { isLocaleHomePath, readShowHome, resolveHomeFlagsKv } from './lib/show-home';
 /* lib/member 只依赖 auth 与 quota;lib/canon 没有任何依赖(09-24 C1) */
 import { memberSigned } from './lib/member';
 import { canonical, isPagePath, keyParams, uncacheable } from './lib/canon';
@@ -558,7 +560,22 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
   /* v3(2026-09-07 上午):D1 额度耗尽期间,边缘把一批 404 与 503 缓存住了 ——
      修好之后访客拿到的仍是坏副本。推版本号是清掉它们唯一干净的办法。 */
   /* v4(2026-09-07 晚):sitemap 拆分、繁中上线、跨站兜底重写 —— 清掉全部旧副本 */
-  const CACHE_V = 'v142';   // 2026-11-05: Funnel 归位到 showcase 上方
+  /* 首页块开关只进 BIOSPHERE 语言首页的缓存键（本地预览的语言首页同样带上，方便 mock）。
+     查缓存之前读一次 KV，etag 变了旧副本对不上，不必把整站 TTL 改成 120，也不许抬 CACHE_V。
+     其它路径不加 __hf：一次开关不该打穿全站 6 小时缓存。 */
+  let homeFlagEtag = '';
+  if ((req.method === 'GET' || req.method === 'HEAD')
+      && isLocaleHomePath(url0.pathname)
+      && (dev || siteIdForHost(url0.hostname) === 'biosphere-ai')) {
+    try {
+      const st = await readShowHome(resolveHomeFlagsKv(cfEnv as any, dev), { absentAsSeed: true });
+      homeFlagEtag = st.etag;
+      (ctx.locals as any).showHome = st;
+    } catch {
+      homeFlagEtag = '00001';
+    }
+  }
+  const CACHE_V = 'v142';   // 2026-11-05: Funnel 归位到 showcase 上方。首页块开关走 __hf，禁止为藏块再抬这个常量。
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。
@@ -569,9 +586,10 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     for (const [k, v] of keep) u.searchParams.append(k, v);
     if (gateKey) u.searchParams.set('__gate', gateKey);   // 必须在 u.search = '' 之后(平台 09-22 踩过:放前面被清掉,Googlebot 命中真人那份)
     u.searchParams.set('__cv', CACHE_V);
+    if (homeFlagEtag) u.searchParams.set('__hf', homeFlagEtag);
     /* 不复制原请求头。Cache API 的 match 会看 Range / If-None-Match / If-Modified-Since,
        爬虫和 max-age=0 的浏览器用这些头复访时,命中会变成 304/206 或直接 miss,再次吃熔断。
-       键只认上面规范化后的 URL(含 __cv / __gate)。会员、后台、探针不进这条路径。 */
+       键只认上面规范化后的 URL(含 __cv / __gate，首页另含 __hf)。会员、后台、探针不进这条路径。 */
     return cacheKeyRequest(u.toString());
   };
   /* 备份副本:每次成功渲染都另存一份,存七天,只在渲染失败时才拿出来用。
@@ -587,6 +605,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
     const u = new URL(r.url);
     if (gateKey) u.searchParams.set('__gate', gateKey);   // 陈旧备份也分开:5xx 兜底时不能把爬虫那份全文端给未登录的人
     u.searchParams.set('__cv', CACHE_V);
+    if (homeFlagEtag) u.searchParams.set('__hf', homeFlagEtag);
     u.searchParams.set('__stale', '1');
     return cacheKeyRequest(u.toString());
   };
