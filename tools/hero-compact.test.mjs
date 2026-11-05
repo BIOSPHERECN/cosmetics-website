@@ -19,12 +19,15 @@ assert.ok(pad, '信任带要有 padding-block');
 const padPx = Number(pad[1]);
 assert.ok(padPx >= 28 && padPx <= 36, `信任带 padding 应在 28–36px，实际 ${padPx}`);
 
-const showAt = page.indexOf('class="showcase-grid"');
+const stripAt = page.indexOf('<BioTrustStrip');
 const funnelAt = page.indexOf('<Funnel locale={lang} heading="h2" />');
-assert.ok(showAt >= 0 && funnelAt >= 0 && funnelAt < showAt, '漏斗在成品展示之上');
+const showAt = page.indexOf('class="showcase-grid"');
+assert.ok(stripAt >= 0 && funnelAt > stripAt && showAt > funnelAt, '信任带 → funnel，漏斗在成品展示之上');
+assert.match(page, /const SHOW_HOME_TRUST_STRIP = true/);
+assert.match(page, /const SHOW_HOME_SHOWCASE = false/);
 assert.match(funnel, /padding-block:\s*clamp\(0\.75rem,\s*2vw,\s*1\.25rem\)/);
 assert.doesNotMatch(funnel, /padding-block:\s*clamp\(1\.5rem,\s*4vw,\s*3\.5rem\)/);
 
-assert.match(middleware, /const CACHE_V = 'v144'/);
+assert.match(middleware, /const CACHE_V = 'v146'/);
 
 console.log('hero-compact.test.mjs:全部通过');

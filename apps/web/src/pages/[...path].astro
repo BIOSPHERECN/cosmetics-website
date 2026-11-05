@@ -447,10 +447,12 @@ const ogImage = (() => {
   return '/media/57';
 })();
 
-/* 读 KV 失败时的垫底，与种子一致：四块关，紧凑瓶图开。
+/* 读 KV 失败时的垫底，与种子一致：信任带开，展会/货架/成品关，紧凑瓶图开。
    线上以 show_home:biosphere-ai 为准（lib/show-home.ts）。JSON 缺键缺省 true。
-   整键还不存在时按种子渲染，避免合入后四块闪回来。漏斗 Funnel 不在这五键里。 */
-const SHOW_HOME_TRUST_STRIP = false;
+   整键还不存在时按种子渲染。#47 误藏的信任带在此收回（D）。
+   硬序 Hero → BioTrustStrip → Funnel；无 showcase 时信任带夹在中间（E）。
+   漏斗不在这五键里。Cosmopack / showcase 保持关。 */
+const SHOW_HOME_TRUST_STRIP = true;
 const SHOW_HOME_COSMOPACK = false;
 const SHOW_HOME_HOT_SHELF = false;
 const SHOW_HOME_SHOWCASE = false;  /* Product showcase / .showcase-grid */
@@ -618,17 +620,16 @@ if (site?.id === 'biosphere-ai' && !slug) {
       </section>
     )}
 
-    {/* 顺序 Trust→Cosmopack→Funnel→Showcase；漏斗在成品展示之上。首屏代工块已撤。 */}
+    {/* BIOSPHERE-AI 首页。#55 已撤来厂核对整块。硬序 信任带 → funnel（D+E）；无 showcase 时信任带夹在中间，funnel 不贴 Hero。 */}
     {showHome.TRUST && site.id === 'biosphere-ai' && !slug && (
       <BioTrustStrip locale={lang} />
     )}
-    {showHome.COSMOPACK && site.id === 'biosphere-ai' && !slug && (
-      <CosmopackInquiry lang={lang} siteId={site.id} />
-    )}
-
-    {/* 顺序 Trust→Cosmopack→Funnel→Showcase；漏斗在成品展示之上（Funnel 不进五键）。 */}
+    {/* Funnel 不进五键。紧跟信任带；展会条与成品展示都在它后面，这两块保持关。 */}
     {site.id === 'biosphere-ai' && !slug && (
       <Funnel locale={lang} heading="h2" />
+    )}
+    {showHome.COSMOPACK && site.id === 'biosphere-ai' && !slug && (
+      <CosmopackInquiry lang={lang} siteId={site.id} />
     )}
 
     {/* 首页产品展示区:首屏之下展示成品,2行+更多方块。开关在 KV SHOWCASE。 */}
@@ -840,7 +841,7 @@ if (site?.id === 'biosphere-ai' && !slug) {
                         page={slug} pageTitle={pageSeo.title} pageDesc={pageSeo.description} />
             : <FactoryBlock type={b.type} data={d} lang={lang} db={db} siteName={site!.name} email={fxEmail} whatsapp={contactWa} wechat={contactWx} />;
         case 'funnel':
-          /* 首页漏斗已在成品展示之后单独渲染。CMS 再出一次就是第二张大白互动卡。 */
+          /* 首页漏斗已在信任带之后单独渲染。CMS 再出一次就是第二张大白互动卡。 */
           if (site.id === 'biosphere-ai' && !slug) return null;
           return <Funnel locale={lang} heading="h1" />;
         case 'signup':
