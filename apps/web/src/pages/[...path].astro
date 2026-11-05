@@ -21,7 +21,6 @@ import ProductionBases from '@cosmetic/core/components/ProductionBases.astro';
 import NarrativeStages from '@cosmetic/core/components/NarrativeStages.astro';
 import Funnel from '@cosmetic/core/components/Funnel.astro';
 import CosmopackInquiry from '../components/CosmopackInquiry.astro';
-import HomeLead from '../components/HomeLead.astro';
 import BioTrustStrip from '../components/BioTrustStrip.astro';
 import BigBanner from '@cosmetic/core/components/BigBanner.astro';
 import MastheadNav from '@cosmetic/core/components/MastheadNav.astro';
@@ -594,7 +593,7 @@ if (site?.id === 'biosphere-ai' && !slug) {
     {/* banner 与 hero 一样自带 <h1>(BigBanner 第 66 行),所以两者任一存在都不再出页头带。
         漏掉 banner 的后果是双重的:首页同时有两个 h1(搜索引擎不知道该信哪个),
         版式上还多出一条 400px 的标题带把首屏大图整个压到折叠线以下 —— 大图看不见就白做了。 */}
-    {/* BIOSPHERE 首页的 h1 在 HomeLead,不再叠一条 CMS 标题(旧译文会露英文 AI platform)。 */}
+    {/* BIOSPHERE 首页不叠 CMS 页头（旧译文会露英文 AI platform）。原首屏代工块已撤。 */}
     {!(site.id === 'biosphere-ai' && !slug) && (collectionMode
       || (!bodyBlocks.some((b) => ['hero', 'banner', 'slideshow', 'bandimg', 'storehero', 'fx_hero'].includes(b.type))
           /* BEAUTY2OEM 内页的标题 + 主视觉由 B2oBlock 自己出,这里不再叠一条纯文字页头 */
@@ -619,10 +618,7 @@ if (site?.id === 'biosphere-ai' && !slug) {
       </section>
     )}
 
-    {/* BIOSPHERE-AI 首页首屏:左文案 + 右紧凑真瓶。顺序 Trust→Cosmopack→Funnel→Showcase；漏斗在成品展示之上。 */}
-    {site.id === 'biosphere-ai' && !slug && (
-      <HomeLead locale={lang} whatsapp={contactWa} showShot={showHome.HERO_CARD} />
-    )}
+    {/* 顺序 Trust→Cosmopack→Funnel→Showcase；漏斗在成品展示之上。首屏代工块已撤。 */}
     {showHome.TRUST && site.id === 'biosphere-ai' && !slug && (
       <BioTrustStrip locale={lang} />
     )}

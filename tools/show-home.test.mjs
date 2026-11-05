@@ -85,7 +85,6 @@ assert.equal(resolveHomeFlagsKv({ HOME_FLAGS: empty }, false), empty);
 assert.match(wranglerPutCommand('abc'), /kv key put --namespace-id abc --remote "show_home:biosphere-ai"/);
 
 const page = read('apps/web/src/pages/[...path].astro');
-const hero = read('apps/web/src/components/HomeLead.astro');
 const mw = read('apps/web/src/middleware.ts');
 const toml = read('apps/web/wrangler.toml');
 const api = read('apps/web/src/pages/api/admin/home-flags.ts');
@@ -93,15 +92,12 @@ const admin = read('apps/web/src/pages/bohui/home-flags.astro');
 const fuse = read('apps/web/src/lib/fuse.ts');
 
 assert.match(page, /readShowHome/);
-assert.match(page, /showShot=\{showHome\.HERO_CARD\}/);
+assert.doesNotMatch(page, /<HomeLead|可来厂核对的化妆品代工|bio-hero/);
 assert.match(page, /showHome\.TRUST && site\.id === 'biosphere-ai'/);
 assert.match(page, /showHome\.COSMOPACK && site\.id === 'biosphere-ai'/);
 assert.match(page, /showHome\.SHOWCASE && showcaseData\.items\.length > 0/);
 assert.match(page, /!showHome\.HOT_SHELF/);
-assert.match(hero, /showShot && \(/);
-assert.match(hero, /class="bio-hero-shot"/);
-assert.match(hero, /bio-hero--copy/);
-assert.match(mw, /const CACHE_V = 'v144'/);
+assert.match(mw, /const CACHE_V = 'v145'/);
 assert.match(mw, /首页块开关走 __hf/);
 assert.match(mw, /u\.searchParams\.set\('__hf', homeFlagEtag\)/);
 assert.match(mw, /s-maxage=21600/);
