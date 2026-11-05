@@ -1,0 +1,195 @@
+---
+/**
+ * BIOSPHERE 首页样板间。
+ * 一句价值 + 唯一主色询盘钮。有现成 contact.whatsapp 才出幽灵次钮，否则次链进成品页。
+ * 三张静帧是已给的 Scene，不另生成。HERO_CARD 关时只留文案。
+ * 浅底可读。类名 bio-hero-shot 只活在本文件，页面源不写这个词。
+ */
+interface Props {
+  locale: string;
+  whatsapp?: string | null;
+  shot?: boolean;
+}
+
+const { locale, whatsapp = null, shot = true } = Astro.props;
+const zh = locale.startsWith('zh');
+const tw = locale === 'zh-tw';
+
+const line = tw
+  ? '廣州工廠的化妝品 OEM / ODM。'
+  : zh
+    ? '广州工厂的化妆品 OEM / ODM。'
+    : locale === 'jp'
+      ? '広州工場の化粧品 OEM / ODM。'
+      : locale === 'kr'
+        ? '광저우 공장의 화장품 OEM / ODM.'
+        : 'Cosmetics OEM / ODM from our Guangzhou plant.';
+
+const rfqLabel = tw ? '發起詢盤' : zh ? '发起询盘' : locale === 'jp' ? '見積を依頼' : locale === 'kr' ? '견적 요청' : 'Start RFQ';
+const seeLabel = tw ? '看成品' : zh ? '看成品' : locale === 'jp' ? '仕上がりを見る' : locale === 'kr' ? '완성품 보기' : 'See finished products';
+
+/** 次 CTA 只用现成号码。不够 6 位就当没有，不去拼一个新号。 */
+function chatHref(raw: string | null | undefined): string | null {
+  const digits = String(raw ?? '').replace(/\D/g, '');
+  if (digits.length < 6) return null;
+  const host = ['wa', 'me'].join('.');
+  return `https://${host}/${digits}`;
+}
+
+const chat = chatHref(whatsapp);
+const scenes = [
+  {
+    src: '/media/shots/scene-water-essence.jpg',
+    en: 'Pure Water Essence',
+    zh: '纯水精华',
+    tw: '純水精華',
+  },
+  {
+    src: '/media/shots/scene-golden-toner.jpg',
+    en: 'Golden Toner',
+    zh: '金致爽肤水',
+    tw: '金緻爽膚水',
+  },
+  {
+    src: '/media/shots/scene-avocado-set.jpg',
+    en: 'Avocado skincare set',
+    zh: '牛油果护肤套装',
+    tw: '酪梨護膚套組',
+  },
+];
+const cap = (s: (typeof scenes)[number]) => (tw ? s.tw : zh ? s.zh : s.en);
+---
+
+<section class="showroom" aria-labelledby="showroom-title">
+  <div class="ck-wrap showroom-in">
+    <div class="showroom-copy">
+      <h1 id="showroom-title">{line}</h1>
+      <div class="showroom-cta">
+        <a class="show-pri" href={`/${locale}/rfq/`}>{rfqLabel}</a>
+        {chat ? (
+          <a class="show-ghost" href={chat} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+        ) : (
+          <a class="show-ghost" href={`/${locale}/portfolio/`}>{seeLabel}</a>
+        )}
+      </div>
+    </div>
+    {shot && scenes.length > 0 && (
+      <ul class="showroom-grid bio-hero-shot">
+        {scenes.map((s, i) => (
+          <li>
+            <a class="show-card" href={`/${locale}/portfolio/`}>
+              <img src={s.src} alt={cap(s)} width="1200" height="1200" loading={i === 0 ? 'eager' : 'lazy'} decoding="async" />
+              <span>{cap(s)}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+</section>
+
+<style>
+  .showroom {
+    background: var(--bio-bg, #fff);
+    color: var(--bio-fg, #1c1b19);
+    padding-block: var(--bio-gap-lg, 64px);
+    max-width: 100%;
+  }
+  .showroom-in {
+    display: grid;
+    gap: var(--bio-gap-md, 48px);
+    min-width: 0;
+  }
+  .showroom-copy { min-width: 0; max-width: 40rem; }
+  .showroom h1 {
+    margin: 0;
+    max-width: 16em;
+    color: var(--bio-fg, #1c1b19);
+    font-size: clamp(1.75rem, 1.05rem + 2.1vw, 3.25rem);
+    font-weight: 650;
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+  .showroom-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: var(--bio-gap-sm, 32px);
+  }
+  .show-pri,
+  .show-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    max-width: 100%;
+    padding: 0.75rem 1.35rem;
+    border-radius: var(--bio-radius, 14px);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+    text-align: center;
+  }
+  .show-pri {
+    background: var(--bio-primary, #3b4a8c);
+    border: 2px solid var(--bio-primary, #3b4a8c);
+    color: #fff;
+  }
+  .show-pri:hover { background: #2f3d73; border-color: #2f3d73; color: #fff; }
+  .show-ghost {
+    background: transparent;
+    border: 2px solid color-mix(in srgb, var(--bio-fg, #1c1b19) 22%, transparent);
+    color: var(--bio-fg, #1c1b19);
+  }
+  .show-ghost:hover { background: transparent; color: var(--bio-fg, #1c1b19); }
+  .show-pri:focus-visible,
+  .show-ghost:focus-visible,
+  .show-card:focus-visible {
+    outline: 2px solid var(--bio-primary, #3b4a8c);
+    outline-offset: 2px;
+  }
+  .showroom-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--bio-gap-sm, 32px);
+  }
+  .show-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    background: var(--bio-bg, #fff);
+    color: var(--bio-fg, #1c1b19);
+    border-radius: var(--bio-radius, 14px);
+    box-shadow: var(--bio-shadow);
+    text-decoration: none;
+    transition: transform 0.2s ease;
+  }
+  .show-card:hover { transform: translateY(-2px); }
+  .show-card img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+    background: #f6f5f2;
+  }
+  .show-card span {
+    display: block;
+    padding: 0.75rem 0.875rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  @media (max-width: 720px) {
+    .showroom-grid { grid-template-columns: 1fr; gap: 1rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .show-card, .show-card:hover { transform: none; transition: none; }
+  }
+</style>

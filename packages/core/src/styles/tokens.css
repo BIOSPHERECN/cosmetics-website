@@ -108,4 +108,8 @@
   --bio-shadow: 0 12px 32px rgb(28 27 25 / 0.08);
   /* P0-6 证据四段上边距，落在 48–64。 */
   --bio-space: 56px;
+  /* 样板间留白：64 / 48 / 32。不改 --bio-space。 */
+  --bio-gap-lg: 64px;
+  --bio-gap-md: 48px;
+  --bio-gap-sm: 32px;
 }
