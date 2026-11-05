@@ -53,6 +53,13 @@ assert.match(funnelHero('jp').slogan, /[\u3040-\u30ff\u4e00-\u9fff]/);
 assert.match(funnelHero('kr').slogan, /[\uac00-\ud7af]/);
 assert.match(funnelHero('zh-cn').slogan, /产品/);
 assert.equal(funnelHero('en').slogan, enSlogan);
+const enHero = funnelHero('en');
+assert.equal(/Kosmetikong|Pangangalaga/.test(enHero.cat彩妆), false);
+assert.equal(/Kosmetikong|Pangangalaga/.test(enHero.cat口腔), false);
+assert.equal(enHero.cat彩妆, 'Color cosmetics');
+assert.equal(enHero.cat口腔, 'Oral care');
+assert.equal(funnelHero('ph').cat彩妆, 'Kosmetikong may kulay');
+assert.equal(funnelHero('ph').cat口腔, 'Pangangalaga sa bibig');
 
 const id = homeSeo('id', 'Platform AI kecantikan', 'An AI platform for beauty');
 assert.match(id.title, /OEM/);
