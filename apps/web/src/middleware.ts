@@ -575,7 +575,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       homeFlagEtag = '10001';
     }
   }
-  const CACHE_V = 'v151';   // 2026-11-05: 恢复公网 WhatsApp 主触点（wa.me 预填代工话术；无号回联系页）。首页块开关走 __hf，禁止为藏块再抬这个常量。
+  const CACHE_V = 'v152';   // 2026-11-05: 产品描述占位或有效字不足 120 不能新上架；产品页 JSON-LD 描述与可见首段同源。首页块开关走 __hf，禁止为藏块再抬这个常量。
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。

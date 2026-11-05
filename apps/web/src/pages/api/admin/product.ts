@@ -15,6 +15,7 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { apiGuard, json, logRevision, canProductInternal } from '../../../lib/guard';
 import { chat, vision, loadFleet } from '../../../lib/fleet';
+import { blockPublishTransition } from '../../../lib/listing-cite';
 
 export const prerender = false;
 
@@ -124,6 +125,25 @@ points 给 3 条卖点。硬规则:不写价格、起订量、交期、打样天
 
   /* ── 保存(基本信息 + 中文文案)──────────────────────── */
   if (b.action === 'save') {
+    /* 闸在写库之前。草稿改成 published 时，用这次要写入的中文描述；
+       已经 published 的空壳允许继续保存，不在这里下架。 */
+    const nextStatus = b.status === 'published' ? 'published' : 'draft';
+    const nameForGate = String(b.name ?? '').trim();
+    let descForGate: string | null;
+    if (nameForGate) descForGate = String(b.description ?? '').trim() || null;
+    else {
+      const held = await c.db.prepare(
+        `SELECT description FROM product_i18n WHERE product_id=? AND lang='zh-cn'`,
+      ).bind(id).first<{ description: string | null }>();
+      descForGate = held?.description ?? null;
+    }
+    const block = blockPublishTransition({
+      currentStatus: String(cur.status ?? ''),
+      nextStatus,
+      description: descForGate,
+    });
+    if (block) return json({ ok: false, msg: block }, 400);
+
     const before = await c.db.prepare(
       `SELECT p.slug, p.category, p.moq, p.status, p.sort_order, p.is_featured, p.is_showcase,
               i.name, i.summary, i.description
@@ -135,7 +155,7 @@ points 给 3 条卖点。硬规则:不写价格、起订量、交期、打样天
       `UPDATE products SET category=?, moq=?, status=?, sort_order=?, is_featured=?, is_showcase=?, updated_at=datetime('now')
         WHERE id=? AND site_id=?`,
     ).bind(String(b.category ?? cur.category), String(b.moq ?? '').trim() || null,
-           b.status === 'published' ? 'published' : 'draft',
+           nextStatus,
            Number(b.sortOrder) || 0, b.featured ? 1 : 0, b.showcase ? 1 : 0, id, site).run();
 
     const name = String(b.name ?? '').trim();
@@ -218,6 +238,17 @@ points 给 3 条卖点。硬规则:不写价格、起订量、交期、打样天
 
   if (b.action === 'toggle') {
     const next = cur.status === 'published' ? 'draft' : 'published';
+    if (next === 'published') {
+      const held = await c.db.prepare(
+        `SELECT description FROM product_i18n WHERE product_id=? AND lang='zh-cn'`,
+      ).bind(id).first<{ description: string | null }>();
+      const block = blockPublishTransition({
+        currentStatus: String(cur.status ?? ''),
+        nextStatus: next,
+        description: held?.description ?? null,
+      });
+      if (block) return json({ ok: false, msg: block }, 400);
+    }
     await c.db.prepare(`UPDATE products SET status=? WHERE id=?`).bind(next, id).run();
     await logRevision(c.db, 'products', id, null, { status: cur.status }, { status: next }, c.sess.uid);
     return json({ ok: true, status: next });

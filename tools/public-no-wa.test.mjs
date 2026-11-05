@@ -86,7 +86,7 @@ assert.match(
 );
 assert.match(
   read('apps/web/src/middleware.ts'),
-  /const CACHE_V = 'v151'/,
+  /const CACHE_V = 'v152'/,
 );
 
 console.log(`public wa touchpoints ok (${files.length} files scanned)`);

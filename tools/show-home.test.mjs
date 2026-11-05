@@ -101,7 +101,7 @@ assert.match(page, /showHome\.TRUST && site\.id === 'biosphere-ai'/);
 assert.match(page, /showHome\.COSMOPACK && site\.id === 'biosphere-ai'/);
 assert.match(page, /showHome\.SHOWCASE && showcaseData\.items\.length > 0/);
 assert.match(page, /!showHome\.HOT_SHELF/);
-assert.match(mw, /const CACHE_V = 'v151'/);
+assert.match(mw, /const CACHE_V = 'v152'/);
 assert.match(mw, /homeFlagEtag = '10001'/);
 assert.match(mw, /首页块开关走 __hf/);
 assert.match(mw, /u\.searchParams\.set\('__hf', homeFlagEtag\)/);
