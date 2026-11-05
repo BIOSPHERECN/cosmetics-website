@@ -8,6 +8,7 @@
 import { t, type Locale } from '../i18n/index.ts';
 import LocaleSwitch from './LocaleSwitch.astro';
 import type { SiteDef } from '../registry.ts';
+import { waDigits, waOrContact } from '../content/wa-link.mjs';
 
 export interface Props {
   locale: Locale;
@@ -43,9 +44,12 @@ const items = nav?.length
   ? [{ slug: '', label: tr('nav.home') }, ...nav]
   : [{ slug: '', label: tr('nav.home') }, { slug: 'contact', label: tr('nav.contact') }];
 /* (行业资讯已作为 pages 行进了导航树,这里不再手动追加 —— 追加过一次,页脚出现双份) */
-/* 联络方式:微信号可读页面入参或 middleware 注入的 locals.contact。
-   公网页不读、不展示站点 WhatsApp 号码,也不输出外链。 */
+/* 联络方式:页面可显式传 whatsapp/wechat,否则读 middleware 注入的 locals.contact。
+   有号则 wa.me 预填代工话术;无号则链到本语种联系页。纯中文站不出 WhatsApp。 */
 const _contact = ((Astro.locals as any)?.contact ?? {}) as { whatsapp?: string | null; wechat?: string | null };
+const waRaw = String((Astro.props as any).whatsapp ?? _contact.whatsapp ?? '');
+const wa = waDigits(waRaw);
+const waHref = waOrContact({ whatsapp: waRaw, lang: locale, siteName: site.name });
 const wx = String((Astro.props as any).wechat ?? _contact.wechat ?? '').trim();
 ---
 
@@ -72,6 +76,16 @@ const wx = String((Astro.props as any).wechat ?? _contact.wechat ?? '').trim();
         {cnOnly && <li><a href={L('/brief/')}>提交店铺，拿简报 →</a></li>}
         {cnOnly && wx && <li class="plain wx">微信:{wx}</li>}
         {!cnOnly && email && <li><a href={`mailto:${email}`}>{email}</a></li>}
+        {/* WhatsApp:海外采购最常用的联络方式。号码来自后台站点设置;没填就回联系页。 */}
+        {cnOnly ? null : wa ? (
+          <li><a href={waHref} target="_blank" rel="noopener noreferrer" class="wa">
+            <span aria-hidden="true">💬</span> WhatsApp +{wa}
+          </a></li>
+        ) : (
+          <li><a href={waHref} class="wa">
+            <span aria-hidden="true">💬</span> WhatsApp / WeChat:填询盘表单后我们联系你
+          </a></li>
+        )}
         {/* WeChat:统一用英文写法「WeChat」,18 个语种都不翻译 ——
             创始人 2026-09-10 04:40:「统一 WeChat,这样翻译也不会乱」。
             微信号本身是标识符,翻译或本地化它只会让客户搜不到人。 */}

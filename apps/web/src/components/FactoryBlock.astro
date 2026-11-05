@@ -20,9 +20,10 @@ import { env as cfEnv } from 'cloudflare:workers';
 import HumanForm from './HumanForm.astro';
 import { humanMode } from '../lib/hcgate';
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { waDigits, waOrContact } from '@cosmetic/core/content/wa-link.mjs';
 
 interface Props { type: string; data: any; lang: string; db: D1Database | undefined; siteName: string; email: string; whatsapp?: string | null; wechat?: string | null }
-const { type, data: d = {}, lang, db, siteName, email, wechat } = Astro.props;
+const { type, data: d = {}, lang, db, siteName, email, whatsapp, wechat } = Astro.props;
 const zh = lang.startsWith('zh');
 const B = `/${lang}`;
 const fmt = (n: number) => Number(n || 0).toLocaleString('en-US');
@@ -30,6 +31,10 @@ const counts = (await getCounts(db)) ?? {};
 const N = (k: string) => Number((counts as any)[k] ?? 0);
 const lines = ORG.figures.find((f) => f.nameEn === 'Automated production lines')?.value ?? '15';
 const contactHref = `${B}/contact/`;
+/* 号码优先 props，其次 middleware 注入的 locals.contact。有号走 wa.me 预填代工话术，无号回联系页。 */
+const waRaw = whatsapp ?? ((Astro.locals as any)?.contact ?? {}).whatsapp;
+const wa = waDigits(waRaw);
+const waHref = waOrContact({ whatsapp: waRaw, lang, siteName });
 const arr = (x: any): any[] => (Array.isArray(x) ? x : []);
 const s = (x: any) => String(x ?? '');
 
@@ -142,13 +147,12 @@ const BRIEF_QS = [
 const stars = (n: number) => '★'.repeat(Math.max(0, Math.min(5, n))) + '☆'.repeat(5 - Math.max(0, Math.min(5, n)));
 const outboundChat = (raw: string) => {
   const v = raw.trim().toLowerCase();
-  const host = ['wa', 'me'].join('.');
-  return v === 'whatsapp' || v.includes(host) || v.includes('whatsapp.com');
+  return v === 'whatsapp' || v.includes('wa.me') || v.includes('whatsapp.com');
 };
 const href = (h: any, fb: string) => {
   const v = s(h).trim();
   if (!v) return fb;
-  if (outboundChat(v)) return contactHref;
+  if (outboundChat(v)) return waHref;
   if (v.startsWith('/') && !v.startsWith(`/${lang}/`) && !/^\/(zh-cn|zh-tw|en|ja|jp|kr|ko)\//.test(v)) return `${B}${v}`;
   return v;
 };
@@ -208,7 +212,7 @@ const evLabel = (ev: any) => String(ev ?? '').split(/,\s*/).map((kv) => { const 
         );
       })}</ul>
     )}
-    {d.moreText && <p class="more"><a href={href(d.moreHref, contactHref)}>{fill(d.moreText)} →</a></p>}
+    {d.moreText && <p class="more"><a href={href(d.moreHref, waHref)}>{fill(d.moreText)} →</a></p>}
   </section>
 )}
 
@@ -254,6 +258,7 @@ const evLabel = (ev: any) => String(ev ?? '').split(/,\s*/).map((kv) => { const 
     <p class="more">
       {d.formText && <a class="btn" href={href(d.formHref, `${B}/brief/`)}>{fill(d.formText)} →</a>}
       {wechat && <span class="btn ghost">微信:{wechat}</span>}
+      <a class="btn" href={waHref} target={wa ? '_blank' : undefined} rel={wa ? 'noopener noreferrer' : undefined}>{fill(d.submit) || 'WhatsApp'} →</a>
       {email && <a class="btn ghost" href={`mailto:${email}`}>{fill(d.mailText) || (zh ? '发邮件' : 'Email')}: {email}</a>}
     </p>
   </section>

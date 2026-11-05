@@ -7,6 +7,7 @@
  * FDA / CPNP 是注册或通报，不写成认证。不写未核准的低起订量。
  * 正文痛点 / 步骤 / FAQ 来自 solutions.ts，与服务总页同一段，不另编。
  */
+import { waMeHref } from '@cosmetic/core/content/wa-link.mjs';
 import { env } from 'cloudflare:workers';
 import { ldJson } from '@cosmetic/core/content/ldjson.ts';
 import { OEM_CERTS } from '@cosmetic/core/content/oem.ts';
@@ -32,6 +33,7 @@ const db = (env as any).DB as D1Database | undefined;
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const B = `/${lang}`;
 const path = `${B}/services/factory-quality/`;
+const waHref = waMeHref({ whatsapp: ((Astro.locals as any)?.contact ?? {}).whatsapp, lang, siteName: shell.site?.name });
 const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
 const hub = `${B}/services/`;
 const sol = findSolution('factory-quality');
@@ -87,6 +89,7 @@ const ld = [
 
     <EvidenceFlow
       lang={lang}
+      waHref={waHref}
       ctaLabel={zh ? '发起询盘' : 'Start RFQ'}
       evidenceTitle={zh ? '工厂已有认证（仅列真有）' : 'Plant certifications on file (held only)'}
       evidenceBody={`${certWallCopy(zh).lede}${zh ? '以证书原件为准。' : ' Original certificates prevail.'}`}

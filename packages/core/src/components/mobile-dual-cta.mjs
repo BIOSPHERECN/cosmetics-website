@@ -11,11 +11,23 @@
  *   - Detail pages are /{lang}/product/{slug}/. Canon strips ?product_id= on that
  *     path, so the slug is the W5 fallback. RFQ lookup matches p.id OR p.slug.
  *
- * 公网页底栏只留「申请样品」,不生成外链、不回落站点号码。
+ * WhatsApp: digits from locals.contact.whatsapp (or the caller). No hardcoded site number.
+ * With digits → https://wa.me/${digits}?text= OEM line. Without digits → /{lang}/contact/.
  */
+import { waOrContact } from '../content/wa-link.mjs';
 
 /** Matches rfq-context SAFE_ID: 1–40 chars, no spaces, no empty string. */
 export const SAFE_PRODUCT_ID = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,39}$/;
+
+/**
+ * @param {unknown} raw
+ * @param {string} [lang]
+ * @param {string} [siteName]
+ * @returns {string}
+ */
+export function whatsappHref(raw, lang, siteName) {
+  return waOrContact({ whatsapp: raw == null ? '' : String(raw), lang, siteName });
+}
 
 function safeId(value) {
   const v = String(value ?? '').trim();
