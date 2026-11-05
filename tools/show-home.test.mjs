@@ -19,9 +19,12 @@ assert.deepEqual(SHOW_HOME_BLOCKS.map((b) => b.component), [
 ]);
 
 assert.equal(showHomeEtag(SHOW_HOME_DEFAULTS), '11111');
-assert.equal(showHomeEtag(SHOW_HOME_SEED), '00001');
+assert.equal(showHomeEtag(SHOW_HOME_SEED), '10001');
+assert.equal(SHOW_HOME_SEED.TRUST, true);
+assert.equal(SHOW_HOME_SEED.COSMOPACK, false);
+assert.equal(SHOW_HOME_SEED.SHOWCASE, false);
 assert.equal(serializeShowHome(SHOW_HOME_SEED),
-  '{"TRUST":false,"COSMOPACK":false,"HOT_SHELF":false,"SHOWCASE":false,"HERO_CARD":true}');
+  '{"TRUST":true,"COSMOPACK":false,"HOT_SHELF":false,"SHOWCASE":false,"HERO_CARD":true}');
 
 const partial = parseShowHome('{"TRUST":false}');
 assert.equal(partial.TRUST, false);
@@ -48,7 +51,8 @@ const counting = {
 };
 const absent = await readShowHome(counting, { absentAsSeed: true });
 assert.equal(puts, 0, '首页读不得写 KV');
-assert.equal(absent.etag, '00001');
+assert.equal(absent.etag, '10001');
+assert.equal(absent.flags.TRUST, true);
 assert.equal(absent.source, 'seed');
 assert.equal(absent.flags.SHOWCASE, false);
 assert.equal(absent.flags.HERO_CARD, true);
@@ -97,12 +101,13 @@ assert.match(page, /showHome\.TRUST && site\.id === 'biosphere-ai'/);
 assert.match(page, /showHome\.COSMOPACK && site\.id === 'biosphere-ai'/);
 assert.match(page, /showHome\.SHOWCASE && showcaseData\.items\.length > 0/);
 assert.match(page, /!showHome\.HOT_SHELF/);
-assert.match(mw, /const CACHE_V = 'v145'/);
+assert.match(mw, /const CACHE_V = 'v146'/);
+assert.match(mw, /homeFlagEtag = '10001'/);
 assert.match(mw, /首页块开关走 __hf/);
 assert.match(mw, /u\.searchParams\.set\('__hf', homeFlagEtag\)/);
 assert.match(mw, /s-maxage=21600/);
 assert.match(toml, /binding = "HOME_FLAGS"/);
-assert.match(toml, /REPLACE_WITH_HOME_FLAGS_NAMESPACE_ID/);
+assert.match(toml, /id = "7ac736d02e15402d9626ecd491c36cbe"/);
 assert.match(toml, /FUSE_RENDER_CAP = "500000"/);
 assert.match(api, /apiGuard/);
 assert.match(api, /seedShowHome/);

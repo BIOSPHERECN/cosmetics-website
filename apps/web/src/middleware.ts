@@ -572,10 +572,10 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       homeFlagEtag = st.etag;
       (ctx.locals as any).showHome = st;
     } catch {
-      homeFlagEtag = '00001';
+      homeFlagEtag = '10001';
     }
   }
-  const CACHE_V = 'v145';   // 2026-11-05: 去块+去公网WA；接 #50/992b6d1b/v144 抬 v145。首页块开关走 __hf。
+  const CACHE_V = 'v146';   // 2026-11-05: D+E 莱诺鸟信任带打开；基线含 #55/b5078efe/v145。Hero→信任带→funnel。首页块开关走 __hf，禁止为藏块再抬这个常量。
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。

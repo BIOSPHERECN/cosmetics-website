@@ -78,7 +78,7 @@ for (const key of ['name="market"', 'name="category"', 'name="volume"', 'name="t
 }
 assert.doesNotMatch(rfq, /mocra/i);
 
-assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v144'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v146'/);
 
 const {
   MOCRA_BOUNDARY_EN, MOCRA_DETAIL_CATS, MOCRA_DETAIL_LINK, MOCRA_SITEMAP_LANGS, MOCRA_SLUG,
@@ -162,4 +162,4 @@ const sitemap = read('apps/web/src/pages/sitemap.xml.ts');
 assert.match(sitemap, /push\(MOCRA_SLUG, '0\.8', undefined, MOCRA_SITEMAP_LANGS\)/);
 assert.match(sitemap, /hreflang="x-default"/);
 
-console.log('mm-site-03-mocra.test.mjs: 协助句、落地页与 v144 通过');
+console.log('mm-site-03-mocra.test.mjs: 协助句、落地页与 v146 通过');

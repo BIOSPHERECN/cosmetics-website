@@ -56,7 +56,7 @@ id = "cf5cc6d044e748d684181e20a411f6a7"
 # ops：npx wrangler kv namespace create HOME_FLAGS
 #      把返回的 id / preview_id 填上下面两行，去掉这四行行首的 # 再部署。
 # 合前已填真实 id（与 SESSION/CAPBANK 同账号）。
-# 绑定缺失时首页按种子出页（TRUST/COSMOPACK/HOT_SHELF/SHOWCASE 关，HERO_CARD 开）。
+# 绑定缺失时首页按种子出页（信任带开，展会/货架/成品关，HERO_CARD 开）。
 # 本地没绑定时后台用进程内 mock。
 [[kv_namespaces]]
 binding = "HOME_FLAGS"

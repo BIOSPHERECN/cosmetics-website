@@ -2,7 +2,7 @@
  * BIOSPHERE 首页五块开关。
  *
  * KV 键 `show_home:biosphere-ai` 是线上准绳。改这一份 JSON 就能藏/开，不必再发藏块 PR，也不许为此抬 CACHE_V。
- * 整份 JSON 还不存在时，首页按 SEED 渲染（四块关、紧凑瓶图开），与当前藏令对齐。
+ * 整份 JSON 还不存在时，首页按 SEED 渲染（信任带开，展会/货架/成品关，紧凑瓶图开）。
  * JSON 里缺了某一键，这一键缺省 true（开）。
  * 硬编码常量只在读 KV 失败时垫底，见 [...path].astro。
  *
@@ -13,13 +13,13 @@
  *   npx wrangler kv namespace create HOME_FLAGS
  *   npx wrangler kv key put --namespace-id <HOME_FLAGS_ID> --remote \
  *     "show_home:biosphere-ai" \
- *     '{"TRUST":false,"COSMOPACK":false,"HOT_SHELF":false,"SHOWCASE":false,"HERO_CARD":true}'
+ *     '{"TRUST":true,"COSMOPACK":false,"HOT_SHELF":false,"SHOWCASE":false,"HERO_CARD":true}'
  *
  * 员工接口（cookie bohui_sess）:
  *   curl -s -b 'bohui_sess=...' https://biosphere-ai.com/api/admin/home-flags
  *   curl -s -b 'bohui_sess=...' -X POST https://biosphere-ai.com/api/admin/home-flags \
  *     -H 'content-type: application/json' \
- *     -d '{"TRUST":false,"COSMOPACK":false,"HOT_SHELF":false,"SHOWCASE":false,"HERO_CARD":true}'
+ *     -d '{"TRUST":true,"COSMOPACK":false,"HOT_SHELF":false,"SHOWCASE":false,"HERO_CARD":true}'
  */
 
 export const SHOW_HOME_KV_KEY = 'show_home:biosphere-ai';
@@ -46,9 +46,9 @@ export const SHOW_HOME_DEFAULTS: ShowHomeFlags = {
   HERO_CARD: true,
 };
 
-/** 首次写入。四块关，紧凑瓶图开。不覆盖已有 KV。 */
+/** 首次写入。信任带开，展会/货架/成品关，紧凑瓶图开。不覆盖已有 KV。 */
 export const SHOW_HOME_SEED: ShowHomeFlags = {
-  TRUST: false,
+  TRUST: true,
   COSMOPACK: false,
   HOT_SHELF: false,
   SHOWCASE: false,
@@ -60,7 +60,7 @@ export type ShowHomeSource = 'kv' | 'seed' | 'default';
 export interface ShowHomeState {
   key: typeof SHOW_HOME_KV_KEY;
   flags: ShowHomeFlags;
-  /** 五位 0/1，顺序 TRUST COSMOPACK HOT_SHELF SHOWCASE HERO_CARD。种子是 00001。 */
+  /** 五位 0/1，顺序 TRUST COSMOPACK HOT_SHELF SHOWCASE HERO_CARD。种子是 10001。 */
   etag: string;
   source: ShowHomeSource;
   bound: boolean;

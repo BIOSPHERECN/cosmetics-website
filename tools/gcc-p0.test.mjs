@@ -142,6 +142,6 @@ assert.match(read('apps/web/src/pages/[...path].astro'), /slug === 'quality'/);
 assert.match(read('apps/web/src/pages/[lang]/rfq/index.astro'), /<GhadBoundary/);
 
 const cache = read('apps/web/src/middleware.ts');
-assert.match(cache, /CACHE_V = 'v144'/);
+assert.match(cache, /CACHE_V = 'v146'/);
 
 console.log('gcc-p0.test.mjs:全部通过');

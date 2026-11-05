@@ -1,4 +1,4 @@
-// 莱诺鸟 P0-2：首页 HomeLead 正下方一条信任带。node tools/trust-strip.test.mjs
+// 莱诺鸟 P0-2：首页信任带（#55 已撤 HomeLead；D+E 打开 TRUST）。node tools/trust-strip.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -10,8 +10,9 @@ const page = read('apps/web/src/pages/[...path].astro');
 const strip = read('apps/web/src/components/BioTrustStrip.astro');
 
 const stripAt = page.indexOf('<BioTrustStrip');
+const funnelAt = page.indexOf('<Funnel locale={lang} heading="h2" />');
 const fairAt = page.indexOf('<CosmopackInquiry');
-assert.ok(stripAt >= 0 && fairAt > stripAt, '信任带仍在展会条之前');
+assert.ok(stripAt >= 0 && funnelAt > stripAt && fairAt > funnelAt, '信任带 → funnel，展会条在 funnel 之后');
 assert.doesNotMatch(page, /<HomeLead|可来厂核对的化妆品代工|bio-hero/);
 assert.match(page, /<BioTrustStrip locale=\{lang\} \/>/);
 
@@ -37,9 +38,9 @@ assert.doesNotMatch(strip, /FDA|CPNP|SFDA/);
 assert.doesNotMatch(strip, /低\s*MOQ|No MOQ|low MOQ/i);
 assert.doesNotMatch(strip, /普草/);
 assert.doesNotMatch(strip, /cert-gmpc|cert-iso|cert-halal/);
-assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v144'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v146'/);
 
-assert.match(page, /const SHOW_HOME_TRUST_STRIP = false/);
+assert.match(page, /const SHOW_HOME_TRUST_STRIP = true/);
 assert.match(page, /const SHOW_HOME_COSMOPACK = false/);
 assert.match(page, /const SHOW_HOME_HOT_SHELF = false/);
 assert.match(page, /const SHOW_HOME_SHOWCASE = false/);
