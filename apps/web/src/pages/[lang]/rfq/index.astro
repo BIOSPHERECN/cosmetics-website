@@ -423,7 +423,8 @@ const T = zh
     var fb = document.getElementById('rfq-fb');
     var ok = document.getElementById('rfq-ok');
     if (!form) return;
-    /* intent 不进服务端 HTML，避免和空白表单抢同一份边缘缓存。这里只预填空字段、高亮入口。 */
+    /* intent 不进服务端 HTML，避免和空白表单抢同一份边缘缓存。这里只预填空字段、高亮入口。
+       提交时把链接上的 intent 同时写入 JSON 的 intent 与 cta，两列分开落事件表。不新增必填项。 */
     var intent = '';
     try { intent = String(new URLSearchParams(location.search).get('intent') || '').trim().toLowerCase(); } catch (e0) { intent = ''; }
     if (intent === 'sample' || intent === 'quote' || intent === 'docs') {
@@ -512,6 +513,7 @@ const T = zh
       var tags = [];
       if (path) tags.push('formula_path=' + path);
       if (intent === 'sample' || intent === 'quote' || intent === 'docs') tags.push('intent=' + intent);
+      var intentToken = /^[a-z0-9][a-z0-9_-]{0,31}$/.test(intent) ? intent : '';
       if (tags.length) notes = notes ? (tags.join('\n') + '\n' + notes) : tags.join('\n');
       var bits = [];
       bits.push((zh ? '【RFQ/样品】' : '[RFQ/Sample]') + ' market=' + market + '; category=' + category + '; volume=' + volume);
@@ -543,6 +545,8 @@ const T = zh
         category: category,
         volume: volume,
         product_id: productId,
+        intent: intentToken,
+        cta: intentToken,
         target_market: targetMarket,
         halal_ready: halal,
         halal_scope_note: scope,

@@ -38,7 +38,7 @@ assert.doesNotMatch(strip, /FDA|CPNP|SFDA/);
 assert.doesNotMatch(strip, /低\s*MOQ|No MOQ|low MOQ/i);
 assert.doesNotMatch(strip, /普草/);
 assert.doesNotMatch(strip, /cert-gmpc|cert-iso|cert-halal/);
-assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v148'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v149'/);
 
 assert.match(page, /const SHOW_HOME_TRUST_STRIP = true/);
 assert.match(page, /const SHOW_HOME_COSMOPACK = false/);

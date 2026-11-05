@@ -123,6 +123,6 @@ assert.match(rfq, /name="target_market"/);
 assert.match(rfq, /name="halal_ready"/);
 assert.match(rfq, /name="notification_assist_country"/);
 assert.match(rfq, /name="first_order_band"/);
-assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v148'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v149'/);
 
 console.log('oem-evidence-flow.test.mjs:全部通过');

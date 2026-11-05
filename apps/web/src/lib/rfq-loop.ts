@@ -6,6 +6,8 @@
  * 0130 未迁移时，带新列的语句会抛 no such column。询盘 INSERT 仍走旧列，
  * 由调用方 catch，避免指派功能把「先入库」一起拖垮。
  */
+import { followupDedupeKey, trackInquiryMilestone } from './inquiry-events.ts';
+
 export const RFQ_TEST_MARK = 'RFQ-E2E-TEST';
 export const INQUIRY_OK_MSG = '已收到,我们会在两个工作日内书面回复。本接口不自动报价。';
 
@@ -488,6 +490,15 @@ export async function assignInquiry(db: SqlDb, args: {
     }
   } catch { /* 指派行还在；通知戳写失败不回滚负责人 */ }
 
+  await trackInquiryMilestone(db, {
+    inquiryId: id,
+    siteId: args.siteId,
+    event: 'assign',
+    dedupeKey: `assign:${user.id}`,
+    assigneeUid: user.id,
+    followupStatus: String(row.status ?? 'new'),
+  });
+
   const loop = await readInquiryLoop(db, id, args.siteId);
   if (!loop) return { ok: false, status: 500, msg: '指派后读不到线索' };
   return { ok: true, loop };
@@ -542,6 +553,24 @@ export async function acceptInquiry(db: SqlDb, args: {
     }
     await run(db, `INSERT INTO inquiry_notes (inquiry_id, user_id, kind, text) VALUES (?,?, 'note', ?)`, id, args.actorUid, note.slice(0, 2000));
   } catch { /* followup_text 已写入 inquiries */ }
+
+  const nextStatus = wasNew ? 'following' : String(row.status ?? '');
+  await trackInquiryMilestone(db, {
+    inquiryId: id,
+    siteId: args.siteId,
+    event: 'accept',
+    dedupeKey: 'accept',
+    assigneeUid: Number(row.assignee_uid),
+    followupStatus: nextStatus,
+  });
+  await trackInquiryMilestone(db, {
+    inquiryId: id,
+    siteId: args.siteId,
+    event: 'followup',
+    dedupeKey: followupDedupeKey(note),
+    assigneeUid: Number(row.assignee_uid),
+    followupStatus: nextStatus,
+  });
 
   const loop = await readInquiryLoop(db, id, args.siteId);
   if (!loop) return { ok: false, status: 500, msg: '接单后读不到线索' };
