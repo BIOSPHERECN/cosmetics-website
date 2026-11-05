@@ -22,6 +22,7 @@ import NarrativeStages from '@cosmetic/core/components/NarrativeStages.astro';
 import Funnel from '@cosmetic/core/components/Funnel.astro';
 import CosmopackInquiry from '../components/CosmopackInquiry.astro';
 import BioTrustStrip from '../components/BioTrustStrip.astro';
+import HomeShowroom from '../components/HomeShowroom.astro';
 import BigBanner from '@cosmetic/core/components/BigBanner.astro';
 import MastheadNav from '@cosmetic/core/components/MastheadNav.astro';
 import StatementFooter from '@cosmetic/core/components/StatementFooter.astro';
@@ -620,7 +621,10 @@ if (site?.id === 'biosphere-ai' && !slug) {
       </section>
     )}
 
-    {/* BIOSPHERE-AI 首页。#55 已撤来厂核对整块。硬序 信任带 → funnel（D+E）；无 showcase 时信任带夹在中间，funnel 不贴 Hero。 */}
+    {/* BIOSPHERE-AI 首页。样板间在信任带之上。硬序仍是 信任带 → funnel，成品网格在漏斗后。 */}
+    {site.id === 'biosphere-ai' && !slug && (
+      <HomeShowroom locale={lang} whatsapp={contactWa} shot={showHome.HERO_CARD !== false} />
+    )}
     {showHome.TRUST && site.id === 'biosphere-ai' && !slug && (
       <BioTrustStrip locale={lang} />
     )}
@@ -634,7 +638,7 @@ if (site?.id === 'biosphere-ai' && !slug) {
 
     {/* 首页产品展示区:首屏之下展示成品,2行+更多方块。开关在 KV SHOWCASE。 */}
     {showHome.SHOWCASE && showcaseData.items.length > 0 && !slug && (
-      <section class="block alt">
+      <section class="block alt showcase-sec">
         <div class="ck-wrap">
           <h2>{({ 'zh-cn': '成品展示', 'zh-tw': '成品展示', jp: '製品', kr: '제품', id: 'Produk', ar: 'المنتجات' } as Record<string, string>)[lang] ?? 'Product showcase'}</h2>
           <ul class="showcase-grid">
@@ -976,16 +980,43 @@ if (site?.id === 'biosphere-ai' && !slug) {
     .prose-flow p { break-inside: avoid; margin: 0 0 1.25rem; }
   }
 
-  /* 首页产品展示区 */
-  .showcase-grid { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); }
-  .showcase-card { display: block; text-decoration: none; color: inherit; border-radius: 0.75rem; overflow: hidden; background: var(--ck-surface, #fff); box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: box-shadow 0.2s; }
-  .showcase-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
-  .showcase-card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
-  .showcase-card h3 { margin: 0; padding: 0.625rem 0.75rem; font-size: 0.9375rem; line-height: 1.4; }
-  .showcase-claim { margin: 1rem 0 0; font-size: .8125rem; line-height: 1.6; opacity: .75; }
-  .showcase-ph { width: 100%; aspect-ratio: 1; background: var(--ck-bg-alt, #f5f5f5); }
-  .showcase-more { display: flex; align-items: center; justify-content: center; background: var(--ck-bg-alt, #f0f0f0); border-radius: 0.75rem; }
-  .showcase-more .showcase-more-body { text-align: center; }
-  .showcase-more .more-arrow { font-size: 2rem; display: block; }
-  .showcase-more h3 { margin: 0.5rem 0 0; padding: 0; font-size: 0.9375rem; }
+  /* 首页成品网格：图优先，圆角阴影走 --bio-*，悬停只抬 2px。缺图用 .showcase-ph，不把空卡撑破。 */
+  .showcase-sec {
+    padding-block: var(--bio-gap-lg, 64px);
+    background: #f6f5f2;
+    color: var(--bio-fg, #1c1b19);
+  }
+  .showcase-sec h2 { margin: 0; color: var(--bio-fg, #1c1b19); }
+  .showcase-grid {
+    list-style: none;
+    padding: 0;
+    margin: var(--bio-gap-md, 48px) 0 0;
+    min-width: 0;
+    display: grid;
+    gap: var(--bio-gap-sm, 32px);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
+  }
+  .showcase-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    text-decoration: none;
+    color: var(--bio-fg, #1c1b19);
+    border-radius: var(--bio-radius, 14px);
+    overflow: hidden;
+    background: var(--bio-bg, #fff);
+    box-shadow: var(--bio-shadow);
+    transition: transform 0.2s ease;
+  }
+  .showcase-card:hover { transform: translateY(-2px); }
+  .showcase-card img, .showcase-ph { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #f6f5f2; }
+  .showcase-card h3 { margin: 0; padding: 0.625rem 0.75rem 0.75rem; font-size: 0.8125rem; font-weight: 600; line-height: 1.35; }
+  .showcase-claim { margin: var(--bio-gap-sm, 32px) 0 0; font-size: .8125rem; line-height: 1.6; color: var(--bio-muted, #5e5a53); }
+  .showcase-more { display: flex; align-items: center; justify-content: center; background: var(--bio-bg, #fff); border-radius: var(--bio-radius, 14px); }
+  .showcase-more .showcase-more-body { text-align: center; padding: 1rem; }
+  .showcase-more .more-arrow { font-size: 1.5rem; display: block; }
+  .showcase-more h3 { margin: 0.5rem 0 0; padding: 0; font-size: 0.8125rem; }
+  @media (prefers-reduced-motion: reduce) {
+    .showcase-card, .showcase-card:hover { transform: none; transition: none; }
+  }
 </style>

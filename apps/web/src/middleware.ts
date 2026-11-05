@@ -575,7 +575,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       homeFlagEtag = '10001';
     }
   }
-  const CACHE_V = 'v152';   // 2026-11-05: 产品描述占位或有效字不足 120 不能新上架；产品页 JSON-LD 描述与可见首段同源。首页块开关走 __hf，禁止为藏块再抬这个常量。
+  const CACHE_V = 'v153';   // 2026-11-05: 首页样板间（价值句 + 唯一主色询盘 + 已有静帧）。v152 让给 PL-3 空壳闸。带码验真页仍不进边缘缓存。首页块开关走 __hf，禁止为藏块再抬这个常量。
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。
