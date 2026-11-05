@@ -1,0 +1,116 @@
+---
+/**
+ * BIOSPHERE 首页五块开关。勾选 = 显示。保存进 KV `show_home:biosphere-ai`。
+ * 首页缓存键带 __hf=<etag>，不必改 CACHE_V。
+ */
+import AdminShell from '../../layouts/AdminShell.astro';
+import { pageGuard } from '../../lib/guard';
+import { env } from 'cloudflare:workers';
+import {
+  SHOW_HOME_BLOCKS,
+  SHOW_HOME_KV_KEY,
+  homeFlagsAllowMemory,
+  homeFlagsCurl,
+  resolveHomeFlagsKv,
+  seedShowHome,
+  wranglerPutCommand,
+} from '../../lib/show-home';
+
+export const prerender = false;
+const c = await pageGuard(Astro.request);
+if (!c) return Astro.redirect('/bohui/login/');
+
+const allowed = c.tenant.isGroup || c.tenant.siteId === 'biosphere-ai';
+const allowMemory = homeFlagsAllowMemory(Astro.url.hostname, env as any);
+const kv = allowed ? resolveHomeFlagsKv(env as any, allowMemory) : undefined;
+const st = allowed ? await seedShowHome(kv) : null;
+const canWrite = !!st && !!kv && c.sess.role !== 'viewer';
+const cmd = wranglerPutCommand();
+const curl = homeFlagsCurl();
+---
+
+<AdminShell title="首页块开关" active="home-flags" email={c.sess.email} tenant={c.tenant}>
+  <h1>首页块开关</h1>
+  <p class="lead">只动 biosphere-ai.com 首页。勾选为显示。保存后缓存键带 <code>__hf</code>，CACHE_V 仍是 v142，其它页面的缓存不动。</p>
+
+  {allowed && st ? (
+    <>
+      <p class="note info">
+        KV 键 <code>{SHOW_HOME_KV_KEY}</code>
+        · 当前 <code>__hf={st.etag}</code>
+        · {st.source === 'kv' ? '已读到 KV' : st.bound ? '按种子。键若为空，打开本页会写入，不覆盖已有值' : '未绑定 HOME_FLAGS，按种子出页，尚未写入'}
+        {allowMemory && !((env as any)?.HOME_FLAGS) ? ' · 本地进程内 mock，重启即失' : ''}
+      </p>
+
+      <form id="hf">
+        <ul class="hf-list">
+          {SHOW_HOME_BLOCKS.map((b) => (
+            <li>
+              <label>
+                <input type="checkbox" name={b.key} checked={st.flags[b.key]} disabled={!canWrite} />
+                <span>
+                  <b>{b.label}</b>
+                  <code>{b.component}</code>
+                  <small>{b.hint}</small>
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        {canWrite ? (
+          <p><button class="btn pri" type="submit">保存</button> <span id="hf-msg" role="status"></span></p>
+        ) : (
+          <p class="note">{c.sess.role === 'viewer' ? '只读账号不能改。' : '绑定 HOME_FLAGS 之后才能在这里保存。'}</p>
+        )}
+      </form>
+
+      <h2>不经过页面时</h2>
+      <p class="lead">建空间：<code>npx wrangler kv namespace create HOME_FLAGS</code>，把 id 填进 <code>apps/web/wrangler.toml</code> 里 HOME_FLAGS 那一段（现为注释占位）再部署。</p>
+      <pre class="hf-pre">{cmd}</pre>
+      <pre class="hf-pre">{curl}</pre>
+    </>
+  ) : (
+    <p class="note warn">这个开关只属于 BIOSPHERE。当前账号绑的是别的站。</p>
+  )}
+</AdminShell>
+
+<style>
+  .hf-list { list-style: none; margin: 1rem 0; padding: 0; display: grid; gap: .75rem; max-width: 40rem; }
+  .hf-list label { display: flex; gap: .75rem; align-items: flex-start; }
+  .hf-list b { display: block; }
+  .hf-list code { margin-left: .5rem; font-size: .85em; }
+  .hf-list small { display: block; color: var(--ad-soft, #5b6472); }
+  .hf-pre {
+    overflow: auto; padding: .75rem 1rem; background: var(--ad-sunk, #f4f6f6);
+    border-radius: 8px; font-size: .8rem; line-height: 1.5;
+  }
+</style>
+
+<script is:inline>
+  const form = document.getElementById('hf');
+  if (form) form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('hf-msg');
+    const btn = form.querySelector('button');
+    const keys = ['TRUST', 'COSMOPACK', 'HOT_SHELF', 'SHOWCASE', 'HERO_CARD'];
+    const fd = new FormData(form);
+    const body = {};
+    for (const k of keys) body[k] = fd.get(k) === 'on';
+    btn.disabled = true;
+    msg.textContent = '保存中…';
+    try {
+      const r = await fetch('/api/admin/home-flags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.msg || ('HTTP ' + r.status));
+      msg.textContent = '已保存。首页缓存键 __hf=' + d.etag + '，下一请求回源，不必改 CACHE_V。';
+    } catch (err) {
+      msg.textContent = err && err.message ? err.message : String(err);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>

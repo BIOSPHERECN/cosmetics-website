@@ -77,6 +77,8 @@ const NAV: { group: string; items: NavItem[] }[] = [
   { group: '内容', items: [
     { id: 'sites', label: '站点总览', href: '/bohui/' },
     { id: 'pages', label: '页面与版块', href: '/bohui/pages/' },
+    /* 首页五块开关：只对集团管理员或 BIOSPHERE 账号露出，见下方 filter */
+    { id: 'home-flags', label: '首页块开关', href: '/bohui/home-flags/' },
     { id: 'media', label: '媒体库', href: '/bohui/media/' },
     { id: 'suppliers', label: '包材供应商', href: '/bohui/suppliers/' },
     /* 2026-09-09:上传要交给其他人做,入库台必须在导航里够得着 */
@@ -136,7 +138,11 @@ const NAV: { group: string; items: NavItem[] }[] = [
 ];
 /* 按部门过滤;过滤后空了的分组连标题一起不出 —— 实验室账号的侧栏只剩「经营」下两项 */
 const nav = NAV
-  .map((g) => ({ group: g.group, items: g.items.filter((it) => (it.roles ?? BASE).includes(role)) }))
+  .map((g) => ({
+    group: g.group,
+    items: g.items.filter((it) => (it.roles ?? BASE).includes(role))
+      .filter((it) => it.id !== 'home-flags' || !tenant || tenant.isGroup || tenant.siteId === 'biosphere-ai'),
+  }))
   .filter((g) => g.items.length > 0);
 ---
 

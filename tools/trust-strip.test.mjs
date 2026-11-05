@@ -46,9 +46,9 @@ assert.match(page, /const SHOW_HOME_TRUST_STRIP = false/);
 assert.match(page, /const SHOW_HOME_COSMOPACK = false/);
 assert.match(page, /const SHOW_HOME_HOT_SHELF = false/);
 assert.match(page, /const SHOW_HOME_SHOWCASE = false/);
-assert.match(page, /SHOW_HOME_TRUST_STRIP && site\.id === 'biosphere-ai'/);
-assert.match(page, /SHOW_HOME_COSMOPACK && site\.id === 'biosphere-ai'/);
-assert.match(page, /SHOW_HOME_SHOWCASE && showcaseData\.items\.length > 0/);
-assert.match(page, /b\.type === 'shelf' && site\.id === 'biosphere-ai' && !slug && !SHOW_HOME_HOT_SHELF/);
+assert.match(page, /showHome\.TRUST && site\.id === 'biosphere-ai'/);
+assert.match(page, /showHome\.COSMOPACK && site\.id === 'biosphere-ai'/);
+assert.match(page, /showHome\.SHOWCASE && showcaseData\.items\.length > 0/);
+assert.match(page, /b\.type === 'shelf' && site\.id === 'biosphere-ai' && !slug && !showHome\.HOT_SHELF/);
 
 console.log('trust-strip.test.mjs:全部通过');
