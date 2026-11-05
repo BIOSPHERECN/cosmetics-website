@@ -224,7 +224,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
          后台列表里一眼能分清「订阅」和「真询盘」,不用点进去猜。 */
       message: storedMessage,
       spam,
-      srcPath,
+      sourcePath: srcPath,
       referrer: refHost,
       /* 品类与数量级:报价前必问的两件,做成结构化字段而不是留在正文里 ——
          留在正文就得逐条人读,后台没法筛,也答不了「哪类询盘最多」。 */
