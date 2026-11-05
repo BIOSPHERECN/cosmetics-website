@@ -29,6 +29,7 @@ import { catalogLabel, softenClaims } from '../../../lib/comply-copy';
 import { gateProductRfqHref, productDetailRfqHref, productDosageLine } from '../../../lib/product-cta';
 import { portfolioCoverSrc } from '../../../lib/portfolio-card';
 import { rfqProductHooks } from '../../../lib/rfq-fields';
+import { faqsFromSpecs, listingLead } from '../../../lib/listing-cite';
 import { productPageFaqs, waveBreadcrumbTrail, waveBySlug, waveCopy, waveCorrectedProductLd, waveMarketFaqs, waveRfqPath, waveSiblings } from '../../../lib/wave-products';
 
 export const prerender = false;
@@ -151,8 +152,10 @@ const specs = (() => {
 })();
 const real = (o: any) => (o && typeof o === 'object' && !o._pending ? o : null);
 const techBlocks: { title: string; body: string }[] = Array.isArray(specs.tech) ? specs.tech : [];
-/* 历史产品(B2 发布,tools/b2o-products/import.py)的 specs_json 是列表 [{label,value}]:剂型 / 容量 / 主要成分 */
-const specList: { label: string; value: string }[] = Array.isArray(specs) ? specs.filter((x: any) => x && x.label && x.value) : [];
+/* 历史产品(B2 发布,tools/b2o-products/import.py)的 specs_json 是列表 [{label,value}]:剂型 / 容量 / 主要成分。
+   补 FAQ 时数组会挪进 list，两种都读。 */
+const specRows = Array.isArray(specs) ? specs : (Array.isArray(specs.list) ? specs.list : []);
+const specList: { label: string; value: string }[] = specRows.filter((x: any) => x && x.label && x.value);
 const position = (real(specs.position) ?? {}) as { market?: string; audience?: string };
 const sales = real(specs.sales) as { text?: string } | null;
 const versus = real(specs.versus) as { rows?: { them: string; us: string }[] } | null;
@@ -213,17 +216,15 @@ const path = `/${lang}/product/${product.slug}/`;
 const descRaw = product.description ? String(product.description).replace(/\s+/g, ' ').trim() : '';
 const descStub = !descRaw || descRaw.length < 80 || /^Product:\s*/i.test(descRaw);
 const sumTrim = displaySummary ? displaySummary.replace(/\s+/g, ' ').trim() : '';
-const aboutText = descStub
-  ? (zh
-      ? [
-          `${displayName} 是帛卉为 OEM/ODM 项目供应的${catLabel}类产品:配方、包材与标签可按品牌需求在自有产线上调整,打样签样后进入量产。`,
-          `工厂位于广州,20,000 ㎡ 厂房、15 条自动化产线,在册配方 13,000+,持有 GMPC、ISO 22716:2007 与 HALAL 认证;出口可配合 FDA 注册（注册≠批准、不发证书）、CPNP 通报与东南亚市场备案。起订量按品类与包材议定，以书面确认为准。打样通常 5–14 天，这是样品指示，不是大货交期。`,
-        ]
-      : [
-          `${displayName} is a ${catLabel.toLowerCase()} product supplied by BIOSPHERE-AI for OEM/ODM projects: formula, packaging and labels can be adjusted to your brand on our own lines, with sampling and sign-off before mass production.`,
-          `The factory is in Guangzhou — over 20,000 m² of manufacturing floor, 15 automated production lines and 13,000+ formulations on file, certified to GMPC, ISO 22716:2007 and HALAL; export support covers FDA registration (registration is not approval, and no certificate is issued), CPNP notification and Southeast Asian filings. MOQ is agreed per category and packaging and confirmed in writing. Sampling is typically 5–14 days as a sample indication, not a production lead time.`,
-        ])
-  : [softenClaims(descRaw)];
+/* 可见说明与 Product JSON-LD.description 同一段 lead。占位或不足 20 个有效字时换采购说明，不把空壳写进结构化数据。 */
+const cited = listingLead({
+  description: product.description,
+  name: displayName,
+  categoryLabel: catLabel,
+  zh,
+});
+const aboutText = cited.paragraphs;
+const lead = cited.lead;
 const metaDesc = descStub
   ? (sumTrim.length >= 60 ? sumTrim : (zh
       ? `${displayName}——${catLabel}类 OEM/ODM 代工产品,起订量按品类与包材书面确认;支持配方、包材、香型与标签定制,广州自有产线(GMPC/ISO 22716/HALAL),可打样。`
@@ -233,16 +234,19 @@ const metaDesc = descStub
    2026-10-28 调研结论:AI 只读可见正文,藏在 JSON-LD 里的问答等于没写。
    市场问接在 5 条通用问之后，页内与 FAQPage 仍是同一份数组。首波与第三波每卡 2 条，第二波每卡 3 条。
    非爆品卡的认证答沿用 FDA 口径：注册≠批准、不发证书。 */
-const faqs = productPageFaqs({
-  zh,
-  name: displayName,
-  certAnswer: waveView
-    ? waveView.certAnswer
-    : (zh ? `工厂持有 GMPC、ISO 22716、HALAL 认证;出口支持 FDA 注册（注册≠批准、不发证书）、CPNP 通报、东南亚备案。具体到本品的适用认证请询盘确认。`
-         : `The factory holds GMPC, ISO 22716, and HALAL certifications. Export compliance includes FDA registration (registration is not approval, and no certificate is issued), CPNP notification, and Southeast Asian market filings. Applicable certifications for this product are confirmed per inquiry.`),
-  market: waveCard ? waveMarketFaqs(waveCard, lang) : [],
-});
-const productDescription = descRaw && !descStub ? softenClaims(descRaw).slice(0, 900) : aboutText.join(' ');
+const faqs = [
+  ...productPageFaqs({
+    zh,
+    name: displayName,
+    certAnswer: waveView
+      ? waveView.certAnswer
+      : (zh ? `工厂持有 GMPC、ISO 22716、HALAL 认证;出口支持 FDA 注册（注册≠批准、不发证书）、CPNP 通报、东南亚备案。具体到本品的适用认证请询盘确认。`
+           : `The factory holds GMPC, ISO 22716, and HALAL certifications. Export compliance includes FDA registration (registration is not approval, and no certificate is issued), CPNP notification, and Southeast Asian market filings. Applicable certifications for this product are confirmed per inquiry.`),
+    market: waveCard ? waveMarketFaqs(waveCard, lang) : [],
+  }),
+  ...faqsFromSpecs(specs),
+];
+const productDescription = lead;
 const legacyProductLd = {
   '@context': 'https://schema.org', '@type': 'Product',
   '@id': `${base}${path}`, name: displayName,
