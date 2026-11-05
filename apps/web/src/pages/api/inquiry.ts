@@ -27,6 +27,7 @@ import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
 import { gradeAndNotify } from '../../lib/inquiry-ai';
 import { humanGateUnlessE2e } from '../../lib/human';
 import { assignInquiryField, normalizeRfqTicket, prefixFormulaPath, rfqTicketLines, type RfqTicket } from '../../lib/rfq-fields';
+import { INQUIRY_OK_MSG, absorbDuplicate, insertInquiryRow, planInquiryLoop, stampInquiryLoop } from '../../lib/rfq-loop';
 
 export const prerender = false;
 
@@ -185,36 +186,56 @@ export const POST: APIRoute = async ({ request, locals }) => {
     try { return r ? new URL(r).pathname.slice(0, 200) : null; } catch { return null; }
   })();
 
+  const storedMessage = message.slice(0, 4000) || `（来自${source === 'newsletter' ? '订阅表单' : '表单'},未填写正文）`;
+  /* 去重发生在 INSERT 之前。命中则沿用原 ticket_id，不另开一行。
+     0130 未迁移时 absorbDuplicate 抛错，catch 后仍走插入，不丢这条提交。 */
+  const plan = source === 'newsletter' ? null : planInquiryLoop({
+    site,
+    email,
+    name,
+    company: f.company,
+    message: storedMessage,
+    category,
+    market,
+    productId,
+    is_test: f.is_test,
+  });
+  if (plan) {
+    const dupId = await absorbDuplicate(db, site, plan.dedupeKey).catch(() => null);
+    if (dupId) {
+      return (isForm && !wantsJson)
+        ? backTo(request, 'ok')
+        : json({ ok: true, ticket_id: dupId, deduped: true, msg: INQUIRY_OK_MSG });
+    }
+  }
+
   let newId = 0;
   try {
-    /* 09-21 01:2x 线上每一单都 500「参数绑定数量错误」:0068 加了 whatsapp 值却没加进列名,12 个 ? 绑 13 个值。创始人在 beauty2ai 上提交时发现,帛卉站同样中招。 */
-    const ins = await db.prepare(
-      `INSERT INTO inquiries (site_id, lang, name, company, email, country, message,
-                              spam_score, source_path, referrer, category, volume, whatsapp)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    ).bind(
+    /* 09-21 01:2x 线上每一单都 500「参数绑定数量错误」:0068 加了 whatsapp 值却没加进列名,12 个 ? 绑 13 个值。创始人在 beauty2ai 上提交时发现,帛卉站同样中招。
+       指派/测试列不进这句 INSERT：列未迁移时插入仍成功，随后 stamp 失败只影响去重键。 */
+    newId = await insertInquiryRow(db, {
       site,
-      (f.lang ?? 'zh-cn').slice(0, 12),
-      name.slice(0, 120) || '(未填姓名)',
-      (f.company ?? '').slice(0, 160) || null,
-      email.slice(0, 200),
-      request.headers.get('CF-IPCountry') || null,
+      lang: (f.lang ?? 'zh-cn').slice(0, 12),
+      name: name.slice(0, 120) || '(未填姓名)',
+      company: (f.company ?? '').slice(0, 160) || null,
+      email: email.slice(0, 200),
+      country: request.headers.get('CF-IPCountry') || null,
       /* 订阅这类只留邮箱的场景没有正文。写一句来源而不是留空 ——
          后台列表里一眼能分清「订阅」和「真询盘」,不用点进去猜。 */
-      message.slice(0, 4000) || `（来自${source === 'newsletter' ? '订阅表单' : '表单'},未填写正文）`,
+      message: storedMessage,
       spam,
       srcPath,
-      refHost,
+      referrer: refHost,
       /* 品类与数量级:报价前必问的两件,做成结构化字段而不是留在正文里 ——
          留在正文就得逐条人读,后台没法筛,也答不了「哪类询盘最多」。 */
       category,
       volume,
       whatsapp,
-    ).run();
-    newId = Number((ins as any).meta?.last_row_id ?? 0);
+    });
   } catch (e) {
     return json({ ok: false, msg: `提交失败:${e instanceof Error ? e.message.slice(0, 120) : ''}` }, 500);
   }
+  if (plan && newId) await stampInquiryLoop(db, newId, plan).catch(() => {});
 
   await recordUse(db, 'inquiry', who);
   if (Math.random() < 0.05) await sweep(db);
@@ -224,12 +245,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
   /* 小满字段映射（获客回写）: ticket_id=newId; name; company; email; whatsapp; market; category; volume; product_id;
      target_market; halal_ready; halal_scope_note; notification_assist_country; first_order_band; source。不自动报价。 */
   if (newId && source !== 'newsletter') {
-    const job = gradeAndNotify(db, env as any, newId, { name: name.slice(0, 120) || '(未填姓名)', company: (f.company ?? '').slice(0, 160) || null, email: email.slice(0, 200), country: request.headers.get('CF-IPCountry') || null, message: message.slice(0, 4000), lang: (f.lang ?? 'zh-cn').slice(0, 12), source_path: srcPath, category, volume, whatsapp });
+    const job = gradeAndNotify(db, env as any, newId, { name: name.slice(0, 120) || '(未填姓名)', company: (f.company ?? '').slice(0, 160) || null, email: email.slice(0, 200), country: request.headers.get('CF-IPCountry') || null, message: message.slice(0, 4000), lang: (f.lang ?? 'zh-cn').slice(0, 12), source_path: srcPath, category, volume, whatsapp, isTest: plan?.isTest === true });
     const ctx = (locals as any)?.cfContext;   // Astro 6:runtime.ctx 已移除,用 cfContext
     if (ctx?.waitUntil) ctx.waitUntil(job); else await job.catch(() => {});
   }
 
-  return (isForm && !wantsJson) ? backTo(request, 'ok') : json({ ok: true, ticket_id: newId || null, msg: '已收到,我们会在两个工作日内书面回复。本接口不自动报价。' });
+  return (isForm && !wantsJson) ? backTo(request, 'ok') : json({ ok: true, ticket_id: newId || null, msg: INQUIRY_OK_MSG });
 };
 
 /**

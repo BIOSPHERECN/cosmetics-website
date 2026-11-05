@@ -15,6 +15,7 @@ import { chat, loadFleet } from './fleet';
 import { judge, INQUIRY_QUESTIONS } from './jev';
 import { redact } from './mail';
 import { sendMail, canSend } from './mail';
+import { markCustomerNotifyFailed, shouldEnterValidCustomer } from './rfq-loop';
 
 const PROMPT = `你是一家中国化妆品 OEM/ODM 工厂(广州,15 条产线,GMPC/ISO22716/HALAL,主做印尼与中东、欧美私标)的资深外贸业务经理。
 读下面这条官网询盘,只输出 JSON:{"grade":"A|B|C|spam","summary":"一句话:对方是谁、要什么、量级、市场","next":"给业务员的下一步(一句话,含要问对方的 2 个问题)","lang":"对方语言代码",
@@ -34,7 +35,7 @@ export function maskPii(s: string, row: { name?: string | null; email?: string |
     .replace(/(?<!\d)1[3-9]\d{9}(?!\d)/g, '{{PHONE}}');
 }
 
-export async function gradeAndNotify(db: D1Database, env: any, id: number, row: { name: string; company: string | null; email: string; country: string | null; message: string; lang: string; source_path: string | null; category: string | null; volume: string | null; whatsapp?: string | null; noReply?: boolean }) {
+export async function gradeAndNotify(db: D1Database, env: any, id: number, row: { name: string; company: string | null; email: string; country: string | null; message: string; lang: string; source_path: string | null; category: string | null; volume: string | null; whatsapp?: string | null; noReply?: boolean; isTest?: boolean }) {
   let grade = '', summary = '', next = '', replySubject = '', reply = '';
   try {
     const fleet = await loadFleet(db, env);
@@ -51,13 +52,25 @@ ${rules.body.slice(0, 4000)}` : PROMPT;
     await db.prepare('UPDATE inquiries SET ai_grade = ?, ai_summary = ?, ai_reply = ? WHERE id = ?').bind(grade, `${summary}${next ? ' ‖ 下一步:' + next : ''}`, reply ? `${replySubject}\n\n${reply}` : null, id).run();
   } catch { /* 分级失败不影响通知 */ }
 
+  /* 测试标记以入参为准；列已迁移时再读一次，避免调用方漏传仍把测试线索建成客户。列不存在则忽略。 */
+  let isTest = row.isTest === true;
+  if (!isTest) {
+    const stamped = await db.prepare(`SELECT is_test FROM inquiries WHERE id=?`).bind(id).first<{ is_test?: number }>().catch(() => null);
+    isTest = Number(stamped?.is_test) === 1;
+  }
+
   /* 09-24 W7(AI 获客定稿 WP-02):A/B 级首回只存草稿(ai_reply),不再自动发给询盘人 —— 业务员在后台看过后用自己的邮箱「用邮件发」。
-     通知先于群机器人:发 NOTIFY_MAIL(没配发 MAIL_DIGEST_TO,都没配发本站 sales@ —— 进后台邮件中心并按 MAIL_FORWARD_TO 转业务员),分级失败也发,附原文前 500 字。这是内部事务信。 */
-  const text = `【官网询盘 #${id}${grade ? ' · ' + grade : ''}】${row.company ?? ''} ${row.name}(${row.country ?? '-'})\n${summary || row.message.slice(0, 140)}\n${next ? '下一步:' + next + '\n' : ''}邮箱:${row.email}${row.whatsapp ? '\nWhatsApp:' + row.whatsapp : ''}${reply ? '\n首回:草稿在后台,人审后用邮件发' : ''}\n后台:https://biosphere-ai.com/bohui/inquiries`;
+     通知先于群机器人:发 NOTIFY_MAIL(没配发 MAIL_DIGEST_TO,都没配发本站 sales@ —— 进后台邮件中心并按 MAIL_FORWARD_TO 转业务员),分级失败也发,附原文前 500 字。这是内部事务信。
+     通知失败不回滚已入库的线索：notified_at 留空，并尽量写下 notify_error。 */
+  let customerNotified = false;
+  const text = `${isTest ? '【测试线索·不入有效客户】\n' : ''}【官网询盘 #${id}${grade ? ' · ' + grade : ''}】${row.company ?? ''} ${row.name}(${row.country ?? '-'})\n${summary || row.message.slice(0, 140)}\n${next ? '下一步:' + next + '\n' : ''}邮箱:${row.email}${row.whatsapp ? '\nWhatsApp:' + row.whatsapp : ''}${reply ? '\n首回:草稿在后台,人审后用邮件发' : ''}\n后台:https://biosphere-ai.com/bohui/inquiries`;
   const notifyTo = (String(env.NOTIFY_MAIL ?? '').trim() || String(env.MAIL_DIGEST_TO ?? '').trim() || 'sales@biosphere-ai.com').split(',').map((s) => s.trim()).filter(Boolean);
   if (notifyTo.length && canSend(env)) {
-    const r = await sendMail(env, { to: notifyTo, subject: `[官网] 询盘 #${id}${grade ? ' · ' + grade : ''} ${row.company ?? row.name}${row.country ? ' · ' + row.country : ''}`, text: `${text}\n\n正文(前 500 字):\n${row.message.slice(0, 500)}`, replyTo: row.email }).catch(() => ({ ok: false }));
-    if (r.ok) await db.prepare("UPDATE inquiries SET notified_at = datetime('now') WHERE id = ?").bind(id).run().catch(() => {});
+    const r = await sendMail(env, { to: notifyTo, subject: `${isTest ? '[TEST] ' : ''}[官网] 询盘 #${id}${grade ? ' · ' + grade : ''} ${row.company ?? row.name}${row.country ? ' · ' + row.country : ''}`, text: `${text}\n\n正文(前 500 字):\n${row.message.slice(0, 500)}`, replyTo: row.email }).catch(() => ({ ok: false as const }));
+    if (r.ok) {
+      customerNotified = true;
+      await db.prepare("UPDATE inquiries SET notified_at = datetime('now') WHERE id = ?").bind(id).run().catch(() => {});
+    }
   }
   /* Jev 影子(09-22 接入,已停):只有 JEV_SHADOW='1' 才跑,且排在所有通知之后,不拖通知、不进通知正文 */
   if (env.JEV_SHADOW === '1') {
@@ -68,7 +81,10 @@ ${rules.body.slice(0, 4000)}` : PROMPT;
   }
 
   const hook = String(env.NOTIFY_WEBHOOK ?? '').trim();
-  if (!hook) return;
+  if (!hook) {
+    if (!customerNotified) await markCustomerNotifyFailed(db, id).catch(() => {});
+    return;
+  }
   let body: unknown;
   if (/qyapi\.weixin\.qq\.com/.test(hook)) body = { msgtype: 'text', text: { content: text } };
   else if (/open\.feishu\.cn|larksuite\.com/.test(hook)) body = { msg_type: 'text', content: { text } };
@@ -77,13 +93,18 @@ ${rules.body.slice(0, 4000)}` : PROMPT;
   else body = { text };
   try {
     const res = await fetch(hook, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-    if (res.ok) await db.prepare("UPDATE inquiries SET notified_at = datetime('now') WHERE id = ?").bind(id).run();
+    if (res.ok) {
+      customerNotified = true;
+      await db.prepare("UPDATE inquiries SET notified_at = datetime('now') WHERE id = ?").bind(id).run();
+    }
   } catch { /* 通知失败留空 notified_at,后台能看出来 */ }
+  if (!customerNotified) await markCustomerNotifyFailed(db, id).catch(() => {});
 
   /* 2026-10-09 获客自动化:A/B 级询盘自动创建 CRM 商机(company + contact + deal + activity)。
+     测试线索（is_test / RFQ-E2E-TEST）不进有效客户。
      与 /api/admin/crm op=convert 同一套去重逻辑:先按官网/公司名找已有 company,有就挂上,没有才建。
      deal 也按 company + deal.name 去重,不建重复商机。 */
-  if (grade === 'A' || grade === 'B') {
+  if (shouldEnterValidCustomer(isTest, grade)) {
     try {
       const coName = (row.company || row.name || '').trim().slice(0, 200);
       const dealName = `${row.category || '询盘需求'}${row.volume ? ' · ' + row.volume : ''}`.slice(0, 200);
