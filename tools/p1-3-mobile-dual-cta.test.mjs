@@ -27,7 +27,7 @@ assert.match(logic, /\/rfq\/\?product_id=|\/rfq\/`/, 'must link /rfq/');
 assert.match(mobileDualCta, /max-width:\s*52rem/, 'mobile media query');
 assert.match(mobileDualCta, /beauty2oem/, 'beauty2oem skip');
 assert.equal(/href=["'][^"']*普草/.test(mobileDualCta + logic), false, 'no 普草 href');
-assert.match(middleware, /const CACHE_V = 'v147'/, 'CACHE_V is v147 for this public-entry removal');
+assert.match(middleware, /const CACHE_V = 'v148'/, 'CACHE_V is v148 for this public-entry removal');
 assert.match(baseLayout, /import MobileDualCta from/, 'BaseLayout imports MobileDualCta');
 assert.match(baseLayout, /<MobileDualCta\s+locale=\{locale\}\s+brand=\{brand\}\s*\/>/, 'BaseLayout mounts MobileDualCta');
 assert.match(baseLayout, /<\/style>/, 'BaseLayout style tag closed');
