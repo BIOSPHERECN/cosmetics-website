@@ -95,8 +95,17 @@ const zhHome = homeSeo('zh-cn', '广州草本化妆品 OEM/ODM 代工厂', '广�
 assert.equal(zhHome.title, '广州草本化妆品 OEM/ODM 代工厂');
 
 const compliance = read('apps/web/src/pages/[lang]/compliance/index.astro');
+const complianceTitleProp = 'ASEAN notification accounts: factory dossier';
+const complianceTitle = layoutTitle(complianceTitleProp);
 const meta = 'The factory cannot open the notification account. It can supply the factory half of the dossier. An enquiry about this factory-side documentation is welcome.';
-assert.match(compliance, /Factory-side dossier; we cannot open the account/);
+assert.equal(complianceTitle, 'ASEAN notification accounts: factory dossier | BIOSPHERE-AI');
+assert.equal(complianceTitle.length, 59);
+assert.match(complianceTitle, /ASEAN/);
+assert.match(complianceTitle, /notification accounts/);
+assert.match(complianceTitle, /factory dossier/);
+assert.equal(/open the account|register/i.test(complianceTitle), false);
+assert.match(compliance, new RegExp(`title: '${complianceTitleProp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`));
+assert.match(compliance, /<h1>\{T\.title\}<\/h1>/);
 assert.match(compliance, new RegExp(meta.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 assert.equal(meta.length >= 155 && meta.length <= 160, true, String(meta.length));
 assert.match(meta, /^The factory cannot open the notification account\./);
@@ -121,6 +130,6 @@ console.log(JSON.stringify({
   iron: { n: iron.length, text: iron },
   homeTitle: { n: homeTitle.length, text: homeTitle },
   homeDesc: { n: homeDesc.length, text: homeDesc },
-  complianceTitle: layoutTitle('Factory-side dossier; we cannot open the account'),
+  complianceTitle: { n: complianceTitle.length, text: complianceTitle },
   complianceMeta: { n: meta.length, text: meta },
 }, null, 2));
