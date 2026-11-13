@@ -204,6 +204,7 @@ const ROWS: Row[] = [
 const T = zh ? {
   eyebrow: '出海合规',
   title: '东南亚六国化妆品通报账号门槛',
+  meta: '',
   lede: '东盟有统一的 ACD 化妆品指令,但六个国家的通报系统、账号资质与电子签要求差别很大,'
       + '一套资料通用不了。共同点只有一条:**都不接受境外企业直接开户,必须绑定本地法人主体**。',
   ours: '先说清楚我们能做什么、不能做什么',
@@ -263,8 +264,10 @@ const T = zh ? {
   yes: '强制', opt: '视方式而定', no: '不需要',
 } : {
   eyebrow: 'Export compliance',
-  title: 'Cosmetic notification accounts across six ASEAN markets',
-  lede: 'ASEAN has a harmonised Cosmetic Directive, but the six notification systems, account '
+  title: 'ASEAN notification accounts: factory dossier',
+  meta: 'The factory cannot open the notification account. It can supply the factory half of the dossier. An enquiry about this factory-side documentation is welcome.',
+  lede: 'The factory cannot open the notification account. It can supply the factory half of the dossier. An enquiry about this factory-side documentation is welcome. '
+      + 'ASEAN has a harmonised Cosmetic Directive, but the six notification systems, account '
       + 'prerequisites and e-signature rules differ enough that one document set will not travel. '
       + 'The one thing they share: **none of them lets a foreign company open the account directly — '
       + 'a local legal entity is required.**',
@@ -363,7 +366,7 @@ const indexable = shell.site?.is_live === 1;
 <BaseLayout
   locale={lang} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
   brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
-  title={T.title} description={T.lede.replace(/\*\*/g, '')}
+  title={T.title} description={(T.meta || T.lede).replace(/\*\*/g, '')}
   siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
   indexable={indexable} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
 >

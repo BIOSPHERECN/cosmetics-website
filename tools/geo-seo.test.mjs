@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = new URL('../', import.meta.url);
 const { pickRootLang, isSearchCrawler } = await import(new URL('apps/web/src/lib/root-locale.ts', root));
-const { homeSeo } = await import(new URL('apps/web/src/lib/home-seo.ts', root));
+const { homeSeo, EN_HOME_SNIPPET } = await import(new URL('apps/web/src/lib/home-seo.ts', root));
 const { llmsKind } = await import(new URL('apps/web/src/lib/llms-kind.ts', root));
 const { funnelHero } = await import(new URL('packages/core/src/content/funnel-hero.ts', root));
 
@@ -70,8 +70,16 @@ assert.match(id.description, /2012/);
 const ar = homeSeo('ar', 'منصة ذكاء اصطناعي', 'AI platform');
 assert.match(ar.title, /OEM/);
 assert.match(ar.title, /[\u0600-\u06FF]/);
-const kept = homeSeo('en', 'Guangzhou herbal cosmetics OEM / ODM manufacturer', 'Contract factory in Guangzhou');
-assert.equal(kept.title, 'Guangzhou herbal cosmetics OEM / ODM manufacturer');
+const longEn = homeSeo(
+  'en',
+  'Cosmetics OEM / ODM factory in Guangzhou · find the product worth making, then we make it',
+  'From a product idea to finished goods that sell in your target market: lookalike search, INCI decoding, in-house formulation bases, sampling, compliance dossier, packaging, pilot run and bulk production by the BIOSPHERE factory in Guangzhou; 15 automated lines, GMPC / ISO 22716 / HALAL.',
+);
+assert.equal(longEn.title, EN_HOME_SNIPPET.title);
+assert.equal(longEn.description, EN_HOME_SNIPPET.description);
+const shortEn = homeSeo('en', 'OEM / ODM factory in Guangzhou', 'Contract factory in Guangzhou');
+assert.equal(shortEn.title, 'OEM / ODM factory in Guangzhou');
+assert.equal(shortEn.description, 'Contract factory in Guangzhou');
 const zh = homeSeo('zh-cn', '广州草本化妆品 OEM/ODM 代工厂', '广州市帛卉化妆品有限公司');
 assert.match(zh.title, /代工|OEM/);
 assert.equal(zh.title.includes('AI platform'), false);
