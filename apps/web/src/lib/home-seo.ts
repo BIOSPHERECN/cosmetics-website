@@ -5,11 +5,34 @@
  * 「AI platform」。这里只替换看不出工厂 / 代工意图的标题,不覆盖已经写对的 CMS 文案。
  * 替换句与 /llms.txt、Organization 同一口径:广州帛卉,BIOSPHERE 是出口品牌,OEM/ODM/OBM。
  * 不写起订量,不新增认证。
+ *
+ * 英文首页若 CMS 标题（加上布局补的 `| BIOSPHERE-AI`）超过约 60 字，
+ * 或描述超过 160 字，改用 EN_HOME_SNIPPET。只保留已经公开的事实：
+ * 广州工厂、sampling、compliance dossier、15 automated lines、GMPC / ISO 22716 / HALAL。
+ * 不新增数字。其它语种仍按上面的规则，不在这里改写。
  */
 
 export interface HomeSeo {
   title: string;
   description: string;
+}
+
+/**
+ * 英文首页搜索摘要。title 不含站点名，BaseLayout 会补 `| BIOSPHERE-AI`。
+ * 描述约 155–160 字，且是完整句。
+ */
+export const EN_HOME_SNIPPET: HomeSeo = {
+  title: 'Cosmetics OEM / ODM factory in Guangzhou',
+  description: 'The BIOSPHERE factory at the Guangzhou plant handles both sampling and a compliance dossier for buyers, on 15 automated lines, with GMPC / ISO 22716 / HALAL.',
+};
+
+function renderedHomeTitle(title: string): string {
+  return title.includes('BIOSPHERE-AI') ? title : `${title} | BIOSPHERE-AI`;
+}
+
+function shortenEnglishHome(seo: HomeSeo): HomeSeo {
+  if (renderedHomeTitle(seo.title).length <= 60 && seo.description.length <= 160) return seo;
+  return EN_HOME_SNIPPET;
 }
 
 /** 已经能看出工厂或代工意图的,留下 CMS 原文。 */
@@ -92,6 +115,7 @@ const OEM: Record<string, HomeSeo> = {
 
 export function homeSeo(lang: string, title: string, description: string | null): HomeSeo {
   const current = { title: title || '', description: description || '' };
-  if (FACTORY.test(`${current.title}\n${current.description}`)) return current;
-  return OEM[lang] ?? OEM.en;
+  const picked = FACTORY.test(`${current.title}\n${current.description}`) ? current : (OEM[lang] ?? OEM.en);
+  if (lang === 'en') return shortenEnglishHome(picked);
+  return picked;
 }

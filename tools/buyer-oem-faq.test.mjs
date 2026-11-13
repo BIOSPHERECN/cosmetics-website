@@ -105,6 +105,6 @@ function layoutTitle(title, siteName) {
 const full = layoutTitle(oemPageTitle('Guangzhou private label cosmetics OEM by market'), 'BIOSPHERE-AI');
 assert.equal(full, 'Guangzhou private label cosmetics OEM by market | BIOSPHERE-AI');
 
-assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v154'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v155'/);
 
 console.log('buyer-oem-faq ok');
