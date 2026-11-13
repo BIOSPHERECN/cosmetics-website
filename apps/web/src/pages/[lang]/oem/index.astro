@@ -17,6 +17,9 @@ import CertMatrix from '../../../components/CertMatrix.astro';
 import EvidenceFlow from '../../../components/EvidenceFlow.astro';
 import { oemIndexCrumbs, oemPageTitle } from '../../../lib/oem-index-seo';
 import { certWallCopy } from '../../../lib/comply-copy';
+import { faqJsonLd } from '../../../lib/jsonld';
+import { BUYER_OEM_FAQ } from '../../../lib/buyer-oem-faq';
+import BuyerOemFaq from '../../../components/BuyerOemFaq.astro';
 
 export const prerender = false;
 const lang = Astro.params.lang ?? 'zh-cn';
@@ -55,6 +58,7 @@ if (!zh && lang !== 'en' && db) {
   const { results } = await db.prepare(`SELECT key, text FROM ui_i18n WHERE ns='oem-index' AND lang=?`).bind(lang).all<any>().catch(() => ({ results: [] as any[] }));
   if (results?.length) T = { ...T, ...Object.fromEntries(results.map((r: any) => [r.key, r.text])) } as any;
 }
+if (lang === 'en') T = { ...T, title: 'Guangzhou private label cosmetics OEM by market' };
 /* 市场 / 品类名的译文与落地页共用 ns='oem' 里的 market.* / cat.* */
 let NAMES: Record<string, string> = {};
 if (!zh && lang !== 'en' && db) {
@@ -67,9 +71,11 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /* 品牌后缀只留 BaseLayout 按站点名补的那一次。译文里若仍带着 `| BIOSPHERE` 也剥掉。 */
 const pageTitle = oemPageTitle(T.title);
 const crumbs = oemIndexCrumbs({ lang, homeLabel: uiT(lang as any)('nav.home'), nav: shell.nav });
+const buyerFaqLd = lang === 'en' ? faqJsonLd(BUYER_OEM_FAQ) : null;
 const ld = [
   { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: `${origin}${c.path}` })) },
   { '@context': 'https://schema.org', '@type': 'ItemList', itemListElement: OEM_MARKETS.flatMap((m, i) => OEM_CATEGORIES.map((c, j) => ({ '@type': 'ListItem', position: i * OEM_CATEGORIES.length + j + 1, url: `${origin}${B}/oem/${m.id}/${c.id}/` }))) },
+  ...(buyerFaqLd ? [buyerFaqLd] : []),
 ];
 ---
 <BaseLayout locale={lang as any} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'} brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
@@ -106,6 +112,7 @@ const ld = [
       stepsNote={stepsNote}
       secondaryLinks={[{ href: `${B}/portfolio/`, label: zh ? '看成熟产品库' : 'Browse product library' }]}
     />
+    {lang === 'en' && <div class="buyer-faq"><BuyerOemFaq /></div>}
     <GccFairStatus ctaGhost lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
     <CosmopackInquiry ctaGhost lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />
     <table class="mx">
@@ -120,7 +127,7 @@ const ld = [
 
 <style>
   main{max-width:64rem;margin:0 auto;padding:2rem 1rem 4rem;min-width:0}
-  main>.hd,main>.mx,main>.by-cert,main>:global(.gcc-fair),main>:global(.cpk),main>:global(.cert-mx){margin-top:var(--bio-space)}
+  main>.hd,main>.mx,main>.by-cert,main>.buyer-faq,main>:global(.gcc-fair),main>:global(.cpk),main>:global(.cert-mx){margin-top:var(--bio-space)}
   main>.oem-evidence-flow{margin-top:0}
   h1{font-size:clamp(1.5rem,3vw,2.25rem);margin:0 0 .75rem;color:var(--bio-fg)} .lede{line-height:1.7;margin:0;max-width:52rem;color:var(--bio-fg)}
   .crumb{margin:0;font-size:.875rem} .crumb ol{display:flex;flex-wrap:wrap;gap:.35rem .15rem;list-style:none;margin:0;padding:0} .crumb li:not(:last-child)::after{content:"/";margin-inline:.4rem;opacity:.55} .crumb a{color:inherit}
