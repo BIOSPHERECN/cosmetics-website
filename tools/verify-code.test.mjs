@@ -4,7 +4,7 @@
  *   node tools/verify-code.test.mjs
  *
  * 三条路径：未知码不是正品；测试码首查 genuine + firstScan；再查 scanCount ≥ 2。
- * 另外钉住：作废码不是正品、查询记录不存原始 IP、带 code 的验真页不进边缘缓存、CACHE_V 为 v153。
+ * 另外钉住：作废码不是正品、查询记录不存原始 IP、带 code 的验真页不进边缘缓存、CACHE_V 为 v154。
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -161,10 +161,10 @@ assert.equal(canon.canonical('/zh-cn/verify/', '?code=BH-TEST-001'), null);
 const about = new URL('https://biosphere-ai.com/zh-cn/about/?code=abc');
 assert.equal(canon.uncacheable(about.pathname, about.searchParams), false);
 
-assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v153'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v154'/);
 
 console.log(JSON.stringify({
-  cache_v: 'v153',
+  cache_v: 'v154',
   unknown: unknown.body,
   first: first.body,
   again: again.body,

@@ -17,16 +17,19 @@
  * 没有大标题压顶、没有按钮抢焦点。它的任务是被读完,不是被看见。
  */
 export interface QA { q: string; a: string }
+export interface FaqLink { href: string; label: string }
 export interface Props {
-  /** 这一页要回答的那个问题,写成访客会搜的样子 */
+  /** 这一页要回答的那个问题,写成访客会搜的样子。也可作整段 FAQ 的 h2 */
   question: string;
-  /** 100–150 字的直接回答。第一句就要给结论,不要铺垫 */
-  answer: string;
+  /** 100–150 字的直接回答。第一句就要给结论,不要铺垫。没有总答时留空 */
+  answer?: string;
   /** 顺带回答的常见问题;会同时进 FAQPage 结构化数据 */
   faqs?: QA[];
+  /** 区块底部的站内链接,跟在问答后面 */
+  links?: FaqLink[];
   tone?: 'paper' | 'sand';
 }
-const { question, answer, faqs = [], tone = 'paper' } = Astro.props;
+const { question, answer = '', faqs = [], links = [], tone = 'paper' } = Astro.props;
 ---
 
 {/* 容器从 dtc-wrap-prose(768 居中)换成 ck-wrap:
@@ -37,7 +40,7 @@ const { question, answer, faqs = [], tone = 'paper' } = Astro.props;
   <div class="ck-wrap">
     {/* 用 h2 而不是 h1:页面上已经有 h1 了,两个 h1 会让抓取器判不出主标题 */}
     <h2 class="q">{question}</h2>
-    <p class="a">{answer}</p>
+    {answer && <p class="a">{answer}</p>}
 
     {faqs.length > 0 && (
       <dl class="faq">
@@ -48,6 +51,13 @@ const { question, answer, faqs = [], tone = 'paper' } = Astro.props;
           </div>
         ))}
       </dl>
+    )}
+    {links.length > 0 && (
+      <ul class="more">
+        {links.map((l) => (
+          <li><a href={l.href}>{l.label}</a></li>
+        ))}
+      </ul>
     )}
   </div>
 </section>
@@ -94,6 +104,18 @@ const { question, answer, faqs = [], tone = 'paper' } = Astro.props;
     line-height: 1.75;
     color: color-mix(in srgb, currentColor 68%, transparent);
     max-width: 62ch;
+  }
+  .more {
+    margin: 1.5rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.35rem;
+  }
+  .more a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
   }
 
   @media (max-width: 40rem) {

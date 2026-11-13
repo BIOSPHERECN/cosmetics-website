@@ -1,0 +1,17 @@
+---
+/**
+ * 英文采购 FAQ。版式走已有 AnswerBlock（直答 + dl），不另起一套样式。
+ * 文案只在 buyer-oem-faq.ts。首页与 /oem/ 都引这一份，避免两页写岔。
+ */
+import AnswerBlock from '@cosmetic/core/components/dtc/AnswerBlock.astro';
+import { BUYER_OEM_FAQ, BUYER_OEM_FAQ_HEADING, BUYER_OEM_FAQ_LINKS } from '../lib/buyer-oem-faq';
+---
+
+<div class="buyer-oem-faq">
+  <AnswerBlock question={BUYER_OEM_FAQ_HEADING} faqs={BUYER_OEM_FAQ} links={BUYER_OEM_FAQ_LINKS} />
+</div>
+
+<style>
+  /* 浅底直答。noir 页正文是浅色字，这里钉回深色，避免浅字落在纸色底上。 */
+  .buyer-oem-faq { color: var(--bio-fg, #1c1b19); }
+</style>
