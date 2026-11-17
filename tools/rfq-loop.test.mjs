@@ -332,7 +332,7 @@ assert.equal(shouldEnterValidCustomer(false, 'A'), true);
 assert.equal(shouldEnterValidCustomer(false, 'C'), false);
 assert.equal(shouldEnterValidCustomer(true, 'A'), false);
 
-/* 接线：公开回执文案不变；旁路还在；入库字段名是 sourcePath；CACHE_V 为 v154 */
+/* 接线：公开回执文案不变；旁路还在；入库字段名是 sourcePath；CACHE_V 为 v155 */
 const inquiry = read('apps/web/src/pages/api/inquiry.ts');
 const ai = read('apps/web/src/lib/inquiry-ai.ts');
 const admin = read('apps/web/src/pages/api/admin/inquiry.ts');
@@ -352,7 +352,7 @@ assert.match(admin, /op === 'assign'/);
 assert.match(admin, /pending/);
 assert.match(crm, /测试线索不入有效客户/);
 assert.match(human, /RFQ_E2E_BYPASS_TOKEN/);
-assert.match(middleware, /const CACHE_V = 'v154'/);
+assert.match(middleware, /const CACHE_V = 'v155'/);
 assert.equal(/wa\.me/.test(read('apps/web/src/lib/rfq-loop.ts')), false);
 assert.equal(INQUIRY_OK_MSG.includes('不自动报价'), true);
 
@@ -373,5 +373,5 @@ assert.equal(INQUIRY_OK_MSG.includes('不自动报价'), true);
   assert.equal(mig.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='inquiry_notes'`).get()?.name, 'inquiry_notes');
 }
 
-console.log(JSON.stringify({ cache_v: 'v154', scenarios: evidence, notify_fail_kept: notifyFailLead }, null, 2));
+console.log(JSON.stringify({ cache_v: 'v155', scenarios: evidence, notify_fail_kept: notifyFailLead }, null, 2));
 console.log('rfq-loop.test.mjs: 三场景与失败路径通过');

@@ -575,7 +575,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       homeFlagEtag = '10001';
     }
   }
-  const CACHE_V = 'v154';   // 2026-11-13: 英文首页与 /en/oem/ 采购 FAQ 进入 HTML。tip 时生产分支现网为 v153，本刀 +1。v153 是首页样板间。带码验真页仍不进边缘缓存。首页块开关走 __hf，禁止为藏块再抬这个常量。
+  const CACHE_V = 'v155';   // 2026-11-17: 英阿首页 WhatsApp 主路径进入 HTML。现网为 v154（#66）。本刀先上占用 v155；仍开放的 #67 若后上应改为 v156。带码验真页仍不进边缘缓存。首页块开关走 __hf，禁止为藏块再抬这个常量。
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。
