@@ -23,9 +23,16 @@ export const POST: APIRoute = async ({ request }) => {
     const { lang, section } = SECTION(path);
     /* 2026-10-28:&wa=1 是 WhatsApp 按钮点击(真人动作)。与 human:js 同表不同 blob1,
        以后「每天多少人点 WhatsApp、从哪个页面」直接查 blob1='wa:click' 即可 */
-    const wa = new URL(request.url).searchParams.get('wa') === '1';
+    const sp = new URL(request.url).searchParams;
+    const wa = sp.get('wa') === '1';
     const k = wa ? 'wa:click' : 'human:js';
-    ae?.writeDataPoint({ blobs: [k, lang, section, path, (request as any).cf?.country ?? '-'], doubles: [1], indexes: [k] });
+    const place = String(sp.get('pl') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24);
+    const source = String(sp.get('src') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24);
+    ae?.writeDataPoint({
+      blobs: [k, lang, section, path, (request as any).cf?.country ?? '-', wa ? (place || '-') : '-', wa ? (source || '-') : '-'],
+      doubles: [1],
+      indexes: [k],
+    });
   } catch { /* 打点失败不影响页面 */ }
   return new Response(null, { status: 204, headers: { 'cache-control': 'no-store' } });
 };

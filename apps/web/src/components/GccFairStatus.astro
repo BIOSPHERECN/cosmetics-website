@@ -4,6 +4,7 @@
  * 只说明主办方日程与询盘开放，外链不是我方展商身份。
  */
 import { siteIdForHost } from '@cosmetic/core/content/tenant-map.ts';
+import { waMeHref } from '@cosmetic/core/content/wa-link.mjs';
 import {
   BEAUTYWORLD_SCHEDULE, CONNECT_DUBAI_SCHEDULE,
   gccFairCopy, gccFairRfqPath,
@@ -22,6 +23,13 @@ const resolved = siteId ?? siteIdForHost(Astro.url.hostname);
 const show = !resolved || resolved === 'biosphere-ai';
 const C = gccFairCopy(lang);
 const rfq = gccFairRfqPath(lang);
+const gccWa = waMeHref({
+  whatsapp: ((Astro.locals as any)?.contact ?? {}).whatsapp,
+  lang,
+  siteName: 'BIOSPHERE-AI',
+  path: Astro.url.pathname,
+  category: 'GCC / MENA OEM',
+});
 ---
 
 {show && (
@@ -35,7 +43,16 @@ const rfq = gccFairRfqPath(lang);
       <span aria-hidden="true"> · </span>
       <a href={CONNECT_DUBAI_SCHEDULE} rel="noopener noreferrer" target="_blank">{C.connectLabel}</a>
     </p>
-    <p class="gcc-cta"><a class:list={['gcc-btn', { ghost: ctaGhost }]} href={rfq}>{C.cta}</a></p>
+    <p class="gcc-cta">
+      {gccWa ? (
+        <>
+          <a class="gcc-btn" href={gccWa} target="_blank" rel="noopener noreferrer" data-wa-placement="gcc-fair">WhatsApp</a>
+          <a class="gcc-btn ghost" href={rfq}>{C.cta}</a>
+        </>
+      ) : (
+        <a class:list={['gcc-btn', { ghost: ctaGhost }]} href={rfq}>{C.cta}</a>
+      )}
+    </p>
   </section>
 )}
 
@@ -53,7 +70,7 @@ const rfq = gccFairRfqPath(lang);
   .gcc-line { font-weight: 650; }
   .gcc-note, .gcc-ref { font-weight: 400; font-size: 0.9375rem; }
   .gcc-ref a { color: inherit; }
-  .gcc-cta { margin: 0.75rem 0 0; }
+  .gcc-cta { margin: 0.75rem 0 0; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
   .gcc-btn {
     display: inline-flex;
     align-items: center;

@@ -1,10 +1,13 @@
 ---
 /**
  * BIOSPHERE 首页样板间。
- * 一句价值 + 唯一主色询盘钮。有现成 contact.whatsapp 才出幽灵次钮，否则次链进成品页。
+ * 英文 / 阿拉伯语首页：有号码时 WhatsApp 是主色钮并带安全预填，RFQ 降为幽灵次钮。
+ * 其它语种仍保持询盘主钮。无号码时次链进成品页。
  * 三张静帧是已给的 Scene，不另生成。HERO_CARD 关时只留文案。
  * 浅底可读。类名 bio-hero-shot 只活在本文件，页面源不写这个词。
  */
+import { waMeHref } from '@cosmetic/core/content/wa-link.mjs';
+
 interface Props {
   locale: string;
   whatsapp?: string | null;
@@ -25,18 +28,17 @@ const line = tw
         ? '광저우 공장의 화장품 OEM / ODM.'
         : 'Cosmetics OEM / ODM from our Guangzhou plant.';
 
-const rfqLabel = tw ? '發起詢盤' : zh ? '发起询盘' : locale === 'jp' ? '見積を依頼' : locale === 'kr' ? '견적 요청' : 'Start RFQ';
+const rfqLabel = tw ? '發起詢盤' : zh ? '发起询盘' : locale === 'jp' ? '見積を依頼' : locale === 'kr' ? '견적 요청' : locale === 'ar' ? 'طلب عرض سعر' : 'Start RFQ';
 const seeLabel = tw ? '看成品' : zh ? '看成品' : locale === 'jp' ? '仕上がりを見る' : locale === 'kr' ? '완성품 보기' : 'See finished products';
 
-/** 次 CTA 只用现成号码。不够 6 位就当没有，不去拼一个新号。 */
-function chatHref(raw: string | null | undefined): string | null {
-  const digits = String(raw ?? '').replace(/\D/g, '');
-  if (digits.length < 6) return null;
-  const host = ['wa', 'me'].join('.');
-  return `https://${host}/${digits}`;
-}
-
-const chat = chatHref(whatsapp);
+/** 只用现成号码。不够 6 位就当没有。预填带规范路径，不把查询串写进 text=。 */
+const chat = waMeHref({
+  whatsapp,
+  lang: locale,
+  siteName: 'BIOSPHERE-AI',
+  path: `/${locale}/`,
+}) || null;
+const waPrimary = (locale === 'en' || locale === 'ar') && !!chat;
 const scenes = [
   {
     src: '/media/shots/scene-water-essence.jpg',
@@ -65,11 +67,20 @@ const cap = (s: (typeof scenes)[number]) => (tw ? s.tw : zh ? s.zh : s.en);
     <div class="showroom-copy">
       <h1 id="showroom-title">{line}</h1>
       <div class="showroom-cta">
-        <a class="show-pri" href={`/${locale}/rfq/`}>{rfqLabel}</a>
-        {chat ? (
-          <a class="show-ghost" href={chat} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+        {waPrimary ? (
+          <>
+            <a class="show-pri" href={chat} target="_blank" rel="noopener noreferrer" data-wa-placement="home-hero">WhatsApp</a>
+            <a class="show-ghost" href={`/${locale}/rfq/`}>{rfqLabel}</a>
+          </>
         ) : (
-          <a class="show-ghost" href={`/${locale}/portfolio/`}>{seeLabel}</a>
+          <>
+            <a class="show-pri" href={`/${locale}/rfq/`}>{rfqLabel}</a>
+            {chat ? (
+              <a class="show-ghost" href={chat} target="_blank" rel="noopener noreferrer" data-wa-placement="home-hero">WhatsApp</a>
+            ) : (
+              <a class="show-ghost" href={`/${locale}/portfolio/`}>{seeLabel}</a>
+            )}
+          </>
         )}
       </div>
     </div>

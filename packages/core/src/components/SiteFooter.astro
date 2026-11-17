@@ -49,7 +49,7 @@ const items = nav?.length
 const _contact = ((Astro.locals as any)?.contact ?? {}) as { whatsapp?: string | null; wechat?: string | null };
 const waRaw = String((Astro.props as any).whatsapp ?? _contact.whatsapp ?? '');
 const wa = waDigits(waRaw);
-const waHref = waOrContact({ whatsapp: waRaw, lang: locale, siteName: site.name });
+const waHref = waOrContact({ whatsapp: waRaw, lang: locale, siteName: site.name, path: Astro.url.pathname });
 const wx = String((Astro.props as any).wechat ?? _contact.wechat ?? '').trim();
 ---
 
@@ -78,11 +78,11 @@ const wx = String((Astro.props as any).wechat ?? _contact.wechat ?? '').trim();
         {!cnOnly && email && <li><a href={`mailto:${email}`}>{email}</a></li>}
         {/* WhatsApp:海外采购最常用的联络方式。号码来自后台站点设置;没填就回联系页。 */}
         {cnOnly ? null : wa ? (
-          <li><a href={waHref} target="_blank" rel="noopener noreferrer" class="wa">
+          <li><a href={waHref} target="_blank" rel="noopener noreferrer" class="wa" data-wa-placement="footer">
             <span aria-hidden="true">💬</span> WhatsApp +{wa}
           </a></li>
         ) : (
-          <li><a href={waHref} class="wa">
+          <li><a href={waHref} class="wa" data-wa-placement="footer">
             <span aria-hidden="true">💬</span> WhatsApp / WeChat:填询盘表单后我们联系你
           </a></li>
         )}

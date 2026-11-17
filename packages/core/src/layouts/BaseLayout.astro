@@ -281,7 +281,13 @@ const tsKey = String((cfEnv as any)?.TURNSTILE_SITE_KEY ?? '').trim();
           document.addEventListener('click', function (e) {
             const a = e.target && e.target.closest ? e.target.closest('a[href*="wa.me"]') : null;
             if (!a) return;
-            const u = '/api/pulse?p=' + encodeURIComponent(location.pathname.slice(0, 96)) + '&wa=1';
+            const attr = (a.getAttribute('data-wa-placement') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24);
+            const place = attr
+              || (a.id === 'bh-wa-fab' ? 'fab' : '')
+              || (a.classList && a.classList.contains('wa-btn') ? 'mobile-bar' : '')
+              || (a.classList && a.classList.contains('show-pri') ? 'home-hero' : '')
+              || (a.closest && a.closest('footer') ? 'footer' : 'link');
+            const u = '/api/pulse?p=' + encodeURIComponent(location.pathname.slice(0, 96)) + '&wa=1&pl=' + encodeURIComponent(place);
             (navigator.sendBeacon && navigator.sendBeacon(u)) || fetch(u, { method: 'POST', keepalive: true });
           }, true);
         }

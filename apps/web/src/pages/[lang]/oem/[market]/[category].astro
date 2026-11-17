@@ -21,6 +21,7 @@ import { ORG } from '@cosmetic/core/content/org.ts';
 import GccFairStatus from '../../../../components/GccFairStatus.astro';
 import GhadBoundary from '../../../../components/GhadBoundary.astro';
 import { isGccOemMarket } from '../../../../lib/gcc-fair-status';
+import { waMeHref } from '@cosmetic/core/content/wa-link.mjs';
 import { certWallCopy } from '../../../../lib/comply-copy';
 import { MOCRA_DETAIL_CATS, MOCRA_DETAIL_LINK, mocraPagePath } from '../../../../lib/mocra-assistance';
 
@@ -57,6 +58,13 @@ const relQ = (r: any) => zh ? r.q_zh : (relI18n.find((x: any) => x.slug === r.sl
 
 const shell = await pageShell(db, Astro.url, lang, Astro.cookies);
 const B = `/${lang}`; const path = `${B}/oem/${M.id}/${C.id}/`;
+const marketWa = isGccOemMarket(M.id) ? waMeHref({
+  whatsapp: ((Astro.locals as any)?.contact ?? {}).whatsapp,
+  lang,
+  siteName: 'BIOSPHERE-AI',
+  path,
+  category: `${M.id} ${C.id}`,
+}) : '';
 const origin = `https://${shell.site?.domain ?? 'biosphere-ai.com'}`;
 const brand = 'BIOSPHERE';
 const pick = (k: string) => (zh ? reg?.[`${k}_zh`] || reg?.[`${k}_en`] : reg?.[`${k}_en`] || reg?.[`${k}_zh`]) || '';
@@ -149,6 +157,12 @@ const ld = [
   <main id="main">
     <p class="back"><a href={`${B}/oem/`}>{T.back}</a></p>
     <header class="hd"><p class="eyebrow">{T.eyebrow} · {marketName}</p><h1>{h1}</h1><p class="answer">{lead}</p><p class="note">{T.note}</p>{mocraLine && <p class="mocra">{mocraLine}{mocraDetail && <a class="more" href={mocraPagePath(lang)}>{zh ? MOCRA_DETAIL_LINK.zh : MOCRA_DETAIL_LINK.en}</a>}</p>}</header>
+    {marketWa && (
+      <p class="market-wa">
+        <a class="wa-pri" href={marketWa} target="_blank" rel="noopener noreferrer" data-wa-placement="oem-market">WhatsApp</a>
+        <a class="wa-ghost" href="#inquiry">{T.inquiry}</a>
+      </p>
+    )}
     {isGccOemMarket(M.id) && <GccFairStatus lang={lang} siteId={shell.site?.id ?? siteIdForHost(Astro.url.hostname)} />}
     {M.id === 'sa' && <GhadBoundary lang={lang} />}
 
@@ -196,4 +210,12 @@ const ld = [
   .links a{margin-right:1rem} .faq details{margin:.5rem 0} .faq summary{cursor:pointer;font-weight:600} .rel ul{padding-left:1.25rem;line-height:1.9} .ask{margin-top:2rem;font-size:1.0625rem}
   .bases { list-style: none; padding: 0; margin: .5rem 0 .75rem; display: grid; gap: .5rem; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); } .bases li { display: grid; gap: .125rem; padding: .625rem .875rem; border: 1px solid var(--ck-line, rgba(0,0,0,.12)); border-radius: 12px; background: #fff; } .bases a { color: inherit; text-decoration: none; font-weight: 600; font-size: .9375rem; } .bases small { opacity: .6; }
   @media (max-width:640px){.facts{grid-template-columns:1fr}}
+
+  .market-wa { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0 0 1.25rem; }
+  .market-wa .wa-pri, .market-wa .wa-ghost {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+    padding: 0.55rem 1rem; border-radius: 999px; text-decoration: none; font-weight: 650;
+  }
+  .market-wa .wa-pri { background: var(--ck-accent, #222); color: #fff; }
+  .market-wa .wa-ghost { background: transparent; color: inherit; border: 1px solid color-mix(in srgb, currentColor 28%, transparent); }
 </style>
