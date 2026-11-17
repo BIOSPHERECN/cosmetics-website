@@ -25,8 +25,8 @@ export const SAFE_PRODUCT_ID = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,39}$/;
  * @param {string} [siteName]
  * @returns {string}
  */
-export function whatsappHref(raw, lang, siteName) {
-  return waOrContact({ whatsapp: raw == null ? '' : String(raw), lang, siteName });
+export function whatsappHref(raw, lang, siteName, path) {
+  return waOrContact({ whatsapp: raw == null ? '' : String(raw), lang, siteName, path });
 }
 
 function safeId(value) {

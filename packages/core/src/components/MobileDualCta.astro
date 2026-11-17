@@ -20,7 +20,7 @@ const zhTw = locale === 'zh-tw';
 const zh = String(locale).startsWith('zh');
 const b2o = brand === 'beauty2oem';
 
-const waHref = whatsappHref(((Astro.locals as any)?.contact ?? {}).whatsapp, locale);
+const waHref = whatsappHref(((Astro.locals as any)?.contact ?? {}).whatsapp, locale, undefined, Astro.url.pathname);
 const waExternal = waHref.startsWith('https://wa.me/');
 const href = sampleHref({
   locale,
@@ -35,7 +35,7 @@ const waLabel = zhTw ? 'WhatsApp（開新視窗）' : zh ? 'WhatsApp（新窗口
 {!b2o && (
   <>
   <nav class="mobile-dual-cta" aria-label={navLabel}>
-    <a class="wa-btn" href={waHref} target={waExternal ? '_blank' : undefined} rel={waExternal ? 'noopener noreferrer' : undefined} aria-label={waLabel}>WhatsApp</a>
+    <a class="wa-btn" href={waHref} target={waExternal ? '_blank' : undefined} rel={waExternal ? 'noopener noreferrer' : undefined} aria-label={waLabel} data-wa-placement="mobile-bar">WhatsApp</a>
     <a class="sample-btn" href={href} aria-label={sampleLabel}>{sampleLabel}</a>
   </nav>
   <script is:inline>
