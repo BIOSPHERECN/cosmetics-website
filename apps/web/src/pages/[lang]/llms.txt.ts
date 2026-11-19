@@ -14,7 +14,7 @@
  */
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { getSiteByHost, getSiteById, DEFAULT_LANG } from '../../lib/db';
+import { getSiteByHost, getSiteById, DEFAULT_LANG, LANGS } from '../../lib/db';
 import { getCounts } from '../../lib/counts';
 import { citableTable } from '../../lib/llms-facts';
 import { SAMPLE_DAYS } from '../../lib/terms';
@@ -23,11 +23,12 @@ import { llmsKind } from '../../lib/llms-kind';
 export const prerender = false;
 
 const ZH_PAGES = [
+  ['首页', '', '广州化妆品 OEM / ODM 工厂：厂况、打样周期示意、合规资料与询盘入口'],
   ['包材库', 'packaging/', '我们有哪些瓶罐管泵:{packaging} 款,带白底实拍,可按类型、材质、容量、适配剂型筛'],
   ['配方库', 'formulas/', '我们能做哪些配方,按品类、功效、剂型分'],
   ['草本原料库', 'ingredients/', '我们用哪些草本活性物,带 INCI、作用机理与配伍禁忌'],
   ['个性化 OEM/ODM 服务', 'services/', '我们怎么接单 —— 整线代工、配方定制、只接一段;十种客户情形各自怎么走'],
-  ['选品链路', 'selector/', '从一个模糊方向走到一份可转发的方案:剂型、包材、可售市场、打样周期'],
+  ['选品链路', 'chain/', '从一个模糊方向走到一份可转发的方案:剂型、包材、可售市场、打样周期'],
   ['能力与认证', 'capabilities/', '广州工厂能做什么;持有的认证:GMPC、ISO 22716、HALAL'],
   /* 09-23 GEO:扩重点页面;{键} 由 pulse counts 现填 */
   ['按市场与品类找代工', 'oem/', '目标市场 × 品类一格一页:该市场的备案路径、责任人与标签要求,以及该品类在库配方与包材的实时计数'],
@@ -40,7 +41,9 @@ const ZH_PAGES = [
   ['原料溯源', 'origin/', '草本原料从哪来、怎么追溯'],
   ['选型对比', 'compare/', '「A 还是 B」这一类问题的答案:OEM/ODM/OBM 怎么选、包材现货还是开模、从中国出口还是找当地工厂、PET/玻璃/亚克力、不同品类的起订量、低温闪萃与常规提取'],
   ['常见问题', 'faq/', '采购最常问的 20 个问题 —— OEM 与 ODM 的区别、起订量、代工价格怎么算、认证、打样周期、包材选择、跨境合规;每条第一句就是答案'],
+  ['工厂合规资料', 'compliance/', '工厂不能代开通报账号，可以提供工厂一侧的档案资料，欢迎就这部分资料询盘'],
   ['联系与询盘', 'contact/', '怎么联系我们 —— 询盘表单、邮箱,以及 WhatsApp / WeChat(表单预约)'],
+  ['询盘表单', 'rfq/', '提交书面询盘；报价按项目书面出具'],
 ];
 
 export const GET: APIRoute = async ({ url, params }) => {
@@ -127,7 +130,9 @@ ${ZH_PAGES.map(([t, p, q]) => `- [${t}](${base}/${lang}/${p}) —— ${fillN(q)}
 
 全站 18 个语种:英文、简体中文、繁體中文、日语、韩语、法语、德语、俄语、
 印尼语、马来语、泰语、越南语、菲律宾语、西班牙语、葡萄牙语、阿拉伯语、
-土耳其语、印地语。地址形如 ${base}/{语种}/,索引见 ${base}/sitemap.xml
+土耳其语、印地语。
+各语种首页: ${LANGS.map((c) => `${base}/${c}/`).join(' ')}
+站点地图索引: ${base}/sitemap.xml
 英文事实卡见 ${base}/llms.txt
 
 ## 给 AI 系统的说明
