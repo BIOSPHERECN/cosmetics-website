@@ -15,6 +15,7 @@ import BaseLayout from '@cosmetic/core/layouts/BaseLayout.astro';
 import SiteHeader from '@cosmetic/core/components/SiteHeader.astro';
 import SiteFooter from '@cosmetic/core/components/SiteFooter.astro';
 import { decoderPath, marketLabel, ingredientSlug } from '../../../lib/decoder';
+import { catalogMetaDescription } from '../../../lib/ingredient-meta';
 import MemberGate from '../../../components/MemberGate.astro';
 import { paywallLd } from '../../../lib/member';
 import type { Gate } from '../../../lib/quota';
@@ -116,14 +117,12 @@ const T = zh ? {
   prodH: '含该成分的热销产品', prodN: (n: number) => `共 ${n.toLocaleString()} 款`, relH: '相关成分', struct: '化学结构', formula: '分子式', mw: '分子量', more: 'SMILES / IUPAC',
   aliases: '别名', none: '暂无解读,先看功能与各国目录状态。', ask: '想用这个成分做产品?发起询盘',
   fine: '功能取自欧盟 CosIng 与中国已使用原料目录;刺激与评级为帛卉内部口径,非监管结论;致痘评级只在有公开文献出处时显示,并附出处链接。结构图与分子数据来自 PubChem。',
-  desc: (n: string) => `${n} 是什么、做什么、刺激与致痘倾向、在中国 / 欧盟 / 东盟等目录里的状态,以及含它的热销产品。`,
 } : {
   home: 'Home', lib: 'Ingredient index', decoder: 'Ingredient decoder', irr: 'Irritancy', com: 'Comedogenic', rating: { green: 'Routine', yellow: 'Restricted / note', red: 'Prohibited / high-risk' } as Record<string, string>,
   whatH: 'What it is and how it is used', regH: 'Status in national inventories', regNo: 'No.', regNote: 'Matched on the exact INCI name; salts, esters and synonyms may be missed. The latest official text prevails.',
   prodH: 'Popular products with this ingredient', prodN: (n: number) => `${n.toLocaleString()} products`, relH: 'Related ingredients', struct: 'Chemical structure', formula: 'Formula', mw: 'Mol. weight', more: 'SMILES / IUPAC',
   aliases: 'Also known as', none: 'Not decoded yet — see functions and inventory status below.', ask: 'Want to build with this ingredient? Send an enquiry',
   fine: 'Functions from EU CosIng and the China inventory; irritancy and rating are our internal reading, not a regulatory conclusion; comedogenic ratings are shown only where a published source exists, with the source linked. Structure and molecular data from PubChem.',
-  desc: (n: string) => `What ${n} is and does, its irritancy and comedogenic tendency, its status in the China, EU and ASEAN inventories, and popular products that contain it.`,
 };
 
 const ld = [
@@ -141,7 +140,7 @@ const ldOut = [...(full ? ld : ld.slice(0, 1)), paywallLd(origin + path, String(
 <BaseLayout
   locale={lang as any} school={shell.variant?.school ?? 'atelier'} variant={shell.site?.variant ?? 'v1'}
   brand={shell.site?.id ?? siteIdForHost(Astro.url.hostname) ?? 'biosphere-ai'}
-  title={`${name}${zh && nameZh ? ' ' + inci : ''} · ${T.lib}`} description={(full && what ? `${name}:${String(what)}` : T.desc(name)).slice(0, 160)}
+  title={`${name}${zh && nameZh ? ' ' + inci : ''} · ${T.lib}`} description={catalogMetaDescription({ zh, name: String(name ?? ''), what: what ? String(what) : '', full })}
   siteName={shell.site?.name ?? '帛卉'} siteUrl={origin} path={path}
   indexable={shell.site?.is_live === 1} brandColor={shell.site?.brand_color} theme={shell.site?.theme ?? 'noir'}
 >
