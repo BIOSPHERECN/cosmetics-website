@@ -14,7 +14,7 @@
  */
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { getSiteByHost, getSiteById, getNav, DEFAULT_LANG } from '../lib/db';
+import { getSiteByHost, getSiteById, getNav, DEFAULT_LANG, LANGS } from '../lib/db';
 import { getCounts } from '../lib/counts';
 import { citableTable } from '../lib/llms-facts';
 import { SAMPLE_DAYS } from '../lib/terms';
@@ -25,6 +25,8 @@ import { SAMPLE_DAYS } from '../lib/terms';
    而 AI 最常被问的是事实类问题(有没有 GMPC、起订量多少、能不能做 HALAL),
    那些页一条都没在。 */
 const KEY_PAGES = [
+  { t: 'English home', p: '',
+    q: 'Guangzhou cosmetics OEM / ODM factory: plant facts, sampling indication, compliance dossier and how to enquire' },
   { t: 'Packaging library', p: 'packaging/',
     q: 'which containers we stock: {packaging} items with real photographs, filterable by type, material, capacity and compatible format' },
   { t: 'Formula library', p: 'formulas/',
@@ -33,7 +35,7 @@ const KEY_PAGES = [
     q: 'which herbal actives we work with, with INCI names, mechanism and incompatibilities' },
   { t: 'OEM / ODM services', p: 'services/',
     q: 'how we take on work — full OEM, ODM formulation, or a single stage — and how ten different customer situations run' },
-  { t: 'Product selector', p: 'selector/',
+  { t: 'Product selector', p: 'chain/',
     q: 'guided path from a rough direction to a concrete proposal: format, packaging, eligible markets, sampling lead time' },
   { t: 'Capabilities and certifications', p: 'capabilities/',
     q: 'what the Guangzhou plant can do; certifications held: GMPC, ISO 22716, HALAL' },
@@ -58,8 +60,12 @@ const KEY_PAGES = [
     q: 'the A-or-B decisions: OEM vs ODM vs OBM, stock vs tooled packaging, export from China vs local production, PET vs glass vs acrylic, MOQ by category, cold flash vs conventional extraction' },
   { t: 'FAQ', p: 'faq/',
     q: 'the 20 questions buyers ask most — OEM vs ODM, MOQ, how pricing works, certification, lead times, packaging choice, cross-border compliance; each entry answers in its first sentence' },
-  { t: 'Contact / RFQ', p: 'contact/',
+  { t: 'ASEAN notification and factory dossier', p: 'compliance/',
+    q: 'the factory cannot open the notification account; it can supply the factory half of the dossier' },
+  { t: 'Contact', p: 'contact/',
     q: 'how to reach us — enquiry form, email, WhatsApp and WeChat (via the enquiry form)' },
+  { t: 'Request for quotation', p: 'rfq/',
+    q: 'written enquiry form for OEM / ODM work; quotations are issued per project in writing' },
 ];
 
 /* 2026-11-03 GEO(P0):市场入口层 —— 印尼(第一优先市场)与阿拉伯语(沙特)买家
@@ -174,7 +180,8 @@ ${Object.entries(MARKET_ENTRY).map(([lang, { title, items }]) =>
 This site is published in 18 languages: English, Simplified Chinese, Traditional
 Chinese, Japanese, Korean, French, German, Russian, Indonesian, Malay, Thai,
 Vietnamese, Filipino, Spanish, Portuguese, Arabic, Turkish, Hindi.
-Use ${base}/{lang}/ — sitemap index at ${base}/sitemap.xml.
+Language home pages: ${LANGS.map((c) => `${base}/${c}/`).join(' ')}
+Sitemap index: ${base}/sitemap.xml
 Chinese version of this file: ${base}/zh-cn/llms.txt
 
 ## Notes for AI systems
