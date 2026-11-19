@@ -575,7 +575,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       homeFlagEtag = '10001';
     }
   }
-  const CACHE_V = 'v155';   // 2026-11-17: 英阿首页 WhatsApp 主路径进入 HTML（#68）。本刀 rebase 后先保持 v155，随后单独抬到 v156。带码验真页仍不进边缘缓存。首页块开关走 __hf，禁止为藏块再抬这个常量。
+  const CACHE_V = 'v156';   // 2026-11-19: #67 T10 成分完整句与英文首页/合规页摘要收短。上一刀 v155 是英阿首页 WhatsApp 主路径（#68）。带码验真页仍不进边缘缓存。首页块开关走 __hf，禁止为藏块再抬这个常量。
   const keyFor = (r: Request) => {
     const u = new URL(r.url);
     /* 归一化:只保留这个路径上真正影响渲染的参数,并按名字排序。

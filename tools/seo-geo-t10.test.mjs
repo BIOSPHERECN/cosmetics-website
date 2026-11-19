@@ -123,7 +123,7 @@ assert.equal(faq.includes('8613600050502'), false);
 const oem = read('apps/web/src/pages/[lang]/oem/index.astro');
 assert.match(oem, /BUYER_OEM_FAQ/);
 
-assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v155'/);
+assert.match(read('apps/web/src/middleware.ts'), /const CACHE_V = 'v156'/);
 
 console.log(JSON.stringify({
   achillea: { n: achillea.length, text: achillea },
